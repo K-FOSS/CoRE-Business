@@ -13,9 +13,16 @@ spec:
       labels:
         app: drawio-ui
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
-      - image: jgraph/drawio:latest
-        name: drawio-ui
-        ports:
-          - name: http
-            containerPort: 8080
+        - image: jgraph/drawio:latest
+          name: drawio-ui
+          securityContext:
+            readOnlyRootFilesystem: true
+          ports:
+            - name: http
+              containerPort: 8080
