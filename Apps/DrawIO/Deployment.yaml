@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drawio
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: drawio-ui
+  template:
+    metadata:
+      labels:
+        app: drawio-ui
+    spec:
+      containers:
+      - image: jgraph/drawio:latest
+        name: drawio-ui
+        ports:
+          - name: http
+            containerPort: 8080
