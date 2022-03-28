@@ -21,8 +21,6 @@ spec:
       containers:
         - image: mpepping/cyberchef:v9.32.3
           name: cyberchef-ui
-          securityContext:
-            readOnlyRootFilesystem: true
           ports:
             - name: http
               containerPort: 8000
