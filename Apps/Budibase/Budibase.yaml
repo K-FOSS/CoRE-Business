@@ -67,7 +67,7 @@ spec:
               port: 10000
 
             ingress:
-              enabled: true
+              enabled: false
               aws: false
               nginx: false
               certificateArn: ""
