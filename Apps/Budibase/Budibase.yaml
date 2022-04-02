@@ -18,6 +18,8 @@ spec:
         automated:
           selfHeal: true
           prune: true
+        syncOptions:
+          - CreateNamespace=true
       source:
         repoURL: https://budibase.github.io/budibase/
         chart: budibase
