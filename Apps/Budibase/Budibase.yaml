@@ -17,6 +17,7 @@ spec:
       syncPolicy:
         automated:
           selfHeal: true
+          prune: true
       source:
         repoURL: https://budibase.github.io/budibase/
         chart: budibase
@@ -193,7 +194,7 @@ spec:
                 accessKey: <secret:CORE0_SITE1/data/Budibase~S3AccessKey>
                 secretKey: <secret:CORE0_SITE1/data/Budibase~S3SecretKey>
                 region: us-east-1
-                url: "https://s3.mylogin.space:443" # only change if pointing to existing minio cluster or S3 and minio: false
+                url: "https://s3.mylogin.space:443"
                 storage: 100Mi
 
             # Override values in couchDB subchart
@@ -347,4 +348,4 @@ spec:
 
       destination:
         server: '{{url}}'
-        namespace: core-prod
+        namespace: budibase
