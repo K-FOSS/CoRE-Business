@@ -28,6 +28,15 @@ spec:
         helm:
           releaseName: hpschool-fpm
           values: |
+            image:
+              # -- image repository
+              repository: trafex/php-nginx
+              # -- image tag
+              # @default -- chart.appVersion
+              tag: 2.5.0
+              # -- image pull policy
+              pullPolicy: Always
+
             # -- environment variables. See more environment variables in the [nginx-php documentation](https://nginx-php.org/docs).
             # @default -- See below
             env:
