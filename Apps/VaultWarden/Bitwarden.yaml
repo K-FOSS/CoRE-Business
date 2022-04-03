@@ -55,11 +55,11 @@ spec:
               DATA_FOLDER: "/tmp"
               DOMAIN: https://bitwarden.kristianjones.dev
 
-            envValueFrom:
               DATABASE_URL:
-                secretKeyRef:
-                  key: DBURI
-                  name: business-vaultwarden-database-{{ environment }}
+                valueFrom:
+                  secretKeyRef:
+                    key: DBURI
+                    name: business-vaultwarden-database-{{ environment }}
 
             # -- Configures service settings for the chart. Normally this does not need to be modified.
             # @default -- See values.yaml
