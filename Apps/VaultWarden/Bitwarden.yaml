@@ -52,7 +52,7 @@ spec:
             # @default -- See below
             env:
             # -- Config dir
-              DATA_FOLDER: "config"
+              DATA_FOLDER: "/tmp"
 
             envValueFrom:
               DATABASE_URL:
