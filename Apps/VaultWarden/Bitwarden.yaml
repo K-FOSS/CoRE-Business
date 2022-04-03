@@ -30,21 +30,6 @@ spec:
         helm:
           releaseName: vaultwarden-prod
           values: |
-            #
-            # IMPORTANT NOTE
-            #
-            # This chart inherits from our common library chart. You can check the default values/options here:
-            # https://github.com/k8s-at-home/library-charts/tree/main/charts/stable/common/values.yaml
-            #
-
-            image:
-              # -- image repository
-              repository: vaultwarden/server
-              # -- image pull policy
-              pullPolicy: IfNotPresent
-              # -- image tag
-              tag: 1.24.0-alpine
-
             strategy:
               type: Recreate
 
