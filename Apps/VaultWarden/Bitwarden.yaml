@@ -91,17 +91,20 @@ spec:
                       - path: /
                         pathType: Prefix
                         service:
-                          port: http
+                          port:
+                            name: http
 
                       - path: /notifications/hub/negotiate
                         pathType: Prefix
                         service:
-                          port: http
+                          port:
+                            name: http
 
                       - path: /notifications/hub
                         pathType: Prefix
                         service:
-                          port: websocket
+                          port: 
+                            name: websocket
                 tls:
                   - hosts:
                       - '*.kristianjones.dev'
