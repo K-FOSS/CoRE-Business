@@ -55,6 +55,10 @@ spec:
               runAsUser: 0
               runAsGroup: 0
               fsGroup: 0
+            
+            securityContext:
+              runAsUser: 0
+              allowPrivilegeEscalation: false
 
             ingress:
               # -- Enable and configure ingress settings for the chart under this key.
