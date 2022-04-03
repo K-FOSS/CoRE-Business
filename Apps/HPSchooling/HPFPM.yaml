@@ -55,7 +55,25 @@ spec:
               # -- Enable and configure ingress settings for the chart under this key.
               # @default -- See values.yaml
               main:
-                enabled: false
+                enabled: true
+                ingressClassName: traefik-core
+                labels:
+                  wan-mode: 'public'
+                  lan-mode: 'private'
+                annotations:
+                  cert-manager.io/cluster-issuer: kjdev-cluster
+                  external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
+                  traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                  traefik.ingress.kubernetes.io/router.tls: 'true'
+                hosts:
+                  - host: hpphp.writemy.codes
+                    paths:
+                      - path: /
+                        pathType: Prefix
+                tls:
+                  - hosts:
+                      - '*.writemy.codes'
+                    secretName: writemycodes-default-certificates
 
             # -- Configure persistence settings for the chart under this key.
             # @default -- See values.yaml
@@ -67,4 +85,4 @@ spec:
 
       destination:
         server: '{{url}}'
-        namespace: budibase
+        namespace: core-prod
