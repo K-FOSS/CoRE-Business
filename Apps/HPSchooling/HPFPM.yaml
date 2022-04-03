@@ -104,7 +104,7 @@ spec:
                 # -- Specify a list of volumes that get mounted in the code-server container.
                 # At least 1 volumeMount is required!
                 volumeMounts:
-                  - name: config
+                  - name: data
                     mountPath: /data/config
 
                 # -- Specify the working dir that will be opened when code-server starts
