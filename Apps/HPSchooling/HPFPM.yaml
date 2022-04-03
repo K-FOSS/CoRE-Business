@@ -42,15 +42,6 @@ spec:
                   http:
                     port: 8080
 
-            # -- Overwrites default config files for nginx or php/php-fpm if enabled.
-            # @default -- See https://github.com/TrafeX/docker-php-nginx/tree/master/config for defaults
-            config:
-              nginx-server.conf: {}
-
-              php-settings.ini: {}
-
-              php-fpm-server.conf: {}
-
             podSecurityContext:
               runAsUser: 0
               runAsGroup: 0
