@@ -70,6 +70,7 @@ spec:
                     paths:
                       - path: /
                         pathType: Prefix
+                          
                 tls:
                   - hosts:
                       - '*.writemy.codes'
@@ -82,6 +83,93 @@ spec:
                 enabled: true
                 mountPath: /var/www/html
                 existingClaim: hpschool-phpcore
+
+            addons:
+              codeserver:
+                # -- Enable running a code-server container in the pod
+                enabled: true
+
+                # -- Set any environment variables for code-server here
+                env: {}
+                  # TZ: UTC
+
+                # -- Set codeserver command line arguments.
+                # Consider setting --user-data-dir to a persistent location to preserve code-server setting changes
+                args:
+                  - --auth
+                  - none
+                  # - --user-data-dir
+                  # - "/config/.vscode"
+
+                # -- Specify a list of volumes that get mounted in the code-server container.
+                # At least 1 volumeMount is required!
+                volumeMounts:
+                  - name: config
+                    mountPath: /data/config
+
+                # -- Specify the working dir that will be opened when code-server starts
+                # If not given, the app will default to the mountpah of the first specified volumeMount
+                workingDir: ""
+
+                # -- Optionally allow access a Git repository by passing in a private SSH key
+                # @default -- See below
+                git:
+                  # -- Raw SSH private key
+                  deployKey: ""
+                  # -- Base64-encoded SSH private key. When both variables are set, the raw SSH key takes precedence.
+                  deployKeyBase64: ""
+                  # -- Existing secret containing SSH private key
+                  # The chart expects it to be present under the `id_rsa` key.
+                  deployKeySecret: ""
+
+                service:
+                  # -- Enable a service for the code-server add-on.
+                  enabled: true
+                  type: ClusterIP
+                  # Specify the default port information
+                  ports:
+                    codeserver:
+                      port: 12321
+                      enabled: true
+                      protocol: TCP
+                      targetPort: codeserver
+                      ## Specify the nodePort value for the LoadBalancer and NodePort service types.
+                      ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
+                      ##
+                      # nodePort:
+                  # -- Specify the ip policy. Options: SingleStack, PreferDualStack, RequireDualStack
+                  ipFamilyPolicy: SingleStack
+                  # -- The ip families that should be used. Options: IPv4, IPv6
+                  ipFamilies:
+                    - IPv4
+
+                ingress:
+                  # -- Enable an ingress for the code-server add-on.
+                  enabled: true
+                  annotations:
+                    cert-manager.io/cluster-issuer: kjdev-cluster
+                    external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
+                    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                    traefik.ingress.kubernetes.io/router.tls: 'true'
+                    ingress.pomerium.io/allowed_idp_claims: '{"groups": ["Server", "Network"]}'
+                    traefik.ingress.kubernetes.io/router.middlewares: core-prod-pomerium-auth@kubernetescrd
+                  labels:
+                    wan-mode: 'public'
+                    lan-mode: 'private'
+                  hosts:
+                    - host: hpcode.writemy.codes
+                      paths:
+                        - path: /
+                          # Ignored if not kubeVersion >= 1.14-0
+                          pathType: Prefix
+                  tls:
+                    - hosts:
+                        - '*.writemy.codes'
+                      secretName: writemycodes-default-certificates
+
+
+                securityContext:
+                  runAsUser: 0
 
       destination:
         server: '{{url}}'
