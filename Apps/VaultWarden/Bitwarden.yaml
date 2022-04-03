@@ -53,6 +53,7 @@ spec:
             env:
             # -- Config dir
               DATA_FOLDER: "/tmp"
+              DOMAIN: https://bitwarden.kristianjones.dev
 
             envValueFrom:
               DATABASE_URL:
