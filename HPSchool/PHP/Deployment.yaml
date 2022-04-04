@@ -36,7 +36,7 @@ spec:
               mountPath: /etc/nginx/conf.d
 
         - name: php
-          image: php:7-fpm
+          image: kristianfjones/hpcode-php:core
           env:
             - name: TZ
               value: UTC
