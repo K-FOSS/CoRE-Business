@@ -20,6 +20,16 @@ spec:
     spec:
       automountServiceAccountToken: true
       containers:
+        - name: nginx
+          image: nginx:1.7.9
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: code
+              mountPath: /code
+            - name: config
+              mountPath: /etc/nginx/conf.d
+
         - name: php
           image: php:7-fpm
           env:
@@ -29,7 +39,7 @@ spec:
             - name: data
               mountPath: /code
           ports:
-            - containerPort: 8080
+            - containerPort: 9000
               name: http
               protocol: TCP
 
@@ -94,3 +104,10 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: hpschool-phpcore
+
+        - name: config
+          configMap:
+            name: hpschool-fpm-nginx-php-settings
+            items:
+            - key: config
+              path: site.conf

@@ -1,13 +1,27 @@
 apiVersion: v1
-data: null
+data:
+  config : |
+    server {
+      index index.php index.html;
+      error_log  /var/log/nginx/error.log;
+      access_log /var/log/nginx/access.log;
+      root /code;
+      
+      location / {
+          try_files $uri $uri/ /index.php?$query_string;
+      }
+
+      location ~ \.php$ {
+          try_files $uri =404;
+          fastcgi_split_path_info ^(.+\.php)(/.+)$;
+          fastcgi_pass hpcode-fpm:9000;
+          fastcgi_index index.php;
+          include fastcgi_params;
+          fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+          fastcgi_param PATH_INFO $fastcgi_path_info;
+        }
+    }
 kind: ConfigMap
 metadata:
-  labels:
-    app.kubernetes.io/instance: hpschool-fpm
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: nginx-php
-    app.kubernetes.io/version: 2.4.0
-    argocd.argoproj.io/instance: k0s-cntrl-business-hpschool-fpm-helm
-    helm.sh/chart: nginx-php-1.0.0
   name: hpschool-fpm-nginx-php-settings
   namespace: core-prod
