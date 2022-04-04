@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: hpschool-fpm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nginx-php
+    app.kubernetes.io/version: 2.4.0
+    argocd.argoproj.io/instance: k0s-cntrl-business-hpschool-fpm-helm
+    helm.sh/chart: nginx-php-1.0.0
+  name: hpschool-fpm-nginx-php
+  namespace: core-prod
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/instance: hpschool-fpm
+    app.kubernetes.io/name: nginx-php
+  type: ClusterIP

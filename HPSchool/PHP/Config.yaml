@@ -1,0 +1,13 @@
+apiVersion: v1
+data: null
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: hpschool-fpm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nginx-php
+    app.kubernetes.io/version: 2.4.0
+    argocd.argoproj.io/instance: k0s-cntrl-business-hpschool-fpm-helm
+    helm.sh/chart: nginx-php-1.0.0
+  name: hpschool-fpm-nginx-php-settings
+  namespace: core-prod

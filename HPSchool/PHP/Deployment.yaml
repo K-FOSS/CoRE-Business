@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hpschool-fpm-nginx-php
+  namespace: core-prod
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: hpschool-fpm
+      app.kubernetes.io/name: nginx-php
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: hpschool-fpm
+        app.kubernetes.io/name: nginx-php
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - name: php
+          image: php:7-fpm
+          env:
+            - name: TZ
+              value: UTC
+          volumeMounts:
+            - name: data
+              mountPath: /code
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+
+        # - name: hpschool-fpm-nginx-php
+
+        #   image: 'trafex/php-nginx:2.5.0'
+        #   imagePullPolicy: Always
+        #   livenessProbe:
+        #     failureThreshold: 3
+        #     initialDelaySeconds: 0
+        #     periodSeconds: 10
+        #     tcpSocket:
+        #       port: 8080
+        #     timeoutSeconds: 1
+          
+
+        #   readinessProbe:
+        #     failureThreshold: 3
+        #     initialDelaySeconds: 0
+        #     periodSeconds: 10
+        #     tcpSocket:
+        #       port: 8080
+        #     timeoutSeconds: 1
+        #   securityContext:
+        #     allowPrivilegeEscalation: false
+        #     runAsUser: 0
+        #   startupProbe:
+        #     failureThreshold: 30
+        #     initialDelaySeconds: 0
+        #     periodSeconds: 5
+        #     tcpSocket:
+        #       port: 8080
+        #     timeoutSeconds: 1
+        #   volumeMounts:
+        #     - mountPath: /var/www/html
+        #       name: data
+        - name: codeserver
+          args:
+            - '--auth'
+            - none
+            - '--port'
+            - '12321'
+            - /data/config
+          image: 'codercom/code-server:3.9.2'
+          ports:
+            - containerPort: 12321
+              name: codeserver
+              protocol: TCP
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - mountPath: /data/config
+              name: data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0
+      serviceAccountName: default
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hpschool-phpcore

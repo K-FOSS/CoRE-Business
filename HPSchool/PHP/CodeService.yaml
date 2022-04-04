@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: null
+  labels:
+    app.kubernetes.io/instance: hpschool-fpm
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nginx-php
+    app.kubernetes.io/version: 2.4.0
+    argocd.argoproj.io/instance: k0s-cntrl-business-hpschool-fpm-helm
+    helm.sh/chart: nginx-php-1.0.0
+  name: hpschool-fpm-nginx-php-codeserver
+  namespace: core-prod
+spec:
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: codeserver
+      port: 12321
+      protocol: TCP
+      targetPort: codeserver
+  selector:
+    app.kubernetes.io/instance: hpschool-fpm
+    app.kubernetes.io/name: nginx-php
+  type: ClusterIP
