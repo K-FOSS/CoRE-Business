@@ -27,6 +27,8 @@ spec:
             runAsUser: 0
           ports:
             - containerPort: 80
+              name: http
+              protocol: TCP
           volumeMounts:
             - name: data
               mountPath: /code
