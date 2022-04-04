@@ -27,7 +27,7 @@ spec:
               service:
                 name: hpschool-fpm-nginx-php
                 port:
-                  number: 8080
+                  number: 80
             path: /
             pathType: Prefix
   tls:
