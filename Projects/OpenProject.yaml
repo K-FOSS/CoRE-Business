@@ -13,7 +13,7 @@ spec:
             environment: 'prod'
   template:
     metadata:
-      name: '{{cluster}}-business-vaultwarden-helm'
+      name: '{{cluster}}-business-projects-openproject-helm'
     spec:
       project: core
       # syncPolicy:
