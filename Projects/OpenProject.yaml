@@ -58,7 +58,7 @@ spec:
                     - pm.example.com
 
             storage:
-              storageClassName: infra1-iscsi
+              storageClassName: infra1-storage
               capacity: 5G
               persistenentVolume:
                 create: false
