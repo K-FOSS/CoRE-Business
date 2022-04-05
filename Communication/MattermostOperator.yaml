@@ -1,0 +1,66 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: core-business-communication-mattermost-operator-helm
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: k0s-cntrl
+            url: https://k0s-dc1-kubernetes-default.service.dc1.kjdev:6443
+            environment: 'prod'
+  template:
+    metadata:
+      name: '{{cluster}}-communication-mattermost-operator-helm'
+    spec:
+      project: core
+      syncPolicy:
+        automated: {}
+      #     selfHeal: true
+      #     prune: true
+      source:
+        repoURL: https://helm.mattermost.com
+        chart: mattermost-operator
+        path: mattermost-operator
+        targetRevision: 0.3.1
+        helm:
+          releaseName: mattermost-operator-{{ environment }}
+          values: |
+            # Default values for mattermost-operator.
+            # This is a YAML-formatted file.
+            # Declare variables to be passed into your templates.
+
+            mattermostOperator:
+              enabled: true
+              replicas: 1
+              rbac:
+                create: true
+              serviceAccount:
+                create: true
+              env:
+                maxReconcilingInstallations: 20
+                requeuOnLimitDelay: 20s
+              image:
+                repository: mattermost/mattermost-operator
+                tag: v1.18.0
+                pullPolicy: IfNotPresent
+              args:
+                - --enable-leader-election
+
+              ## Specify image pull secret for private repository
+              ##
+              privateRegistry:
+                enabled: false
+                imagePullSecret: <name of the secret>
+
+            ### IMPORTANT: Below operators should be deployed separately in production environments. ###
+            minioOperator:
+              enabled: false
+
+            mysqlOperator:
+              enabled: false
+
+      destination:
+        server: '{{url}}'
+        namespace: core-prod
