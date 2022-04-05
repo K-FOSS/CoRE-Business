@@ -21,10 +21,10 @@ spec:
       #     selfHeal: true
       #     prune: true
       source:
-        repoURL: https://ittrident.github.io/helm-charts/
+        repoURL: https://homeenterpriseinc.github.io/helm-charts/
         chart: openproject
         path: openproject
-        targetRevision: 0.1.0
+        targetRevision: 0.5.0
         helm:
           releaseName: openproject-{{ environment }}
           values: |
@@ -127,7 +127,7 @@ spec:
 
               # set to true to enable the email receiving feature. See ./docker/cron for more options
               - name: IMAP_ENABLED
-                value: "false"
+                value: 'false'
 
       destination:
         server: '{{url}}'
