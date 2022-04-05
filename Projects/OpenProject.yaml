@@ -81,7 +81,7 @@ spec:
                 valueFrom:
                   secretKeyRef:
                     name: business-projects-openproject-database-{{ environment }}
-                    key: S3Bucket
+                    key: DBURI
 
               # Storage
               - name: OPENPROJECT_ATTACHMENTS__STORAGE
