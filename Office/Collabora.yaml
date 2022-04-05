@@ -24,7 +24,7 @@ spec:
         repoURL: https://chrisingenhaag.github.io/helm/
         chart: collabora-code
         path: collabora-code
-        targetRevision: 0.5.0
+        targetRevision: 2.2.1
         helm:
           releaseName: collabora-code-{{ environment }}
           values: |
