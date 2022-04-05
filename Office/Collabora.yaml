@@ -58,7 +58,7 @@ spec:
             collabora:
               DONT_GEN_SSL_CERT: true
               domain: nextcloud\\.kristianjones\\.dev
-              extra_params: --o:ssl.termination=true --o:ssl.enable=false
+              extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4
               server_name: collabora\.mylogin\.space
               password: examplepass
               username: admin
