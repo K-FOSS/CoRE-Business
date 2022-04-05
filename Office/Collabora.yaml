@@ -59,7 +59,7 @@ spec:
               DONT_GEN_SSL_CERT: true
               domain: nextcloud\\.kristianjones\\.dev
               extra_params: --o:ssl.termination=true --o:ssl.enable=false
-              server_name: collabora\.kristianjones\.dev
+              server_name: collabora\.mylogin\.space
               password: examplepass
               username: admin
               dictionaries: de_DE en_GB en_US es_ES fr_FR it nl pt_BR pt_PT ru
