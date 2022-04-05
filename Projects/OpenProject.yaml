@@ -1,0 +1,134 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: core-business-projects-openproject-helm
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: k0s-cntrl
+            url: https://k0s-dc1-kubernetes-default.service.dc1.kjdev:6443
+            ingress: projects.mylogin.space
+            environment: 'prod'
+  template:
+    metadata:
+      name: '{{cluster}}-business-vaultwarden-helm'
+    spec:
+      project: core
+      # syncPolicy:
+      #   automated:
+      #     selfHeal: true
+      #     prune: true
+      source:
+        repoURL: https://ittrident.github.io/helm-charts/
+        chart: openproject
+        path: openproject
+        targetRevision: 0.1.0
+        helm:
+          releaseName: openproject-{{ environment }}
+          values: |
+            replicaCount: 1
+            hostNetwork: false
+
+            image:
+              repository: openproject/community
+              pullPolicy: IfNotPresent
+              tag: "12.0.2"
+
+            service:
+              type: ClusterIP
+              port: 8080
+
+            ingress:
+              enabled: false
+              annotations:
+                cert-manager.io/cluster-issuer: kjdev-cluster
+                external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: 'true'
+              hosts:
+                - host: pm.example.com
+                  paths:
+                    - path: /
+                      pathType: Prefix
+              tls:
+                - secretName: openproject-letsencrypt-certificate
+                  hosts:
+                    - pm.example.com
+
+            storage:
+              storageClassName: infra1-iscsi
+              capacity: 5G
+              persistenentVolume:
+                create: false
+
+            resources: {}
+
+            environment:
+              # Web
+              - name: USE_PUMA
+                value: 'true'
+
+              # Rails
+              - name: RAILS_MIN_THREADS
+                value: '4'
+              - name: RAILS_MAX_THREADS
+                value: '16'
+
+              # Database
+              - name: DATABASE_URL
+                valueFrom:
+                  secretKeyRef:
+                    name: business-projects-openproject-database-{{ environment }}
+                    key: S3Bucket
+
+              # Storage
+              - name: OPENPROJECT_ATTACHMENTS__STORAGE
+                value: 'fog'
+
+              - name: OPENPROJECT_FOG_CREDENTIALS_PROVIDER
+                value: 'aws'
+
+              - name: OPENPROJECT_FOG_CREDENTIALS_PATH__STYLE
+                value: 'true'
+
+              - name: OPENPROJECT_FOG_CREDENTIALS_ENDPOINT
+                value: https://s3.mylogin.space
+
+              - name: OPENPROJECT_FOG_DIRECTORY
+                valueFrom:
+                  secretKeyRef:
+                    name: business-projects-openproject-s3-{{ environment }}
+                    key: S3Bucket
+
+              - name: OPENPROJECT_FOG_CREDENTIALS_AWS__ACCESS__KEY__ID
+                valueFrom:
+                  secretKeyRef:
+                    name: business-projects-openproject-s3-{{ environment }}
+                    key: S3AccessKey
+
+              - name: OPENPROJECT_FOG_CREDENTIALS_AWS__SECRET__ACCESS__KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: business-projects-openproject-s3-{{ environment }}
+                    key: S3SecretKey
+
+              # - name: RAILS_CACHE_STORE
+              #   value: "memcache"
+              # - name: OPENPROJECT_CACHE__MEMCACHE__SERVER
+              #   value: "openproject-memcached:11211"
+              - name: OPENPROJECT_RAILS__RELATIVE__URL__ROOT
+                value: ''
+
+              - name: SERVER_NAME
+                value: 'projects.mylogin.space'
+
+
+              # set to true to enable the email receiving feature. See ./docker/cron for more options
+              - name: IMAP_ENABLED
+                value: "false"
+
+      destination:
+        server: '{{url}}'
+        namespace: core-prod
