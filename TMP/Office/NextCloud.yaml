@@ -523,8 +523,8 @@ spec:
                 ## otherwise leave blank
                 # loadBalancerIP:
                 annotations:
-                  prometheus.io/scrape: "true"
-                  prometheus.io/port: "9205"
+                  prometheus.io/scrape: 'true'
+                  prometheus.io/port: '9205'
                 labels: {}
 
             rbac:
