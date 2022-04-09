@@ -23,7 +23,7 @@ spec:
       source:
         repoURL: https://nextcloud.github.io/helm/
         chart: nextcloud
-        path: collabora-code
+        path: nextcloud
         targetRevision: 2.14.0
         helm:
           releaseName: nextcloud-{{ environment }}
@@ -52,38 +52,15 @@ spec:
             ingress:
               enabled: false
               className: traefik-core
-              annotations: {}
-              #  nginx.ingress.kubernetes.io/proxy-body-size: 4G
-              #  kubernetes.io/tls-acme: "true"
-              #  cert-manager.io/cluster-issuer: letsencrypt-prod
-              #  nginx.ingress.kubernetes.io/server-snippet: |-
-              #    server_tokens off;
-              #    proxy_hide_header X-Powered-By;
-
-              #    rewrite ^/.well-known/webfinger /public.php?service=webfinger last;
-              #    rewrite ^/.well-known/host-meta /public.php?service=host-meta last;
-              #    rewrite ^/.well-known/host-meta.json /public.php?service=host-meta-json;
-              #    location = /.well-known/carddav {
-              #      return 301 $scheme://$host/remote.php/dav;
-              #    }
-              #    location = /.well-known/caldav {
-              #      return 301 $scheme://$host/remote.php/dav;
-              #    }
-              #    location = /robots.txt {
-              #      allow all;
-              #      log_not_found off;
-              #      access_log off;
-              #    }
-              #    location ~ ^/(?:build|tests|config|lib|3rdparty|templates|data)/ {
-              #      deny all;
-              #    }
-              #    location ~ ^/(?:autotest|occ|issue|indie|db_|console) {
-              #      deny all;
-              #    }
-              # tls:
-              #   - secretName: nextcloud-tls
-              #     hosts:
-              #       - nextcloud.kube.home
+              annotations:
+                cert-manager.io/cluster-issuer: kjdev-cluster
+                external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
+                traefik.ingress.kubernetes.io/router.entrypoints: websecure
+                traefik.ingress.kubernetes.io/router.tls: 'true'
+              tls:
+                - secretName: myloginspace-default-certificates
+                  hosts:
+                    - '*.mylogin.space'
               labels: {}
               path: /
               pathType: Prefix
