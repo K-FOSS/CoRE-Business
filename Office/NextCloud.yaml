@@ -16,8 +16,8 @@ spec:
       name: '{{cluster}}-business-office-nextcloud-helm'
     spec:
       project: core
-      syncPolicy:
-        automated: {}
+      # syncPolicy:
+      #   automated: {}
       #     selfHeal: true
       #     prune: true
       source:
@@ -50,7 +50,7 @@ spec:
             ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
             ##
             ingress:
-              enabled: false
+              enabled: true
               className: traefik-core
               annotations:
                 cert-manager.io/cluster-issuer: kjdev-cluster
