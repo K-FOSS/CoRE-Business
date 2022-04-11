@@ -167,20 +167,7 @@ spec:
                 #
                 # Database
                 #
-                - name: POSTGRES_HOST
-                  value: 'psql.service.dc1.kjdev'
 
-                - name: POSTGRES_DB
-                  valueFrom:
-                    secretKeyRef:
-                      name: business-office-nextcloud-database-prod
-                      key: DatabaseDatabase
-
-                - name: POSTGRES_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: business-office-nextcloud-database-prod
-                      key: Username
 
                 - name: POSTGRES_PASSWORD
                   valueFrom:
@@ -267,13 +254,13 @@ spec:
             ## External database configuration
             ##
             externalDatabase:
-              enabled: false
+              enabled: true
 
               ## Supported database engines: mysql or postgresql
               type: postgresql
 
               ## Database host
-              host:
+              host: psql.service.dc1.kjdev
 
               ## Database user
               user: nextcloud
@@ -286,10 +273,10 @@ spec:
 
               ## Use a existing secret
               existingSecret:
-                enabled: false
-                # secretName: nameofsecret
-                # usernameKey: username
-                # passwordKey: password
+                enabled: true
+                secretName: business-office-nextcloud-database-prod
+                usernameKey: Username
+                passwordKey: Password
 
             ##
             ## MariaDB chart configuration
