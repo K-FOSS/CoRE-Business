@@ -207,7 +207,7 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: business-office-nextcloud-s3-prod
-                      key: S3Bucket
+                      key: S3SecretKey
               #  - name: SOME_SECRET_ENV
               #    valueFrom:
               #      secretKeyRef:
