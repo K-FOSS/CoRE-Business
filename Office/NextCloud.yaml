@@ -297,10 +297,10 @@ spec:
               ##
               primary:
                 persistence:
-                  enabled: false
+                  enabled: true
                   # storageClass: ""
                   accessMode: ReadWriteOnce
-                  size: 8Gi
+                  size: 25Gi
 
             ##
             ## PostgreSQL chart configuration
