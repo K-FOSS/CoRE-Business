@@ -224,7 +224,7 @@ spec:
               #    mountPath: "/legacy_data"
 
               # Extra secuurityContext parameters. For example you may need to define runAsNonRoot directive
-              # extraSecurityContext:
+              extraSecurityContext:
               #   runAsUser: "33"
               #   runAsGroup: "33"
               #   runAsNonRoot: true
@@ -426,14 +426,14 @@ spec:
             ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
             ##
             livenessProbe:
-              enabled: true
+              enabled: false
               initialDelaySeconds: 10
               periodSeconds: 10
               timeoutSeconds: 5
               failureThreshold: 3
               successThreshold: 1
             readinessProbe:
-              enabled: true
+              enabled: false
               initialDelaySeconds: 10
               periodSeconds: 10
               timeoutSeconds: 5
