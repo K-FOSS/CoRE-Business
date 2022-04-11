@@ -174,7 +174,19 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: business-office-nextcloud-database-prod
-                      key: secret_key
+                      key: DatabaseDatabase
+
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: business-office-nextcloud-database-prod
+                      key: Username
+
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: business-office-nextcloud-database-prod
+                      key: Password
 
 
                 #
@@ -193,19 +205,19 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: business-office-nextcloud-s3-prod
-                      key: secret_key
+                      key: S3Bucket
 
                 - name: OBJECTSTORE_S3_KEY
                   valueFrom:
                     secretKeyRef:
                       name: business-office-nextcloud-s3-prod
-                      key: secret_key
+                      key: S3AccessKey
 
                 - name: OBJECTSTORE_S3_SECRET
                   valueFrom:
                     secretKeyRef:
                       name: business-office-nextcloud-s3-prod
-                      key: secret_key
+                      key: S3Bucket
               #  - name: SOME_SECRET_ENV
               #    valueFrom:
               #      secretKeyRef:
