@@ -40,7 +40,14 @@ spec:
 
             nameOverride: ""
             fullnameOverride: ""
-            podAnnotations: {}
+
+            podLabels:
+              sidecar.istio.io/inject: 'true'
+
+            podAnnotations:
+              sidecar.istio.io/inject: 'true'
+
+
             deploymentAnnotations: {}
 
             # Number of replicas to be deployed
