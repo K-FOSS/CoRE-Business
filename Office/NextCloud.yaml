@@ -46,6 +46,9 @@ spec:
 
             podAnnotations:
               sidecar.istio.io/inject: 'true'
+              traffic.sidecar.istio.io/excludeInboundPorts: '9000'
+              traffic.sidecar.istio.io/excludeOutboundPorts: '9000'
+
 
 
             deploymentAnnotations: {}

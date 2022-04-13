@@ -13,4 +13,10 @@ spec:
   licenseSecret: ""     
   database:
     external:
-      secret: my-postgres-connection
+      secret: business-communications-mattermost-db
+
+  fileStore:
+    external:
+      url: s3.mylogin.space
+      bucket: a9a9ff37-233f-8524-ba04-13e6755f4a5f-mwc42z
+      secret: business-communications-s3
