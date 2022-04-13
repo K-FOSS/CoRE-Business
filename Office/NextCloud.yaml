@@ -49,7 +49,7 @@ spec:
 
 
             # Number of replicas to be deployed
-            replicaCount: 2
+            replicaCount: 3
 
             ## Allowing use of ingress controllers
             ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
