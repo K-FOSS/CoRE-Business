@@ -5,7 +5,8 @@ metadata:
 spec:
   size: 1000users
   useServiceLoadBalancer: false
-  version: '6.2'
+  version: 'release-6.2'
+  image: mattermost/mattermost-team-edition
   ingress:
     enabled: false
     host: teams.mylogin.space
