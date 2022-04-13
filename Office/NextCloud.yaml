@@ -165,6 +165,15 @@ spec:
               ## Extra environment variables
               extraEnv:
                 #
+                # Redis
+                #
+                - name: REDIS_HOST
+                  value: '10.1.1.68'
+
+                - name: REDIS_DB
+                  value: '50'
+
+                #
                 # Database
                 #
 
