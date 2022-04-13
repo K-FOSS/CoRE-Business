@@ -113,6 +113,11 @@ spec:
               # PHP Configuration files
               # Will be injected in /usr/local/etc/php/conf.d for apache image and in /usr/local/etc/php-fpm.d when nginx.enabled: true
               phpConfigs:
+                redis-cluster.ini: |-
+                  session.save_handler = redis
+                  redis.session.locking_enabled=1
+                  redis.session.lock_retries=-1
+                  redis.session.lock_wait_time=10000
                 www.conf: |-
                   ; Start a new pool named 'www'.
                   ; the variable $pool can be used in any directive and will be replaced by the
@@ -592,15 +597,15 @@ spec:
               configs:
                 redis.config.php: |-
                   <?php
-                    $CONFIG = array (
-                      'memcache.distributed' => '\OC\Memcache\Redis',
-                      'memcache.locking' => '\OC\Memcache\Redis',
-                      'redis' => array(
-                        'host' => getenv('REDIS_HOST'),
-                        'port' => getenv('REDIS_HOST_PORT') ?: 6379,
-                        'dbindex' => 50,
-                      ),
-                    );
+                  $CONFIG = array (
+                    'memcache.distributed' => '\OC\Memcache\Redis',
+                    'memcache.locking' => '\OC\Memcache\Redis',
+                    'redis' => array(
+                      'host' => getenv('REDIS_HOST'),
+                      'port' => getenv('REDIS_HOST_PORT') ?: 6379,
+                      'dbindex' => 50
+                    )
+                  );
 
                 db.config.php: |-
                   <?php
