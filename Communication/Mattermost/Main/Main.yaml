@@ -5,7 +5,7 @@ metadata:
 spec:
   size: 1000users
   useServiceLoadBalancer: false
-  version: 6.2
+  version: '6.2'
   ingress:
     enabled: false
     host: teams.mylogin.space
