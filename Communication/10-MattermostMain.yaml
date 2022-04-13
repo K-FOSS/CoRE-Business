@@ -13,7 +13,7 @@ spec:
             environment: 'prod'
   template:
     metadata:
-      name: '{{cluster}}-business-office-nextcloud-helm'
+      name: '{{cluster}}-business-communications-mattermost-helm'
     spec:
       project: core
       # syncPolicy:
