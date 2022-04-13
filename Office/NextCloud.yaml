@@ -43,6 +43,15 @@ spec:
 
             deploymentAnnotations: {}
 
+            podLabels:
+              sidecar.istio.io/inject: 'true'
+
+            podAnnotations:
+              sidecar.istio.io/inject: 'true'
+              traffic.sidecar.istio.io/excludeInboundPorts: '9000'
+              traffic.sidecar.istio.io/excludeOutboundPorts: '9000'
+
+
             # Number of replicas to be deployed
             replicaCount: 1
 
@@ -164,15 +173,6 @@ spec:
               ##
               ## Extra environment variables
               extraEnv:
-                #
-                # Redis
-                #
-                - name: REDIS_HOST
-                  value: '10.1.1.68'
-
-                - name: REDIS_DB
-                  value: '50'
-
                 #
                 # Database
                 #
