@@ -21,13 +21,109 @@ spec:
         app.kubernetes.io/name: nextcloud
     spec:
       volumes:
-        - name: nextcloud-data
+        - name: nextcloud-main
           persistentVolumeClaim:
             claimName: nextcloud-prod-nextcloud
+
+        - configMap:
+            defaultMode: 420
+            name: nextcloud-prod-config
+          name: nextcloud-config
       containers:
         - name: nextcloud-worker
           image: nextcloud:fpm-alpine
           command: ['/cron.sh']
           args: []
           env:
-            - name: 
+            - name: POSTGRES_HOST
+              value: 'psql.service.dc1.kjdev:5432'
+            - name: POSTGRES_DB
+              value: SzS9n9UxZS
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  key: Username
+                  name: business-office-nextcloud-database-prod
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: Password
+                  name: business-office-nextcloud-database-prod
+            - name: NEXTCLOUD_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  key: nextcloud-username
+                  name: nextcloud-prod
+            - name: NEXTCLOUD_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: nextcloud-password
+                  name: nextcloud-prod
+            - name: NEXTCLOUD_TRUSTED_DOMAINS
+              value: office.mylogin.space
+            - name: NEXTCLOUD_DATA_DIR
+              value: /var/www/html/data
+            - name: REDIS_HOST
+              value: 10.1.1.68
+            - name: OBJECTSTORE_S3_HOST
+              value: s3.mylogin.space
+            - name: OBJECTSTORE_S3_USEPATH_STYLE
+              value: 'true'
+            - name: OBJECTSTORE_S3_LEGACYAUTH
+              value: 'false'
+            - name: OBJECTSTORE_S3_PORT
+              value: '443'
+            - name: OBJECTSTORE_S3_SSL
+              value: 'true'
+            - name: OBJECTSTORE_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  key: S3Bucket
+                  name: business-office-nextcloud-s3-prod
+            - name: OBJECTSTORE_S3_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: S3AccessKey
+                  name: business-office-nextcloud-s3-prod
+            - name: OBJECTSTORE_S3_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: S3SecretKey
+                  name: business-office-nextcloud-s3-prod
+          volumeMounts:
+            - mountPath: /var/www/
+              name: nextcloud-main
+              subPath: root
+            - mountPath: /var/www/html
+              name: nextcloud-main
+              subPath: html
+            - mountPath: /var/www/html/data
+              name: nextcloud-main
+              subPath: data
+            - mountPath: /var/www/html/config
+              name: nextcloud-main
+              subPath: config
+            - mountPath: /var/www/html/custom_apps
+              name: nextcloud-main
+              subPath: custom_apps
+            - mountPath: /var/www/tmp
+              name: nextcloud-main
+              subPath: tmp
+            - mountPath: /var/www/html/themes
+              name: nextcloud-main
+              subPath: themes
+            - mountPath: /var/www/html/config/db.config.php
+              name: nextcloud-config
+              subPath: db.config.php
+            - mountPath: /var/www/html/config/redis.config.php
+              name: nextcloud-config
+              subPath: redis.config.php
+            - mountPath: /var/www/html/config/.htaccess
+              name: nextcloud-config
+              subPath: .htaccess
+            - mountPath: /var/www/html/config/apps.config.php
+              name: nextcloud-config
+              subPath: apps.config.php
+            - mountPath: /var/www/html/config/autoconfig.php
+              name: nextcloud-config
+              subPath: autoconfig.php
