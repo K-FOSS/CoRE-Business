@@ -41,16 +41,6 @@ spec:
             nameOverride: ""
             fullnameOverride: ""
 
-            podLabels:
-              sidecar.istio.io/inject: 'true'
-
-            podAnnotations:
-              sidecar.istio.io/inject: 'true'
-              traffic.sidecar.istio.io/excludeInboundPorts: '9000'
-              traffic.sidecar.istio.io/excludeOutboundPorts: '9000'
-
-
-
             deploymentAnnotations: {}
 
             # Number of replicas to be deployed
