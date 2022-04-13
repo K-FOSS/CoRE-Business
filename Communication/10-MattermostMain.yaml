@@ -85,7 +85,7 @@ spec:
               loadBalancerSourceRanges: []
 
             ingress:
-              enabled: true
+              enabled: false
               path: /
               annotations:
                 cert-manager.io/cluster-issuer: kjdev-cluster
