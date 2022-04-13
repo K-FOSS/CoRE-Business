@@ -5,6 +5,7 @@ metadata:
 spec:
   size: 1000users
   useServiceLoadBalancer: false
+  version: 6.2
   ingress:
     enabled: false
     host: teams.mylogin.space
@@ -15,7 +16,7 @@ spec:
       external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: 'true'
-  version: 6.0.1
+
   licenseSecret: ""
   mattermostEnv:
     - name: MM_FILESETTINGS_AMAZONS3SSL
