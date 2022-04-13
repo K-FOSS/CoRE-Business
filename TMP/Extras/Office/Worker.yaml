@@ -20,6 +20,14 @@ spec:
         app.kubernetes.io/instance: nextcloud-prod
         app.kubernetes.io/name: nextcloud
     spec:
+      volumes:
+        - name: nextcloud-data
+          persistentVolumeClaim:
+            claimName: nextcloud-prod-nextcloud
       containers:
-      - name: php-redis
-        image: gcr.io/google_samples/gb-frontend:v3
+        - name: nextcloud-worker
+          image: nextcloud:fpm-alpine
+          command: ['/cron.sh']
+          args: []
+          env:
+            - name: 

@@ -190,26 +190,26 @@ spec:
                 #
                 # Database
                 #
-                - name: POSTGRES_HOST
-                  value: 'psql.service.dc1.kjdev:5432'
+                # - name: POSTGRES_HOST
+                #   value: 'psql.service.dc1.kjdev:5432'
 
-                - name: POSTGRES_DB
-                  valueFrom:
-                    secretKeyRef:
-                      name: business-office-nextcloud-database-prod
-                      key: DatabaseDatabase
+                # - name: POSTGRES_DB
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: business-office-nextcloud-database-prod
+                #       key: DatabaseDatabase
 
-                - name: POSTGRES_USER
-                  valueFrom:
-                    secretKeyRef:
-                      name: business-office-nextcloud-database-prod
-                      key: Username
+                # - name: POSTGRES_USER
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: business-office-nextcloud-database-prod
+                #       key: Username
               
-                - name: POSTGRES_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: business-office-nextcloud-database-prod
-                      key: Password
+                # - name: POSTGRES_PASSWORD
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: business-office-nextcloud-database-prod
+                #       key: Password
 
                 #
                 # Redis
