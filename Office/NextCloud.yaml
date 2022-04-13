@@ -83,15 +83,14 @@ spec:
 
             nextcloud:
               host: {{ingress}}
-              username: admin
-              password: changeme
+
               ## Use an existing secret
               existingSecret:
-                enabled: false
-                # secretName: nameofsecret
-                # usernameKey: username
-                # passwordKey: password
-                # tokenKey: serverinfo_token
+                enabled: true
+                secretName: business-office-nextcloud-keys-prod
+                usernameKey: AdminUser
+                passwordKey: AdminPassword
+                tokenKey: TOKEN
                 # smtpUsernameKey: smtp_username
                 # smtpPasswordKey: smtp_password
               update: 0
@@ -615,25 +614,12 @@ spec:
                       'dbpassword' => getenv('POSTGRES_PASSWORD'),
                     );
 
-              # For example, to use S3 as primary storage
-              # ref: https://docs.nextcloud.com/server/13/admin_manual/configuration_files/primary_storage.html#simple-storage-service-s3
-              #
-              #  configs:
-              #    s3.config.php: |-
-              #      <?php
-              #      $CONFIG = array (
-              #        'objectstore' => array(
-              #          'class' => '\\OC\\Files\\ObjectStore\\S3',
-              #          'arguments' => array(
-              #            'bucket'     => 'my-bucket',
-              #            'autocreate' => true,
-              #            'key'        => 'xxx',
-              #            'secret'     => 'xxx',
-              #            'region'     => 'us-east-1',
-              #            'use_ssl'    => true
-              #          )
-              #        )
-              #      );
+                secrets.config.php: |-
+                  <?php
+                    $CONFIG = array (
+                      'passwordsalt' => getenv('PASSWORD_SALT'),
+                      'secret' => getenv('SECRET'),
+                    );
 
               ## Strategy used to replace old pods
               ## IMPORTANT: use with care, it is suggested to leave as that for upgrade purposes
@@ -671,6 +657,33 @@ spec:
                 #     secretKeyRef:
                 #       name: business-office-nextcloud-database-prod
                 #       key: Password
+
+
+                #
+                # Secrets
+                #
+
+                - name: PASSWORD_SALT
+                  valueFrom:
+                    secretKeyRef:
+                      name: business-office-nextcloud-keys-prod
+                      key: PasswordSalt
+
+                - name: SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: business-office-nextcloud-keys-prod
+                      key: Secret
+
+                #
+                # S3
+                #
+
+                - name: OBJECTSTORE_S3_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: business-office-nextcloud-s3-prod
+                      key: S3Bucket
 
                 #
                 # Redis

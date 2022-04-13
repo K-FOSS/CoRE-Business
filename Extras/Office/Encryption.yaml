@@ -1,0 +1,38 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-office-nextcloud-keys-prod-sync
+spec:
+  refreshInterval: '5m'
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-office-nextcloud-keys-prod
+
+  data:
+    - secretKey: PasswordSalt
+      remoteRef:
+        key: Nextcloud
+        property: PasswordSalt
+
+    - secretKey: Secret
+      remoteRef:
+        key: Nextcloud
+        property: Secret
+
+    - secretKey: AdminUser
+      remoteRef:
+        key: Nextcloud
+        property: AdminUser
+
+    - secretKey: AdminPassword
+      remoteRef:
+        key: Nextcloud
+        property: AdminPassword
+
+    - secretKey: TOKEN
+      remoteRef:
+        key: Nextcloud
+        property: TOKEN
+
