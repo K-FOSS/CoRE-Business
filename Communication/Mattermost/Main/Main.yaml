@@ -3,14 +3,23 @@ kind: Mattermost
 metadata:
   name: mm-myloginspace
 spec:
-  size: 5000users                               # Adjust to your requirements
+  size: 1000users
+  useServiceLoadBalancer: false
   ingress:
-    enabled: true
+    enabled: false
     host: teams.mylogin.space
+    ingressClass: traefik-core
+    tlsSecret: myloginspace-default-certificates
     annotations:
-      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: kjdev-cluster
+      external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: 'true'
   version: 6.0.1
-  licenseSecret: ""     
+  licenseSecret: ""
+  mattermostEnv:
+    - name: MM_FILESETTINGS_AMAZONS3SSL
+      value: 'true'
   database:
     external:
       secret: business-communications-mattermost-db
