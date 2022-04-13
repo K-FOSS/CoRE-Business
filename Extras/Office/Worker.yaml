@@ -10,13 +10,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/component: app
+      app.kubernetes.io/component: worker
       app.kubernetes.io/instance: nextcloud-prod
       app.kubernetes.io/name: nextcloud
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: app
+        app.kubernetes.io/component: worker
         app.kubernetes.io/instance: nextcloud-prod
         app.kubernetes.io/name: nextcloud
     spec:
