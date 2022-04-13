@@ -128,7 +128,7 @@ spec:
                 # Redis default configuration
                 redis.config.php: false
                 # Apache configuration for rewrite urls
-                apache-pretty-urls.config.php: true
+                apache-pretty-urls.config.php: false
                 # Define APCu as local cache
                 apcu.config.php: false
                 # Apps directory configs
