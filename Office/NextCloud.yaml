@@ -310,10 +310,7 @@ spec:
               type: postgresql
 
               ## Database host
-              host: psql.service.dc1.kjdev
-
-              ## Database user
-              user: nextcloud
+              host: psql.service.dc1.kjdev:5432
 
               ## Database password
               password:
