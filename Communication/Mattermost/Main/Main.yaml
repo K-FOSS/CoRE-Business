@@ -17,7 +17,6 @@ spec:
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: 'true'
 
-  licenseSecret: ""
   mattermostEnv:
     - name: MM_FILESETTINGS_AMAZONS3SSL
       value: 'true'
