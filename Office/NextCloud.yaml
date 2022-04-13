@@ -152,6 +152,18 @@ spec:
                       ),
                     );
 
+                db.config.php: |-
+                  <?php
+                    $CONFIG = array (
+                      'dbtype' => 'pgsql',
+                      'dbname' => getenv('POSTGRES_DB'),
+                      'dbhost' => 'psql.service.dc1.kjdev:5432',
+                      'dbport' => '',
+                      'dbtableprefix' => 'oc_',
+                      'dbuser' => getenv('POSTGRES_USER'),
+                      'dbpassword' => getenv('POSTGRES_PASSWORD'),
+                    );
+
               # For example, to use S3 as primary storage
               # ref: https://docs.nextcloud.com/server/13/admin_manual/configuration_files/primary_storage.html#simple-storage-service-s3
               #
@@ -214,9 +226,6 @@ spec:
                 #
                 - name: REDIS_HOST
                   value: '10.1.1.68'
-
-                - name: REDIS_HOST_PORT
-                  value: '6379'
 
                 #
                 # Storage
