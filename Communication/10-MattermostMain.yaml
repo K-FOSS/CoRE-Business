@@ -161,7 +161,7 @@ spec:
               - name: MM_SQLSETTINGS_DATASOURCE
                 valueFrom:
                   secretKeyRef:
-                    name: business-communications-mattermost-db
+                    name: mattermost-synced
                     key: DatabaseURI
 
             ## Additional init containers
