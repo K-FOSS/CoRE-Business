@@ -14,10 +14,10 @@ spec:
         app: avatars-ui
     spec:
       securityContext:
-        runAsUser: 1000
-        runAsNonRoot: true
-        runAsGroup: 1000
-        fsGroup: 1000
+        runAsUser: 0
+        runAsNonRoot: false
+        runAsGroup: 0
+        fsGroup: 0
       volumes:
         - name: config-py
           secret:
