@@ -59,12 +59,13 @@ spec:
               # Enable this to allow LDAP authentication.
               # See INSTALL for more information.
               # 'django_auth_ldap.backend.LDAPBackend',
-              "django_openid_auth.auth.OpenIDBackend",
-              "social_core.backends.keycloak.KeycloakOAuth2",
-              "django.contrib.auth.backends.ModelBackend",
+              'django_openid_auth.auth.OpenIDBackend',
+              'social_core.backends.keycloak.KeycloakOAuth2',
+              'django.contrib.auth.backends.ModelBackend',
           )
 
           SOCIAL_AUTH_KEYCLOAK_KEY = "{{ .OpenIDClientID }}"
+          SOCIAL_AUTH_KEYCLOAK_PUBLIC_KEY = "zA-cpb6Qmo5pwqS_Dj16Wk3BeP8bgSmLSCwHqcvKpP0CUegRf9PrCpDQOjaYr_HPOv88opt32ZsVM8P63FCOXvdfp9EtyOVGOSTQaY0EcjY72c2TFWvRLgcRvRxcekShHCAGw_lMOxRPGv93zAb4wK9uLWRuc0RZOhOLvtZHFZNHC8iGEjyvIUMdHq7zgB9XodnVksKc44JrTPT8sccALFfc1hHvdEnflzTwba7_4lDzeyGP29GQiryuDgceMCOBpTHCWSSS9_y1MxN3av1z0uA7b-hB-m8w-vUDCtq2z78qs2o9eZtWaI5O_a9BDnt2sY47VnzwnO62LBBUdsHAYw"
           SOCIAL_AUTH_KEYCLOAK_SECRET = "{{ .OpenIDClientSecret }}"
           SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL = \
               'https://idp.mylogin.space/application/o/authorize/'
