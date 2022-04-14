@@ -74,6 +74,13 @@ spec:
 
           OIDC_ENDPOINT = "https://idp.mylogin.space/application/o/Avatars/"
 
+          OPENID_SSO_SERVER_URL = "https://idp.mylogin.space/application/o/Avatars/"
+
+          LOGIN_URL = "/openid/login/"
+          LOGIN_REDIRECT_URL = "/"
+
+          OPENID_UPDATE_DETAILS_FROM_SREG = True
+
           KEY = "{{ .OpenIDClientID }}"
           SECRET = "{{ .OpenIDClientSecret }}"
 
