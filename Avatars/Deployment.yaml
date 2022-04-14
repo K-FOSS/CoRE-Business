@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: avatars
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: avatars-ui
+  template:
+    metadata:
+      labels:
+        app: avatars-ui
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - image: kristianfjones/ivatar:main
+          name: avatars-ui
+          securityContext:
+            readOnlyRootFilesystem: true
+          ports:
+            - name: http
+              containerPort: 8080

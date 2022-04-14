@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: avatars-ui
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      appProtocol: http
+      name: http
+  selector:
+    app: avatars-ui
