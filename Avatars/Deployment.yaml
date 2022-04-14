@@ -18,11 +18,22 @@ spec:
         runAsNonRoot: true
         runAsGroup: 1000
         fsGroup: 1000
+      volumes:
+        - name: config-py
+          secret:
+            secretName: business-avatars-config-prod
+
       containers:
         - image: kristianfjones/ivatar:main
           name: avatars-ui
           securityContext:
             readOnlyRootFilesystem: false
+          volumeMounts:
+            - name: config-py
+              mountPath: /srv/ivatar/config.py
+              subPath: config.py
+              readOnly: true
+
           env:
             - name: SECURE_BASE_URL
               value: 'https://avatar.mylogin.space'
