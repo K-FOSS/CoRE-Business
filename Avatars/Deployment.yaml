@@ -22,7 +22,7 @@ spec:
         - image: kristianfjones/ivatar:main
           name: avatars-ui
           securityContext:
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
           env:
             - name: SECURE_BASE_URL
               value: 'https://avatar.mylogin.space'
