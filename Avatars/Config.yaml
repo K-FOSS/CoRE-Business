@@ -78,6 +78,7 @@ spec:
 
           LOGIN_URL = "/openid/login/"
           LOGIN_REDIRECT_URL = "/"
+          OPENID_USE_AS_ADMIN_LOGIN = True
 
           OPENID_UPDATE_DETAILS_FROM_SREG = True
 
