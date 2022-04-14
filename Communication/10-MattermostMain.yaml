@@ -24,7 +24,7 @@ spec:
         repoURL: https://helm.mattermost.com
         chart: mattermost-team-edition
         path: mattermost-team-edition
-        targetRevision: 6.3.4
+        targetRevision: 6.5.0
         helm:
           releaseName: mattermost-{{ environment }}
           values: |
@@ -33,7 +33,6 @@ spec:
             # Declare variables to be passed into your templates.
             image:
               repository: mattermost/mattermost-team-edition
-              tag: 6.3.0@sha256:56b6294ddc37171a4e6efb30748845585dab0a58fd31bd53e96ad6417eb8a96f
               imagePullPolicy: IfNotPresent
 
             initContainerImage:
