@@ -23,6 +23,15 @@ spec:
           name: avatars-ui
           securityContext:
             readOnlyRootFilesystem: true
+          env:
+            - name: SECURE_BASE_URL
+              value: 'https://avatar.mylogin.space'
+
+            - name: S3AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: business-avatars-s3-prod
+                  key: S3AccessKey
           ports:
             - name: http
               containerPort: 8080

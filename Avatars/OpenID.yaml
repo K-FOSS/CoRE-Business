@@ -1,0 +1,22 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-avatars-oidc-prod-sync
+spec:
+  refreshInterval: '5m'
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-avatars-oidc-prod
+
+  data:
+    - secretKey: OpenIDClientID
+      remoteRef:
+        key: Avatar
+        property: OpenIDClientID
+      
+    - secretKey: OpenIDClientSecret
+      remoteRef:
+        key: Avatar
+        property: OpenIDClientSecret
