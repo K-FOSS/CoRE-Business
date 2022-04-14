@@ -60,8 +60,16 @@ spec:
               # See INSTALL for more information.
               # 'django_auth_ldap.backend.LDAPBackend',
               "django_openid_auth.auth.OpenIDBackend",
+              "social_core.backends.keycloak.KeycloakOAuth2",
               "django.contrib.auth.backends.ModelBackend",
           )
+
+          SOCIAL_AUTH_KEYCLOAK_KEY = "{{ .OpenIDClientID }}"
+          SOCIAL_AUTH_KEYCLOAK_SECRET = "{{ .OpenIDClientSecret }}"
+          SOCIAL_AUTH_KEYCLOAK_AUTHORIZATION_URL = \
+              'https://idp.mylogin.space/application/o/authorize/'
+          SOCIAL_AUTH_KEYCLOAK_ACCESS_TOKEN_URL = \
+              'https://idp.mylogin.space/application/o/token/'
 
           TEMPLATES[0]["DIRS"].extend(
               [
