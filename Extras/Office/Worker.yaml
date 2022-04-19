@@ -52,13 +52,13 @@ spec:
             - name: NEXTCLOUD_ADMIN_USER
               valueFrom:
                 secretKeyRef:
-                  key: nextcloud-username
-                  name: nextcloud-prod
+                  key: AdminUser
+                  name: business-office-nextcloud-keys-prod
             - name: NEXTCLOUD_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: nextcloud-password
-                  name: nextcloud-prod
+                  key: AdminPassword
+                  name: business-office-nextcloud-keys-prod
             - name: NEXTCLOUD_TRUSTED_DOMAINS
               value: office.mylogin.space
             - name: NEXTCLOUD_DATA_DIR
