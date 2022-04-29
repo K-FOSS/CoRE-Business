@@ -7,7 +7,7 @@ rsshub:
   browserlessImage:
     repository: tccr.io/truecharts/browserless-chrome
 
-  envValueFrom: null
+  envValueFrom: {}
       
   secret:
     HTTP_BASIC_AUTH_NAME: ""
