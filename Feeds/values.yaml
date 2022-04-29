@@ -39,7 +39,7 @@ rsshub:
   # Enabled redis
   redis:
     enabled: false
-    existingSecret: "rediscreds"
+    existingSecret: null
 
   additionalContainers:
     browserless:
