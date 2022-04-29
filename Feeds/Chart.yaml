@@ -1,0 +1,7 @@
+apiVersion: v2
+version: 1.0.0
+name: feeds-core
+dependencies:
+  - name: rsshub
+    version: 1.0.13
+    repository: https://charts.truecharts.org/
