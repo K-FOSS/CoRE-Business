@@ -8,7 +8,9 @@ rsshub:
     repository: tccr.io/truecharts/browserless-chrome
 
   envValueFrom:
-    REDIS_URL: null
+    REDIS_URL:
+      secretKeyRef: {}
+
       
   secret:
     HTTP_BASIC_AUTH_NAME: ""
