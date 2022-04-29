@@ -9,7 +9,9 @@ rsshub:
 
   envValueFrom:
     REDIS_URL:
-      secretKeyRef: {}
+      secretKeyRef:
+        name: null
+        key: null
 
       
   secret:
