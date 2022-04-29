@@ -17,6 +17,7 @@ rsshub:
     main:
       enabled: true
       ingressClassName: traefik-core
+      enableFixedMiddlewares: false
       labels:
         wan-mode: 'public'
         lan-mode: 'private'
