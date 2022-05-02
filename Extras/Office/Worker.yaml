@@ -20,6 +20,16 @@ spec:
         app.kubernetes.io/instance: nextcloud-prod
         app.kubernetes.io/name: nextcloud
     spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution: 
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/instance 
+                    operator: In 
+                    values:
+                      - nextcloud-prod 
+              topologyKey: kubernetes.io/hostname
       volumes:
         - name: nextcloud-main
           persistentVolumeClaim:
