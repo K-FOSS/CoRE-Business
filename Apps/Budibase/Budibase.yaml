@@ -16,7 +16,7 @@ spec:
       project: core
       syncPolicy:
         automated:
-          selfHeal: true
+          selfHeal: false
           prune: true
         syncOptions:
           - CreateNamespace=true
@@ -156,16 +156,16 @@ spec:
 
               proxy:
                 port: 10000
-                replicaCount: 1
+                replicaCount: 0
 
               apps:
                 port: 4002
-                replicaCount: 1
+                replicaCount: 0
                 logLevel: info
 
               worker:
                 port: 4003
-                replicaCount: 1
+                replicaCount: 0
 
               couchdb:
                 enabled: true
@@ -183,7 +183,7 @@ spec:
               redis:
                 enabled: false # disable if using external redis
                 port: 6379
-                replicaCount: 1
+                replicaCount: 0
                 url: 10.1.1.68
                 password: "" # recommended to override if using built-in redis
                 storage: 100Mi
@@ -192,7 +192,7 @@ spec:
                 minio: false
                 browser: true
                 port: 443
-                replicaCount: 1
+                replicaCount: 0
                 accessKey: <secret:CORE0_SITE1/data/Budibase~S3AccessKey>
                 secretKey: <secret:CORE0_SITE1/data/Budibase~S3SecretKey>
                 region: us-east-1
