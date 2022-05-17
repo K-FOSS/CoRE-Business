@@ -1,0 +1,7 @@
+URL: 'https://mail.mylogin.space'
+
+email:
+  domain: mail.mylogin.space
+  support: k@mylogin.space
+  postfix:
+    server: 10.1.1.25

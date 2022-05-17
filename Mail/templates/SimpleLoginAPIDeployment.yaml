@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simplelogin-api
+  labels:
+    app.kubernetes.io/name: simplelogin
+    app.kubernetes.io/component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: simplelogin
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: simplelogin
+        app.kubernetes.io/component: api
+    spec:
+      initContainers:
+        - name: simplelogin
+          image: simplelogin/app:3.4.0
+          command: ['flask']
+          args:
+            - db
+            - upgrade
+
+        - name: simplelogin
+          image: simplelogin/app:3.4.0
+          command: ['python']
+          args:
+            - init_app.py
+
+      containers:
+        - name: simplelogin
+          image: simplelogin/app:3.4.0
+          ports:
+            - containerPort: 7777
+              name: http

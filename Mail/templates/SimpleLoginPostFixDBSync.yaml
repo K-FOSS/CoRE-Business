@@ -1,20 +1,29 @@
 apiVersion: external-secrets.io/v1alpha1
 kind: ExternalSecret
 metadata:
-  name: business-mail-simplelogin-db-prod-sync
+  name: business-mail-simplelogin-postfix-db-prod-sync
 spec:
   secretStoreRef:
     name: vault-backend
     kind: ClusterSecretStore
   target:
-    name: business-mail-simplelogin-db-prod
+    name: business-mail-simplelogin-postfix-db-prod
     template:
       engineVersion: v2
       data:
+        CONF_MYDOMAIN: '{{ .email.domain }}'
+
+        POSTGRES_HOSTS: psql.service.dc1.kjdev
+
+        POSTGRES_USER: '{{`{{ .DatabaseUser }}`}}'
+        POSTGRES_PASSWORD: '{{`{{ .DatabaseUser }}`}}'
+
+        CONF_RELAY_DOMAINS: 'pgsql:/etc/postfix/pgsql-relay-domains.cf'
+        CONF_TRANSPORT_MAPS: 'pgsql:/etc/postfix/pgsql-transport-maps.cf'
+
         DB_URI: '{{`postgresql://{{ .DatabaseUser }}:{{ .DatabasePassword }}@psql.service.dc1.kjdev:5432/{{ .DatabaseDatabase }}`}}'
 
         URL: '{{ .Values.URL }}'
-
   data:
     - secretKey: DatabaseDatabase
       remoteRef:
