@@ -17,9 +17,26 @@ spec:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: postfix
     spec:
+      volumes:
+        - name: simplelogin-configs
+          secret:
+            secretName: simplelogin-postfix-config
+            optional: false
+            items:
+              - key: pgsql-relay-domains.cf
+                path: pgsql-relay-domains.cf
+
+              - key: pgsql-transport-maps.cf
+                path: pgsql-transport-maps.cf
       containers:
         - name: postfix
           image: dhet/postfix-pg:latest
+          envFrom:
+            - secretRef:
+                name: business-mail-simplelogin-postfix-db-prod
+          volumeMounts:
+            - name: simplelogin-configs
+              mountPath: /etc/postfix
           ports:
             - containerPort: 25
               name: smtp
