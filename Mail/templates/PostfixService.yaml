@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postfix
+spec:
+  selector:
+    app.kubernetes.io/name: simplelogin
+    app.kubernetes.io/component: postfix
+  ports:
+    - protocol: TCP
+      port: 25
+      targetPort: smtp
+
+    - protocol: TCP
+      port: 587
+      targetPort: smtps
+  loadBalancerIP: 10.1.1.25
+  type: LoadBalancer

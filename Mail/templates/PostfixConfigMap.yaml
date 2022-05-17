@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simplelogin-postfix-config-tpl
+data:
+  pgsql-relay-domains.cf: |
+    {{`
+      # postgres config
+      hosts = psql.service.dc1.kjdev
+      user = {{ .DatabaseUser }}
+      password = {{ .DatabasePassword }}
+      dbname = {{ .DatabaseDatabase }}`}}
+
+      query = SELECT domain FROM custom_domain WHERE domain='%s' AND verified=true
+          UNION SELECT '%s' WHERE '%s' = '{{ .Values.email.domain }}' LIMIT 1;
+
+  pgsql-transport-maps.cf: |
+    {{`
+      # postgres config
+      hosts = psql.service.dc1.kjdev
+      user = {{ .DatabaseUser }}
+      password = {{ .DatabasePassword }}
+      dbname = {{ .DatabaseDatabase }}`}}
+
+      # forward to smtp:simplelogin-mailhandler:20381 for custom domain AND email domain
+      query = SELECT 'smtp::20381' FROM custom_domain WHERE domain = '%s' AND verified=true
+          UNION SELECT 'smtp:simplelogin-mailhandler:20381' WHERE '%s' = '{{ .Values.email.domain }}' LIMIT 1;
+

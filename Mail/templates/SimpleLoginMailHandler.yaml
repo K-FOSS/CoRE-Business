@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simplelogin-mailhandler
+  labels:
+    app.kubernetes.io/name: simplelogin
+    app.kubernetes.io/component: mailhandler
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: simplelogin
+      app.kubernetes.io/component: mailhandler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: simplelogin
+        app.kubernetes.io/component: mailhandler
+    spec:
+      containers:
+        - name: simplelogin
+          image: simplelogin/app:3.4.0
+          command: ['python']
+          args: ['email_handler.py']
+          ports:
+            - containerPort: 20381
+              name: smtp
