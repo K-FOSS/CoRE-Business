@@ -33,7 +33,7 @@ spec:
             ##
             image:
               repository: nextcloud
-              tag: fpm-alpine
+              tag: 23.0.4-fpm
               pullPolicy: Always
               # pullSecrets:
               #   - myRegistrKeySecretName
