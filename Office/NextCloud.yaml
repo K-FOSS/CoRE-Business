@@ -943,10 +943,10 @@ spec:
               # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
               limits:
                 #cpu: 100m
-                memory: 16G
+                memory: 4G
               requests:
                 cpu: 100m
-                memory: 4G
+                memory: 256Mi
 
             ## Liveness and readiness probe values
             ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
