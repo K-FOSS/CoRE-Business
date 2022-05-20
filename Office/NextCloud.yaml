@@ -24,7 +24,7 @@ spec:
         repoURL: https://nextcloud.github.io/helm/
         chart: nextcloud
         path: nextcloud
-        targetRevision: 2.14.1
+        targetRevision: 2.14.2
         helm:
           releaseName: nextcloud-{{ environment }}
           values: |
