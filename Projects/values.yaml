@@ -1,0 +1,23 @@
+openproject:
+  replicaCount: 1
+  hostNetwork: false
+
+  image:
+    repository: openproject/community
+    pullPolicy: IfNotPresent
+    tag: '12'
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  ingress:
+    enabled: false
+
+  storage:
+    storageClassName: infra1-storage
+    capacity: 5G
+    persistenentVolume:
+      create: false
+
+  resources: {}
