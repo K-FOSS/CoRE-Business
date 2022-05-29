@@ -1,5 +1,5 @@
 openproject:
-  replicaCount: 0
+  replicaCount: 1
   hostNetwork: false
 
   image:
