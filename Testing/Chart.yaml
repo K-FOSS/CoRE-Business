@@ -1,0 +1,10 @@
+apiVersion: v2
+
+version: 1.0.0
+
+name: core-business-testing
+
+dependencies:
+  - name: librespeed
+    version: 5.3.2
+    repository: https://k8s-at-home.com/charts/
