@@ -28,7 +28,7 @@ collabora-code:
 
   collabora:
     DONT_GEN_SSL_CERT: true
-    domain: nextcloud\\.kristianjones\\.dev
+    domain: office\\.mylogin\\.space
     extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4 --o:net.post_allow.host[0]=.+ --o:storage.wopi.host[0]=.+
     server_name: collabora\.mylogin\.space
     password: examplepass
