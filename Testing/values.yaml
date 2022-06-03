@@ -25,12 +25,30 @@ librespeed:
     PGID: "1001"
     # PASSWORD:
     # CUSTOM_RESULTS:
-    # DB_TYPE:
-    # DB_NAME:
-    # DB_HOSTNAME:
-    # DB_USERNAME:
-    # DB_PASSWORD:
-    # DB_PORT:
+    DB_TYPE: postgresql
+
+    DB_HOSTNAME: psql.service.dc1.kjdev
+    DB_PORT: '5432'
+
+    DB_NAME:
+      valueFrom:
+        secretKeyRef:
+          name: business-testing-liberespeed-db-prod
+          key: Database
+
+    DB_USERNAME:
+      valueFrom:
+        secretKeyRef:
+          name: business-testing-liberespeed-db-prod
+          key: Username
+
+    DB_PASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: business-testing-liberespeed-db-prod
+          key: Password
+
+
 
   # -- Configures service settings for the chart.
   # @default -- See values.yaml
