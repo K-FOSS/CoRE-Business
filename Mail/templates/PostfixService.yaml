@@ -7,13 +7,41 @@ spec:
     app.kubernetes.io/name: simplelogin
     app.kubernetes.io/component: postfix
   ports:
-    - protocol: TCP
+    - name: smtp
+
+      protocol: TCP
+      appProtocol: smtp
+
       port: 25
       targetPort: smtp
 
-    - protocol: TCP
+
+    - name: submissions
+
+      protocol: TCP
+      appProtocol: submissions
+
+      port: 465
+      targetPort: smtp-tls
+
+
+    - name: smtp-starttls
+
+      protocol: TCP
+      appProtocol: submission
+
       port: 587
-      targetPort: smtps
+      targetPort: smtp-starttls
+
+
+    - name: smtp-auth
+
+      protocol: TCP
+
+      port: 10025
+      targetPort: smtp-auth
+
+
   loadBalancerIP: 10.1.1.25
   externalIPs:
     - 66.165.222.125
