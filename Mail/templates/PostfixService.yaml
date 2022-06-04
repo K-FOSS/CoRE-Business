@@ -15,4 +15,6 @@ spec:
       port: 587
       targetPort: smtps
   loadBalancerIP: 10.1.1.25
+  externalIPs:
+    - 66.165.222.125
   type: LoadBalancer
