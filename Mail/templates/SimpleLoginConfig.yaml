@@ -18,5 +18,5 @@ data:
 
   NAMESERVERS: '10.0.8.10'
 
-  GNUPGHOME: /tmp/gnupg
+  GNUPGHOME: /tmp
   ENFORCE_SPF: 'false'
