@@ -35,6 +35,10 @@ spec:
           envFrom:
             - secretRef:
                 name: business-mail-simplelogin-postfix-db-prod
+
+            - secretRef:
+                name: simplelogin-postfix-cfg
+
           volumeMounts:
             - name: simplelogin-configs
               mountPath: /etc/postfix/pgsql-relay-domains.cf
@@ -43,6 +47,7 @@ spec:
             - name: simplelogin-configs
               mountPath: /etc/postfix/pgsql-transport-maps.cf
               subPath: pgsql-transport-maps.cf
+
 
           ports:
             - name: smtp

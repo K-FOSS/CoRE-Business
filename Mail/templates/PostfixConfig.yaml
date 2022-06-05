@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: simplelogin-postfix-cfg
 data:
-  CONF_APPEND_DOT_MYDOMAIN: ''
+  CONF_APPEND_DOT_MYDOMAIN: 'no'
 
   CONF_MYNETWORKS: '127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 10.0.0.0/8'
 
