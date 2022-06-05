@@ -22,6 +22,10 @@ spec:
           emptyDir:
             medium: Memory
 
+        - name: config-env
+          secret:
+            secretName: business-mail-simplelogin-db-prod
+
       initContainers:
         - name: simplelogin-initdb
           image: simplelogin/app:3.4.0
@@ -41,6 +45,10 @@ spec:
           volumeMounts:
             - mountPath: /sl
               name: simplelogin-data
+
+            - mountPath: /code/.env
+              name: simplelogin-data
+              subPath: SLENV
 
 
         - name: simplelogin-initapp
