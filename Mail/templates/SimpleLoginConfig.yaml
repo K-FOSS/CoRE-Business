@@ -14,5 +14,5 @@ data:
   FLASK_SECRET: 'put_something_secret_here'
 
     
-  #POSTFIX_SERVER: 66.165.222.125
+  POSTFIX_SERVER: 66.165.222.125
   POSTFIX_PORT: '25'
