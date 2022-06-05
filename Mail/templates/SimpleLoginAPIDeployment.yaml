@@ -34,33 +34,6 @@ spec:
                 path: test_words.txt
 
       initContainers:
-        - name: simplelogin-initdb
-          image: registry.writemy.codes/teleport/simplelogin
-
-          envFrom:
-            - secretRef:
-                name: business-mail-simplelogin-db-prod
-
-            - configMapRef:
-                name: simplelogin-config
-
-          command: ['flask']          
-          args:
-            - db
-            - upgrade
-      
-          volumeMounts:
-            - mountPath: /sl
-              name: simplelogin-data
-
-            - mountPath: /code/.env
-              name: config-env
-              subPath: SLENV
-              
-            - mountPath: /code/local_data/words.txt
-              name: words
-              subPath: test_words.txt
-
 
         - name: simplelogin-initapp
           image: registry.writemy.codes/teleport/simplelogin
