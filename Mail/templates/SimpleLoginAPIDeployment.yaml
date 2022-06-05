@@ -29,7 +29,8 @@ spec:
       initContainers:
         - name: simplelogin-initdb
           image: registry.writemy.codes/teleport/simplelogin
-
+          tty: true 
+          
           envFrom:
             - secretRef:
                 name: business-mail-simplelogin-db-prod
