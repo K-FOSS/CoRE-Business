@@ -26,6 +26,13 @@ spec:
           secret:
             secretName: business-mail-simplelogin-db-prod
 
+        - name: words
+          configMap:
+            name: simplelogin-config-wordlist
+            items:
+              - key: test_words.txt
+                path: test_words.txt
+
       initContainers:
         - name: simplelogin-initdb
           image: simplelogin/app:3.4.0
@@ -49,6 +56,10 @@ spec:
             - mountPath: /code/.env
               name: config-env
               subPath: SLENV
+              
+            - mountPath: /code/local_data/test_words.txt
+              name: words
+              subPath: test_words.txt
 
 
         - name: simplelogin-initapp
@@ -61,6 +72,7 @@ spec:
             - configMapRef:
                 name: simplelogin-config
 
+
           command: ['python']
           args:
             - init_app.py
@@ -72,6 +84,10 @@ spec:
             - mountPath: /code/.env
               name: config-env
               subPath: SLENV
+
+            - mountPath: /code/local_data/test_words.txt
+              name: words
+              subPath: test_words.txt
 
       containers:
         - name: simplelogin-api
@@ -95,3 +111,7 @@ spec:
             - mountPath: /code/.env
               name: config-env
               subPath: SLENV
+
+            - mountPath: /code/local_data/test_words.txt
+              name: words
+              subPath: test_words.txt
