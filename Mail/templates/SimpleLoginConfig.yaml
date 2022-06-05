@@ -17,3 +17,6 @@ data:
   POSTFIX_PORT: '25'
 
   NAMESERVERS: '10.0.8.10'
+
+  GNUPGHOME: /tmp/gnupg
+  ENFORCE_SPF: 'false'
