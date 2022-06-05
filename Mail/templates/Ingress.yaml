@@ -6,7 +6,7 @@ metadata:
     external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
-  name: k0s-cntrl-business-office-nextcloud
+  name: simplelogin
   namespace: core-prod
 spec:
   ingressClassName: traefik-core
