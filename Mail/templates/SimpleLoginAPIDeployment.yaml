@@ -41,7 +41,7 @@ spec:
           command: ['flask']          
           args:
             - db
-            - init
+            - upgrade
       
           volumeMounts:
             - mountPath: /sl
