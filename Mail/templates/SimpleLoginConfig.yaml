@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simplelogin-config
+data:
+  EMAIL_DOMAIN: '{{ .Values.email.domain }}'
+  SUPPORT_EMAIL: '{{ .Values.email.domain }}'
+
+  EMAIL_SERVERS_WITH_PRIORITY: '[(10, "{{ .Values.email.domain }}.")]'
+  
+  DISABLE_ALIAS_SUFFIX: '1'
+
+  # TODO
+  FLASK_SECRET: 'put_something_secret_here'
+
+    
+  POSTFIX_SERVER: 66.165.222.125
