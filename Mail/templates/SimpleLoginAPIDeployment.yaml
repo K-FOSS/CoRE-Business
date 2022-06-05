@@ -85,7 +85,7 @@ spec:
               name: config-env
               subPath: SLENV
 
-            - mountPath: /code/local_data/test_words.txt
+            - mountPath: /code/local_data/words.txt
               name: words
               subPath: test_words.txt
 
@@ -112,6 +112,6 @@ spec:
               name: config-env
               subPath: SLENV
 
-            - mountPath: /code/local_data/test_words.txt
+            - mountPath: /code/local_data/words.txt
               name: words
               subPath: test_words.txt
