@@ -36,7 +36,7 @@ spec:
             - secretRef:
                 name: business-mail-simplelogin-postfix-db-prod
 
-            - secretRef:
+            - configMapRef:
                 name: simplelogin-postfix-cfg
 
           volumeMounts:
