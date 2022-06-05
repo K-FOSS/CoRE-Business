@@ -22,7 +22,7 @@ data:
       password = {{ .DatabasePassword }}
       dbname = {{ .DatabaseDatabase }}`}}
 
-      # forward to smtp:simplelogin-mailhandler:20381 for custom domain AND email domain
+      # forward to smtp:simplelogin-mailhandler.core-prod.svc.k0s.resolvemy.host:20381 for custom domain AND email domain
       query = SELECT 'smtp::20381' FROM custom_domain WHERE domain = '%s' AND verified=true
-          UNION SELECT 'smtp:simplelogin-mailhandler:20381' WHERE '%s' = '{{ .Values.email.domain }}' LIMIT 1;
+          UNION SELECT 'smtp:simplelogin-mailhandler.core-prod.svc.k0s.resolvemy.host:20381' WHERE '%s' = '{{ .Values.email.domain }}' LIMIT 1;
 
