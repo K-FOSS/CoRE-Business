@@ -11,7 +11,7 @@ spec:
     template:
       engineVersion: v2
       data:
-        CONF_MYDOMAIN: '{{ .email.domain }}'
+        CONF_MYDOMAIN: '{{ .Values.email.domain }}'
 
         POSTGRES_HOSTS: psql.service.dc1.kjdev
 
