@@ -17,16 +17,28 @@ spec:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: api
     spec:
+
+
       initContainers:
         - name: simplelogin-initdb
           image: simplelogin/app:3.4.0
-          command: ['flask']
+
+          envFrom:
+            - secretRef:
+                name: business-mail-simplelogin-db-prod
+
+          command: ['flask']          
           args:
             - db
             - upgrade
 
         - name: simplelogin-initapp
           image: simplelogin/app:3.4.0
+
+          envFrom:
+            - secretRef:
+                name: business-mail-simplelogin-db-prod
+          
           command: ['python']
           args:
             - init_app.py
@@ -34,6 +46,14 @@ spec:
       containers:
         - name: simplelogin-api
           image: simplelogin/app:3.4.0
+
+          envFrom:
+            - secretRef:
+                name: business-mail-simplelogin-db-prod
+
+            - configMapRef:
+                name: simplelogin-config
+
           ports:
             - containerPort: 7777
               name: http
