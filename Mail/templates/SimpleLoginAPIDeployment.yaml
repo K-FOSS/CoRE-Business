@@ -18,21 +18,21 @@ spec:
         app.kubernetes.io/component: api
     spec:
       initContainers:
-        - name: simplelogin
+        - name: simplelogin-initdb
           image: simplelogin/app:3.4.0
           command: ['flask']
           args:
             - db
             - upgrade
 
-        - name: simplelogin
+        - name: simplelogin-initapp
           image: simplelogin/app:3.4.0
           command: ['python']
           args:
             - init_app.py
 
       containers:
-        - name: simplelogin
+        - name: simplelogin-api
           image: simplelogin/app:3.4.0
           ports:
             - containerPort: 7777
