@@ -35,7 +35,7 @@ spec:
 
       initContainers:
         - name: simplelogin-initdb
-          image: simplelogin/app:3.4.0
+          image: registry.writemy.codes/teleport/simplelogin
 
           envFrom:
             - secretRef:
@@ -63,7 +63,7 @@ spec:
 
 
         - name: simplelogin-initapp
-          image: simplelogin/app:3.4.0
+          image: registry.writemy.codes/teleport/simplelogin
 
           envFrom:
             - secretRef:
@@ -91,7 +91,7 @@ spec:
 
       containers:
         - name: simplelogin-api
-          image: simplelogin/app:3.4.0
+          image: registry.writemy.codes/teleport/simplelogin
 
           envFrom:
             - secretRef:

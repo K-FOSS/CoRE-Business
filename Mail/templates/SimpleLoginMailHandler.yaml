@@ -35,7 +35,7 @@ spec:
 
       containers:
         - name: simplelogin
-          image: simplelogin/app:3.4.0
+          image: registry.writemy.codes/teleport/simplelogin
           command: ['python']
           args: ['email_handler.py']
 
