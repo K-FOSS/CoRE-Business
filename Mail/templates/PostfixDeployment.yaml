@@ -28,6 +28,7 @@ spec:
 
               - key: pgsql-transport-maps.cf
                 path: pgsql-transport-maps.cf
+
       containers:
         - name: postfix
           image: dhet/postfix-pg:latest
@@ -37,6 +38,9 @@ spec:
           volumeMounts:
             - name: simplelogin-configs
               mountPath: /etc/postfix
+
+
+
           ports:
             - name: smtp
               containerPort: 25

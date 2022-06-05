@@ -3,5 +3,8 @@ URL: 'https://mail.mylogin.space'
 email:
   domain: mail.mylogin.space
   support: k@mylogin.space
+  tls:
+    secretName: myloginspace-default-certificates
+
   postfix:
     server: 10.1.1.25
