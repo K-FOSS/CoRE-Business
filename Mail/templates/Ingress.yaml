@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: kjdev-cluster
+    external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+  name: k0s-cntrl-business-office-nextcloud
+  namespace: core-prod
+spec:
+  ingressClassName: traefik-core
+  rules:
+    - host: mail.mylogin.space
+      http:
+        paths:
+          - backend:
+              service:
+                name: simplelogin-api
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - '*.mylogin.space'
+      secretName: myloginspace-default-certificates
