@@ -47,7 +47,7 @@ spec:
               name: simplelogin-data
 
             - mountPath: /code/.env
-              name: simplelogin-data
+              name: config-env
               subPath: SLENV
 
 
@@ -69,6 +69,10 @@ spec:
             - mountPath: /sl
               name: simplelogin-data
 
+            - mountPath: /code/.env
+              name: config-env
+              subPath: SLENV
+
       containers:
         - name: simplelogin-api
           image: simplelogin/app:3.4.0
@@ -87,3 +91,7 @@ spec:
           volumeMounts:
             - mountPath: /sl
               name: simplelogin-data
+
+            - mountPath: /code/.env
+              name: config-env
+              subPath: SLENV
