@@ -17,11 +17,33 @@ spec:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: mailhandler
     spec:
+      volumes:
+        - name: simplelogin-data
+          emptyDir:
+            medium: Memory
+
+        - name: config-env
+          secret:
+            secretName: business-mail-simplelogin-db-prod
+
       containers:
         - name: simplelogin
           image: simplelogin/app:3.4.0
           command: ['python']
           args: ['email_handler.py']
+
+          envFrom:
+            - secretRef:
+                name: business-mail-simplelogin-db-prod
+
+            - configMapRef:
+                name: simplelogin-config
+
           ports:
             - containerPort: 20381
               name: smtp
+
+          volumeMounts:
+            - mountPath: /code/.env
+              name: config-env
+              subPath: SLENV
