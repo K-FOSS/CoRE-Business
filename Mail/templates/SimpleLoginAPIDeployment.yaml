@@ -17,7 +17,10 @@ spec:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: api
     spec:
-
+      volumes:
+        - name: simplelogin-data
+          emptyDir:
+            medium: Memory
 
       initContainers:
         - name: simplelogin-initdb
@@ -34,6 +37,11 @@ spec:
           args:
             - db
             - upgrade
+      
+          volumeMounts:
+            - mountPath: /sl
+              name: simplelogin-data
+
 
         - name: simplelogin-initapp
           image: simplelogin/app:3.4.0
@@ -49,6 +57,10 @@ spec:
           args:
             - init_app.py
 
+          volumeMounts:
+            - mountPath: /sl
+              name: simplelogin-data
+
       containers:
         - name: simplelogin-api
           image: simplelogin/app:3.4.0
@@ -63,3 +75,7 @@ spec:
           ports:
             - containerPort: 7777
               name: http
+
+          volumeMounts:
+            - mountPath: /sl
+              name: simplelogin-data
