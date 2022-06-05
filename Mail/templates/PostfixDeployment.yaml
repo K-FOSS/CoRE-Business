@@ -37,9 +37,12 @@ spec:
                 name: business-mail-simplelogin-postfix-db-prod
           volumeMounts:
             - name: simplelogin-configs
-              mountPath: /etc/postfix
+              mountPath: /etc/postfix/pgsql-relay-domains.cf
+              subPath: pgsql-relay-domains.cf
 
-
+            - name: simplelogin-configs
+              mountPath: /etc/postfix/pgsql-transport-maps.cf
+              subPath: pgsql-transport-maps.cf
 
           ports:
             - name: smtp
