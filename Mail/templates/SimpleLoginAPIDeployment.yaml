@@ -26,14 +26,30 @@ spec:
           secret:
             secretName: business-mail-simplelogin-db-prod
 
-        - name: words
-          configMap:
-            name: simplelogin-config-wordlist
-            items:
-              - key: test_words.txt
-                path: test_words.txt
-
       initContainers:
+        - name: simplelogin-initdb
+          image: registry.writemy.codes/teleport/simplelogin
+
+          envFrom:
+            - secretRef:
+                name: business-mail-simplelogin-db-prod
+
+            - configMapRef:
+                name: simplelogin-config
+
+          command: ['flask']          
+          args:
+            - db
+            - upgrade
+      
+          volumeMounts:
+            - mountPath: /sl
+              name: simplelogin-data
+
+            - mountPath: /code/.env
+              name: config-env
+              subPath: SLENV
+
 
         - name: simplelogin-initapp
           image: registry.writemy.codes/teleport/simplelogin
@@ -58,10 +74,6 @@ spec:
               name: config-env
               subPath: SLENV
 
-            - mountPath: /code/local_data/words.txt
-              name: words
-              subPath: test_words.txt
-
       containers:
         - name: simplelogin-api
           image: registry.writemy.codes/teleport/simplelogin
@@ -85,6 +97,3 @@ spec:
               name: config-env
               subPath: SLENV
 
-            - mountPath: /code/local_data/words.txt
-              name: words
-              subPath: test_words.txt
