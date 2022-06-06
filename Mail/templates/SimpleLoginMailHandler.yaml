@@ -22,7 +22,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution: 
             - labelSelector:
                 matchExpressions:
-                  - key: app.kubernetes.io 
+                  - key: app.kubernetes.io/name
                     operator: In 
                     values:
                       - simplelogin 
