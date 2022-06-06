@@ -23,5 +23,4 @@ data:
   POSTFIX_SERVER: 66.165.222.125
   POSTFIX_PORT: '25'
 
-  GNUPGHOME: /tmp
   ENFORCE_SPF: 'false'
