@@ -33,11 +33,11 @@ spec:
       volumes:
         - name: nextcloud-main
           persistentVolumeClaim:
-            claimName: nextcloud-prod-nextcloud
+            claimName: k0s-cntrl-business-office-nextcloud-nextcloud
 
         - configMap:
             defaultMode: 420
-            name: nextcloud-prod-config
+            name: k0s-cntrl-business-office-nextcloud-config
           name: nextcloud-config
       containers:
         - name: nextcloud-worker
