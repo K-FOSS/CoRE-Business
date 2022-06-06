@@ -4,8 +4,6 @@ vaultwarden:
     repository: vaultwarden/server
     # -- image pull policy
     pullPolicy: IfNotPresent
-    # -- image tag
-    tag: 1.23.1
 
   strategy:
     type: Recreate
