@@ -8,3 +8,51 @@ email:
 
   postfix:
     server: 10.1.1.25
+
+dkim-manager:
+  image:
+    # image.repository -- dkim-manager image repository to use.
+    repository: ghcr.io/hsn723/dkim-manager
+
+    # image.tag -- dkim-manager image tag to use.
+    # @default -- `{{ .Chart.AppVersion }}`
+    tag: 1.2.2
+
+    # image.pullPolicy -- dkim-manager image pullPolicy.
+    pullPolicy: Always
+
+  controller:
+    # controller.replicas -- Specify the number of replicas of the controller Pod.
+    replicas: 2
+
+    # controller.resources -- Specify resources.
+    resources:
+      requests:
+        cpu: 100m
+        memory: 20Mi
+
+    # controller.terminationGracePeriodSeconds -- Specify terminationGracePeriodSeconds.
+    terminationGracePeriodSeconds: 10
+
+    # controller.extraArgs -- Optional additional arguments.
+    extraArgs:
+      - --leader-elect
+
+  namespaced: true
+  namespace: ""
+
+  external-dns:
+    enabled: false
+    serviceAccount:
+      create: false
+    rbac:
+      create: false
+    env: []
+    sources:
+      - crd
+    logFormat: json
+    txtPrefix: dkim-manager
+    extraArgs:
+      - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
+      - --crd-source-kind=DNSEndpoint
+      - --managed-record-types=TXT
