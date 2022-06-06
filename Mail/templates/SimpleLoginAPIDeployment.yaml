@@ -18,13 +18,20 @@ spec:
         app.kubernetes.io/component: api
     spec:
       volumes:
-        - name: simplelogin-data
-          emptyDir:
-            medium: Memory
+        - name: email-data
+          persistentVolumeClaim:
+            claimName: email-simplelogin
 
         - name: config-env
           secret:
             secretName: business-mail-simplelogin-db-prod
+
+        - name: dkim-secrets
+          secret:
+            secretName: selector1-mail-myloginspace
+            items:
+            - key: mail.mylogin.space.selector1.key
+              path: dkim.key
 
       initContainers:
         - name: simplelogin-initdb
@@ -51,6 +58,9 @@ spec:
               name: config-env
               subPath: SLENV
 
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
 
         - name: simplelogin-initapp
           image: simplelogin/app-ci:v4.5.2

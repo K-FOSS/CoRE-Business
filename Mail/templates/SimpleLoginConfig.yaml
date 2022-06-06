@@ -12,6 +12,7 @@ data:
 
   # TODO
   FLASK_SECRET: 'put_something_secret_here'
+  FLASK_ENV: 'production'
 
   POSTFIX_SERVER: 66.165.222.125
   POSTFIX_PORT: '25'

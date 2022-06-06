@@ -33,6 +33,13 @@ spec:
           secret:
             secretName: {{ .Values.email.tls.secretName }}
 
+        - name: dkim-secrets
+          secret:
+            secretName: selector1-mail-myloginspace
+            items:
+            - key: mail.mylogin.space.selector1.key
+              path: dkim.key
+
       containers:
         - name: postfix
           image: dhet/postfix-pg:latest
@@ -54,6 +61,10 @@ spec:
 
             - name: tls-certs
               mountPath: /etc/tls/mail
+
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
 
           ports:
             - name: smtp
