@@ -11,7 +11,7 @@ metadata:
 spec:
   ingressClassName: traefik-core
   rules:
-    - host: mail.mylogin.space
+    - host: simplelogin.mylogin.space
       http:
         paths:
           - backend:
