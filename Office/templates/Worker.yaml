@@ -11,13 +11,13 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/component: worker
-      app.kubernetes.io/instance: nextcloud-prod
+      app.kubernetes.io/instance: k0s-cntrl-business-office
       app.kubernetes.io/name: nextcloud
   template:
     metadata:
       labels:
         app.kubernetes.io/component: worker
-        app.kubernetes.io/instance: nextcloud-prod
+        app.kubernetes.io/instance: k0s-cntrl-business-office
         app.kubernetes.io/name: nextcloud
     spec:
       affinity:
@@ -28,7 +28,7 @@ spec:
                   - key: app.kubernetes.io/instance 
                     operator: In 
                     values:
-                      - nextcloud-prod 
+                      - k0s-cntrl-business-office
               topologyKey: kubernetes.io/hostname
       volumes:
         - name: nextcloud-main
