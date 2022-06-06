@@ -42,7 +42,7 @@ spec:
 
       initContainers:
         - name: simplelogin-initdb
-          image: simplelogin/app-ci:v4.5.2
+          image: simplelogin/app:3.4.0
           tty: true 
           
           envFrom:
@@ -70,7 +70,7 @@ spec:
               subPath: dkim.pub.key
 
         - name: simplelogin-initapp
-          image: simplelogin/app-ci:v4.5.2
+          image: simplelogin/app:3.4.0
 
           envFrom:
             - secretRef:
@@ -98,7 +98,7 @@ spec:
 
       containers:
         - name: simplelogin-api
-          image: simplelogin/app-ci:v4.5.2
+          image: simplelogin/app:3.4.0
 
           envFrom:
             - secretRef:
