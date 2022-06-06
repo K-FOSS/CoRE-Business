@@ -29,6 +29,10 @@ spec:
               - key: pgsql-transport-maps.cf
                 path: pgsql-transport-maps.cf
 
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.email.tls.secretName }}
+
       containers:
         - name: postfix
           image: dhet/postfix-pg:latest
@@ -48,6 +52,8 @@ spec:
               mountPath: /etc/postfix/pgsql-transport-maps.cf
               subPath: pgsql-transport-maps.cf
 
+            - name: tls-certs
+              mountPath: /etc/tls/mail
 
           ports:
             - name: smtp

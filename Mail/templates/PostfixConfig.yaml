@@ -7,6 +7,17 @@ data:
 
   CONF_MYNETWORKS: '10.0.0.0/8'
 
+
+  #
+  # TLS
+  #
+  CONF_SMTPD_TLS_CERT_FILE: '/etc/tls/mail/tls.crt'
+  CONF_SMTPD_TLS_KEY_FILE: '/etc/tls/mail/tls.key'
+  CONF_SMTPD_TLS_SESSION_CACHE_DATABASE: 'btree:${data_directory}/smtpd_scache'
+  CONF_SMTP_TLS_SESSION_CACHE_DATABASE: 'btree:${data_directory}/smtp_scache'
+  CONF_SMTP_TLS_SECURITY_LEVEL: 'may'
+  CONF_SMTPD_TLS_SECURITY_LEVEL: 'may'
+
   #
   # HELO Restrictions
   #
