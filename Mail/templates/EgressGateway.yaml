@@ -1,13 +1,12 @@
-apiVersion: cilium.io/v2
-kind: CiliumEgressGatewayPolicy
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEgressNATPolicy
 metadata:
   name: mail-egress
 spec:
-  selectors:
+  egress:
     - podSelector:
         matchLabels:
           app.kubernetes.io/name: simplelogin
   destinationCIDRs:
     - 0.0.0.0/0
-  egressGateway:
-    egressIP: 66.165.222.125
+  egressSourceIP: 66.165.222.125
