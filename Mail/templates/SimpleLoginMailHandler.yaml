@@ -20,7 +20,7 @@ spec:
       volumes:
         - name: simplelogin-data
           persistentVolumeClaim:
-            claimName: email-simplelogin
+            claimName: simplelogin-data
 
         - name: config-env
           secret:
