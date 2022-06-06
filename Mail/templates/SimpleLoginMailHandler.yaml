@@ -58,7 +58,7 @@ spec:
               name: smtp
 
           volumeMounts:
-            - mountPath: /sl
+            - mountPath: /code/static/upload
               name: simplelogin-data
 
             - mountPath: /code/.env

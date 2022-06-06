@@ -58,12 +58,8 @@ spec:
             - upgrade
       
           volumeMounts:
-            - mountPath: /sl
+            - mountPath: /code/static/upload
               name: simplelogin-data
-
-            - mountPath: /code/.env
-              name: config-env
-              subPath: SLENV
 
             - mountPath: /secret/dkim.key
               name: dkim-secrets
@@ -89,12 +85,8 @@ spec:
             - init_app.py
 
           volumeMounts:
-            - mountPath: /sl
+            - mountPath: /code/static/upload
               name: simplelogin-data
-
-            - mountPath: /code/.env
-              name: config-env
-              subPath: SLENV
 
             - mountPath: /secret/dkim.key
               name: dkim-secrets
@@ -120,12 +112,8 @@ spec:
               name: http
 
           volumeMounts:
-            - mountPath: /sl
+            - mountPath: /code/static/upload
               name: simplelogin-data
-
-            - mountPath: /code/.env
-              name: config-env
-              subPath: SLENV
 
             - mountPath: /secret/dkim.key
               name: dkim-secrets
