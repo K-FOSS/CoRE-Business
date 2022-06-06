@@ -3,8 +3,10 @@ kind: ConfigMap
 metadata:
   name: simplelogin-config
 data:
+  LOCAL_FILE_UPLOAD: '1'
+
   EMAIL_DOMAIN: '{{ .Values.email.domain }}'
-  SUPPORT_EMAIL: '{{ .Values.email.domain }}'
+  SUPPORT_EMAIL: 'me@{{ .Values.email.domain }}'
   ALIAS_DOMAINS: '["{{ .Values.email.domain }}"]'
 
   EMAIL_SERVERS_WITH_PRIORITY: '[(10, "{{ .Values.email.domain }}.")]'
