@@ -11,7 +11,8 @@ data:
   
   DISABLE_ALIAS_SUFFIX: '1'
 
-  DKIM_PRIVATE_KEY_PATH: '/secret/dkim.key'
+  DKIM_PRIVATE_KEY_PATH: /secret/dkim.key
+  DKIM_PUBLIC_KEY_PATH: /secret/dkim.pub.key
 
   # TODO
   FLASK_SECRET: 'put_something_secret_here'
