@@ -21,6 +21,5 @@ data:
   FLASK_ENV: 'production'
 
   POSTFIX_SERVER: 66.165.222.125
-  POSTFIX_PORT: '25'
 
-  ENFORCE_SPF: 'false'
+  ENFORCE_SPF: 'true'
