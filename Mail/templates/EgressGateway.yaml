@@ -7,6 +7,7 @@ spec:
     - podSelector:
         matchLabels:
           app.kubernetes.io/name: simplelogin
+          app.kubernetes.io/component: postfix
   destinationCIDRs:
     - 0.0.0.0/0
   egressSourceIP: 66.165.222.125
