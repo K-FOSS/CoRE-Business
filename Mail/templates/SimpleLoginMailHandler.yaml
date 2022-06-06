@@ -17,6 +17,16 @@ spec:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: mailhandler
     spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution: 
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io 
+                    operator: In 
+                    values:
+                      - simplelogin 
+              topologyKey: kubernetes.io/hostname
       volumes:
         - name: simplelogin-data
           persistentVolumeClaim:
