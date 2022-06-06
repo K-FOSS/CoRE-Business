@@ -69,6 +69,34 @@ spec:
               name: dkim-public
               subPath: dkim.pub.key
 
+        - name: simplelogin-initapp
+          image: simplelogin/app:3.4.0
+
+          envFrom:
+            - secretRef:
+                name: business-mail-simplelogin-db-prod
+          
+            - configMapRef:
+                name: simplelogin-config
+
+
+          command: ['python']
+          args:
+            - init_app.py
+
+          volumeMounts:
+            - mountPath: /code/static/upload
+              name: simplelogin-data
+
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
+
+            - mountPath: /secret/dkim.pub.key
+              name: dkim-public
+              subPath: dkim.pub.key
+
+
       containers:
         - name: simplelogin-api
           image: simplelogin/app:3.4.0
