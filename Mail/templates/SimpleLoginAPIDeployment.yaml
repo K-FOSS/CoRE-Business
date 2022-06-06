@@ -18,13 +18,20 @@ spec:
         app.kubernetes.io/component: api
     spec:
       volumes:
-        - name: email-data
+        - name: simplelogin-data
           persistentVolumeClaim:
             claimName: email-simplelogin
 
         - name: config-env
           secret:
             secretName: business-mail-simplelogin-db-prod
+
+        - name: dkim-public
+          configMap:
+            name: simplelogin-dkim-public-cert
+            items:
+              - key: dkim.pub.key
+                path: dkim.pub.key
 
         - name: dkim-secrets
           secret:
@@ -62,6 +69,10 @@ spec:
               name: dkim-secrets
               subPath: dkim.key
 
+            - mountPath: /secret/dkim.pub.key
+              name: dkim-public
+              subPath: dkim.pub.key
+
         - name: simplelogin-initapp
           image: simplelogin/app-ci:v4.5.2
 
@@ -85,6 +96,14 @@ spec:
               name: config-env
               subPath: SLENV
 
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
+
+            - mountPath: /secret/dkim.pub.key
+              name: dkim-public
+              subPath: dkim.pub.key
+
       containers:
         - name: simplelogin-api
           image: simplelogin/app-ci:v4.5.2
@@ -107,4 +126,12 @@ spec:
             - mountPath: /code/.env
               name: config-env
               subPath: SLENV
+
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
+
+            - mountPath: /secret/dkim.pub.key
+              name: dkim-public
+              subPath: dkim.pub.key
 

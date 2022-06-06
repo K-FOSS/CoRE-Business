@@ -19,19 +19,26 @@ spec:
     spec:
       volumes:
         - name: simplelogin-data
-          emptyDir:
-            medium: Memory
+          persistentVolumeClaim:
+            claimName: email-simplelogin
 
         - name: config-env
           secret:
             secretName: business-mail-simplelogin-db-prod
 
-        - name: words
+        - name: dkim-public
           configMap:
-            name: simplelogin-config-wordlist
+            name: simplelogin-dkim-public-cert
             items:
-              - key: test_words.txt
-                path: test_words.txt
+              - key: dkim.pub.key
+                path: dkim.pub.key
+
+        - name: dkim-secrets
+          secret:
+            secretName: selector1-mail-myloginspace
+            items:
+            - key: mail.mylogin.space.selector1.key
+              path: dkim.key
 
       containers:
         - name: simplelogin
@@ -58,6 +65,10 @@ spec:
               name: config-env
               subPath: SLENV
 
-            - mountPath: /code/local_data/words.txt
-              name: words
-              subPath: test_words.txt
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
+
+            - mountPath: /secret/dkim.pub.key
+              name: dkim-public
+              subPath: dkim.pub.key

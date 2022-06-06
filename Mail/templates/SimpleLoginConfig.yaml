@@ -11,6 +11,8 @@ data:
   
   DISABLE_ALIAS_SUFFIX: '1'
 
+  DKIM_PRIVATE_KEY_PATH: '/secret/dkim.key'
+
   # TODO
   FLASK_SECRET: 'put_something_secret_here'
   FLASK_ENV: 'production'

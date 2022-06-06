@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simplelogin-dkim-public-cert
+data:
+  dkim.pub.key: |
+    -----BEGIN PUBLIC KEY-----
+    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA12Hrb05byHLjzhPDIjwsz8a6LIasdgvCX8xYd/TK50DQHgISyfqH+abmbbkwviWcH5pxoM3oHtUTGk4VntMMzm4qsZG9G0VTrIFN3Fr3bB7G3DoKDhfRqta5WYtZcsVmFOkubRTCKf1Z3lmk4alhHF7BBKuicQs1T5CmFltOrdiIbLumXgVVcaK4uX5zfQ3p0TOr1HE4sF/lFc2BC Nkme+RnYT3RjhAXQObFNBMaVXqps/xQ2b9ewEcdtYyhf3RugEItJm3D0QUSyOl+jW8V8/+8ZzuXmpeR5jn4wlOdtfDaJ0eXmq8gjkbvxGZjd3oA6JBJp5mh2wFfNELlRQzrowIDAQAB
+    -----END PUBLIC KEY-----
