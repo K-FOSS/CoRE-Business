@@ -2,8 +2,10 @@ apiVersion: dkim-manager.atelierhsn.com/v1
 kind: DKIMKey
 metadata:
   name: selector1-mail-myloginspace
-
+  labels:
+    wan-mode: public
+    lan-mode: private
 spec:
   secretName: selector1-mail-myloginspace
-  selector: selector1
+  selector: _domainkey
   domain: mail.mylogin.space
