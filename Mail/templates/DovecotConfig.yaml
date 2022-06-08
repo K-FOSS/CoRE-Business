@@ -18,10 +18,14 @@ data:
       args = /etc/dovecot/dovecot-oauth2.conf.ext
     }
 
+    passdb {
+      args = /etc/dovecot/dovecot-ldap.conf.ext
+      driver = ldap
+    }
+
     userdb {
-      driver = passwd
-      args = blocking=no
-      override_fields = uid=vmail gid=vmail
+      args = /etc/dovecot/dovecot-ldap.conf.ext
+      driver = ldap
     }
 
     ssl=yes

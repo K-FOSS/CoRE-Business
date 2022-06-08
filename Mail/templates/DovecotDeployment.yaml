@@ -43,6 +43,9 @@ spec:
               - key: dovecot-oauth2.conf.ext
                 path: dovecot-oauth2.conf.ext
 
+              - key: dovecot-ldap.conf.ext
+                path: dovecot-ldap.conf.ext
+
         - name: dovecot-storage
           secret:
             secretName: business-mail-dovecot-storage-config
@@ -62,6 +65,10 @@ spec:
             - name: dovecot-auth
               mountPath: /etc/dovecot/dovecot-oauth2.conf.ext
               subPath: dovecot-oauth2.conf.ext
+
+            - name: dovecot-auth
+              mountPath: /etc/dovecot/dovecot-ldap.conf.ext
+              subPath: dovecot-ldap.conf.ext
 
             - name: dovecot-storage
               mountPath: /etc/dovecot/dovecot-storage.conf.ext

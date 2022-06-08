@@ -19,6 +19,7 @@ spec:
             # here you define the keys that should be used as template
             items:
               - key: dovecot-oauth2.conf.ext
+              - key: dovecot-ldap.conf.ext
   data:
     #
     # Database
@@ -32,3 +33,16 @@ spec:
       remoteRef:
         key: Dovecot
         property: OpenIDClientSecret
+
+    #
+    # General AAA
+    #
+    - secretKey: Username
+      remoteRef:
+        key: Dovecot
+        property: Username
+
+    - secretKey: Password
+      remoteRef:
+        key: Dovecot
+        property: Password

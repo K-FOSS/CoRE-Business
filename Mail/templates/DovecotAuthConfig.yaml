@@ -4,6 +4,11 @@ metadata:
   name: business-mail-dovecot-auth-config-tpl
 
 data:
+  dovecot-ldap.conf.ext: |
+    uris = ldaps://ldap.mylogin.space
+    dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
+    dnpass = {{ .Password }}
+    base = dc=ldap,dc=mylogin,dc=space
   dovecot-oauth2.conf.ext: |
     ### OAuth2 password database configuration
 
