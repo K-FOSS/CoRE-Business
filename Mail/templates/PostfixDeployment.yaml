@@ -29,6 +29,14 @@ spec:
               - key: pgsql-transport-maps.cf
                 path: pgsql-transport-maps.cf
 
+        - name: ldap-configs
+          secret:
+            secretName: business-mail-postfix-auth-config
+            optional: false
+            items:
+              - key: ldap.cf
+                path: ldap.cf
+
         - name: tls-certs
           secret:
             secretName: {{ .Values.email.tls.secretName }}
@@ -58,6 +66,17 @@ spec:
             - name: simplelogin-configs
               mountPath: /etc/postfix/pgsql-transport-maps.cf
               subPath: pgsql-transport-maps.cf
+
+            #
+            # Dovecot
+            #
+
+            #
+            # AAA LDAP
+            #
+            - name: ldap-configs
+              mountPath: /etc/postfix/ldap.cf
+              subPath: ldap.cf
 
             - name: tls-certs
               mountPath: /etc/tls/mail

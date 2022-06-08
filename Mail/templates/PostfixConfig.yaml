@@ -26,7 +26,9 @@ data:
   CONF_MYDOMAIN: 'mail.mylogin.space'
   CONF_MYORIGIN: 'mail.mylogin.space'
 
-  CONF_VIRTUAL_TRANSPORT: 'lmtp:inet:dovecot:2525'
+  CONF_VIRTUAL_TRANSPORT: 'lmtp:inet:dovecot.core-prod.svc.k0s.resolvemy.host:2525'
+  CONF_VIRTUAL_MAILBOX_DOMAINS: 'mylogin.space, kristianjones.dev, accessmy.host'
+  CONF_VIRTUAL_ALIAS_MAPS: 'ldap:/etc/postfix/ldap.cf'
   CONF_LMTP_HOST_LOOKUP: 'native'
 
 
