@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: business-mail-dovecot-config
+
+data:
+  dovecot.conf: |
+    mail_home=/srv/mail/%Lu
+    mail_location = obox:%8Mu/%u:INDEX=~/:CONTROL=~/
+    plugin {
+      obox_fs = fscache:512M:/var/cache/mails/%4Nu:compress:gz:6:s3:https://ACCESSKEY:SECRET@s3.example.com/?bucket=mails
+      obox_index_fs = compress:gz:6:s3:https://ACCESSKEY:SECRET@s3.example.com/?bucket=mails
+      fts_dovecot_fs = fts-cache:fscache:512M:/var/cache/fts/%4Nu:compress:gz:6:s3:https://s3.example.com/%8Mu/%u/fts/?bucket=mails
+      obox_max_parallel_deletes = 1000
+    }
+
+    ## this is sometimes needed
+    #first_valid_uid = uid-of-vmail-user
+
+    auth_mechanisms = $auth_mechanisms oauthbearer xoauth2
+
+    passdb {
+      driver = oauth2
+      mechanisms = xoauth2 oauthbearer
+      args = /etc/dovecot/dovecot-oauth2.conf.ext
+    }
+
+    userdb {
+      driver = passwd
+      args = blocking=no
+      override_fields = uid=vmail gid=vmail
+    }
+
+    ssl=yes
+    ssl_cert=</path/to/cert.pem
+    ssl_key=</path/to/key.pem
+    # if you are using v2.3.0-v2.3.2.1 (or want to support non-ECC DH algorithms)
+    # since v2.3.3 this setting has been made optional.
+    #ssl_dh=</path/to/dh.pem
+
+    namespace {
+      inbox = yes
+      separator = /
+    }

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-dovecot
+  labels:
+    app.kubernetes.io/name: mail
+    app.kubernetes.io/component: dovecot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mail
+      app.kubernetes.io/component: dovecot
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mail
+        app.kubernetes.io/component: dovecot
+    spec:
+      volumes:
+        - name: dovecot-config
+          configMap:
+            name: business-mail-dovecot-config
+            items:
+              - key: dkim.pub.key
+                path: dkim.pub.key
+
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.email.tls.secretName }}
+
+        - name: dkim-secrets
+          secret:
+            secretName: selector1-mail-myloginspace
+            items:
+            - key: mail.mylogin.space.selector1.key
+              path: dkim.key
+
+      containers:
+        - name: dovecot
+          image: dovecot/dovecot:2.3.19
+
+          volumeMounts:
+            - name: dovecot-config
+              mountPath: /etc/dovecot/dovecot.conf
+              subPath: dovecot.conf
+
+            - name: tls-certs
+              mountPath: /etc/tls/mail
+
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
+
+          ports:
+            - name: smtp
+              containerPort: 25
+
+            - name: smtp-tls 
+              containerPort: 465
+
+            - name: smtp-starttls
+              containerPort: 587
+
+            - name: smtp-auth
+              containerPort: 10025
+
