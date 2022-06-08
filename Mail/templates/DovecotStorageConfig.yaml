@@ -5,6 +5,7 @@ metadata:
 
 data:
   dovecot-storage.conf.ext: |
+    {{`
     mail_location = obox:%8Mu/%u:INDEX=~/:CONTROL=~/
     plugin {
       obox_fs = fscache:512M:/var/cache/mails/%4Nu:compress:gz:6:s3:https://{{ .S3AccessKey }}:{{ .S3SecretKey }}@s3.mylogin.space/?bucket=mail-main
@@ -12,3 +13,4 @@ data:
       fts_dovecot_fs = fts-cache:fscache:512M:/var/cache/fts/%4Nu:compress:gz:6:s3:https://{{ .S3AccessKey }}:{{ .S3SecretKey }}@s3.mylogin.space/%8Mu/%u/fts/?bucket=mail-main
       obox_max_parallel_deletes = 1000
     }
+    `}}

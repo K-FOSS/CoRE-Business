@@ -5,11 +5,14 @@ metadata:
 
 data:
   dovecot-ldap.conf.ext: |
+    {{`
     uris = ldaps://ldap.mylogin.space
     dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
     dnpass = {{ .Password }}
     base = dc=ldap,dc=mylogin,dc=space
+    `}}
   dovecot-oauth2.conf.ext: |
+    {{`
     ### OAuth2 password database configuration
 
     ## url for verifying token validity. Token is appended to the URL
@@ -83,3 +86,4 @@ data:
     # tls_key_file = /path/to/client/key
     # tls_cipher_suite = HIGH:!SSLv2
     # tls_allow_invalid_cert = FALSE
+    `}}
