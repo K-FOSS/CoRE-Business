@@ -33,8 +33,22 @@ spec:
           secret:
             secretName: selector1-mail-myloginspace
             items:
-            - key: mail.mylogin.space.selector1.key
-              path: dkim.key
+              - key: mail.mylogin.space.selector1.key
+                path: dkim.key
+
+        - name: dovecot-auth
+          secret:
+            secretName: business-mail-dovecot-auth-config
+            items:
+              - key: dovecot-oauth2.conf.ext
+                path: dovecot-oauth2.conf.ext
+
+        - name: dovecot-storage
+          secret:
+            secretName: business-mail-dovecot-storage-config
+            items:
+              - key: dovecot-storage.conf.ext
+                path: dovecot-storage.conf.ext
 
       containers:
         - name: dovecot
@@ -44,6 +58,14 @@ spec:
             - name: dovecot-config
               mountPath: /etc/dovecot/dovecot.conf
               subPath: dovecot.conf
+
+            - name: dovecot-auth
+              mountPath: /etc/dovecot/dovecot-oauth2.conf.ext
+              subPath: dovecot-oauth2.conf.ext
+
+            - name: dovecot-storage
+              mountPath: /etc/dovecot/dovecot-storage.conf.ext
+              subPath: dovecot-storage.conf.ext
 
             - name: tls-certs
               mountPath: /etc/tls/mail
