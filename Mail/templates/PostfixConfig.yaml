@@ -26,7 +26,8 @@ data:
   CONF_MYDOMAIN: 'mail.mylogin.space'
   CONF_MYORIGIN: 'mail.mylogin.space'
 
-  CONF_VIRTUAL_TRANSPORT: ''
+  CONF_VIRTUAL_TRANSPORT: 'lmtp:inet:dovecot:2525'
+  CONF_LMTP_HOST_LOOKUP: 'native'
 
 
   #
