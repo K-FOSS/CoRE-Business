@@ -26,6 +26,8 @@ data:
   CONF_MYDOMAIN: 'mail.mylogin.space'
   CONF_MYORIGIN: 'mail.mylogin.space'
 
+  CONF_VIRTUAL_TRANSPORT: ''
+
 
   #
   # HELO Restrictions

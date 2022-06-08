@@ -7,9 +7,15 @@ data:
   dovecot.conf: |
     mail_home=/srv/mail/%Lu
 
+    protocols = imap pop3 lmtp sieve
+    submission_host = mail.mylogin.space:25
+
     ## this is sometimes needed
     #first_valid_uid = uid-of-vmail-user
 
+    ###############
+    # Authentication
+    ###############
     auth_mechanisms = $auth_mechanisms oauthbearer xoauth2
 
     passdb {
@@ -34,6 +40,42 @@ data:
     # if you are using v2.3.0-v2.3.2.1 (or want to support non-ECC DH algorithms)
     # since v2.3.3 this setting has been made optional.
     #ssl_dh=</path/to/dh.pem
+
+    ###############
+    # IMAP & POP
+    ###############
+    protocol imap {
+      mail_plugins = $mail_plugins imap_quota imap_sieve
+      mail_max_userip_connections = 20
+      imap_idle_notify_interval = 29mins
+    }
+
+    protocol pop3 {
+
+    }
+
+    service imap-login {
+      inet_listener imap {
+        port = 143
+      }
+    }
+
+
+    ###############
+    # Delivery
+    ###############
+    protocol lmtp {
+      mail_plugins = $mail_plugins sieve
+      recipient_delimiter = {{ RECIPIENT_DELIMITER }}
+    }
+
+    service lmtp {
+      inet_listener lmtp {
+        port = 2525
+      }
+    }
+
+
 
     namespace {
       inbox = yes

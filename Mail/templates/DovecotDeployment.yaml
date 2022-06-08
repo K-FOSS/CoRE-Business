@@ -82,15 +82,23 @@ spec:
               subPath: dkim.key
 
           ports:
-            - name: smtp
-              containerPort: 25
+            - name: auth
+              containerPort: 2102
+              protocol: TCP
 
-            - name: smtp-tls 
-              containerPort: 465
+            - name: lmtp
+              containerPort: 2525
+              protocol: TCP
 
-            - name: smtp-starttls
-              containerPort: 587
+            - name: imap
+              containerPort: 143
+              protocol: TCP
 
-            - name: smtp-auth
-              containerPort: 10025
+            - name: pop3
+              containerPort: 110
+              protocol: TCP
+
+            - name: sieve
+              containerPort: 4190
+              protocol: TCP
 
