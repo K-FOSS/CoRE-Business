@@ -4,15 +4,15 @@ metadata:
   name: simplelogin-postfix-aaa-config-tpl
 data:
   ldap.cf: |
-    server_host = ldap://ldap.example.com
+    {{`
+    server_host = ldap://ldap.mylogin.space
     start_tls = yes
     version = 3
-    tls_ca_cert_file = /etc/ldap/tls/CA.pem
-    tls_require_cert = yes
 
     bind = yes
-    bind_dn = cn=mailAccountReader,ou=Manager,dc=example,dc=com
-    bind_pw = <Password for bind_dn>
+    bind_dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
+    bind_pw = {{ .Password }}
 
-    search_base = ou=Mail,dc=example,dc=com
+    search_base = ou=users,dc=ldap,dc=mylogin,dc=space
     scope = sub
+    `}}
