@@ -22,8 +22,8 @@ spec:
           configMap:
             name: business-mail-dovecot-config
             items:
-              - key: dkim.pub.key
-                path: dkim.pub.key
+              - key: dovecot.conf
+                path: dovecot.conf
 
         - name: tls-certs
           secret:
