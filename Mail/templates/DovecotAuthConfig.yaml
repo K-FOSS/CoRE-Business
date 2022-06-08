@@ -11,7 +11,7 @@ data:
     dnpass = {{ .Password }}
     base = dc=ldap,dc=mylogin,dc=space
     pass_attrs = mail=user
-    user_filter = (&(objectClass=user)(mail=%n))
+    user_filter = (&(objectClass=user)(mail=%u))
     iterate_attrs = mail=user
     iterate_filter = (objectClass=user)
     `}}
