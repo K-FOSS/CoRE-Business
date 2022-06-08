@@ -1,1 +1,34 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-mail-dovecot-auth-config
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-mail-dovecot-auth-config
+    template:
+      engineVersion: v2
+      data:
+        test: 'hi'
+      templateFrom:
+        - configMap:
+            # name of the configmap to pull in
+            name: business-mail-dovecot-auth-config-tpl
+            # here you define the keys that should be used as template
+            items:
+              - key: dovecot-oauth2.conf.ext
+  data:
+    #
+    # Database
+    #
+    - secretKey: OpenIDClientID
+      remoteRef:
+        key: Dovecot
+        property: OpenIDClientID
 
+    - secretKey: OpenIDClientSecret
+      remoteRef:
+        key: Dovecot
+        property: OpenIDClientSecret
