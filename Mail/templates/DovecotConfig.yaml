@@ -25,8 +25,8 @@ data:
     }
 
     ssl=yes
-    ssl_cert=</path/to/cert.pem
-    ssl_key=</path/to/key.pem
+    ssl_cert=/etc/tls/mail/tls.crt
+    ssl_key=/etc/tls/mail/tls.key
     # if you are using v2.3.0-v2.3.2.1 (or want to support non-ECC DH algorithms)
     # since v2.3.3 this setting has been made optional.
     #ssl_dh=</path/to/dh.pem
@@ -35,3 +35,5 @@ data:
       inbox = yes
       separator = /
     }
+
+    !include_try /etc/dovecot/dovecot-storage.conf.ext
