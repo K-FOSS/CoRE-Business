@@ -31,8 +31,8 @@ data:
     }
 
     ssl=yes
-    ssl_cert=/etc/tls/mail/tls.crt
-    ssl_key=/etc/tls/mail/tls.key
+    ssl_cert=</etc/tls/mail/tls.crt
+    ssl_key=</etc/tls/mail/tls.key
     # if you are using v2.3.0-v2.3.2.1 (or want to support non-ECC DH algorithms)
     # since v2.3.3 this setting has been made optional.
     #ssl_dh=</path/to/dh.pem
