@@ -1,0 +1,8 @@
+apiVersion: v2
+version: 1.0.0
+name: business-analytics-core
+
+dependencies:
+  - name: matomo
+    version: 3.0.0
+    repository: https://charts.truecharts.org/
