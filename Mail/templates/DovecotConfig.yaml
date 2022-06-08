@@ -18,7 +18,7 @@ data:
     ###############
     # Authentication
     ###############
-    auth_mechanisms = $auth_mechanisms oauthbearer xoauth2
+    auth_mechanisms = $auth_mechanisms oauthbearer xoauth2 plain login
 
     passdb {
       driver = oauth2
@@ -67,7 +67,7 @@ data:
     # Delivery
     ###############
     protocol lmtp {
-      mail_plugins = $mail_plugins sieve
+      mail_plugins = $mail_plugins
     }
 
     service lmtp {
