@@ -41,7 +41,7 @@ data:
     # IMAP & POP
     ###############
     protocol imap {
-      mail_plugins = $mail_plugins imap_quota
+      mail_plugins = $mail_plugins imap_quota obox
       mail_max_userip_connections = 20
       imap_idle_notify_interval = 29mins
     }
@@ -61,7 +61,7 @@ data:
     # Delivery
     ###############
     protocol lmtp {
-      mail_plugins = $mail_plugins
+      mail_plugins = $mail_plugins obox
     }
 
     service lmtp {
