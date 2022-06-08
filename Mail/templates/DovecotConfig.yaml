@@ -18,13 +18,7 @@ data:
     ###############
     # Authentication
     ###############
-    auth_mechanisms = $auth_mechanisms oauthbearer xoauth2 plain login
-
-    passdb {
-      driver = oauth2
-      mechanisms = xoauth2 oauthbearer
-      args = /etc/dovecot/dovecot-oauth2.conf.ext
-    }
+    auth_mechanisms = plain login
 
     passdb {
       args = /etc/dovecot/dovecot-ldap.conf.ext
