@@ -10,6 +10,10 @@ data:
     dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
     dnpass = {{ .Password }}
     base = dc=ldap,dc=mylogin,dc=space
+    pass_attrs = mail=user
+    user_filter = (&(objectClass=user)(mail=%n))
+    iterate_attrs = mail=user
+    iterate_filter = (objectClass=user)
     `}}
   dovecot-oauth2.conf.ext: |
     {{`
