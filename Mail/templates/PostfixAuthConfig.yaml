@@ -5,8 +5,8 @@ metadata:
 data:
   ldap.cf: |
     {{`
-    server_host = ldap://ldap.mylogin.space
-    start_tls = yes
+    server_host = ldaps://ldap.mylogin.space:636
+    start_tls = no
     version = 3
 
     bind = yes
