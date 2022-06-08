@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simplelogin-postfix-aaa-config-tpl
+data:
+  ldap.cf: |
+    server_host = ldap://ldap.example.com
+    start_tls = yes
+    version = 3
+    tls_ca_cert_file = /etc/ldap/tls/CA.pem
+    tls_require_cert = yes
+
+    bind = yes
+    bind_dn = cn=mailAccountReader,ou=Manager,dc=example,dc=com
+    bind_pw = <Password for bind_dn>
+
+    search_base = ou=Mail,dc=example,dc=com
+    scope = sub
