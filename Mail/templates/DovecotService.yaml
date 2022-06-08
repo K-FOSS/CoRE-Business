@@ -2,6 +2,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: dovecot
+
+  annotations:
+    metallb.universe.tf/allow-shared-ip: mail
 spec:
   selector:
     app.kubernetes.io/name: mail
