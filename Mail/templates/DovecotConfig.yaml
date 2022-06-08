@@ -9,7 +9,9 @@ data:
 
     protocols = imap pop3 lmtp sieve
     submission_host = mail.mylogin.space:25
-
+    log_path = /dev/stderr
+    info_log_path = /dev/stdout
+    debug_log_path = /dev/stdout
     ## this is sometimes needed
     #first_valid_uid = uid-of-vmail-user
 
