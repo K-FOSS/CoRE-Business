@@ -50,7 +50,7 @@ spec:
 
       containers:
         - name: postfix
-          image: dhet/postfix-pg:latest
+          image: registry.writemy.codes/teleport/postfix-pg
           envFrom:
             - secretRef:
                 name: business-mail-simplelogin-postfix-db-prod
