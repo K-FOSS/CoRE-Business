@@ -71,5 +71,3 @@ data:
       inbox = yes
       separator = /
     }
-
-    !include_try /etc/dovecot/dovecot-storage.conf.ext
