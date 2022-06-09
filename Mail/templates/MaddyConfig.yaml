@@ -24,7 +24,7 @@ data:
       driver postgres
       dsn "user={{ .Username }} password={{ .Password }} host=psql.service.dc1.kjdev dbname=email sslmode=disable"
 
-
+      debug true
 
       msg_store s3 {
         endpoint s3.mylogin.space
