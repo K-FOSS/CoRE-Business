@@ -19,6 +19,8 @@ data:
   CONF_SMTPD_TLS_SECURITY_LEVEL: 'may'
   CONF_SMTPD_SASL_PATH: 'inet:mail.mylogin.space:12345'  
   CONF_SMTPD_SASL_TYPE: 'dovecot'
+  CONF_SMTPD_SASL_AUTH_ENABLE: 'yes'
+  CONF_BROKEN_SASL_AUTH_CLIENTS: 'yes'
 
   #
   # My Hosts
