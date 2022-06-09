@@ -70,8 +70,3 @@ data:
     reject_rbl_client zen.spamhaus.org,
     reject_rbl_client bl.spamcop.net,
     permit
-
-
-  CONF_SMTPD_RELAY_RESTRICTIONS: |
-    permit_mynetworks,
-    reject_unauth_destination
