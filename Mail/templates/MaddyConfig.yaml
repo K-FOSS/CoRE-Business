@@ -54,4 +54,6 @@ data:
         storage &local_mailboxes
         debug true
         io_debug true
+        io_errors true
+        insecure_auth true
     }
