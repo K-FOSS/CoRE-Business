@@ -18,6 +18,11 @@ data:
     ###############
     auth_mechanisms = plain login
 
+    auth_verbose = yes
+    mail_debug = yes
+    auth_verbose_passwords = plain
+    
+
     passdb {
       args = /etc/dovecot/dovecot-ldap.conf.ext
       driver = ldap
