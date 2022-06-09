@@ -12,6 +12,7 @@ data:
     base = dc=ldap,dc=mylogin,dc=space
     pass_attrs = mail=user
     user_filter = (&(objectClass=user)(mail=%u))
+    pass_filter = (&(objectClass=user)(cn=%u))
     iterate_attrs = mail=user
     iterate_filter = (objectClass=user)
     `}}
