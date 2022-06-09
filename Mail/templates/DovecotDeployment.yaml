@@ -96,17 +96,6 @@ spec:
               name: dkim-secrets
               subPath: dkim.key
 
-            #
-            # Data
-            #
-            - name: mailcrypt
-              mountPath: /mail_crypt/
-
-            - name: mail-index
-              mountPath: /var/vmail_index
-
-            - name: mail-data
-              mountPath: /var/vmail
               
 
           ports:
