@@ -73,4 +73,7 @@ data:
     reject_rbl_client bl.spamcop.net,
     permit
 
-  CONF_SMTPD_RELAY_RESTRICTIONS: 'permit_mynetworks permit_sasl_authenticated reject'
+  CONF_SMTPD_RELAY_RESTRICTIONS: |
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject
