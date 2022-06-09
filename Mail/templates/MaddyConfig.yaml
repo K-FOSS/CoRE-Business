@@ -13,6 +13,7 @@ data:
 
     {{`
     auth.ldap main {
+        debug true
         base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
         filter "(&(objectClass=user)(cn={username}))"
         urls ldaps://ldap.mylogin.space:636
