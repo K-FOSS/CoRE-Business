@@ -16,7 +16,7 @@ data:
         debug true
 
         base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-        filter "(&(objectClass=posixAccount)(cn={username}))"
+        filter "(&(objectClass=user)(cn={username}))"
 
         urls ldaps://ldap.mylogin.space:636
         bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
