@@ -19,22 +19,22 @@ spec:
       targetPort: auth
 
 
-    - name: imap-transport
+    # - name: imap-transport
 
-      protocol: TCP
-      #appProtocol: submissions
+    #   protocol: TCP
+    #   #appProtocol: submissions
 
-      port: 2525
-      targetPort: lmtp
+    #   port: 2525
+    #   targetPort: lmtp
 
 
-    - name: imap-default
+    # - name: imap-default
 
-      protocol: TCP
-      #appProtocol: submission
+    #   protocol: TCP
+    #   #appProtocol: submission
 
-      port: 143
-      targetPort: imap
+    #   port: 143
+    #   targetPort: imap
 
 
     - name: pop3

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-maddy
+  labels:
+    app.kubernetes.io/name: mail
+    app.kubernetes.io/component: maddy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mail
+      app.kubernetes.io/component: maddy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mail
+        app.kubernetes.io/component: maddy
+    spec:
+      volumes:
+        - name: maddy-config
+          secret:
+            secretName: business-mail-maddy-config
+            items:
+              - key: maddy.conf
+                path: maddy.conf
+
+        #
+        # Secrets and Certificates
+        #
+
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.email.tls.secretName }}
+
+      containers:
+        - name: maddy
+          image: foxcpp/maddy:v0.5
+
+          volumeMounts:
+            #
+            # Configs
+            #
+            - name: maddy-config
+              mountPath: /data/maddy.conf
+              subPath: maddy.conf
+
+
+            #
+            # Secrets and Certificates
+            #
+            - name: tls-certs
+              mountPath: /etc/tls/mail
+
+          ports:
+            - name: lmtp
+              containerPort: 2525
+              protocol: TCP
+
+            - name: imaps
+              containerPort: 993
+              protocol: TCP
+
+            - name: imap
+              containerPort: 143
+              protocol: TCP
+

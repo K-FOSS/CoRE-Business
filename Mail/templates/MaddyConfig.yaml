@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: business-mail-maddy-config-tpl
+
+data:
+  maddy.conf: |
+    ## Maddy Mail Server - default configuration file (2021-08-16)
+    # Suitable for small-scale deployments. Uses its own format for local users DB,
+    # should be managed via maddyctl utility.
+    #
+    # See tutorials at https://maddy.email for guidance on typical
+    # configuration changes.
+    #
+    # See manual pages (also available at https://maddy.email) for reference
+    # documentation.
+
+    # ----------------------------------------------------------------------------
+    # Base variables
+
+    $(hostname) = mail.mylogin.space
+    $(primary_domain) = mylogin.space
+    $(local_domains) = $(primary_domain)
+
+    tls file /etc/tls/mail/tls.crt /etc/tls/mail/tls.key
+
+    # ----------------------------------------------------------------------------
+    # Local storage & authentication
+
+    # pass_table provides local hashed passwords storage for authentication of
+    # users. It can be configured to use any "table" module, in default
+    # configuration a table in SQLite DB is used.
+    # Table can be replaced to use e.g. a file for passwords. Or pass_table module
+    # can be replaced altogether to use some external source of credentials (e.g.
+    # PAM, /etc/shadow file).
+    #
+    # If table module supports it (sql_table does) - credentials can be managed
+    # using 'maddyctl creds' command.
+
+    {{`
+    auth.ldap tls://ldap.mylogin.space:636 {
+      # DN lookup params.
+      search_base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+      search_filter "(&(objectClass=posixAccount)(email={username}))"
+
+      bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
+
+    }
+    `}}
+
+    # imapsql module stores all indexes and metadata necessary for IMAP using a
+    # relational database. It is used by IMAP endpoint for mailbox access and
+    # also by SMTP & Submission endpoints for delivery of local messages.
+    #
+    # IMAP accounts, mailboxes and all message metadata can be inspected using
+    # imap-* subcommands of maddyctl utility.
+
+    storage.imapsql local_mailboxes {
+    {{`
+      msg_store s3 {
+        endpoint s3.mylogin.space
+        secure yes
+
+        access_key "{{ .S3AccessKey }}"
+        secret_key "{{ .S3SecretKey }}"
+        bucket mail-main
+
+        # optional
+        region us-east-1
+        object_prefix maddy/
+      }
+    `}}
+    }
+
+    # LMTP
+    lmtp tcp://0.0.0.0:2525 {
+      hostname mail.mylogin.space
+
+      deliver_to &local_mailboxes
+    }
+
+    # ----------------------------------------------------------------------------
+    # IMAP endpoints
+
+    imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
+        auth ldap
+        storage &local_mailboxes
+    }

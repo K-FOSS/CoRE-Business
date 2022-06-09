@@ -1,0 +1,48 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-mail-maddy-config
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-mail-maddy-config
+    template:
+      engineVersion: v2
+      data:
+        test: 'hi'
+      templateFrom:
+        - configMap:
+            # name of the configmap to pull in
+            name: business-mail-maddy-config-tpl
+            # here you define the keys that should be used as template
+            items:
+              - key: maddy.conf
+  data:
+    #
+    # Database
+    #
+    - secretKey: S3AccessKey
+      remoteRef:
+        key: Dovecot
+        property: S3AccessKey
+
+    - secretKey: S3SecretKey
+      remoteRef:
+        key: Dovecot
+        property: S3SecretKey
+
+    #
+    # LDAP
+    # 
+    - secretKey: Username
+      remoteRef:
+        key: Dovecot
+        property: Username
+
+    - secretKey: Password
+      remoteRef:
+        key: Dovecot
+        property: Password
+      
