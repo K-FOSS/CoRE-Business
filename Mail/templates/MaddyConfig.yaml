@@ -43,6 +43,8 @@ data:
       search_base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
       search_filter "(&(objectClass=posixAccount)(email={username}))"
 
+      base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+
       bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
 
     }
