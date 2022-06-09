@@ -9,6 +9,7 @@ data:
     uris = ldaps://ldap.mylogin.space
     dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
     dnpass = {{ .Password }}
+    auth_bind = yes
     base = dc=ldap,dc=mylogin,dc=space
     user_filter = (&(objectClass=user)(cn=%u))
     pass_filter = (&(objectClass=user)(cn=%u))
