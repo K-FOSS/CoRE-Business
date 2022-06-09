@@ -17,10 +17,7 @@ data:
         filter "(&(objectClass=posixAccount)(email={username}))"
         urls ldaps://ldap.mylogin.space:636
         bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
-        
-    }
-    
-    `}}
+    }`}}
 
     # imapsql module stores all indexes and metadata necessary for IMAP using a
     # relational database. It is used by IMAP endpoint for mailbox access and
