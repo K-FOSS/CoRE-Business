@@ -12,7 +12,20 @@ data:
     tls file /etc/tls/mail/tls.crt /etc/tls/mail/tls.key
 
     {{`
-    auth.ldap local_authdb {
+
+    auth.pass_table local_authdb {
+      table ldap {
+        debug true
+
+        base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+        filter "(&(objectClass=user)(mail={username}))"
+
+        urls ldaps://ldap.mylogin.space:636
+        bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
+      }
+    }
+
+    auth.ldap {
         debug true
 
         base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
