@@ -52,4 +52,5 @@ data:
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
         auth &main
         storage &local_mailboxes
+        debug
     }
