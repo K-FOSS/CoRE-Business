@@ -75,4 +75,4 @@ data:
 
   CONF_SMTPD_RELAY_RESTRICTIONS: |
     permit_mynetworks,
-    reject
+    reject_unauth_destination
