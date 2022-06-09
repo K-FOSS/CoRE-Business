@@ -38,14 +38,16 @@ data:
     # using 'maddyctl creds' command.
 
     {{`
-    auth.ldap tls://ldap.mylogin.space:636 {
-      # DN lookup params.
-      search_base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-      search_filter "(&(objectClass=posixAccount)(email={username}))"
+    auth.ldap {
+        urls ldaps://ldap.mylogin.space:636
+        bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
 
-      base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+        # DN lookup params.
+        search_base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+        
 
-      bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
+        base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+        filter "(&(objectClass=posixAccount)(email={username}))"
 
     }
     `}}
