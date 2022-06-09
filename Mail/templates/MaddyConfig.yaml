@@ -5,50 +5,21 @@ metadata:
 
 data:
   maddy.conf: |
-    ## Maddy Mail Server - default configuration file (2021-08-16)
-    # Suitable for small-scale deployments. Uses its own format for local users DB,
-    # should be managed via maddyctl utility.
-    #
-    # See tutorials at https://maddy.email for guidance on typical
-    # configuration changes.
-    #
-    # See manual pages (also available at https://maddy.email) for reference
-    # documentation.
-
-    # ----------------------------------------------------------------------------
-    # Base variables
-
     $(hostname) = mail.mylogin.space
     $(primary_domain) = mylogin.space
     $(local_domains) = $(primary_domain)
 
     tls file /etc/tls/mail/tls.crt /etc/tls/mail/tls.key
 
-    # ----------------------------------------------------------------------------
-    # Local storage & authentication
-
-    # pass_table provides local hashed passwords storage for authentication of
-    # users. It can be configured to use any "table" module, in default
-    # configuration a table in SQLite DB is used.
-    # Table can be replaced to use e.g. a file for passwords. Or pass_table module
-    # can be replaced altogether to use some external source of credentials (e.g.
-    # PAM, /etc/shadow file).
-    #
-    # If table module supports it (sql_table does) - credentials can be managed
-    # using 'maddyctl creds' command.
-
     {{`
     auth.ldap {
+        base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+        filter "(&(objectClass=posixAccount)(email={username}))"
         urls ldaps://ldap.mylogin.space:636
         bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
 
         # DN lookup params.
         search_base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-        
-
-        base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-        filter "(&(objectClass=posixAccount)(email={username}))"
-
     }
     `}}
 
