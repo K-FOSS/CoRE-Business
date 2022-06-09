@@ -78,11 +78,11 @@ spec:
             # AAA LDAP
             #
             - name: ldap-configs
-              mountPath: /etc/postfix/ldap.cf
+              mountPath: /etc/postfix/ldap-in.cf
               subPath: ldap-in.cf
 
             - name: ldap-configs
-              mountPath: /etc/postfix/ldap.cf
+              mountPath: /etc/postfix/ldap-auth.cf
               subPath: ldap-auth.cf
 
             - name: tls-certs
