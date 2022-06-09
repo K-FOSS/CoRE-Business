@@ -18,7 +18,8 @@ spec:
             name: simplelogin-postfix-aaa-config-tpl
             # here you define the keys that should be used as template
             items:
-              - key: ldap.cf
+              - key: ldap=in.cf
+              - key: ldap-auth.cf
   data:
     #
     # General AAA

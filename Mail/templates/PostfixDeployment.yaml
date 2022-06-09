@@ -34,8 +34,11 @@ spec:
             secretName: business-mail-postfix-auth-config
             optional: false
             items:
-              - key: ldap.cf
-                path: ldap.cf
+              - key: ldap-in.cf
+                path: ldap-in.cf
+
+              - key: ldap-auth.cf
+                path: ldap-auth.cf
 
         - name: tls-certs
           secret:
@@ -76,7 +79,11 @@ spec:
             #
             - name: ldap-configs
               mountPath: /etc/postfix/ldap.cf
-              subPath: ldap.cf
+              subPath: ldap-in.cf
+
+            - name: ldap-configs
+              mountPath: /etc/postfix/ldap.cf
+              subPath: ldap-auth.cf
 
             - name: tls-certs
               mountPath: /etc/tls/mail
