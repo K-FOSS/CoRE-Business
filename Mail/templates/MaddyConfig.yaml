@@ -13,16 +13,6 @@ data:
 
     {{`
 
-    auth.ldap local_authdb {
-        debug true
-
-        dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
-
-        urls ldaps://ldap.mylogin.space:636
-        bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
-      }
-    }
-
     storage.imapsql local_mailboxes {
       driver postgres
       dsn "user={{ .Username }} password={{ .Password }} host=psql.service.dc1.kjdev dbname=email sslmode=disable"
@@ -56,7 +46,15 @@ data:
     # IMAP endpoints
 
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
-        auth &local_authdb
+        auth ldap local_authdb {
+            debug true
+
+            dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
+
+            urls ldaps://ldap.mylogin.space:636
+            bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
+          }
+        }
         storage &local_mailboxes
         debug true
         io_debug true
