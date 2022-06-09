@@ -25,16 +25,6 @@ data:
       }
     }
 
-    auth.ldap {
-        debug true
-
-        base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-        filter "(&(objectClass=user)(mail={username}))"
-
-        urls ldaps://ldap.mylogin.space:636
-        bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
-    }
-
     storage.imapsql local_mailboxes {
       driver postgres
       dsn "user={{ .Username }} password={{ .Password }} host=psql.service.dc1.kjdev dbname=email sslmode=disable"
