@@ -68,7 +68,6 @@ data:
     reject_non_fqdn_recipient,
     reject_unknown_recipient_domain,
     permit_mynetworks,
-    permit_sasl_authenticated,
     reject_unauth_destination,
     reject_rbl_client zen.spamhaus.org,
     reject_rbl_client bl.spamcop.net,
