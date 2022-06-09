@@ -17,8 +17,6 @@ data:
     # Authentication
     ###############
     auth_mechanisms = plain login
-    smtpd_sasl_path = inet:mail.mylogin.space:12345
-    smtpd_sasl_type = dovecot
 
     passdb {
       args = /etc/dovecot/dovecot-ldap.conf.ext

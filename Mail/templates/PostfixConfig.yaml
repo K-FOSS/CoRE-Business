@@ -17,6 +17,8 @@ data:
   CONF_SMTP_TLS_SESSION_CACHE_DATABASE: 'btree:${data_directory}/smtp_scache'
   CONF_SMTP_TLS_SECURITY_LEVEL: 'may'
   CONF_SMTPD_TLS_SECURITY_LEVEL: 'may'
+  CONF_SMTPD_SASL_PATH: 'inet:mail.mylogin.space:12345'  
+  CONF_SMTPD_SASL_TYPE: 'dovecot'
 
   #
   # My Hosts
