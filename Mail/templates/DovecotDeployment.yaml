@@ -60,21 +60,6 @@ spec:
               - key: dovecot-storage.conf.ext
                 path: dovecot-storage.conf.ext
 
-        #
-        # Data
-        #
-        - name: mailcrypt
-          persistentVolumeClaim:
-            claimName: dovecot-mailcrypt-data
-          
-        - name: mail-index
-          persistentVolumeClaim:
-            claimName: dovecot-index-data
-          
-        - name: mail-data
-          persistentVolumeClaim:
-            claimName: dovecot-mail-data
-
 
       containers:
         - name: dovecot
