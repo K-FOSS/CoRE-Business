@@ -54,9 +54,13 @@ data:
     #
     # IMAP accounts, mailboxes and all message metadata can be inspected using
     # imap-* subcommands of maddyctl utility.
-
-    storage.imapsql local_mailboxes {
     {{`
+    storage.imapsql local_mailboxes {
+      driver postgres
+      dsn "user={{ .Username }} password={{ .Password }} host=psql.service.dc1.kjdev dbname=email sslmode=disable"
+
+
+
       msg_store s3 {
         endpoint s3.mylogin.space
         secure yes
@@ -69,8 +73,8 @@ data:
         region us-east-1
         object_prefix maddy/
       }
-    `}}
     }
+    `}}
 
     # LMTP
     lmtp tcp://0.0.0.0:2525 {
