@@ -14,7 +14,10 @@ data:
     {{`
     auth.ldap main {
         debug true
-        dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
+
+        base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+        filter "(&(objectClass=posixAccount)(cn={username}))"
+
         urls ldaps://ldap.mylogin.space:636
         bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
     }
