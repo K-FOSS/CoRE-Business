@@ -12,7 +12,7 @@ data:
     tls file /etc/tls/mail/tls.crt /etc/tls/mail/tls.key
 
     {{`
-    auth.ldap main {
+    auth.ldap local_authdb {
         debug true
 
         base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
@@ -53,7 +53,7 @@ data:
     # IMAP endpoints
 
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
-        auth &main
+        auth &local_authdb
         storage &local_mailboxes
         debug true
         io_debug true
