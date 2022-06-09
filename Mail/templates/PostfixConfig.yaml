@@ -44,29 +44,16 @@ data:
   CONF_SMTPD_DELAY_REJECT: 'yes'
   CONF_SMTPD_HELO_REQUIRED: 'yes'
   CONF_SMTPD_HELO_RESTRICTIONS: |
-    permit_mynetworks,
-    reject_non_fqdn_helo_hostname,
-    reject_invalid_helo_hostname,
-    permit
+    permit_mynetworks reject_non_fqdn_helo_hostname reject_invalid_helo_hostname permit
 
   #
   # Sender Restrictions
   #
   CONF_SMTPD_SENDER_RESTRICTIONS: |
-    permit_mynetworks,
-    reject_non_fqdn_sender,
-    reject_unknown_sender_domain,
-    permit
+    permit_mynetworks reject_non_fqdn_sender reject_unknown_sender_domain permit
 
   #
   # Recipient Restrictions
   #
   CONF_SMTPD_RECIPIENT_RESTRICTIONS: |
-    reject_unauth_pipelining,
-    reject_non_fqdn_recipient,
-    reject_unknown_recipient_domain,
-    permit_mynetworks,
-    reject_unauth_destination,
-    reject_rbl_client zen.spamhaus.org,
-    reject_rbl_client bl.spamcop.net,
-    permit
+    reject_unauth_pipelining reject_non_fqdn_recipient reject_unknown_recipient_domain permit_mynetworks reject_rbl_client zen.spamhaus.org reject_rbl_client bl.spamcop.net permit
