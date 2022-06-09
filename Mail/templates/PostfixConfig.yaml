@@ -76,4 +76,5 @@ data:
   CONF_SMTPD_RELAY_RESTRICTIONS: |
     permit_mynetworks,
     permit_sasl_authenticated,
+    defer_unauth_destination,
     reject_unauth_destination
