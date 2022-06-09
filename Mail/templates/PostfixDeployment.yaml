@@ -17,6 +17,18 @@ spec:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: postfix
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - postfix
+                topologyKey: kubernetes.io/hostname
+              weight: 100
       volumes:
         - name: simplelogin-configs
           secret:
