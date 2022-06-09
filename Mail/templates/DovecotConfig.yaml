@@ -17,6 +17,8 @@ data:
     # Authentication
     ###############
     auth_mechanisms = plain login
+    smtpd_sasl_path = inet:mail.mylogin.space:12345
+    smtpd_sasl_type = dovecot
 
     passdb {
       args = /etc/dovecot/dovecot-ldap.conf.ext
@@ -32,39 +34,11 @@ data:
     ssl_cert=</etc/tls/mail/tls.crt
     ssl_key=</etc/tls/mail/tls.key
 
-    ###############
-    # IMAP & POP
-    ###############
-    protocol imap {
-      mail_plugins = $mail_plugins imap_quota
-      mail_max_userip_connections = 20
-      imap_idle_notify_interval = 29mins
-    }
-
-    protocol pop3 {
-
-    }
-
-    service imap-login {
-      inet_listener imap {
-        port = 143
+    service auth {
+      inet_listener {
+        port = 12345
       }
     }
-
-
-    ###############
-    # Delivery
-    ###############
-    protocol lmtp {
-      mail_plugins = $mail_plugins
-    }
-
-    service lmtp {
-      inet_listener lmtp {
-        port = 2525
-      }
-    }
-
 
 
     namespace {

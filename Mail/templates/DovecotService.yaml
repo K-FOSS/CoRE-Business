@@ -10,13 +10,7 @@ spec:
     app.kubernetes.io/name: mail
     app.kubernetes.io/component: dovecot
   ports:
-    - name: imap-auth
 
-      protocol: TCP
-      #appProtocol: smtp
-
-      port: 2102
-      targetPort: auth
 
 
     # - name: imap-transport
@@ -37,20 +31,13 @@ spec:
     #   targetPort: imap
 
 
-    - name: pop3
+
+    - name: sasl
 
       protocol: TCP
 
-      port: 110
-      targetPort: pop3
-
-
-    - name: sieve
-
-      protocol: TCP
-
-      port: 4190
-      targetPort: sieve
+      port: 12345
+      targetPort: sasl
 
 
   loadBalancerIP: 10.1.1.25

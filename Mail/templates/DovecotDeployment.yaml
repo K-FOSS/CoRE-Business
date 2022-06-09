@@ -125,23 +125,8 @@ spec:
               
 
           ports:
-            - name: auth
-              containerPort: 2102
+            - name: sasl
+              containerPort: 12345
               protocol: TCP
 
-            - name: lmtp
-              containerPort: 2525
-              protocol: TCP
-
-            - name: imap
-              containerPort: 143
-              protocol: TCP
-
-            - name: pop3
-              containerPort: 110
-              protocol: TCP
-
-            - name: sieve
-              containerPort: 4190
-              protocol: TCP
 
