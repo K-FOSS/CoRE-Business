@@ -17,9 +17,6 @@ data:
         filter "(&(objectClass=posixAccount)(email={username}))"
         urls ldaps://ldap.mylogin.space:636
         bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
-
-        # DN lookup params.
-        search_base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
     }
     `}}
 
