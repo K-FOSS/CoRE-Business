@@ -13,12 +13,10 @@ data:
 
     {{`
 
-    auth.pass_table local_authdb {
-      table ldap {
+    auth.ldap local_authdb {
         debug true
 
-        base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-        filter "(&(objectClass=user)(cn={username}))"
+        dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
 
         urls ldaps://ldap.mylogin.space:636
         bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
@@ -30,6 +28,8 @@ data:
       dsn "user={{ .Username }} password={{ .Password }} host=psql.service.dc1.kjdev dbname=email sslmode=disable"
 
       debug true
+
+      
 
       msg_store s3 {
         endpoint s3.mylogin.space
