@@ -54,4 +54,7 @@ spec:
     - 224.0.0.0/4
     - 240.0.0.0/4
   egressGateway:
+    nodeSelector:
+      matchLabels:
+        kubernetes.io/os: linux
     egressIP: 66.165.222.125
