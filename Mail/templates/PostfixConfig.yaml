@@ -44,7 +44,7 @@ data:
   CONF_SMTPD_DELAY_REJECT: 'yes'
   CONF_SMTPD_HELO_REQUIRED: 'yes'
   CONF_SMTPD_HELO_RESTRICTIONS: |
-    permit_mynetworks,reject_non_fqdn_helo_hostname,reject_invalid_helo_hostname,permit
+    permit_mynetworks,permit
 
   #
   # Sender Restrictions
