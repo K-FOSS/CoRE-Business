@@ -18,9 +18,12 @@ grocy:
     # -- Set the container timezone
     TZ: UTC
     # -- Set the container user id
-    PUID: "1000"
+    PUID: '1000'
     # -- Set the container group id
-    PGID: "1000"
+    PGID: '1000'
+
+    GROCY_AUTH_CLASS: 'Grocy\Middleware\ReverseProxyAuthMiddleware'
+    GROCY_REVERSE_PROXY_AUTH_HEADER: 'X-Pomerium-Claim-preferred_username'
 
   # -- Configures service settings for the chart.
   # @default -- See values.yaml
@@ -38,7 +41,7 @@ grocy:
     main:
       enabled: true
 
-      ingressClassName: traefik-core
+      ingressClassName: pomerium
 
       labels:
         wan-mode: 'public'
@@ -47,8 +50,10 @@ grocy:
       annotations:
         cert-manager.io/cluster-issuer: kjdev-cluster
         external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: 'true'
+        ingress.pomerium.io/allowed_idp_claims: '{"groups": ["Network", "Server"]}'
+        ingress.pomerium.io/preserve_host_header: 'true'
+        ingress.pomerium.io/pass_identity_headers: 'true'
+        ingress.pomerium.io/allow_websockets: 'true'
 
       hosts:
         -  # -- Host address. Helm template can be passed.
