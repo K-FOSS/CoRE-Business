@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: business-sharing-xbackbone-config-tpl
+
+data:
+  config.php: |
+    <?php
+
+    return [
+        'base_url' => '{{ .Values.xbackbone.publicURL }}', // no trailing slash
+        'db'       => [
+            'connection' => 'sqlite',
+            'dsn'        => '/config/xbackbone.db',
+            'username'   => null,
+            'password'   => null,
+        ],
+        {{`
+        'storage' => [
+            'driver' => 's3',
+            'key' => '{{ .Username }}',
+            'secret' => '{{ .Password }}',
+            'region' => 'us-east-1',
+            'bucket' => '{{ .S3Bucket }}',
+        ],
+        `}}
+        'ldap' => [
+            'enabled' => true, // enable it
+            'schema' => 'ldaps', // use 'ldap' or 'ldaps' Default is 'ldap'
+            'host' => 'ldap.mylogin.space', // set the ldap host
+            'port' => 636, // ldap port
+            'base_domain' => 'dc=ldap,dc=mylogin,dc=space', // the base_dn string
+            'search_filter' => '(&(objectClass=user)(cn=????))', // ???? is replaced with user provided username
+            'rdn_attribute' => 'cn', // the attribute to use as username
+            {{`
+            'service_account_dn' => 'cn={{ .Username }},cn=users,dc=ldap,dc=mylogin,dc=space', // LDAP Service Account Full DN
+            'service_account_password' => '{{ .Password }}',
+            `}}
+        ],
+    ];
