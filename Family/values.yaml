@@ -24,6 +24,7 @@ grocy:
 
     GROCY_AUTH_CLASS: 'Grocy\Middleware\ReverseProxyAuthMiddleware'
     GROCY_REVERSE_PROXY_AUTH_HEADER: 'X-Pomerium-Claim-preferred_username'
+    GROCY_DISABLE_AUTH: 'true'
 
   # -- Configures service settings for the chart.
   # @default -- See values.yaml
