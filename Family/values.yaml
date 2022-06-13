@@ -76,6 +76,7 @@ grocy:
   persistence:
     config:
       enabled: false
+
     # Let the viewcache only persist for the lifetime of the pod, otherwise
     # there will cases of blank pages when upgrading the image that require
     # manually clearing the directory
