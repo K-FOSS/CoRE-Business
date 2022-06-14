@@ -107,6 +107,8 @@ xbackbone:
       mountPath: /config
       accessMode: ReadWriteOnce
 
+      type: pvc
+
       # -- The amount of storage that is requested for the persistent volume.
       size: 1Gi
 
