@@ -11,6 +11,7 @@ xbackbone:
   image:
     # -- image repository
     repository: linuxserver/xbackbone
+    tag: 3.5.1
     # -- image pull policy
     pullPolicy: IfNotPresent
 
