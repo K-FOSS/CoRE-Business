@@ -112,5 +112,7 @@ xbackbone:
       # -- The amount of storage that is requested for the persistent volume.
       size: 1Gi
 
+      nameOverride: xbackbone-data
+
       # -- Set to true to retain the PVC upon `helm uninstall`
       retain: false
