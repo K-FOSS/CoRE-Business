@@ -13,7 +13,7 @@ xbackbone:
     repository: linuxserver/xbackbone
     tag: 3.5.1
     # -- image pull policy
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
 
   # -- environment variables. See [image repo](https://github.com/Pe46dro/XBackBone-docker#environment-variables) for more details.
   # @default -- See below
