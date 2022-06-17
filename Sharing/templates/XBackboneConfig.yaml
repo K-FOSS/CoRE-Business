@@ -19,7 +19,7 @@ data:
         'storage' => [
             'driver' => 's3',
             'key' => '{{ .Username }}',
-            'secret' => '{{ .Password }}',
+            'secret' => '{{ .S3SecretKey }}',
             'region' => 'us-east-1',
             'bucket' => '{{ .S3Bucket }}',
             'endpoint' => 'https://s3.mylogin.space',

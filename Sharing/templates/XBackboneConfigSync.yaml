@@ -39,3 +39,8 @@ spec:
       remoteRef:
         key: XBackbone
         property: S3Bucket
+
+    - secretKey: S3SecretKey
+      remoteRef:
+        key: XBackbone
+        property: S3SecretKey
