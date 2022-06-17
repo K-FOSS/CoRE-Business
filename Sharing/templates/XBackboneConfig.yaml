@@ -23,6 +23,8 @@ data:
             'region' => 'us-east-1',
             'bucket' => '{{ .S3Bucket }}',
             'endpoint' => 'https://s3.mylogin.space',
+            'path' => '/',
+            'use_path_style_endpoint' => true,
         ],
         `}}
         'ldap' => [
