@@ -139,9 +139,10 @@ jitsi-meet:
     useHostPort: false
     UDPPort: 10000
     service:
-      enabled:
+      enabled: true
       type: ClusterIP
-      externalIPs: []
+      externalIPs:
+        - 66.165.222.101
       ## Annotations to be added to the service (if LoadBalancer is used)
       ##
       annotations: {}
