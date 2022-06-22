@@ -58,15 +58,9 @@ jitsi-meet:
     ## via k8s services.
     resolverIP: 10.0.8.10
 
-    livenessProbe:
-      httpGet:
-        path: /
-        port: 80
+    livenessProbe: null
 
-    readinessProbe:
-      httpGet:
-        path: /
-        port: 80
+    readinessProbe: null
 
     podLabels: {}
     podAnnotations: {}
