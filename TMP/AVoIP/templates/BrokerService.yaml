@@ -39,8 +39,4 @@ spec:
       port: 12345
       targetPort: sasl
 
-
-  loadBalancerIP: 10.1.1.25
-  externalIPs:
-    - 66.165.222.125
   type: LoadBalancer
