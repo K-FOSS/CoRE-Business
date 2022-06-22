@@ -135,7 +135,8 @@ jitsi-meet:
       user: jvb
       password:
 
-    stunServers: 'nat.ipaddr.network:3478'
+    stunServers: 'meet-jit-si-turnrelay.jitsi.net:443'
+
 
     useHostPort: false
     UDPPort: 10000
