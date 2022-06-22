@@ -118,7 +118,7 @@ jitsi-meet:
     extraEnvs: {}
 
   jvb:
-    replicaCount: 1
+    replicaCount: 2
     image:
       repository: jitsi/jvb
 
