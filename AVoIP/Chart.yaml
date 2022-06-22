@@ -1,0 +1,13 @@
+apiVersion: v2
+
+version: 1.0.0
+
+name: core-business-avoip
+
+dependencies:
+  #
+  # Collabora
+  #
+  - name: jitsi-meet
+    version: 1.2.2
+    repository: https://jitsi-contrib.github.io/jitsi-helm/
