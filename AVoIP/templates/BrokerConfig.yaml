@@ -1,0 +1,32 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-avoip-ejabberd-cfg
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-avoip-ejabberd-cfg-tpl
+    template:
+      engineVersion: v2
+
+      templateFrom:
+        - configMap:
+            name: business-avoip-ejabberd-cfg-tpl
+            # here you define the keys that should be used as template
+            items:
+              - key: eJabberD.yaml
+  data:
+    #
+    # General AAA
+    #
+    - secretKey: Username
+      remoteRef:
+        key: eJabberD
+        property: Username
+
+    - secretKey: Password
+      remoteRef:
+        key: eJabberD
+        property: Password

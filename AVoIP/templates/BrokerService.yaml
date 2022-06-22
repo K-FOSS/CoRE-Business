@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ejabberd
+
+  annotations:
+    metallb.universe.tf/allow-shared-ip: mail
+spec:
+  selector:
+    app.kubernetes.io/name: avoip
+    app.kubernetes.io/component: broker
+  ports:
+
+
+
+    # - name: imap-transport
+
+    #   protocol: TCP
+    #   #appProtocol: submissions
+
+    #   port: 2525
+    #   targetPort: lmtp
+
+
+    # - name: imap-default
+
+    #   protocol: TCP
+    #   #appProtocol: submission
+
+    #   port: 143
+    #   targetPort: imap
+
+
+
+    - name: sasl
+
+      protocol: TCP
+
+      port: 12345
+      targetPort: sasl
+
+
+  loadBalancerIP: 10.1.1.25
+  externalIPs:
+    - 66.165.222.125
+  type: LoadBalancer

@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-ejabberd
+  labels:
+    app.kubernetes.io/name: avoip
+    app.kubernetes.io/component: ejabberd
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: avoip
+      app.kubernetes.io/component: ejabberd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: avoip
+        app.kubernetes.io/component: ejabberd
+    spec:
+      volumes:
+        - name: dovecot-config
+          configMap:
+            name: business-mail-dovecot-config
+            items:
+              - key: dovecot.conf
+                path: dovecot.conf
+
+        #
+        # Secrets and Certificates
+        #
+
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.email.tls.secretName }}
+
+        - name: dkim-secrets
+          secret:
+            secretName: selector1-mail-myloginspace
+            items:
+              - key: mail.mylogin.space.selector1.key
+                path: dkim.key
+
+        #
+        # AAA
+        #
+        - name: dovecot-auth
+          secret:
+            secretName: business-mail-dovecot-auth-config
+            items:
+              - key: dovecot-oauth2.conf.ext
+                path: dovecot-oauth2.conf.ext
+
+              - key: dovecot-ldap.conf.ext
+                path: dovecot-ldap.conf.ext
+
+        - name: dovecot-storage
+          secret:
+            secretName: business-mail-dovecot-storage-config
+            items:
+              - key: dovecot-storage.conf.ext
+                path: dovecot-storage.conf.ext
+
+
+      containers:
+        - name: dovecot
+          image: dovecot/dovecot:2.3.19
+
+          volumeMounts:
+            #
+            # Configs
+            #
+            - name: dovecot-config
+              mountPath: /etc/dovecot/dovecot.conf
+              subPath: dovecot.conf
+
+            - name: dovecot-auth
+              mountPath: /etc/dovecot/dovecot-oauth2.conf.ext
+              subPath: dovecot-oauth2.conf.ext
+
+            - name: dovecot-auth
+              mountPath: /etc/dovecot/dovecot-ldap.conf.ext
+              subPath: dovecot-ldap.conf.ext
+
+            - name: dovecot-storage
+              mountPath: /etc/dovecot/dovecot-storage.conf.ext
+              subPath: dovecot-storage.conf.ext
+
+
+            #
+            # Secrets and Certificates
+            #
+            - name: tls-certs
+              mountPath: /etc/tls/mail
+
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
+
+              
+
+          ports:
+            - name: sasl
+              containerPort: 12345
+              protocol: TCP
+
+
