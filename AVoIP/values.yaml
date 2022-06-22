@@ -142,9 +142,9 @@ jitsi-meet:
 
     breweryMuc: jvbbrewery
 
-    livenessProbe: null
+    livenessProbe: {}
 
-    readinessProbe: null
+    readinessProbe: {}
 
     podLabels: {}
     podAnnotations: {}
