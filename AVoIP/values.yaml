@@ -14,7 +14,7 @@ jitsi-meet:
 
   enableAuth: false
   enableGuests: true
-  publicURL: ""
+  publicURL: https://meet.mylogin.space
 
   tz: America/Winnipeg
 
