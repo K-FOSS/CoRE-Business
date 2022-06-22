@@ -56,10 +56,7 @@ jitsi-meet:
     ## Set this to ClusterIP of your `kube-dns` service
     ## when using websockets and discovering JVB's address
     ## via k8s services.
-    resolverIP: 10.0.8.10
-
-    livenessProbe: null
-
+    resolverIP: 10.0.8.1
     readinessProbe: null
 
     podLabels: {}
