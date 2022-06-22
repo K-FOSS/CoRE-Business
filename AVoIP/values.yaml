@@ -142,15 +142,9 @@ jitsi-meet:
 
     breweryMuc: jvbbrewery
 
-    livenessProbe:
-      httpGet:
-        path: /about/health
-        port: 8080
+    livenessProbe: null
 
-    readinessProbe:
-      httpGet:
-        path: /about/health
-        port: 8080
+    readinessProbe: null
 
     podLabels: {}
     podAnnotations: {}
