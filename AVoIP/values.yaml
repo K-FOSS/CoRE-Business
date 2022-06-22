@@ -269,7 +269,8 @@ jitsi-meet:
     name:
 
   xmpp:
-    domain: meet.mylogin.space
+    domain: meet.jitsi
+
     authDomain:
     mucDomain:
     internalMucDomain:
