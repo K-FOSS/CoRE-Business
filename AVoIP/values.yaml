@@ -91,7 +91,7 @@ jitsi-meet:
     affinity: {}
 
   jicofo:
-    replicaCount: 1
+    replicaCount: 2
     image:
       repository: jitsi/jicofo
 
