@@ -233,7 +233,7 @@ data:
       mod_s2s_dialback:
         access:
           allow:
-            server: {{ env "NOMAD_ALLOC_INDEX" }}.ejabberd.service.kjdev
+            server: ejabberd.service.kjdev
           deny: all
       mod_shared_roster: {}
       mod_stream_mgmt:
