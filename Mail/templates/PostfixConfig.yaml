@@ -56,7 +56,7 @@ data:
   # Recipient Restrictions
   #
   CONF_SMTPD_RECIPIENT_RESTRICTIONS: |
-    reject_unauth_pipelining,reject_non_fqdn_recipient,reject_unknown_recipient_domain,permit_mynetworks,permit
+    reject_unauth_pipelining,reject_non_fqdn_recipient,permit_mynetworks,permit
 
   CONF_SMTPD_RELAY_RESTRICTIONS: |
     permit_sasl_authenticated,permit_mynetworks,reject_unauth_destination
