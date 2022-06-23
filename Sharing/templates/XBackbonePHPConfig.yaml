@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: business-sharing-xbackbone-php-config
+
+data:
+  php-local.ini: |
+    upload_max_filesize = 1000M
+    post_max_size = 1000M
