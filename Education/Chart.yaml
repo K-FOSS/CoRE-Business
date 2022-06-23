@@ -1,0 +1,8 @@
+apiVersion: v2
+version: 1.0.0
+name: core-business-education
+
+dependencies:
+  - name: moodle
+    version: 14.1.9
+    repository: https://charts.bitnami.com/bitnami
