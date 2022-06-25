@@ -13,6 +13,7 @@ spec:
       data:
         # multiline string
         DBURI: '{{`postgresql://{{ .Username }}:{{ .Password }}@psql.service.kjdev:5432/{{ .DatabaseDatabase }}`}}'
+
   data:
     - secretKey: DatabaseDatabase
       remoteRef:

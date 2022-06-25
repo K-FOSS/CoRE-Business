@@ -1,0 +1,31 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-vaultwarden-mail-prod-sync
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-vaultwarden-mail-prod
+
+  data:
+    - secretKey: Hostname
+      remoteRef:
+        key: SMTP
+        property: Hostname
+
+    - secretKey: Port
+      remoteRef:
+        key: SMTP
+        property: Port
+
+    - secretKey: Username
+      remoteRef:
+        key: SMTP
+        property: Username
+      
+    - secretKey: Password
+      remoteRef:
+        key: SMTP
+        property: Password
