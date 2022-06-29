@@ -1,13 +1,13 @@
 apiVersion: external-secrets.io/v1alpha1
 kind: ExternalSecret
 metadata:
-  name: 'business-communications-mattermost-db-sync-{{ .Values.mattermost-team-edition.environment }}'
+  name: 'business-communications-mattermost-db-sync-{{ .Values.environment }}'
 spec:
   secretStoreRef:
     name: vault-backend
     kind: ClusterSecretStore
   target:
-    name: 'business-communications-mattermost-db-{{ .Values.mattermost-team-edition.environment }}'
+    name: 'business-communications-mattermost-db-{{ .Values.environment }}'
     template:
       engineVersion: v2
       data:

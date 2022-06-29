@@ -1,5 +1,6 @@
+environment: prod
+
 mattermost-team-edition:
-  environment: prod
 
   # Default values for mattermost-team-edition.
   # This is a YAML-formatted file.

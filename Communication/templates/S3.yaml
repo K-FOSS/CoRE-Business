@@ -1,13 +1,13 @@
 apiVersion: external-secrets.io/v1alpha1
 kind: ExternalSecret
 metadata:
-  name: 'business-communications-s3-sync-{{ .Values.mattermost-team-edition.environment }}'
+  name: 'business-communications-s3-sync-{{ .Values.environment }}'
 spec:
   secretStoreRef:
     name: vault-backend
     kind: ClusterSecretStore
   target:
-    name: 'business-communications-s3-{{ .Values.mattermost-team-edition.environment }}'
+    name: 'business-communications-s3-{{ .Values.environment }}'
 
   data:
     - secretKey: S3Bucket
