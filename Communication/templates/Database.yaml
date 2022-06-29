@@ -1,0 +1,47 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-communications-mattermost-db-sync-{{ .Values.mattermost-team-edition.environment }}
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-communications-mattermost-db-{{ .Values.mattermost-team-edition.environment }}
+    template:
+      engineVersion: v2
+      data:
+        DatabaseURI: '{{`{{ .DatabaseURI }}`}}'
+
+        DB_CONNECTION_STRING: '{{`postgres://{{ .Username }}:{{ .Password }}@psql.service.dc1.kjdev:5432/{{ .DatabaseDatabase }}?sslmode=disable&connect_timeout=10`}}'
+  
+  data:
+    - secretKey: DatabaseDatabase
+      remoteRef:
+        key: Mattermost
+        property: DatabaseDatabase
+
+    - secretKey: Username
+      remoteRef:
+        key: Mattermost
+        property: DatabaseUsername
+
+    - secretKey: Password
+      remoteRef:
+        key: Mattermost
+        property: DatabasePassword
+
+    - secretKey: GitLabClientID
+      remoteRef:
+        key: Mattermost
+        property: GitLabClientID
+      
+    - secretKey: GitLabClientSecret
+      remoteRef:
+        key: Mattermost
+        property: GitLabClientSecret
+
+    - secretKey: DatabaseURI
+      remoteRef:
+        key: Mattermost
+        property: DatabaseURI

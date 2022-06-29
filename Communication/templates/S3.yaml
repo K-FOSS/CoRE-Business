@@ -1,0 +1,26 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-communications-s3-sync-{{ .Values.mattermost-team-edition.environment }}
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-communications-s3-{{ .Values.mattermost-team-edition.environment }}
+
+  data:
+    - secretKey: S3Bucket
+      remoteRef:
+        key: Mattermost
+        property: S3Bucket
+
+    - secretKey: accesskey
+      remoteRef:
+        key: Mattermost
+        property: S3AccessKey
+      
+    - secretKey: secretkey
+      remoteRef:
+        key: Mattermost
+        property: S3SecretKey

@@ -1,0 +1,13 @@
+apiVersion: v2
+
+version: 1.0.0
+
+name: core-business-comms
+
+dependencies:
+  #
+  # Mattermost
+  #
+  - name: mattermost-team-edition
+    repository: https://helm.mattermost.com
+    version: 6.6.1
