@@ -1,0 +1,33 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: teams-compression
+
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: mattermost-team-edition
+
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: SIDECAR_INBOUND
+        listener:
+          filterChain:
+            filter:
+              name: envoy.http_connection_manager
+              subFilter:
+                name: envoy.router
+
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.compressor
+          typed_config:
+            # See https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/compressor_filter for full options
+            '@type': type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
+            compressor_library:
+              name: text_optimized
+              typed_config:
+                '@type': type.googleapis.com/envoy.extensions.compression.brotli.compressor.v3.Brotli
+            remove_accept_encoding_header: true
