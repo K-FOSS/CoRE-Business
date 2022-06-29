@@ -1,7 +1,8 @@
 apiVersion: external-secrets.io/v1alpha1
 kind: ExternalSecret
 metadata:
-  name: 'mattermost-sync-{{ .Values.mattermost-team-edition.environment }}'
+  name: mattermost-sync
+
 spec:
   secretStoreRef:
     name: vault-backend
