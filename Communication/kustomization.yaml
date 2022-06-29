@@ -8,4 +8,4 @@ commonLabels:
   sidecar.istio.io/inject: 'true'
 
 resources:
-  - MattermostDeploy.yaml
+  - ./MattermostDeploy.yaml
