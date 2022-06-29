@@ -1,13 +1,13 @@
 apiVersion: external-secrets.io/v1alpha1
 kind: ExternalSecret
 metadata:
-  name: mattermost-sync-{{ .Values.mattermost-team-edition.environment }}
+  name: 'mattermost-sync-{{ .Values.mattermost-team-edition.environment }}'
 spec:
   secretStoreRef:
     name: vault-backend
     kind: ClusterSecretStore
   target:
-    name: mattermost-synced-{{ .Values.mattermost-team-edition.environment }}
+    name: 'mattermost-synced-{{ .Values.mattermost-team-edition.environment }}'
     template:
       data:
         DatabaseURI: '{{`postgres://{{ .DatabaseUsername | toString }}:{{ .DatabasePassword | toString }}@{{ .DatabaseHostname | toString }}:{{ .DatabasePort | toString }}/{{ .DatabaseDatabase | toString }}?sslmode=disable`}}'
