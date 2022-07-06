@@ -23,7 +23,7 @@ data:
     # Choose one: enable submission for loopback clients only, or for any client.
     #127.0.0.1:submission inet n -   n       -       -       smtpd
     submission inet n       -       n       -       -       smtpd
-    smtps     inet  n       -       y       -       -       smtpd
+    smtps     inet  n       -       n       -       -       smtpd
     #  -o syslog_name=postfix/submission
     #  -o smtpd_tls_security_level=encrypt
     #  -o smtpd_sasl_auth_enable=yes
