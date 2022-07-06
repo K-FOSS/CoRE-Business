@@ -41,6 +41,13 @@ spec:
               - key: pgsql-transport-maps.cf
                 path: pgsql-transport-maps.cf
 
+        - name: misc-config
+          configMap:
+            name: simplelogin-postfix-misc-config
+            items:
+              - key: master.cf
+                path: master.cf
+
         - name: ldap-configs
           secret:
             secretName: business-mail-postfix-auth-config
@@ -74,6 +81,14 @@ spec:
                 name: simplelogin-postfix-cfg
 
           volumeMounts:
+            #
+            # Misc
+            #
+            - name: misc-config
+              mountPath: /etc/postfix/master.cf
+              subPath: master.cf
+
+
             - name: simplelogin-configs
               mountPath: /etc/postfix/pgsql-relay-domains.cf
               subPath: pgsql-relay-domains.cf
