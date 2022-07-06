@@ -21,6 +21,7 @@ data:
   CONF_SMTPD_SASL_TYPE: 'dovecot'
   CONF_SMTPD_SASL_AUTH_ENABLE: 'yes'
   CONF_BROKEN_SASL_AUTH_CLIENTS: 'yes'
+  CONF_SMTPD_USE_TLS: 'yes'
 
   #
   # My Hosts
