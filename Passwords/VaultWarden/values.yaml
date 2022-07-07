@@ -5,6 +5,11 @@ vaultwarden:
     # -- image pull policy
     pullPolicy: IfNotPresent
 
+    podLabels:
+      sidecar.istio.io/inject: 'true'
+
+    podAnnotations:
+      sidecar.istio.io/inject: 'true'
 
   strategy:
     type: Recreate
