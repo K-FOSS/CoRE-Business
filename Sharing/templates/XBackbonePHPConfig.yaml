@@ -5,6 +5,6 @@ metadata:
 
 data:
   php-local.ini: |
-    upload_max_filesize = 0
-    post_max_size = 0
+    upload_max_filesize = 10G
+    post_max_size = 10G
     memory_limit = -1
