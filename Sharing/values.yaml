@@ -8,6 +8,13 @@ xbackbone:
   #
   publicURL: https://share.kjmedia.stream
 
+  podAnnotations:
+    sidecar.istio.io/inject: 'true'
+
+  # -- Set labels on the pod
+  podLabels:
+    sidecar.istio.io/inject: 'true'
+
   image:
     # -- image repository
     repository: linuxserver/xbackbone
@@ -52,7 +59,7 @@ xbackbone:
     # -- Enable and configure ingress settings for the chart under this key.
     # @default -- See values.yaml
     main:
-      enabled: true
+      enabled: false
       ingressClassName: traefik-core
 
       labels:
