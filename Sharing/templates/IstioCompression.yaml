@@ -1,7 +1,7 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: EnvoyFilter
 metadata:
-  name: office-compression
+  name: xbackbone-compression
 
 spec:
   workloadSelector:
