@@ -8,12 +8,10 @@ xbackbone:
   #
   publicURL: https://share.kjmedia.stream
 
-  podAnnotations:
-    sidecar.istio.io/inject: 'true'
+  podAnnotations: {}
 
   # -- Set labels on the pod
-  podLabels:
-    sidecar.istio.io/inject: 'true'
+  podLabels: {}
 
   image:
     # -- image repository
