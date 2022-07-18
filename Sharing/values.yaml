@@ -8,15 +8,17 @@ xbackbone:
   #
   publicURL: https://share.kjmedia.stream
 
-  podAnnotations: {}
+  podAnnotations:
+    sidecar.istio.io/inject: 'true'
 
   # -- Set labels on the pod
-  podLabels: {}
+  podLabels:
+    sidecar.istio.io/inject: 'true'
 
   image:
     # -- image repository
     repository: linuxserver/xbackbone
-    tag: 3.5.1
+    tag: 3.6.0
     # -- image pull policy
     pullPolicy: Always
 
