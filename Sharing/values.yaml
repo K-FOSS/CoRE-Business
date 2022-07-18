@@ -86,7 +86,7 @@ xbackbone:
   persistence:
     config:
       # -- Enables or disables the persistence item
-      enabled: false
+      enabled: true
 
       # -- Sets the persistence type
       # Valid options are pvc, emptyDir, hostPath, secret, configMap or custom
@@ -97,7 +97,7 @@ xbackbone:
       # -- Where to mount the volume in the main container.
       # Defaults to `/<name_of_the_volume>`,
       # setting to '-' creates the volume but disables the volumeMount.
-      mountPath: /app/config.example.php.new
+      mountPath: /app/random.php
       # -- Specify if the volume should be mounted read-only.
       readOnly: false
       # -- Override the name suffix that is used for this volume.
