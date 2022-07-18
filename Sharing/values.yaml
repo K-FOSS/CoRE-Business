@@ -86,7 +86,7 @@ xbackbone:
   persistence:
     config:
       # -- Enables or disables the persistence item
-      enabled: true
+      enabled: false
 
       # -- Sets the persistence type
       # Valid options are pvc, emptyDir, hostPath, secret, configMap or custom
@@ -108,7 +108,7 @@ xbackbone:
 
     phpconfig:
       # -- Enables or disables the persistence item
-      enabled: true
+      enabled: false
 
       # -- Sets the persistence type
       # Valid options are pvc, emptyDir, hostPath, secret, configMap or custom
