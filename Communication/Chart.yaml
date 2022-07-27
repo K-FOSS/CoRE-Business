@@ -10,4 +10,4 @@ dependencies:
   #
   - name: mattermost-team-edition
     repository: https://helm.mattermost.com
-    version: 6.6.1
+    version: 6.6.9

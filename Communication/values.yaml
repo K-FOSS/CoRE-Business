@@ -12,6 +12,15 @@ mattermost-team-edition:
     tag: latest
     imagePullPolicy: IfNotPresent
 
+  resources:
+    requests:
+      memory: 512M
+      cpu: 512m
+
+    limits:
+      memory: "2G"
+      cpu: 1024m
+
   initContainerImage:
     repository: appropriate/curl
     tag: latest
