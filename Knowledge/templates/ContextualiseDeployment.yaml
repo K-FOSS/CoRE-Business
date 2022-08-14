@@ -42,6 +42,7 @@ spec:
           volumeMounts:
             - mountPath: /src/contextualise/settings.cfg
               name: contextualise-config
+              subPath: settings.cfg
 
             - mountPath: /data
               name: data-volume
