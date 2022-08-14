@@ -1,0 +1,19 @@
+{{- $fullName := include "knowledge.fullname" . -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-contextualise
+
+spec:
+  selector:
+    app: {{ $fullName }}-contextualise
+
+  ports:
+    - name: http
+
+      targetPort: http
+      port: 80
+
+      protocol: TCP
+      appProtocol: http

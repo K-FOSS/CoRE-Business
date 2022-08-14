@@ -1,0 +1,11 @@
+{{- $fullName := include "knowledge.fullname" . -}}
+---
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: {{ $fullName }}-contextualise
+
+data:
+  settings.cfg: |
+    DATABASE_FILE = "/data/contextualise.db"

@@ -1,0 +1,55 @@
+{{- $fullName := include "knowledge.fullname" . -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-contextualise
+
+  labels:
+    app: {{ $fullName }}-contextualise
+
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ $fullName }}-contextualise
+
+  template:
+    metadata:
+      labels:
+        app: {{ $fullName }}-contextualise
+
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsNonRoot: true
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - image: kristianfoss/contextualise:core
+          name: contextualise
+
+          ports:
+            - name: http
+              containerPort: 5000
+
+          env:
+            - name: CONTEXTUALISE_SETTINGS
+              value: /src/contextualise/settings.cfg
+
+          volumeMounts:
+            - mountPath: /src/contextualise/settings.cfg
+              name: contextualise-config
+
+            - mountPath: /data
+              name: data-volume
+
+      volumes:
+        - name: contextualise-config
+          configMap:
+            name: {{ $fullName }}-contextualise
+
+        - name: data-volume
+          emptyDir: {}
