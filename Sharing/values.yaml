@@ -53,6 +53,9 @@ blink:
 
     - name: HOMEPAGE
       value: https://links.mylogin.space
+
+    - name: OAUTH2_ENABLED
+      value: 'false'
   
     - name: DATABASE_URL
       valueFrom:
