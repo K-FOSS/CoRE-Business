@@ -9,6 +9,7 @@ metadata:
 spec:
   hosts:
     - {{ $domain }}
+    - links.mylogin.space
 
   gateways:
     - {{ .Values.blink.istio.gateway }}
@@ -20,6 +21,9 @@ spec:
             host:
               exact: {{ $domain }}
 
+        - headers:
+            host:
+              exact: links.mylogin.space
       route:
         - destination:
             port:

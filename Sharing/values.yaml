@@ -2,6 +2,7 @@ blink:
   enabled: true
 
   publicURI: snd.fyi
+  publicWeb: links.mylogin.space
 
   clusterDomain: k0s.resolvemy.host
 
@@ -49,6 +50,9 @@ blink:
 
     - name: REDIS_URL
       value: redis://10.1.1.68/95
+
+    - name: HOMEPAGE
+      value: https://links.mylogin.space      
   
     - name: DATABASE_URL
       valueFrom:
