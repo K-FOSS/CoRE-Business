@@ -43,7 +43,7 @@ blink:
 
   extraEnv:
     - name: OIDC_ISSUER_BASE_URL
-      value: https://idp.mylogin.space/application/o/Links/
+      value: https://idp.mylogin.space/application/o/Links/.well-known/openid-configuration
 
     - name: PROXY_TRUST
       value: 'true'
@@ -52,7 +52,7 @@ blink:
       value: redis://10.1.1.68/95
 
     - name: HOMEPAGE
-      value: https://links.mylogin.space      
+      value: https://links.mylogin.space
   
     - name: DATABASE_URL
       valueFrom:
