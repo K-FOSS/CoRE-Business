@@ -79,9 +79,9 @@ spec:
             - name: BASE_URL
               value: https://{{ $domain }}
 
-          {{- with .Values.blink.extraEnv }}
-          {{- toYaml . | nindent 10 }}
-          {{- end }}
+            {{- with .Values.blink.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
 
           ports:
             - containerPort: 80
