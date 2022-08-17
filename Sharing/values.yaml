@@ -1,6 +1,13 @@
 blink:
   enabled: true
 
+  publicURI: snd.fyi
+
+  clusterDomain: k0s.resolvemy.host
+
+  istio:
+    gateway: ingressgateway
+
   image:
     repository: ghcr.io/janejeon/blink
     tag: latest
@@ -32,7 +39,18 @@ blink:
   podAntiAffinity: soft
   podAntiAffinityTopologyKey: kubernetes.io/hostname
   affinity: {}
-  extraEnv: []
+
+  extraEnv:
+    - name: OIDC_ISSUER_BASE_URL
+      value: https://idp.mylogin.space/application/o/Links/
+
+    - name: OIDC_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: blink-links-server-secrets
+          key: OpenIDClientID
+          optional: false
+ 
   sidecars: []
   extraVolumes: []
   extraVolumeMounts: []

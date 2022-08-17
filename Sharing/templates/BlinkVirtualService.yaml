@@ -1,0 +1,28 @@
+{{ $domain := .Values.blink.publicURI }}
+{{- $fullName := include "sharing.fullname" . -}}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ $fullName }}-blink-server
+
+spec:
+  hosts:
+    - {{ $domain }}
+
+  gateways:
+    - {{ .Values.blink.istio.gateway }}
+
+  http:
+    - name: {{ $fullName }}-blink-server
+      match:
+        - headers:
+            host:
+              exact: {{ $domain }}
+
+      route:
+        - destination:
+            port:
+              number: 80
+
+            host: {{ $fullName }}-blink-server.{{ .Release.Namespace }}.svc.{{ .Values.blink.clusterDomain }}

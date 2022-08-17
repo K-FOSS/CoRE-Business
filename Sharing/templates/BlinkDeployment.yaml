@@ -1,5 +1,6 @@
 {{- if .Values.blink.enabled }}
 {{- $fullName := include "sharing.fullname" . -}}
+{{ $domain := .Values.blink.publicURI }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -19,7 +20,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   
-  name: {{ $fullName }}-blink
+  name: {{ $fullName }}-blink-server
 
 spec:
   replicas: {{ .Values.blink.replicaCount }}
@@ -73,14 +74,14 @@ spec:
           resources:
             {{- toYaml .Values.blink.resources | nindent 12 }}
 
+
           env:
-            - name: NETBIRD_MGMT_API_ENDPOINT
-              value: 0.0.0.0:67
+            - name: BASE_URL
+              value: https://{{ $domain }}
 
-            - name: NETBIRD_MGMT_GRPC_API_ENDPOINT
-              value: ''
-
-
+          {{- with .Values.blink.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
 
           ports:
             - containerPort: 80
