@@ -6,7 +6,7 @@ blink:
   clusterDomain: k0s.resolvemy.host
 
   istio:
-    gateway: ingressgateway
+    gateway: core-gateway
 
   image:
     repository: ghcr.io/janejeon/blink
