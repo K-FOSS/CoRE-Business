@@ -44,6 +44,9 @@ blink:
     - name: OIDC_ISSUER_BASE_URL
       value: https://idp.mylogin.space/application/o/Links/
 
+    - name: PROXY_TRUST
+      value: true
+
     - name: REDIS_URL
       value: redis://10.1.1.68/95
   
