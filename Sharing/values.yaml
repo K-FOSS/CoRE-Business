@@ -49,7 +49,7 @@ blink:
       value: 'true'
 
     - name: REDIS_URL
-      value: redis://10.1.1.68/95
+      value: redis://10.1.1.68
 
     - name: HOMEPAGE
       value: https://links.mylogin.space
