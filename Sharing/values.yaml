@@ -54,6 +54,13 @@ blink:
           key: DBURI
           optional: false
 
+    - name: SESSION_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: blink-links-server-secrets
+          key: SessionSecret
+          optional: false
+
     - name: OIDC_CLIENT_ID
       valueFrom:
         secretKeyRef:
