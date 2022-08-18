@@ -163,13 +163,21 @@ outline:
     # AZURE_CLIENT_ID: ""
     # AZURE_CLIENT_SECRET: ""
     # AZURE_RESOURCE_APP_ID: ""
-    # OIDC_CLIENT_ID: ""
-    # OIDC_CLIENT_SECRET: ""
-    # OIDC_AUTH_URI: ""
-    # OIDC_TOKEN_URI: ""
-    # OIDC_USERINFO_URI: ""
+    OIDC_CLIENT_ID:
+      secretKeyRef:
+        name: business-knowledge-outline-oidc
+        key: OpenIDClientID
+
+    OIDC_CLIENT_SECRET:
+      secretKeyRef:
+        name: business-knowledge-outline-oidc
+        key: OpenIDClientSecret
+    
+    OIDC_AUTH_URI: https://idp.mylogin.space/application/o/authorize/
+    OIDC_TOKEN_URI: https://idp.mylogin.space/application/o/token/
+    OIDC_USERINFO_URI: https://idp.mylogin.space/application/o/userinfo/
     # OIDC_USERNAME_CLAIM: ""
-    # OIDC_DISPLAY_NAME: ""
+    OIDC_DISPLAY_NAME: "Authentik"
     # OIDC_SCOPES: ""
     # SENTRY_DSN: ""
     # AWS_ACCESS_KEY_ID: ""
