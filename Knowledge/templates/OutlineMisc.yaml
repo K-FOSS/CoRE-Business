@@ -1,0 +1,21 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-knowledge-outline-misc
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-knowledge-outline-misc
+
+  data:
+    - secretKey: SecretKey
+      remoteRef:
+        key: Outline
+        property: SecretKey
+
+    - secretKey: UtilsSecret
+      remoteRef:
+        key: Outline
+        property: UtilsSecret

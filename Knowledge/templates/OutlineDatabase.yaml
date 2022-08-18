@@ -1,0 +1,32 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-knowledge-outline-db
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-knowledge-outline-db
+    template:
+      engineVersion: v2
+      data:
+        # multiline string
+        DBURI: '{{`postgresql://{{ .DatabaseUsername }}:{{ .DatabasePassword }}@psql.service.kjdev:5432/{{ .DatabaseDatabase }}`}}'
+
+
+  data:
+    - secretKey: DatabaseDatabase
+      remoteRef:
+        key: Outline
+        property: DatabaseDatabase
+
+    - secretKey: DatabaseUsername
+      remoteRef:
+        key: Outline
+        property: DatabaseUsername
+      
+    - secretKey: DatabasePassword
+      remoteRef:
+        key: Outline
+        property: DatabasePassword
