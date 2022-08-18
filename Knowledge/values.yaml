@@ -182,7 +182,8 @@ outline:
     # SENTRY_DSN: ""
     # AWS_ACCESS_KEY_ID: ""
     # AWS_SECRET_ACCESS_KEY: ""
-    # AWS_REGION: ""
+    #AWS_REGION: us-east-1
+
     # AWS_S3_ACCELERATE_URL: ""
     # AWS_S3_UPLOAD_BUCKET_URL: ""
     # AWS_S3_UPLOAD_BUCKET_NAME: ""
@@ -243,26 +244,23 @@ outline:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              name: dbcreds
-              key: url-noql
+              name: business-knowledge-outline-db
+              key: DBURI
 
         - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: rediscreds
-              key: url
+          value: redis://10.1.1.68/100
 
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: outline-secrets
-              key: SECRET_KEY
+              name: business-knowledge-outline-misc
+              key: SecretKey
 
         - name: UTILS_SECRET
           valueFrom:
             secretKeyRef:
-              name: outline-secrets
-              key: UTILS_SECRET
+              name: business-knowledge-outline-misc
+              key: UtilsSecret
 
       command:
         ["sh", "-c", "yarn sequelize db:migrate --env=production-ssl-disabled"]
