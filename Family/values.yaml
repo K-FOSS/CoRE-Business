@@ -23,7 +23,7 @@ grocy:
     PGID: '1000'
 
     GROCY_AUTH_CLASS: 'Grocy\Middleware\ReverseProxyAuthMiddleware'
-    GROCY_REVERSE_PROXY_AUTH_HEADER: 'X-Pomerium-Claim-preferred_username'
+    GROCY_REVERSE_PROXY_AUTH_HEADER: 'X-authentik-username'
     GROCY_DISABLE_AUTH: 'true'
 
   # -- Configures service settings for the chart.
@@ -40,37 +40,7 @@ grocy:
     # -- Enable and configure ingress settings for the chart under this key.
     # @default -- See values.yaml
     main:
-      enabled: true
-
-      ingressClassName: pomerium
-
-      labels:
-        wan-mode: 'public'
-        lan-mode: 'private'
-
-      annotations:
-        cert-manager.io/cluster-issuer: kjdev-cluster
-        external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
-        ingress.pomerium.io/allowed_idp_claims: '{"groups": ["Network", "Server"]}'
-        ingress.pomerium.io/preserve_host_header: 'true'
-        ingress.pomerium.io/pass_identity_headers: 'true'
-        ingress.pomerium.io/allow_websockets: 'true'
-
-      hosts:
-        -  # -- Host address. Helm template can be passed.
-          host: grocy.controlcenter.house
-          ## Configure the paths for the host
-          paths:
-            -  # -- Path.  Helm template can be passed.
-              path: /
-              # -- Ignored if not kubeVersion >= 1.14-0
-              pathType: Prefix
-
-      # -- Configure TLS for the ingress. Both secretName and hosts can process a Helm template.
-      tls:
-        - secretName: controlcenterhouse-default-certificates
-          hosts:
-            - '*.controlcenter.house'
+      enabled: false
 
   # -- Configure persistence settings for the chart under this key.
   # @default -- See values.yaml
