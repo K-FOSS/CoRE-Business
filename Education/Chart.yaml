@@ -4,5 +4,5 @@ name: core-business-education
 
 dependencies:
   - name: moodle
-    version: 14.1.9
+    version: 14.1.16
     repository: https://charts.bitnami.com/bitnami
