@@ -57,6 +57,9 @@ blink:
     - name: OAUTH2_ENABLED
       value: 'false'
 
+    - name: LOG_LEVEL
+      value: DEBUG
+
     - name: REACT_APP_BASE_URL
       value: https://links.mylogin.space
   
