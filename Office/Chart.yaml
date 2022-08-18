@@ -16,3 +16,11 @@ dependencies:
   - name: nextcloud
     version: 3.0.2
     repository: https://nextcloud.github.io/helm/
+
+  #
+  # Vikunja
+  #
+  - name: vikunja
+    version: 6.1.2
+    condition: vikunja.enabled
+    repository: https://k8s-at-home.com/charts/
