@@ -97,7 +97,7 @@ moodle:
   ## @param moodleEmail Admin email
   ## ref: https://github.com/bitnami/bitnami-docker-moodle#configuration
   ##
-  moodleEmail: user@example.com
+  moodleEmail: k@example.com
 
   ## @param allowEmptyPassword Allow DB blank passwords
   ## ref: https://github.com/bitnami/bitnami-docker-moodle#environment-variables
@@ -209,61 +209,7 @@ moodle:
   persistence:
     ## @param persistence.enabled Enable persistence using PVC
     ##
-    enabled: true
-
-    ## @param persistence.customStorageClass Create a custom storage class
-    ## Requires persistence.enabled: true
-    ## Requires persistence.storageClass: name
-    ## ref: https://kubernetes.io/docs/concepts/storage/storage-classes/
-    ## E.g.
-    ## provisioner: efs.csi.aws.com
-    ##   parameters:
-    ##     provisioningMode: efs-ap
-    ##     fileSystemId: fs-12345678
-    ##     directoryPerms: "700"
-    ##     gidRangeStart: "1000" # optional
-    ##     gidRangeEnd: "2000" # optional
-    ##
-    customStorageClass: {}
-
-    ## @param persistence.storageClass PVC Storage Class for Moodle
-    ## If defined, storageClassName: <storageClass>
-    ## If set to "-", storageClassName: "", which disables dynamic provisioning
-    ## If undefined (the default) or set to null, no storageClassName spec is
-    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-    ##   GKE, AWS & OpenStack)
-    ##
-    storageClass: ""
-
-    ## @param persistence.accessModes PVC Access Mode for Moodle
-    ## Requires persistence.enabled: true
-    ## If defined, and no customStorageClass is defined, then
-    ## PVC must be created manually before volume will be bound
-    ##
-    accessModes:
-      - ReadWriteOnce
-
-    ## @param persistence.size PVC Storage Request for Moodle
-    ##
-    size: 8Gi
-
-    ## @param persistence.existingClaim An Existing PVC name
-    ## Requires persistence.enabled: true
-    ## If defined, PVC must be created manually before volume will be bound
-    ##
-    existingClaim: ""
-
-    ## @param persistence.hostPath Host mount path for Moodle
-    ## Requires persistence.enabled: true
-    ## Requires persistence.existingClaim: nil|false
-    ## Default: nil.
-    ##
-    hostPath: ""
-
-    ## @param persistence.annotations Persistent Volume Claim annotations
-    ##
-    annotations: {}
-
+    enabled: false
 
   ## @param podAffinityPreset Pod affinity preset
   ## ref: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
@@ -438,7 +384,7 @@ moodle:
   service:
     ## @param service.type Service type
     ##
-    type: LoadBalancer
+    type: ClusterIP
     ## @param service.ports.http Service HTTP port
     ## @param service.ports.https Service HTTPS port
     ##
@@ -506,97 +452,7 @@ moodle:
     ## @param ingress.enabled Set to true to enable ingress record generation
     ##
     enabled: false
-    ## DEPRECATED: Use ingress.annotations instead of ingress.certManager
-    ## certManager: false
-    ##
 
-    ## @param ingress.pathType Ingress Path type
-    ##
-    pathType: ImplementationSpecific
-    ## @param ingress.apiVersion Override API Version (automatically detected if not set)
-    ##
-    apiVersion: ""
-    ## @param ingress.hostname When the ingress is enabled, a host pointing to this will be created
-    ##
-    hostname: moodle.local
-    ## @param ingress.path The Path to Moodle&trade;. You may need to set this to '/*' in order to use this with ALB ingress controllers.
-    ##
-    path: /
-    ## @param ingress.annotations Additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations.
-    ## For a full list of possible ingress annotations, please see
-    ## ref: https://github.com/kubernetes/ingress-nginx/blob/master/docs/user-guide/nginx-configuration/annotations.md
-    ## Use this parameter to set the required annotations for cert-manager, see
-    ## ref: https://cert-manager.io/docs/usage/ingress/#supported-annotations
-    ##
-    ## e.g:
-    ## annotations:
-    ##   kubernetes.io/ingress.class: nginx
-    ##   cert-manager.io/cluster-issuer: cluster-issuer-name
-    ##
-    annotations: {}
-    ## @param ingress.tls Enable TLS configuration for the hostname defined at ingress.hostname parameter
-    ## TLS certificates will be retrieved from a TLS secret with name: {{- printf "%s-tls" .Values.ingress.hostname }}
-    ## You can use the ingress.secrets parameter to create this TLS secret or relay on cert-manager to create it
-    ##
-    tls: false
-    ## @param ingress.extraHosts The list of additional hostnames to be covered with this ingress record.
-    ## Most likely the hostname above will be enough, but in the event more hosts are needed, this is an array
-    ## extraHosts:
-    ## - name: minio.local
-    ##   path: /
-    ##
-    extraHosts: []
-    ## @param ingress.extraPaths Any additional arbitrary paths that may need to be added to the ingress under the main host.
-    ## For example: The ALB ingress controller requires a special rule for handling SSL redirection.
-    ## extraPaths:
-    ## - path: /*
-    ##   backend:
-    ##     serviceName: ssl-redirect
-    ##     servicePort: use-annotation
-    ##
-    extraPaths: []
-    ## @param ingress.extraTls The tls configuration for additional hostnames to be covered with this ingress record.
-    ## see: https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
-    ## extraTls:
-    ## - hosts:
-    ##     - minio.local
-    ##   secretName: minio.local-tls
-    ##
-    extraTls: []
-    ## @param ingress.secrets If you're providing your own certificates, please use this to add the certificates as secrets
-    ## key and certificate should start with -----BEGIN CERTIFICATE----- or
-    ## -----BEGIN RSA PRIVATE KEY-----
-    ##
-    ## name should line up with a tlsSecret set further up
-    ## If you're using cert-manager, this is unneeded, as it will create the secret for you if it is not set
-    ##
-    ## It is also possible to create and manage the certificates outside of this helm chart
-    ## Please see README.md for more information
-    ## e.g:
-    ## - name: minio.local-tls
-    ##   key:
-    ##   certificate:
-    ##
-    secrets: []
-    ## @param ingress.ingressClassName IngressClass that will be be used to implement the Ingress (Kubernetes 1.18+)
-    ## This is supported in Kubernetes 1.18+ and required if you have more than one IngressClass marked as the default for your cluster .
-    ## ref: https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/
-    ##
-    ingressClassName: ""
-    ## @param ingress.extraRules Additional rules to be covered with this ingress record
-    ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules
-    ## e.g:
-    ## extraRules:
-    ## - host: example.local
-    ##     http:
-    ##       path: /
-    ##       backend: 
-    ##         service:
-    ##           name: example-svc
-    ##           port:
-    ##             name: http
-    ##
-    extraRules: []
 
   ## @section Database parameters
 
@@ -607,78 +463,29 @@ moodle:
     ## @param mariadb.enabled Whether to deploy a mariadb server to satisfy the applications database requirements
     ## To use an external database set this to false and configure the externalDatabase parameters
     ##
-    enabled: true
-    ## @param mariadb.architecture MariaDB architecture (`standalone` or `replication`)
-    ##
-    architecture: standalone
-    ## MariaDB Authentication parameters
-    ##
-    auth:
-      ## @param mariadb.auth.rootPassword Password for the MariaDB `root` user
-      ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-the-root-password-on-first-run
-      ##
-      rootPassword: ""
-      ## @param mariadb.auth.database Database name to create
-      ## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-on-first-run
-      ##
-      database: bitnami_moodle
-      ## @param mariadb.auth.username Database user to create
-      ## ref: https://github.com/bitnami/bitnami-docker-mariadb/blob/master/README.md#creating-a-database-user-on-first-run
-      ##
-      username: bn_moodle
-      ## @param mariadb.auth.password Password for the database
-      ##
-      password: ""
-    primary:
-      ## Enable persistence using Persistent Volume Claims
-      ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
-      ##
-      persistence:
-        ## @param mariadb.primary.persistence.enabled Enable database persistence using PVC
-        ##
-        enabled: true
-        ## @param mariadb.primary.persistence.storageClass MariaDB primary persistent volume storage Class
-        ## If defined, storageClassName: <storageClass>
-        ## If set to "-", storageClassName: "", which disables dynamic provisioning
-        ## If undefined (the default) or set to null, no storageClassName spec is
-        ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-        ##   GKE, AWS & OpenStack)
-        ##
-        storageClass: ""
-        ## @param mariadb.primary.persistence.accessModes PVC Access Modes for Moodle&trade; volume
-        ##
-        accessModes:
-          - ReadWriteOnce
-        ## @param mariadb.primary.persistence.size Database Persistent Volume Size
-        ##
-        size: 8Gi
-        ## @param mariadb.primary.persistence.hostPath Set path in case you want to use local host path volumes (not recommended in production)
-        ##
-        hostPath: ""
-        ## @param mariadb.primary.persistence.existingClaim Name of an existing `PersistentVolumeClaim` for MariaDB primary replicas
-        ##
-        existingClaim: ""
+    enabled: false
+
   ## External database configuration
   ##
   externalDatabase:
     ## @param externalDatabase.type Type of the existing database
     ##
-    type: ""
+    type: pgsql
     ## @param externalDatabase.host Host of the existing database
     ##
-    host: ""
+    host: psql.service.dc1.kjdev
     ## @param externalDatabase.port Port of the existing database
     ##
     port: 3306
     ## @param externalDatabase.user Existing username in the external db
     ##
-    user: bn_moodle
+    user: <secret:CORE0_SITE1/data/Moodle~DatabaseUsername>
     ## @param externalDatabase.password Password for the above username
     ##
-    password: ""
+    password: <secret:CORE0_SITE1/data/Moodle~DatabasePassword>
     ## @param externalDatabase.database Name of the existing database
     ##
-    database: bitnami_moodle
+    database: <secret:CORE0_SITE1/data/Moodle~DatabaseDatabase>
     ## @param externalDatabase.existingSecret Name of an existing secret resource containing the DB password
     ##
     existingSecret: ""
