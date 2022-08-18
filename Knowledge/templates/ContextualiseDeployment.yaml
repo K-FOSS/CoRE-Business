@@ -21,12 +21,6 @@ spec:
         app: {{ $fullName }}-contextualise
 
     spec:
-      securityContext:
-        runAsUser: 1000
-        runAsNonRoot: true
-        runAsGroup: 1000
-        fsGroup: 1000
-
       containers:
         - image: kristianfoss/contextualise:core
           name: contextualise
