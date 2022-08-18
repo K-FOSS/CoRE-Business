@@ -476,7 +476,7 @@ moodle:
     host: psql.service.dc1.kjdev
     ## @param externalDatabase.port Port of the existing database
     ##
-    port: 3306
+    port: 5432
     ## @param externalDatabase.user Existing username in the external db
     ##
     user: <secret:CORE0_SITE1/data/Moodle~DatabaseUsername>
