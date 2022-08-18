@@ -23,7 +23,7 @@ grocy:
     PGID: '1000'
 
     GROCY_AUTH_CLASS: 'Grocy\Middleware\ReverseProxyAuthMiddleware'
-    GROCY_REVERSE_PROXY_AUTH_HEADER: 'X-authentik-username'
+    GROCY_REVERSE_PROXY_AUTH_HEADER: 'X-Authentik-username'
     GROCY_DISABLE_AUTH: 'true'
 
   # -- Configures service settings for the chart.
