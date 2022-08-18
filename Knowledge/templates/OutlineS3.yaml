@@ -1,0 +1,26 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: business-knowledge-outline-s3
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: business-knowledge-outline-s3
+
+  data:
+    - secretKey: S3Bucket
+      remoteRef:
+        key: Outline
+        property: S3Bucket
+
+    - secretKey: S3AccessKey
+      remoteRef:
+        key: Outline
+        property: S3AccessKey
+
+    - secretKey: S3SecretAccessKey
+      remoteRef:
+        key: Outline
+        property: S3SecretAccessKey
