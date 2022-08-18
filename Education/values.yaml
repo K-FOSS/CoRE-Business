@@ -323,7 +323,7 @@ moodle:
   ## @param livenessProbe.successThreshold Success threshold for livenessProbe
   ##
   livenessProbe:
-    enabled: true
+    enabled: false
     path: /login/index.php
     initialDelaySeconds: 600
     periodSeconds: 10
@@ -342,7 +342,7 @@ moodle:
   ## @param readinessProbe.successThreshold Success threshold for readinessProbe
   ##
   readinessProbe:
-    enabled: true
+    enabled: false
     path: /login/index.php
     initialDelaySeconds: 30
     periodSeconds: 5
