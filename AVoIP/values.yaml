@@ -40,6 +40,13 @@ jitsi-meet:
 
     extraEnvs:
       ENABLE_TRANSCRIPTIONS: 'true'
+      DESKTOP_SHARING_FRAMERATE_MIN: '15'
+      DESKTOP_SHARING_FRAMERATE_MAX: '120'
+      RESOLUTION: '2560'
+      RESOLUTION_MIN: '720'
+      RESOLUTION_WIDTH: '1440'
+      RESOLUTION_WIDTH_MIN: '1280'
+      ENABLE_MULTI_STREAM: 'true'
 
     service:
       type: ClusterIP
