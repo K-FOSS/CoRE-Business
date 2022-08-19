@@ -36,7 +36,7 @@ jitsi-meet:
 
     image:
       repository: jitsi/web
-      tag: stable
+      tag: stable-7648-1
 
     extraEnvs:
       ENABLE_TRANSCRIPTIONS: 'true'
