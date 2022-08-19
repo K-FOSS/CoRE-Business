@@ -67,7 +67,6 @@ jitsi-meet:
     ## when using websockets and discovering JVB's address
     ## via k8s services.
     resolverIP: 10.0.8.10
-    readinessProbe: null
 
     podLabels: {}
     podAnnotations: {}
