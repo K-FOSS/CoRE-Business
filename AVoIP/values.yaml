@@ -23,10 +23,24 @@ jitsi-meet:
 
   web:
     replicaCount: 3
+
+    extraVolumeMounts:
+      - name: extra-config
+        subPath: custom-config.js
+        mountPath: /config/custom-config.js
+
+    extraVolumes:
+      - name: extra-config
+        configMap:
+          name: log-config
+
     image:
       repository: jitsi/web
+      tag: stable
 
-    extraEnvs: {}
+    extraEnvs:
+      ENABLE_TRANSCRIPTIONS: 'true'
+
     service:
       type: ClusterIP
       port: 80
@@ -83,6 +97,7 @@ jitsi-meet:
     replicaCount: 2
     image:
       repository: jitsi/jicofo
+      tag: stable
 
     xmpp:
       user: focus
@@ -92,6 +107,7 @@ jitsi-meet:
     livenessProbe:
       tcpSocket:
         port: 8888
+
     readinessProbe:
       tcpSocket:
         port: 8888
@@ -110,6 +126,7 @@ jitsi-meet:
     replicaCount: 2
     image:
       repository: jitsi/jvb
+      tag: stable
 
     xmpp:
       user: jvb
@@ -215,6 +232,7 @@ jitsi-meet:
 
     image:
       repository: jitsi/jibri
+      tag: stable
 
     breweryMuc: jibribrewery
     timeout: 90
@@ -273,4 +291,4 @@ jitsi-meet:
     #     name: '{{ include "prosody.fullname" . }}-jibri'
     image:
       repository: jitsi/prosody
-      tag: 'stable-6865'
+      tag: 'stable'

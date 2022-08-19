@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: business-avoip-jitsiweb-config
+
+data:
+  custom-config.js: |
+    config.faceLandmarks.enableFaceCentering = true
+    config.faceLandmarks.enableFaceExpressionsDetection = true
+    config.faceLandmarks.enableDisplayFaceExpressions = true
