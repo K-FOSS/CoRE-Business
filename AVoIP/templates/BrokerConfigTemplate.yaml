@@ -41,8 +41,8 @@ data:
     # LDAP Bind
     #
     {{`
-    ldap_rootdn: 'cn={{ Username }},ou=users,dc=ldap,dc=mylogin,dc=space'
-    ldap_password: '{{ Password }}'
+    ldap_rootdn: 'cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space'
+    ldap_password: '{{ .Password }}'
 
     #
     # LDAP Searching
