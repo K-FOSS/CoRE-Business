@@ -5,6 +5,9 @@ metadata:
 
 data:
   custom-config.js: |
-    config.faceLandmarks.enableFaceCentering = true
-    config.faceLandmarks.enableFaceExpressionsDetection = true
-    config.faceLandmarks.enableDisplayFaceExpressions = true
+    config.p2p.stunServers = [{ urls: 'stun:nat.ipaddr.network:3478' }];
+    config.useTurnUdp = true;
+    
+    config.faceLandmarks.enableFaceCentering = true;
+    config.faceLandmarks.enableFaceExpressionsDetection = true;
+    config.faceLandmarks.enableDisplayFaceExpressions = true;
