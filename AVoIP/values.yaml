@@ -32,7 +32,7 @@ jitsi-meet:
     extraVolumes:
       - name: extra-config
         configMap:
-          name: log-config
+          name: business-avoip-jitsiweb-config
 
     image:
       repository: jitsi/web
