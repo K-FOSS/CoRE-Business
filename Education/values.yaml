@@ -76,7 +76,7 @@ moodle:
   ## @param moodleSkipInstall Skip Moodle&trade; installation wizard. Useful for migrations and restoring from SQL dump
   ## ref: https://github.com/bitnami/bitnami-docker-moodle#configuration
   ##
-  moodleSkipInstall: false
+  moodleSkipInstall: true
 
   ## @param moodleSiteName Site name
   ## ref: https://github.com/bitnami/bitnami-docker-moodle#configuration
