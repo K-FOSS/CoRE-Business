@@ -1,0 +1,77 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-asterisk
+
+  labels:
+    app: {{ $fullName }}-asterisk
+
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ $fullName }}-asterisk
+
+  template:
+    metadata:
+      labels:
+        app: {{ $fullName }}-asterisk
+
+    spec:
+      containers:
+        - image: andrius/asterisk:alpine-glibc-latest-18.13.0
+          name: asterisk
+
+          ports:
+            - name: tcp-sip
+              containerPort: 5060
+              protocol: TCP
+
+            - name: udp-sip
+              containerPort: 5060
+              protocol: TCP
+
+            - name: tls-sips
+              containerPort: 5061
+              protocol: TCP
+
+          # env:
+          #   - name: CONTEXTUALISE_SETTINGS
+          #     value: /src/contextualise/settings.cfg
+
+          volumeMounts:
+            - name: asterisk-secret-config
+              subPath: pjsip.conf
+              mountPath: /etc/asterisk/pjsip.conf
+
+            - name: asterisk-config
+              subPath: rtp.conf
+              mountPath: /etc/asterisk/rtp.conf
+
+            - name: asterisk-config
+              subPath: extensions.conf
+              mountPath: /src/contextualise/extensions.conf
+
+      volumes:
+        - name: asterisk-config
+          configMap:
+            name: {{ $fullName }}-asterisk-configs
+            items:
+              - key: rtp.conf
+                path: rtp.conf
+
+              - key: extensions.conf
+                path: extensions.conf
+
+        - name: asterisk-secret-config
+          secret:
+            secretName: {{ $fullName }}-asterisk-config-tpl
+            items:
+              - key: pjsip.conf
+                path: pjsip.conf
+
+        - name: data-volume
+          emptyDir: {}
