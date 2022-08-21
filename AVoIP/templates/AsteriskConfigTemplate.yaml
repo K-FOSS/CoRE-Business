@@ -7,8 +7,7 @@ metadata:
   name: {{ $fullName }}-asterisk-config-tpl
 
 data:
-  pjsip.conf: |
-    {{`
+  pjsip.conf: |-
     ; PJSIP Configuration Samples and Quick Reference
     ;
     ; This file has several very basic configuration examples, to serve as a quick
@@ -138,8 +137,11 @@ data:
     ;
     [transport-udp]
     type=transport
-    protocol=udp    ;udp,tcp,tls,ws,wss,flow
-    bind=0.0.0.0:5060
+    protocol=udp
+    bind=0.0.0.0
+    local_net=10.4.0.0/16
+    external_signaling_address=66.165.222.126
+    external_media_address=66.165.222.126
 
     ; UDP transport behind NAT
     ;
@@ -199,8 +201,8 @@ data:
     ; If you would like to enable line support and have incoming calls related to this
     ; registration go to an endpoint automatically the "line" and "endpoint" options must
     ; be set. The "endpoint" option specifies what endpoint the incoming call should be
-    ; associated with.
-
+    ; associated with
+    {{`
     [mytrunk]
     type=registration
     transport=transport-udp
