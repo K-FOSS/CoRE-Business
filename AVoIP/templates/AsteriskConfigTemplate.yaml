@@ -266,6 +266,8 @@ data:
     aors=mytrunk
     ice_support=yes
     direct_media=no
+    rtp_symmetric=yes
+    force_rport=yes
 
     [mytrunk]
     type=aor
