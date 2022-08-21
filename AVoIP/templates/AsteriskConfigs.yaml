@@ -1227,7 +1227,11 @@ data:
     ; one function. Remember that function names are UPPER CASE.
 
     [from-external]
-    exten => 18077893501,1,Playback(hello-world)
+    exten => 18077893501,1,Answer()
+    exten => 1,n,Playback(demo-echotest)
+    exten => 1,n,Echo()
+    exten => 1,n,Playback(demo-echodone)
+    exten => 1,n,Hangup()
 
 
   res_stun_monitor.conf: |
