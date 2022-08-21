@@ -12,6 +12,11 @@ spec:
     app: {{ $fullName }}-asterisk
 
   ports:
+    - port: 5060
+      targetPort: 5060
+      protocol: UDP
+      name: 'udp-sip'
+
 {{- range untilStep (.Values.asterisk.rtp.min|int) (.Values.asterisk.rtp.max|int) 1 }}
     - port: {{ . }}
       targetPort: {{ . }}
