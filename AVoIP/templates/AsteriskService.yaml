@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postfix
+
+spec:
+  selector:
+    app.kubernetes.io/name: simplelogin
+    app.kubernetes.io/component: postfix
+  ports:
+{{- range untilStep 10000 20000 1 }}
+    - port: {{ . }}
+      targetPort: {{ . }}
+      protocol: UDP
+      name: 'udp-{{ . }}'
+
+{{ end }}
+
+
+
+  publishNotReadyAddresses: true
+  loadBalancerIP: 10.1.1.5
+  externalIPs:
+    - 66.165.222.101
+  type: LoadBalancer
