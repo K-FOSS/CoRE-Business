@@ -1,3 +1,5 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
 apiVersion: v1
 kind: Service
 metadata:
