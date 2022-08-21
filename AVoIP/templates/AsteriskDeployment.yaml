@@ -9,7 +9,7 @@ metadata:
     app: {{ $fullName }}-asterisk
 
 spec:
-  replicas: 3
+  replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
@@ -55,6 +55,10 @@ spec:
               subPath: extensions.conf
               mountPath: /etc/asterisk/extensions.conf
 
+            - name: asterisk-config
+              subPath: logger.conf
+              mountPath: /etc/asterisk/logger.conf
+
       volumes:
         - name: asterisk-config
           configMap:
@@ -65,6 +69,9 @@ spec:
 
               - key: extensions.conf
                 path: extensions.conf
+
+              - key: logger.conf
+                path: logger.conf
 
         - name: asterisk-secret-config
           secret:
