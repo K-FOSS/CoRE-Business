@@ -213,6 +213,7 @@ data:
     retry_interval=60
     max_retries=0
     expiration=300
+    line=yes
 
     [mytrunk_auth]
     type=auth
