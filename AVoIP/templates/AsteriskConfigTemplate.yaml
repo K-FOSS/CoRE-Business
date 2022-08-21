@@ -265,6 +265,7 @@ data:
     contact_user={{ .Username }}
     aors=mytrunk
     ice_support=yes
+    direct_media=no
 
     [mytrunk]
     type=aor
