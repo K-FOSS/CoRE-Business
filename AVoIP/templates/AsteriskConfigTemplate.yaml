@@ -212,6 +212,7 @@ data:
     forbidden_retry_interval=60
     retry_interval=60
     max_retries=0
+    endpoint=mytrunk
     expiration=300
     line=yes
 
