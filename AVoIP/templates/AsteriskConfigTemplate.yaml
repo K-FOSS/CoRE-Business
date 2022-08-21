@@ -1212,11 +1212,11 @@ data:
     ;type=  ; Must be of type system (default: "")
 
     ;==========================GLOBAL SECTION OPTIONS=========================
-    ;[global]
+    [global]
     ;  SYNOPSIS: Options that apply globally to all SIP communications
     ;max_forwards=70        ; Value used in Max Forwards header for SIP requests
                             ; (default: "70")
-    ;type=  ; Must be of type global (default: "")
+    type=global  ; Must be of type global (default: "")
     ;user_agent=Asterisk PBX        ; Allows you to change the user agent string
                                     ; The default user agent string also contains
                                     ; the Asterisk version. If you don't want to
@@ -1228,8 +1228,8 @@ data:
                                                             ; endpoint (default: "d
                                                             ; efault_outbound_endpo
                                                             ; int")
-    ;debug=no ; Enable/Disable SIP debug logging.  Valid options include yes|no
-            ; or a host address (default: "no")
+    debug=yes
+    
     ;keep_alive_interval=90 ; The interval (in seconds) at which to send (double CRLF)
                             ; keep-alives on all active connection-oriented transports;
                             ; for connection-less like UDP see qualify_frequency.
