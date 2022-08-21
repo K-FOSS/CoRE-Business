@@ -53,7 +53,7 @@ spec:
 
             - name: asterisk-config
               subPath: extensions.conf
-              mountPath: /src/contextualise/extensions.conf
+              mountPath: /etc/asterisk/extensions.conf
 
       volumes:
         - name: asterisk-config
