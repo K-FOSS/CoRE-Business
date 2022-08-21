@@ -139,7 +139,7 @@ data:
     [transport-udp]
     type=transport
     protocol=udp    ;udp,tcp,tls,ws,wss,flow
-    bind=0.0.0.0
+    bind=0.0.0.0:5060
 
     ; UDP transport behind NAT
     ;
@@ -205,8 +205,8 @@ data:
     type=registration
     transport=transport-udp
     outbound_auth=mytrunk_auth
-    server_uri=sip:sip.flowroute.com
-    client_uri=sip:{{ .Username }}@sip.flowroute.com
+    server_uri=sip:us-west-or.sip.flowroute.com
+    client_uri=sip:{{ .Username }}@us-west-or.sip.flowroute.com
     contact_user={{ .Username }}
     retry_interval=60
     forbidden_retry_interval=600
@@ -219,7 +219,7 @@ data:
     auth_type=userpass
     password={{ .Password }}
     username={{ .Username }}
-    realm=sip.flowroute.com
+    realm=us-west-or.sip.flowroute.com
 
     ;===============ENDPOINT CONFIGURED AS A TRUNK, OUTBOUND AUTHENTICATION=======
     ;
@@ -266,7 +266,7 @@ data:
 
     [mytrunk]
     type=aor
-    contact=sip:sip.flowroute.com:5060
+    contact=sip:us-west-or.sip.flowroute.com:5060
 
     [mytrunk]
     type=identify
