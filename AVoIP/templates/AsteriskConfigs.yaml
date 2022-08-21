@@ -1227,7 +1227,7 @@ data:
     ; one function. Remember that function names are UPPER CASE.
 
     [from-external]
-    exten => 18077893501,1,DateTime(,America/New_York)
+    exten => 18077893501,1,Playback(hello-world)
 
 
   res_stun_monitor.conf: |
