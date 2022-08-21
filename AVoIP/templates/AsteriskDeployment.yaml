@@ -42,6 +42,10 @@ spec:
             - name: 'udp-{{ . }}'
               containerPort: {{ . }}
               protocol: UDP
+
+            - name: 'tcp-{{ . }}'
+              containerPort: {{ . }}
+              protocol: TCP
         {{ end }}
 
 
