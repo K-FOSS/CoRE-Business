@@ -22,7 +22,7 @@ spec:
 
     spec:
       containers:
-        - image: andrius/asterisk:alpine-glibc-latest-18.13.0
+        - image: kristianfoss/newasterisk:core
           name: asterisk
 
           ports:
