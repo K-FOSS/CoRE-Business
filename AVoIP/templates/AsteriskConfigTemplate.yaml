@@ -205,13 +205,14 @@ data:
     type=registration
     transport=transport-udp
     outbound_auth=mytrunk_auth
-    server_uri=sip:us-west-or.sip.flowroute.com
-    client_uri=sip:{{ .Username }}@us-west-or.sip.flowroute.com
+    server_uri=sip:us-west-or.sip.flowroute.com:5060
+    client_uri=sip:{{ .Username }}@us-west-or.sip.flowroute.com:5060
     contact_user={{ .Username }}
+    auth_rejection_permanent=no
+    forbidden_retry_interval=60
     retry_interval=60
-    forbidden_retry_interval=600
-    expiration=3600
-    line=yes
+    max_retries=0
+    expiration=300
     endpoint=mytrunk
 
     [mytrunk_auth]
@@ -219,7 +220,6 @@ data:
     auth_type=userpass
     password={{ .Password }}
     username={{ .Username }}
-    realm=us-west-or.sip.flowroute.com
 
     ;===============ENDPOINT CONFIGURED AS A TRUNK, OUTBOUND AUTHENTICATION=======
     ;
@@ -257,7 +257,9 @@ data:
     context=from-external
     disallow=all
     allow=ulaw
+    rewrite_contact=no
     outbound_auth=mytrunk_auth
+    contact_user={{ .Username }}
     aors=mytrunk
     ;                   ;A few NAT relevant options that may come in handy.
     force_rport=yes    ;It's a good idea to read the configuration help for each
@@ -266,7 +268,8 @@ data:
 
     [mytrunk]
     type=aor
-    contact=sip:us-west-or.sip.flowroute.com:5060
+    qualify_frequency=25
+    contact=sip:{{ .Username }}@us-west-or.sip.flowroute.com:5060
 
     [mytrunk]
     type=identify
