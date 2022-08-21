@@ -261,9 +261,6 @@ data:
     outbound_auth=mytrunk_auth
     contact_user={{ .Username }}
     aors=mytrunk
-    ;                   ;A few NAT relevant options that may come in handy.
-    force_rport=yes    ;It's a good idea to read the configuration help for each
-    direct_media=no    ;of these options.
     ice_support=yes
 
     [mytrunk]
@@ -402,10 +399,7 @@ data:
     ;rtp_symmetric=yes
     ;force_rport=yes
     ;rewrite_contact=yes  ; necessary if endpoint does not know/register public ip:port
-    ;ice_support=yes   ;This is specific to clients that support NAT traversal
-                    ;for media via ICE,STUN,TURN. See the wiki at:
-                    ;https://wiki.asterisk.org/wiki/x/D4FHAQ
-                    ;for a deeper explanation of this topic.
+    ;ice_support=yes
 
     ;[6002]
     ;type=auth
