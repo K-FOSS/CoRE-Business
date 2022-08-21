@@ -271,6 +271,7 @@ data:
     [mytrunk]
     type=identify
     endpoint=mytrunk
+    match=147.75.60.160/28, 34.210.91.112/28, 34.226.36.32/28, 147.75.65.192/28
 
 
     ;=============ENDPOINT CONFIGURED AS A TRUNK, INBOUND AUTH AND REGISTRATION===
