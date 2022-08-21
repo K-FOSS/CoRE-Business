@@ -1,0 +1,17 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: avoip-asterisk-egress
+spec:
+  selectors:
+    - podSelector:
+        matchLabels:
+          app: k0s-cntrl-business-avoip-avoip-asterisk
+  destinationCIDRs:
+    - 34.210.91.112/28
+    - 10.1.1.83/32
+  egressGateway:
+    nodeSelector:
+      matchLabels:
+        kubernetes.io/os: linux
+    egressIP: 66.165.222.101
