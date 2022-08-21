@@ -1,7 +1,7 @@
 asterisk:
   rtp:
     min: 10000
-    max: 20000
+    max: 10100
 
 jitsi-meet:
   # Default values for jitsi-meet.
