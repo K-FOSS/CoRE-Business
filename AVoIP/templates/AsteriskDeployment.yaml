@@ -68,7 +68,7 @@ spec:
 
         - name: asterisk-secret-config
           secret:
-            secretName: {{ $fullName }}-asterisk-config-tpl
+            secretName: {{ $fullName }}-asterisk-sip-config
             items:
               - key: pjsip.conf
                 path: pjsip.conf
