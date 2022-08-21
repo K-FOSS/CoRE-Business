@@ -139,9 +139,6 @@ data:
     type=transport
     protocol=udp
     bind=0.0.0.0
-    local_net=10.4.0.0/16
-    external_signaling_address=66.165.222.101
-    external_media_address=66.165.222.101
 
     ; UDP transport behind NAT
     ;
@@ -216,7 +213,6 @@ data:
     max_retries=0
     endpoint=mytrunk
     expiration=300
-    line=yes
 
     [mytrunk_auth]
     type=auth
