@@ -38,6 +38,13 @@ spec:
               containerPort: 5061
               protocol: TCP
 
+        {{ range untilStep (.Values.asterisk.rtp.min|int) (.Values.asterisk.rtp.max|int) 1 }}
+            - name: 'udp-{{ . }}'
+              containerPort: {{ . }}
+              protocol: UDP
+        {{ end }}
+
+
           # env:
           #   - name: CONTEXTUALISE_SETTINGS
           #     value: /src/contextualise/settings.cfg
