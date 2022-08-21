@@ -181,7 +181,7 @@ data:
     ;debug.log => error,warning,notice,verbose,debug
     ;trace.log => trace
     ;security.log => security
-    console => notice,warning,error,debug
+    console => notice,warning,error,verbose,debug
     ;console => notice,warning,error,debug
     messages.log => notice,warning,error
     ;full.log => notice,warning,error,debug,verbose,dtmf,fax
