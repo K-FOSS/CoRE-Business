@@ -1298,11 +1298,10 @@ data:
     ; one function. Remember that function names are UPPER CASE.
 
     [from-external]
-    exten => 18077893501,1,Answer()
-    exten => 1,n,Playback(demo-echotest)
-    exten => 1,n,Echo()
-    exten => 1,n,Playback(demo-echodone)
-    exten => 1,n,Hangup()
+    exten => 18077893501,1,Playback(demo-echotest)	; Let them know what's going on
+      same => n,Echo()			; Do the echo test
+      same => n,Playback(demo-echodone)	; Let them know it's over
+      same => n,Goto(s,6)		; Start over
 
 
   res_stun_monitor.conf: |
