@@ -260,10 +260,6 @@ data:
     outbound_auth=mytrunk_auth
     contact_user={{ .Username }}
     aors=mytrunk
-    ice_support=yes
-    direct_media=no
-    rtp_symmetric=yes
-    force_rport=yes
 
     [mytrunk]
     type=aor

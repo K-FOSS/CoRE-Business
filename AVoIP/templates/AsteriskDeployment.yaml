@@ -70,6 +70,14 @@ spec:
               subPath: logger.conf
               mountPath: /etc/asterisk/logger.conf
 
+            - name: asterisk-config
+              subPath: modules.conf
+              mountPath: /etc/asterisk/modules.conf
+
+            - name: asterisk-config
+              subPath: asterisk.conf
+              mountPath: /etc/asterisk/asterisk.conf
+
       volumes:
         - name: asterisk-config
           configMap:
@@ -83,6 +91,12 @@ spec:
 
               - key: logger.conf
                 path: logger.conf
+
+              - key: asterisk.conf
+                path: asterisk.conf
+
+              - key: modules.conf
+                path: modules.conf
 
         - name: asterisk-secret-config
           secret:
