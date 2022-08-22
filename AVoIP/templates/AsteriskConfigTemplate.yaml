@@ -139,6 +139,9 @@ data:
     type=transport
     protocol=udp
     bind=0.0.0.0
+    local_net=10.4.0.0/16
+    external_media_address=66.165.222.101
+    external_signaling_address=66.165.222.101
 
     ; UDP transport behind NAT
     ;
@@ -208,11 +211,8 @@ data:
     client_uri=sip:{{ .Username }}@us-west-or.sip.flowroute.com:5060
     contact_user={{ .Username }}
     auth_rejection_permanent=no
-    forbidden_retry_interval=60
-    retry_interval=60
-    max_retries=0
-    endpoint=mytrunk
     expiration=300
+    retry_interval=60
 
     [mytrunk_auth]
     type=auth
@@ -256,10 +256,9 @@ data:
     context=from-external
     disallow=all
     allow=ulaw
-    rewrite_contact=no
     outbound_auth=mytrunk_auth
-    contact_user={{ .Username }}
     aors=mytrunk
+    direct_media=no
 
     [mytrunk]
     type=aor
