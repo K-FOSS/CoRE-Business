@@ -1,3 +1,4 @@
+
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -9,22 +10,26 @@ metadata:
 
 spec:
   selector:
-    app: {{ $fullName }}-asterisk
+    app: {{ $fullName }}-asterisk-rtp
 
   ports:
-    - port: 5060
-      targetPort: 5060
+{{- range untilStep (.Values.asterisk.rtp.min|int) (.Values.asterisk.rtp.max|int) 1 }}
+    - port: {{ . }}
+      targetPort: {{ . }}
       protocol: UDP
-      name: 'udp-sip'
+      name: 'udp-{{ . }}'
+
+    - port: {{ . }}
+      targetPort: {{ . }}
+      protocol: TCP
+      name: 'tcp-{{ . }}'
+{{ end }}
+
+
 
   publishNotReadyAddresses: true
   loadBalancerIP: 10.1.1.83
   externalIPs:
     - 66.165.222.101
-  loadBalancerSourceRanges:
-    - 34.210.91.112/28
-    - 147.75.60.160/28
-    - 34.226.36.32/28
-    - 147.75.65.192/28
-    - 10.1.1.83/32
+
   type: LoadBalancer
