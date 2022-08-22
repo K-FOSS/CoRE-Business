@@ -6,7 +6,7 @@ kind: Service
 metadata:
   name: asterisk-rtp
   annotations:
-    metallb.universe.tf/allow-shared-ip: istio
+    metallb.universe.tf/allow-shared-ip: avoip
 
 spec:
   selector:
@@ -28,7 +28,7 @@ spec:
 
 
   publishNotReadyAddresses: true
-  loadBalancerIP: 10.1.1.83
+  loadBalancerIP: 10.1.1.5
   externalIPs:
     - 66.165.222.126
 

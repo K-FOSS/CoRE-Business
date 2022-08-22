@@ -5,7 +5,7 @@ kind: Service
 metadata:
   name: asterisk
   annotations:
-    metallb.universe.tf/allow-shared-ip: istio
+    metallb.universe.tf/allow-shared-ip: avoip
 
 spec:
   selector:
@@ -18,9 +18,10 @@ spec:
       name: 'udp-sip'
 
   publishNotReadyAddresses: true
-  loadBalancerIP: 10.1.1.83
+  loadBalancerIP: 10.1.1.5
   externalIPs:
     - 66.165.222.126
+
   loadBalancerSourceRanges:
     - 34.210.91.112/28
     - 147.75.60.160/28
