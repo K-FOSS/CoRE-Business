@@ -258,7 +258,6 @@ data:
     allow=ulaw
     outbound_auth=mytrunk_auth
     aors=mytrunk
-    direct_media=no
 
     [mytrunk]
     type=aor
