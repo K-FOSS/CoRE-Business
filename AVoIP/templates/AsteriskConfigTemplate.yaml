@@ -213,6 +213,8 @@ data:
     auth_rejection_permanent=no
     expiration=300
     retry_interval=60
+    line=yes
+    endpoint=mytrunk
 
     [mytrunk_auth]
     type=auth
