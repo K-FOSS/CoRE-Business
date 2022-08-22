@@ -327,7 +327,7 @@ data:
     ; srtpreplayprotection=yes
     ;
     ; Whether to enable or disable ICE support. This option is enabled by default.
-    icesupport=true
+    icesupport=false
     ;
     ; Hostname or address for the STUN server used when determining the external
     ; IP address and port an RTP session can be reached at. The port number is
