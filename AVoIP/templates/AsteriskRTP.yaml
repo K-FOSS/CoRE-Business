@@ -30,6 +30,6 @@ spec:
   publishNotReadyAddresses: true
   loadBalancerIP: 10.1.1.83
   externalIPs:
-    - 66.165.222.101
+    - 66.165.222.126
 
   type: LoadBalancer
