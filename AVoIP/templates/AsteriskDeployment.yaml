@@ -23,6 +23,7 @@ spec:
     spec:
       containers:
         - image: kristianfoss/newasterisk:core
+          imagePullPolicy: Always
           name: asterisk
 
           ports:
