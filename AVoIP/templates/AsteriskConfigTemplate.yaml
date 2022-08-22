@@ -261,9 +261,6 @@ data:
     outbound_auth=mytrunk_auth
     aors=mytrunk
     direct_media=no
-    rtp_symmetric=yes
-    force_rport=yes
-    ;rewrite_contact=yes  ; necessary if endpoint does not know/register public ip:port
     ice_support=yes
 
     [mytrunk]

@@ -327,7 +327,7 @@ data:
     ; srtpreplayprotection=yes
     ;
     ; Whether to enable or disable ICE support. This option is enabled by default.
-    icesupport=false
+    icesupport=true
     ;
     ; Hostname or address for the STUN server used when determining the external
     ; IP address and port an RTP session can be reached at. The port number is
@@ -1298,10 +1298,10 @@ data:
     ; one function. Remember that function names are UPPER CASE.
 
     [from-external]
-    exten => 18077893501,1,Answer()	; Let them know what's going on
+    exten => 18077893501,1,Playback(demo-echotest)	; Let them know what's going on
       same => n,Echo()			; Do the echo test
       same => n,Playback(demo-echodone)	; Let them know it's over
-      same => n,Goto(s,6)		; Start over
+      same => n,Goto(s,6)
 
 
   res_stun_monitor.conf: |
