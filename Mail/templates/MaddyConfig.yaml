@@ -17,8 +17,6 @@ data:
       driver postgres
       dsn "user={{ .Username }} password={{ .Password }} host=psql.service.dc1.kjdev dbname=email sslmode=disable"
 
-      debug true
-
       
 
       msg_store s3 {
@@ -50,7 +48,6 @@ data:
 
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
         auth ldap {
-            debug true
 
             dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
 
@@ -58,8 +55,6 @@ data:
             bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
         }
         storage &local_mailboxes
-        debug true
-        io_debug true
-        io_errors true
+
         insecure_auth true
     }`}}
