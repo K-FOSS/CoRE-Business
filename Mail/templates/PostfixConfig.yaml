@@ -7,6 +7,13 @@ data:
 
   CONF_MYNETWORKS: '10.0.0.0/8'
 
+  #
+  # Limits
+  #
+
+  # Attachments
+  CONF_MESSAGE_SIZE_LIMIT: '500000000'
+
 
   #
   # TLS
