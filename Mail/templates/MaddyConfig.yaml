@@ -39,8 +39,7 @@ data:
     lmtp tcp://0.0.0.0:2525 {
       hostname mail.mylogin.space
 
-      debug true
-      max_message_size 100M
+      max_message_size 150M
       max_header_size 10M
 
       deliver_to &local_mailboxes
