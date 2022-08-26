@@ -17,6 +17,7 @@ spec:
       labels:
         app.kubernetes.io/name: mail
         app.kubernetes.io/component: maddy
+        logs: loki-myloginspace
 
     spec:
       volumes:

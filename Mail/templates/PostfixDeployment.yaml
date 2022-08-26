@@ -16,6 +16,7 @@ spec:
       labels:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: postfix
+        logs: loki-myloginspace
     spec:
       affinity:
         podAntiAffinity:
