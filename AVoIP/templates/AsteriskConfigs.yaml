@@ -43,13 +43,14 @@ data:
     ; map Asterisk core configuration files to Realtime storage.
     ; This is no longer needed.
     ;
-    preload = res_http_media_cache.so
+    ;preload = res_http_media_cache.so
     ;
     ; If you want Asterisk to fail if a module does not load, then use
     ; the "require" keyword. Asterisk will exit with a status code of 2
     ; if a required module does not load.
     ;
     require = chan_pjsip.so
+    require = res_http_media_cache.so
     ;
     ; If you want you can combine with preload
     ; preload-require = your_special_module.so
