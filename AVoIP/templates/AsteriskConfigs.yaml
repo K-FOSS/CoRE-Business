@@ -1298,7 +1298,7 @@ data:
     ; one function. Remember that function names are UPPER CASE.
 
     [from-external]
-    exten => 18077893501,1,Playback(http%3A%2F%2Fk0s%2Dcntrl%2Dbusiness%2Davoip%2Davoip%2Dmycroft%2Dmimic%2Ecore%2Dprod%2Esvc%2Ek0s%2Eresolvemy%2Ehost%2Fapi%2Ftts%3Ftext%3DHello%2520Kristine%252C%2520how%2520nice%2520to%2520speak%2520to%2520you%26voice%3Den%5FUS%252Fm%2Dailabs%5Flow%2523judy%5Fbieber%26noiseScale%3D0%2E667%26noiseW%3D0%2E8%26lengthScale%3D1%26ssml%3Dfalse)
+    exten => 18077893501,1,Playback(https://speak.mylogin.space/sayHello.wav)
       same => n,Playback(demo-echodone)	; Let them know it's over
       same => n,Goto(s,6)
 
