@@ -1,0 +1,38 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-mycroft-mimic
+
+  labels:
+    app: {{ $fullName }}-mycroft-mimic
+
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ $fullName }}-mycroft-mimic
+
+  template:
+    metadata:
+      labels:
+        app: {{ $fullName }}-mycroft-mimic
+
+    spec:
+      containers:
+        - image: mycroftai/mimic3:latest
+          name: mimic
+
+          ports:
+            - name: http
+              containerPort: 59125
+              protocol: TCP
+          volumeMounts:
+            - name: data-volume
+              mountPath: /home/mimic3/.local
+
+      volumes:
+        - name: data-volume
+          emptyDir: {}

@@ -1,0 +1,18 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-mycroft-mimic
+
+spec:
+  selector:
+    app: {{ $fullName }}-mycroft-mimic
+
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+
+  type: ClusterIP
