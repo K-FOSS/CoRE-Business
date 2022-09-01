@@ -1298,8 +1298,7 @@ data:
     ; one function. Remember that function names are UPPER CASE.
 
     [from-external]
-    exten => 18077893501,1,Playback(demo-echotest)	; Let them know what's going on
-      same => n,Echo()			; Do the echo test
+    exten => 18077893501,1,Playback(CURL(http://{{ $fullName }}-mycroft-mimic.core-prod.svc.k0s.resolvemy.host/api/tts?text=Hello%20Kristine%2C%20how%20nice%20to%20speak%20to%20you&voice=en_US%2Fm-ailabs_low%23judy_bieber&noiseScale=0.667&noiseW=0.8&lengthScale=1&ssml=false))
       same => n,Playback(demo-echodone)	; Let them know it's over
       same => n,Goto(s,6)
 
