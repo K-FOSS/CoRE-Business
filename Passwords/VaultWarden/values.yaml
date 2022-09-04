@@ -13,8 +13,7 @@ vaultwarden:
       sidecar.istio.io/inject: 'true'
 
   strategy:
-    type: Recreate
-
+    type: RollingUpdate
 
   # -- Configures service settings for the chart. Normally this does not need to be modified.
   # @default -- See values.yaml
