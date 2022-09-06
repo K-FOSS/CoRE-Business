@@ -108,20 +108,7 @@ nextcloud:
   ## ref: https://kubernetes.io/docs/concepts/services-networking/ingress/
   ##
   ingress:
-    enabled: true
-    className: traefik-core
-    annotations:
-      cert-manager.io/cluster-issuer: kjdev-cluster
-      external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
-      traefik.ingress.kubernetes.io/router.entrypoints: websecure
-      traefik.ingress.kubernetes.io/router.tls: 'true'
-    tls:
-      - secretName: myloginspace-default-certificates
-        hosts:
-          - '*.mylogin.space'
-    labels: {}
-    path: /
-    pathType: Prefix
+    enabled: false
 
 
   # Allow configuration of lifecycle hooks
