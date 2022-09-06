@@ -1,0 +1,13 @@
+apiVersion: v2
+
+version: 1.0.0
+
+name: core-business-finances
+
+dependencies:
+  #
+  # Collabora
+  #
+  - name: ihatemoney
+    version: 1.1.2
+    repository: https://k8s-at-home.com/charts/
