@@ -14,6 +14,9 @@ vikunja:
     # vikunja api image pull policy
     pullPolicy: IfNotPresent
 
+  postgresql:
+    enabled: false
+
   caddy:
     # -- Disable auto tls if behind another loadbalancer or ingress
     noTls: false
