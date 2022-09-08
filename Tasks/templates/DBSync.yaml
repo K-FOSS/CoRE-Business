@@ -1,0 +1,28 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: vikunja-db-prod-sync
+spec:
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+
+  target:
+    name: vikunja-db-prod-sync
+
+  data:
+    - secretKey: DatabaseDatabase
+      remoteRef:
+        key: Vikunja
+        property: DatabaseDatabase
+
+    - secretKey: DatabasePassword
+      remoteRef:
+        key: Vikunja
+        property: DatabasePassword
+
+    - secretKey: DatabaseUser
+      remoteRef:
+        key: Vikunja
+        property: DatabaseUser
+

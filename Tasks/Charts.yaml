@@ -1,1 +1,12 @@
+apiVersion: v2
+version: 1.0.0
+name: core-business-tasks
 
+dependencies:
+  #
+  # Vikunja
+  #
+  - name: vikunja
+    version: 6.1.2
+    condition: vikunja.enabled
+    repository: https://k8s-at-home.com/charts/
