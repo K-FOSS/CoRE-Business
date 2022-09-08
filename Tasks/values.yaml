@@ -24,8 +24,6 @@ vikunja:
   vikunja:
     # -- Provide Vikunja config as YAML string
     config: |-
-      service:
-        jwtsecret: "myVeryComplexJWTSecret"
       
       auth:
         openid:
