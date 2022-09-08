@@ -6,6 +6,9 @@ vikunja:
   # https://github.com/k8s-at-home/library-charts/tree/main/charts/stable/common/values.yaml
   #
 
+  controller:
+    strategy: RollingUpdate
+
   image:
     # -- Caddy reverse proxy image and tag
     repository: caddy
