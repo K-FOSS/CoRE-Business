@@ -91,13 +91,13 @@ vikunja:
           valueFrom:
             secretKeyRef:
               name: vikunja-db-prod-sync
-              key: DatabasePassword
+              key: DatabaseUsername
 
         - name: VIKUNJA_DATABASE_PASSWORD
           valueFrom:
             secretKeyRef:
               name: vikunja-db-prod-sync
-              key: DatabaseUsername
+              key: DatabasePassword
       volumeMounts:
         - name: vikunja-config
           mountPath: /etc/vikunja/config.yml
