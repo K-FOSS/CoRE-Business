@@ -23,6 +23,27 @@ vikunja:
     config: |-
       service:
         jwtsecret: "myVeryComplexJWTSecret"
+      
+      auth:
+        openid:
+          # Enable or disable OpenID Connect authentication
+          enabled: true
+          # The url to redirect clients to. Defaults to the configured frontend url. If you're using Vikunja with the official
+          # frontend, you don't need to change this value.
+          # **Note:** The redirect url must exactly match the configured redirect url with the third party provider.
+          # This includes all slashes at the end or protocols.
+          redirecturl: https://tasks.mylogin.space/auth/openid/authentik
+          # A list of enabled providers
+          providers:
+            # The name of the provider as it will appear in the frontend.
+            - name: authentik
+              # The auth url to send users to if they want to authenticate using OpenID Connect.
+              authurl: https://idp.mylogin.space/application/o/Vikunja/
+              # The client ID used to authenticate Vikunja at the OpenID Connect provider.
+              clientid: <secret:CORE0_SITE1/data/Vikunja~OpenIDClientID>
+              # The client secret used to authenticate Vikunja at the OpenID Connect provider.
+              clientsecret: <secret:CORE0_SITE1/data/Vikunja~OpenIDClientSecret>
+
 
   # -- Configures service settings for the chart.
   # @default -- See values.yaml
@@ -44,25 +65,36 @@ vikunja:
     api:
       name: api
       # -- Vikunja api image and tag
-      image: vikunja/api:0.17.1
+      image: vikunja/api:latest
       imagePullPolicy: IfNotPresent
       # -- You can declare most Vikunja parameters as environment variables.
       # Please consult https://vikunja.io/docs/config-options/ to see all parameters.
       # Note that parameters that are an array cannot be defined as environment variables (like the OpenID Connect settings). Use the vikunja.config Value for that.
       # @default -- See below
-      env: []
-        # - name: VIKUNJA_SERVICE_JWTSECRET
-        #   value: myVeryComplexJWTSecret
-        # - name: VIKUNJA_DATABASE_TYPE
-        #   value: "postgres"
-        # - name: VIKUNJA_DATABASE_HOST
-        #   value: db
-        # - name: VIKUNJA_DATABASE_DATABASE
-        #   value: vikunja
-        # - name: VIKUNJA_DATABASE_USER
-        #   value: "vikunja"
-        # - name: VIKUNJA_DATABASE_PASSWORD
-        #   value: password
+      env:
+        - name: VIKUNJA_DATABASE_TYPE
+          value: 'postgres'
+
+        - name: VIKUNJA_DATABASE_HOST
+          value: psql.service.dc1.kjdev
+
+        - name: VIKUNJA_DATABASE_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: vikunja-db-prod-sync
+              key: DatabaseDatabase
+
+        - name: VIKUNJA_DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: vikunja-db-prod-sync
+              key: DatabasePassword
+
+        - name: VIKUNJA_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vikunja-db-prod-sync
+              key: DatabaseUsername
       volumeMounts:
         - name: vikunja-config
           mountPath: /etc/vikunja/config.yml
@@ -75,7 +107,7 @@ vikunja:
     frontend:
       name: frontend
       # -- Vikunja frontend image and tag
-      image: vikunja/frontend:0.17.0
+      image: vikunja/frontend:latest
       imagePullPolicy: IfNotPresent
 
   # -- Configure persistence settings for the chart under this key.

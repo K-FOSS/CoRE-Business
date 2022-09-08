@@ -21,8 +21,8 @@ spec:
         key: Vikunja
         property: DatabasePassword
 
-    - secretKey: DatabaseUser
+    - secretKey: DatabaseUsername
       remoteRef:
         key: Vikunja
-        property: DatabaseUser
+        property: DatabaseUsername
 
