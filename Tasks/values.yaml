@@ -76,6 +76,12 @@ vikunja:
       # Note that parameters that are an array cannot be defined as environment variables (like the OpenID Connect settings). Use the vikunja.config Value for that.
       # @default -- See below
       env:
+        - name: VIKUNJA_SERVICE_JWTSECRET
+          valueFrom:
+            secretKeyRef:
+              name: vikunja-jwt-prod
+              key: SecretKey
+
         - name: VIKUNJA_DATABASE_TYPE
           value: 'postgres'
 
