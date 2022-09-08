@@ -33,7 +33,7 @@ vikunja:
           # frontend, you don't need to change this value.
           # **Note:** The redirect url must exactly match the configured redirect url with the third party provider.
           # This includes all slashes at the end or protocols.
-          redirecturl: https://tasks.mylogin.space/auth/openid/authentik
+          redirecturl: https://tasks.mylogin.space/auth/openid/
           # A list of enabled providers
           providers:
             # The name of the provider as it will appear in the frontend.
@@ -66,7 +66,7 @@ vikunja:
     api:
       name: api
       # -- Vikunja api image and tag
-      image: vikunja/api:0.18.1
+      image: vikunja/api:0.19.2
       imagePullPolicy: IfNotPresent
       # -- You can declare most Vikunja parameters as environment variables.
       # Please consult https://vikunja.io/docs/config-options/ to see all parameters.
@@ -108,7 +108,7 @@ vikunja:
     frontend:
       name: frontend
       # -- Vikunja frontend image and tag
-      image: vikunja/frontend:0.18.1
+      image: vikunja/frontend:0.19.2
       imagePullPolicy: IfNotPresent
 
   # -- Configure persistence settings for the chart under this key.
