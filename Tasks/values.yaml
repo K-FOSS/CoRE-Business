@@ -66,7 +66,7 @@ vikunja:
     api:
       name: api
       # -- Vikunja api image and tag
-      image: vikunja/api:0.19.2
+      image: vikunja/api:0.19.1
       imagePullPolicy: IfNotPresent
       # -- You can declare most Vikunja parameters as environment variables.
       # Please consult https://vikunja.io/docs/config-options/ to see all parameters.
@@ -108,7 +108,7 @@ vikunja:
     frontend:
       name: frontend
       # -- Vikunja frontend image and tag
-      image: vikunja/frontend:0.19.2
+      image: vikunja/frontend:0.19.1
       imagePullPolicy: IfNotPresent
 
   # -- Configure persistence settings for the chart under this key.
