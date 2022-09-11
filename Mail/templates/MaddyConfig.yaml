@@ -52,7 +52,7 @@ data:
               step regexp "(\w+)(\?)?" "$1@mylogin.space"
               step ldap {
                 base_dn "dc=ldap,dc=mylogin,dc=space"
-                filter "(&(ou=users)(mail={username}))"
+                filter "(mail={username})"
 
                 debug true
 
