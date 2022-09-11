@@ -38,7 +38,7 @@ spec:
 
       containers:
         - name: maddy
-          image: foxcpp/maddy:v0.6.2
+          image: foxcpp/maddy:0.6.2
 
           volumeMounts:
             #
