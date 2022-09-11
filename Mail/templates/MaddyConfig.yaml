@@ -50,7 +50,7 @@ data:
         auth plain_separate {
             user ldap {
               base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-              filter "(&(ou=users)(email={username}))"
+              filter "(&(ou=users)(mail={username}@mylogin.space))"
 
               debug true
 
