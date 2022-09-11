@@ -51,8 +51,8 @@ data:
             user chain {
               step regexp "(.+)(\\+[^+"@]+)?" "$1@mylogin.space"
               step ldap {
-                base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-                filter "(&(ou=users)(mail={username}@mylogin.space))"
+                base_dn "dc=ldap,dc=mylogin,dc=space"
+                filter "(&(ou=users)(mail={username}))"
 
                 debug true
 
