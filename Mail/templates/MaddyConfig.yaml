@@ -47,36 +47,14 @@ data:
     # IMAP endpoints
 
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
-        auth plain_separate {
-          user chain {
-            step regexp "(\w+)(\?)?" "$1@mylogin.space"
+        auth ldap {
 
-            step ldap {
-              debug true
-
-              urls ldaps://ldap.mylogin.space:636
-              bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
-
-              base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-              filter "(mail={username})"
-            }
-          }
-
-          pass ldap {
-            debug true
-
-            dn_template "cn={username}@mylogin.space,ou=users,dc=ldap,dc=mylogin,dc=space"
+            dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
 
             urls ldaps://ldap.mylogin.space:636
             bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
-          }
-
         }
         storage &local_mailboxes
-
-        debug true
-        io_debug true
-        io_errors true
 
         insecure_auth true
     }`}}
