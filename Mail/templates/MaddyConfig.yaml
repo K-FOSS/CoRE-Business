@@ -65,10 +65,10 @@ data:
           pass ldap {
             debug true
 
-            dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
+            dn_template "cn={username}@mylogin.space,ou=users,dc=ldap,dc=mylogin,dc=space"
 
             urls ldaps://ldap.mylogin.space:636
-            bind plain "cn={{ .Username }}@mylogin.space,ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
+            bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
           }
 
         }
