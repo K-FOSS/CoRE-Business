@@ -49,7 +49,7 @@ data:
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
         auth plain_separate {
             user chain {
-              step regexp "(.+)(\\+[^+"@]+)?" "$1@mylogin.space"
+              step regexp "(\w+)(\?)?" "$1@mylogin.space"
               step ldap {
                 base_dn "dc=ldap,dc=mylogin,dc=space"
                 filter "(&(ou=users)(mail={username}))"
