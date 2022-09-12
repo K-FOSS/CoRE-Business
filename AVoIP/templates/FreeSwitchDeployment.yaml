@@ -84,6 +84,18 @@ spec:
               mountPath: /etc/freeswitch/autoload_configs/modules.conf.xml
 
             - name: freeswitch-misc-config
+              subPath: switch.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/switch.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: console.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/console.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: logfile.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/logfile.conf.xml
+
+            - name: freeswitch-misc-config
               subPath: console.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/console.conf.xml
 
@@ -115,6 +127,18 @@ spec:
 
               - key: acl.conf.xml
                 path: acl.conf.xml
+
+              - key: switch.conf.xml
+                path: switch.conf.xml
+
+              - key: console.conf.xml
+                path: console.conf.xml
+
+              - key: logfile.conf.xml
+                path: logfile.conf.xml
+          
+          
+
 
         - name: freeswitch-sip-config
           configMap:
