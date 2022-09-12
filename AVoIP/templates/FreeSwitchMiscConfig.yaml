@@ -185,7 +185,7 @@ data:
         </list>
 
         <list name="asterisk" default="deny">
-          <node type="allow" cidr="10.8.0.2/32"/>
+          <node type="allow" cidr="10.0.0.0/8"/>
         </list>
       </network-lists>
     </configuration>
