@@ -1,0 +1,24 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-freeswitch
+
+spec:
+  type: ClusterIP
+
+  ports:
+    - name: tcp-sip
+      port: 5060
+      protocol: TCP
+      targetPort: tcp-sip
+
+    - name: udp-sip
+      port: 5060
+      protocol: TCP
+      targetPort: udp-sip
+
+  selector:
+    app: {{ $fullName }}-freeswitch
+
