@@ -26,6 +26,9 @@ spec:
           imagePullPolicy: Always
           name: freeswitch
 
+          args:
+            - -c
+
           ports:
             - name: tcp-sip
               containerPort: 5060
