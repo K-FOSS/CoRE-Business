@@ -19,6 +19,7 @@ spec:
     metadata:
       labels:
         app: {{ $fullName }}-freeswitch
+        logs: loki-myloginspace
 
     spec:
       containers:
