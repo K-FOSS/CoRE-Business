@@ -88,10 +88,6 @@ spec:
               mountPath: /etc/freeswitch/autoload_configs/switch.conf.xml
 
             - name: freeswitch-misc-config
-              subPath: console.conf.xml
-              mountPath: /etc/freeswitch/autoload_configs/console.conf.xml
-
-            - name: freeswitch-misc-config
               subPath: logfile.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/logfile.conf.xml
 
