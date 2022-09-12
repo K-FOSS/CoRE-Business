@@ -11,9 +11,9 @@ data:
         <gateways>
           <gateway name="asterisk">
             <param name="username" value="freeswitch"/>
-            <param name="realm" value="your-asterisk-domain"/>
+            <param name="realm" value="66.165.222.126"/>
             <param name="password" value="unused-but-required-field"/>
-            <param name="from-domain" value="your-asterisk-domain"/>
+            <param name="from-domain" value="66.165.222.126"/>
             <param name="proxy" value="{{ $fullName }}-asterisk.core-prod.svc.k0s.resolvemy.host"/><!-- ASTERISK ADDRESS -->
             <param name="register" value="false"/><!-- INSTEAD WE SET AOR IN PJSIP.CONF -->
             <param name="cid-type" value="pid"/>
