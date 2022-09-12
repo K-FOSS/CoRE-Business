@@ -99,6 +99,9 @@ spec:
               subPath: acl.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/acl.conf.xml
 
+            - name: freeswitch-misc-config
+              subPath: sofia.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/sofia.conf.xml
 
       volumes:
         - name: freeswitch-config
@@ -132,6 +135,9 @@ spec:
 
               - key: logfile.conf.xml
                 path: logfile.conf.xml
+
+              - key: sofia.conf.xml
+                path: sofia.conf.xml
           
           
 
