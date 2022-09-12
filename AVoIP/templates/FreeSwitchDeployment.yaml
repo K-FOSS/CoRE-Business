@@ -51,6 +51,18 @@ spec:
               subPath: freeswitch.xml
               mountPath: /etc/freeswitch/freeswitch.xml
 
+            - name: freeswitch-config
+              subPath: extensions.conf
+              mountPath: /etc/freeswitch/extensions.conf
+
+            
+            #
+            # Modules
+            #
+            - name: freeswitch-misc-config
+              subPath: modules.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/modules.conf.xml
+
       volumes:
         - name: freeswitch-config
           configMap:
@@ -58,6 +70,16 @@ spec:
             items:
               - key: freeswitch.xml
                 path: freeswitch.xml
+
+              - key: extensions.conf
+                path: extensions.conf
+            
+        - name: freeswitch-misc-config
+          configMap:
+            name: {{ $fullName }}-freeswitch-misc-configs
+            items:
+              - key: modules.conf.xml
+                path: modules.conf.xml
 
         - name: data-volume
           emptyDir: {}
