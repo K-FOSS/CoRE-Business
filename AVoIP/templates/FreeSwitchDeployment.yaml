@@ -55,6 +55,21 @@ spec:
               subPath: extensions.conf
               mountPath: /etc/freeswitch/extensions.conf
 
+            #
+            # SIP
+            #
+            - name: freeswitch-sip-config
+              subPath: external.xml
+              mountPath: /etc/freeswitch/sip_profiles/external.xml
+
+            #
+            # Dialplan
+            #
+
+            - name: freeswitch-dialplan-config
+              subPath: default.xml
+              mountPath: /etc/freeswitch/dialplan/default.xml
+
             
             #
             # Modules
@@ -62,6 +77,11 @@ spec:
             - name: freeswitch-misc-config
               subPath: modules.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/modules.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: acl.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/acl.conf.xml
+
 
       volumes:
         - name: freeswitch-config
@@ -80,6 +100,23 @@ spec:
             items:
               - key: modules.conf.xml
                 path: modules.conf.xml
+
+              - key: acl.conf.xml
+                path: acl.conf.xml
+
+        - name: freeswitch-sip-config
+          configMap:
+            name: {{ $fullName }}-freeswitch-sip-configs
+            items:
+              - key: external.xml
+                path: external.xml
+
+        - name: freeswitch-dialplan-config
+          configMap:
+            name: {{ $fullName }}-freeswitch-dialplan-configs
+            items:
+              - key: default.xml
+                path: default.xml
 
         - name: data-volume
           emptyDir: {}

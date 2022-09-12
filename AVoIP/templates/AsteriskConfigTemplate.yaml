@@ -251,6 +251,31 @@ data:
     ; You can define multiple contact addresses in SIP URI format in multiple
     ; "contact=" entries.
     ;
+    [freeswitch]
+    type=endpoint
+    transport=transport-udp
+    trust_id_inbound=yes
+    trust_id_outbound=yes
+    aors=freeswitch
+    context=from-internal
+    disallow=all
+    allow=ulaw
+    direct_media=no
+    ice_support=yes
+
+    [freeswitch]
+    type=identify
+    endpoint=freeswitch
+    match=10.0.0.0/8
+
+    [freeswitch]
+    type=acl
+    deny=0.0.0.0/0
+    permit=10.0.0.0/8
+
+    [freeswitch]
+    type=aor
+    contact=sip:{{ $fullName }}-freeswitch.svc.core-prod.k0s.resolvemy.host
 
     [mytrunk]
     type=endpoint
