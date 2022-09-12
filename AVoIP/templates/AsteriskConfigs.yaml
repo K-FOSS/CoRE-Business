@@ -1301,7 +1301,7 @@ data:
     [from-external]
     exten => 18077893501,1,Playback(demo-echodone)
       same => n,Wait(1.25)
-      same => n,Playback(https://speak.mylogin.space/sayHello)
+      same => n,Dial(PJSIP/5859@freeswitch)
       same => n,Playback(demo-echodone)	; Let them know it's over
       same => n,Goto(s,6)
 

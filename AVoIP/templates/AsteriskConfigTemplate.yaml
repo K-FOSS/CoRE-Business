@@ -257,7 +257,7 @@ data:
     trust_id_inbound=yes
     trust_id_outbound=yes
     aors=freeswitch
-    context=from-internal
+    context=from-external
     disallow=all
     allow=ulaw
     direct_media=no
