@@ -1,0 +1,60 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-freeswitch
+
+  labels:
+    app: {{ $fullName }}-freeswitch
+
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ $fullName }}-freeswitch
+
+  template:
+    metadata:
+      labels:
+        app: {{ $fullName }}-freeswitch
+
+    spec:
+      containers:
+        - image: kristianfjones/freeswitch:core
+          imagePullPolicy: Always
+          name: freeswitch
+
+          ports:
+            - name: tcp-sip
+              containerPort: 5060
+              protocol: TCP
+
+            - name: udp-sip
+              containerPort: 5060
+              protocol: TCP
+
+            - name: tls-sips
+              containerPort: 5061
+              protocol: TCP
+
+          # env:
+          #   - name: CONTEXTUALISE_SETTINGS
+          #     value: /src/contextualise/settings.cfg
+
+          volumeMounts:
+            - name: freeswitch-config
+              subPath: freeswitch.xml
+              mountPath: /etc/freeswitch/freeswitch.xml
+
+      volumes:
+        - name: freeswitch-config
+          configMap:
+            name: {{ $fullName }}-freeswitch-configs
+            items:
+              - key: freeswitch.xml
+                path: freeswitch.xml
+
+        - name: data-volume
+          emptyDir: {}
