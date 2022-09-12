@@ -221,6 +221,7 @@ data:
     auth_type=userpass
     password={{ .Password }}
     username={{ .Username }}
+    `}}
 
     ;===============ENDPOINT CONFIGURED AS A TRUNK, OUTBOUND AUTHENTICATION=======
     ;
@@ -288,10 +289,12 @@ data:
     direct_media=no
     ice_support=yes
 
+    {{`
     [mytrunk]
     type=aor
     qualify_frequency=25
     contact=sip:{{ .Username }}@us-west-or.sip.flowroute.com:5060
+    `}}
 
     [mytrunk]
     type=identify
@@ -1612,4 +1615,4 @@ data:
 
     ;mailbox_state_filter=     ; Optional regular expression used to filter what
                             ; mailboxes we accept events for.
-    `}}
+
