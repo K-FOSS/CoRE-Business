@@ -184,5 +184,8 @@ data:
           <!-- <node type="allow" cidr="192.168.0.0/24"/> -->
         </list>
 
+        <list name="asterisk" default="deny">
+          <node type="allow" cidr="10.8.0.2/32"/>
+        </list>
       </network-lists>
     </configuration>

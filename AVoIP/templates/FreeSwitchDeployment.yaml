@@ -62,6 +62,10 @@ spec:
               subPath: external.xml
               mountPath: /etc/freeswitch/sip_profiles/external.xml
 
+            - name: freeswitch-sip-config
+              subPath: asterisk.xml
+              mountPath: /etc/freeswitch/sip_profiles/asterisk.xml
+
             #
             # Dialplan
             #
@@ -110,6 +114,9 @@ spec:
             items:
               - key: external.xml
                 path: external.xml
+
+              - key: asterisk.xml
+                path: asterisk.xml
 
         - name: freeswitch-dialplan-config
           configMap:
