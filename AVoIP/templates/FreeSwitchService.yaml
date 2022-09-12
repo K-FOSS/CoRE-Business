@@ -16,7 +16,7 @@ spec:
 
     - name: udp-sip
       port: 5060
-      protocol: TCP
+      protocol: UDP
       targetPort: udp-sip
 
   selector:
