@@ -24,7 +24,7 @@ data:
             <param name="apply-inbound-acl" value="asterisk"/>
             <param name="auth-calls" value="false"/>
             <param name="context" value="public"/><!-- WHERE DO CALLS FROM ASTERISK COME INTO? -->
-            <param name="rtp-ip" value="10.8.0.3"/><!-- this FreeSWITCH MEDIA IP -->
-            <param name="sip-ip" value="10.8.0.3"/><!-- this FreeSWITCH SIP IP -->
+            <param name="rtp-ip" value="0.0.0.0"/><!-- this FreeSWITCH MEDIA IP -->
+            <param name="sip-ip" value="0.0.0.0"/><!-- this FreeSWITCH SIP IP -->
         </settings>
     </profile>
