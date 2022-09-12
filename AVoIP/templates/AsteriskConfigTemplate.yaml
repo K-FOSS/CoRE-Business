@@ -275,7 +275,7 @@ data:
 
     [freeswitch]
     type=aor
-    contact=sip:{{ $fullName }}-freeswitch.svc.core-prod.k0s.resolvemy.host
+    contact=sip:{{ $fullName }}-freeswitch.core-prod.svc.k0s.resolvemy.host
 
     [mytrunk]
     type=endpoint
