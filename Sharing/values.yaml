@@ -15,7 +15,7 @@ blink:
     pullPolicy: Always
     pullSecrets: []
 
-  replicaCount: 1
+  replicaCount: 0
 
   resources:
     requests:
@@ -115,7 +115,7 @@ xbackbone:
     sidecar.istio.io/inject: 'true'
 
   controller:
-    replicas: 1
+    replicas: 0
 
   image:
     # -- image repository
