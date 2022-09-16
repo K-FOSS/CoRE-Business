@@ -120,7 +120,7 @@ xbackbone:
   image:
     # -- image repository
     repository: pe46dro/xbackbone-docker
-    tag: latest
+    tag: '3.3'
     # -- image pull policy
     pullPolicy: Always
 
