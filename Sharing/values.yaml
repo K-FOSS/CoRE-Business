@@ -119,7 +119,7 @@ xbackbone:
 
   image:
     # -- image repository
-    repository: thelaughingman/xbackbone
+    repository: pe46dro/xbackbone-docker
     tag: latest
     # -- image pull policy
     pullPolicy: Always
