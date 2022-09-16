@@ -115,7 +115,7 @@ xbackbone:
     sidecar.istio.io/inject: 'true'
 
   controller:
-    replicas: 0
+    replicas: 1
 
   image:
     # -- image repository
@@ -157,31 +157,6 @@ xbackbone:
     # @default -- See values.yaml
     main:
       enabled: false
-      ingressClassName: traefik-core
-
-      labels:
-        wan-mode: 'public'
-        lan-mode: 'private'
-
-      annotations:
-        cert-manager.io/cluster-issuer: kjdev-cluster
-        external-dns.alpha.kubernetes.io/target: k0s-dc1.resolvemy.host.
-        traefik.ingress.kubernetes.io/router.entrypoints: websecure
-        traefik.ingress.kubernetes.io/router.tls: 'true'
-      hosts:
-        -  # -- Host address. Helm template can be passed.
-          host: share.kjmedia.stream
-          ## Configure the paths for the host
-          paths:
-            -  # -- Path.  Helm template can be passed.
-              path: /
-              # -- Ignored if not kubeVersion >= 1.14-0
-              pathType: Prefix
-
-      tls:
-        - secretName: kjmediastream-default-certificates
-          hosts:
-            - '*.kjmedia.stream'
 
   # -- Configure persistence settings for the chart under this key.
   # @default -- See values.yaml
