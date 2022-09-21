@@ -4,5 +4,5 @@ name: core-business-passwords
 
 dependencies:
   - name: vaultwarden
-    version: 5.3.2
-    repository: https://k8s-at-home.com/charts/
+    version: 16.0.38
+    repository: https://charts.truecharts.org/

@@ -13,7 +13,7 @@ n8n:
 
   env:
     GENERIC_TIMEZONE: "{{ .Values.TZ }}"
-    DB_TYPE: "postgresdb"
+    DB_TYPE: postgresdb
 
     DB_POSTGRESDB_USER: "{{ .Values.postgresql.postgresqlUsername }}"
     DB_POSTGRESDB_DATABASE: '{{ .Values.postgresql.postgresqlDatabase }}'
@@ -25,14 +25,17 @@ n8n:
       secretKeyRef:
         name: dbcreds
         key: plainhost
+
     DB_POSTGRESDB_PASSWORD:
       secretKeyRef:
         name: dbcreds
         key: postgresql-password
+
     QUEUE_BULL_REDIS_HOST:
       secretKeyRef:
         name: rediscreds
         key: plainhost
+
     QUEUE_BULL_REDIS_PASSWORD:
       secretKeyRef:
         name: rediscreds
@@ -49,13 +52,16 @@ n8n:
   timezoneandlocale:
     {}
     # N8N_DEFAULT_LOCALE: "en"
+
   credentials:
     {}
     # CREDENTIALS_OVERWRITE_DATA: ""
     # CREDENTIALS_OVERWRITE_ENDPOINT: ""
     # CREDENTIALS_DEFAULT_NAME: "My credentials"
+
   deployment:
-    N8N_HOST: "localhost"
+    N8N_HOST: n8n.writemy.codes
+
     # N8N_EDITOR_BASE_URL: ""
     # N8N_CONFIG_FILES: ""
     # N8N_ENCRYPTION_KEY: ""
@@ -67,6 +73,7 @@ n8n:
     # N8N_VERSION_NOTIFICATIONS_ENABLED: true
     # N8N_DIAGNOSTICS_ENABLED: false
     # N8N_HIRING_BANNER_ENABLED: false
+
   endpoints:
     {}
     # WEBHOOK_URL: ""
@@ -79,6 +86,7 @@ n8n:
     # N8N_ENDPOINT_WEBHOOK_WAIT: "webhook-waiting"
     # N8N_DISABLE_PRODUCTION_MAIN_PROCESS: false
     # N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN: false
+
   executions:
     {}
     # EXECUTIONS_PROCESS: "own"
@@ -92,12 +100,14 @@ n8n:
     # EXECUTIONS_DATA_PRUNE: false
     # EXECUTIONS_DATA_MAX_AGE: 336
     # EXECUTIONS_DATA_PRUNE_TIMEOUT: 3600
+
   logs:
     # N8N_LOG_LEVEL: "info"
     # N8N_LOG_OUTPUT: "console"
     # N8N_LOG_FILE_COUNT_MAX: 100
     # N8N_LOG_FILE_SIZE_MAX: 16
     N8N_LOG_FILE_LOCATION: "/data/logs"
+
   n8n_security:
     {}
     # N8N_BLOCK_ENV_ACCESS_IN_NODE: false
@@ -114,14 +124,17 @@ n8n:
     # N8N_JWT_ALLOWED_TENANT: ""
     # N8N_JWT_ALLOWED_TENANT_KEY: ""
     # N8N_AUTH_EXCLUDE_ENDPOINTS: ""
+
   workflows:
     {}
     # WORKFLOWS_DEFAULT_NAME: "My workflow"
     # N8N_ONBOARDING_FLOW_DISABLED: false
     # N8N_WORKFLOW_TAGS_DISABLED: false
+
   externalhooks:
     {}
     # EXTERNAL_HOOK_FILES: ""
+
   usermanagement:
     {}
     # N8N_USER_MANAGEMENT_DISABLED: false
@@ -143,25 +156,21 @@ n8n:
     main:
       ports:
         main:
-          port: 5678
+          port: 80
           targetPort: 5678
 
   persistence:
     data:
       enabled: true
-      mountPath: "/data"
+      mountPath: /data
 
   # Enabled redis
   redis:
     enabled: false
-    existingSecret: "rediscreds"
 
   # Enabled postgres
   postgresql:
     enabled: false
-    existingSecret: "dbcreds"
-    postgresqlUsername: n8n
-    postgresqlDatabase: n8n
 
   portal:
     enabled: true
