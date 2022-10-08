@@ -132,12 +132,16 @@ nextcloud:
       tokenKey: TOKEN
       # smtpUsernameKey: smtp_username
       # smtpPasswordKey: smtp_password
+
     update: 0
+
     # If web server is not binding default port, you can define it
     # containerPort: 8080
     datadir: /var/www/html/data
+
     persistence:
       subPath:
+
     mail:
       enabled: false
       fromAddress: user
@@ -149,6 +153,7 @@ nextcloud:
         authtype: LOGIN
         name: user
         password: pass
+
     # PHP Configuration files
     # Will be injected in /usr/local/etc/php/conf.d for apache image and in /usr/local/etc/php-fpm.d when nginx.enabled: true
     phpConfigs:
@@ -614,24 +619,33 @@ nextcloud:
         ;php_admin_value[error_log] = /var/log/fpm-php.www.log
         ;php_admin_flag[log_errors] = on
         ;php_admin_value[memory_limit] = 32M
+    
+    
     # Default config files
     # IMPORTANT: Will be used only if you put extra configs, otherwise default will come from nextcloud itself
     # Default confgurations can be found here: https://github.com/nextcloud/docker/tree/master/16.0/apache/config
     defaultConfigs:
       # To protect /var/www/html/config
       .htaccess: true
+
       # Redis default configuration
       redis.config.php: false
+
       # Apache configuration for rewrite urls
       apache-pretty-urls.config.php: false
+
       # Define APCu as local cache
       apcu.config.php: false
+
       # Apps directory configs
       apps.config.php: true
+
       # Used for auto configure database
       autoconfig.php: true
+
       # SMTP default configuration
       smtp.config.php: false
+
     # Extra config files created in /var/www/html/config/
     # ref: https://docs.nextcloud.com/server/15/admin_manual/configuration_server/config_sample_php_parameters.html#multiple-config-php-file
     configs:
@@ -775,6 +789,7 @@ nextcloud:
           secretKeyRef:
             name: business-office-nextcloud-s3-prod
             key: S3SecretKey
+
     #  - name: SOME_SECRET_ENV
     #    valueFrom:
     #      secretKeyRef:
@@ -1001,35 +1016,12 @@ nextcloud:
     ## Whether to deploy a mariadb server to satisfy the applications database requirements. To use an external database set this to false and configure the externalDatabase parameters
     enabled: false
 
-    auth:
-      database: nextcloud
-      username: nextcloud
-      password: changeme
-
-    architecture: standalone
-
-    ## Enable persistence using Persistent Volume Claims
-    ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
-    ##
-    primary:
-      persistence:
-        enabled: true
-        # storageClass: ""
-        accessMode: ReadWriteOnce
-        size: 25Gi
-
   ##
   ## PostgreSQL chart configuration
   ## for more options see https://github.com/bitnami/charts/tree/master/bitnami/postgresql
   ##
   postgresql:
     enabled: false
-    postgresqlUsername: nextcloud
-    postgresqlPassword: changeme
-    postgresqlDatabase: nextcloud
-    persistence:
-      enabled: false
-      # storageClass: ""
 
   ##
   ## Redis chart configuration
@@ -1038,9 +1030,7 @@ nextcloud:
 
   redis:
     enabled: false
-    auth:
-      enabled: true
-      password: 'changeme'
+
 
   ## Cronjob to execute Nextcloud background tasks
   ## ref: https://docs.nextcloud.com/server/latest/admin_manual/configuration_server/background_jobs_configuration.html#webcron
@@ -1133,21 +1123,22 @@ nextcloud:
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
       #cpu: 100m
-      memory: 4G
+      memory: 8G
     requests:
-      cpu: 100m
+      cpu: 256m
       memory: 256Mi
 
   ## Liveness and readiness probe values
   ## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
   ##
   livenessProbe:
-    enabled: false
+    enabled: true
     initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
     successThreshold: 1
+
   readinessProbe:
     enabled: false
     initialDelaySeconds: 10
@@ -1155,6 +1146,7 @@ nextcloud:
     timeoutSeconds: 5
     failureThreshold: 3
     successThreshold: 1
+
   startupProbe:
     enabled: false
     initialDelaySeconds: 30
