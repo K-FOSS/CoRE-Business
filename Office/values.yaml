@@ -638,9 +638,9 @@ nextcloud:
       redis.config.php: |-
         <?php
         $CONFIG = array (
-          'memcache.local' => '\\OC\\Memcache\\Redis',
-          'memcache.distributed' => '\\OC\\Memcache\\Redis',
-          'memcache.locking' => '\\OC\\Memcache\\Redis',
+          'memcache.local' => '\OC\Memcache\Redis',
+          'memcache.distributed' => '\OC\Memcache\Redis',
+          'memcache.locking' => '\OC\Memcache\Redis',
           'redis' => array(
             'host' => getenv('REDIS_HOST'),
             'port' => getenv('REDIS_HOST_PORT') ?: 6379,
