@@ -65,6 +65,7 @@ data:
           }
         
           pass external {
+            debug true
             helper /data/checkScript.sh
           }
         }
