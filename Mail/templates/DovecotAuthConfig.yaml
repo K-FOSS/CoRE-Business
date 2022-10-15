@@ -14,7 +14,6 @@ data:
     base = dc=ldap,dc=mylogin,dc=space
     user_filter = (&(objectClass=user)(cn=%u))
     user_attrs = \
-               =mail=%{ldap:mail}, \
                =uuid=%{ldap:uid}, \
                =uid=%{ldap:uidNumber}, \
                =gid=%{ldap:gidNumber}
