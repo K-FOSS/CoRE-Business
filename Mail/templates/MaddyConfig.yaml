@@ -47,12 +47,20 @@ data:
     # IMAP endpoints
 
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
-        auth ldap {
-            debug on
-            dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
+        auth plain_separate {
+          user ldap {
+            debug true
 
             urls ldaps://ldap.mylogin.space:636
             bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
+
+            base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+            filter "(uid={username})"
+          }
+        
+          pass external {
+            helper /bin/true
+          }
         }
         storage &local_mailboxes
 
