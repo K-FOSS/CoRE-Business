@@ -64,9 +64,12 @@ data:
             filter "(uid={username})"
           }
         
-          pass external {
-            debug true
-            helper /data/checkScript.sh
+          pass chain {
+            step regexp ".*" "testing"
+
+            step static {
+              entry testing masteruser-secret
+            }
           }
         }
         storage &local_mailboxes
