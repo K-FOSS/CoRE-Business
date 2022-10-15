@@ -54,6 +54,7 @@ data:
 
     imapc_port = 993
     imapc_user = %{userdb:uid}
+    imapc_password = masteruser-secret
 
     service imap {
       # Most of the memory goes to mmap()ing files. You may need to increase this
