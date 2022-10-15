@@ -58,7 +58,7 @@ data:
   # Sender Restrictions
   #
   CONF_SMTPD_SENDER_RESTRICTIONS: |
-    permit_mynetworks,reject_non_fqdn_sender,reject_unknown_sender_domain,permit
+    permit_mynetworks,reject_non_fqdn_sender,reject_unknown_sender_domain,reject_authenticated_sender_login_mismatch,permit
 
   #
   # Recipient Restrictions
