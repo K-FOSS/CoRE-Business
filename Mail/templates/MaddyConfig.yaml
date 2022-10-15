@@ -4,6 +4,12 @@ metadata:
   name: business-mail-maddy-config-tpl
 
 data:
+  checkScript.sh: |
+    #!/bin/sh
+
+    echo "stuff ${@}"
+
+    exit 0
   maddy.conf: |
     $(hostname) = mail.mylogin.space
     $(primary_domain) = mylogin.space
@@ -59,7 +65,7 @@ data:
           }
         
           pass external {
-            helper /bin/true
+            helper /data/checkScript.sh
           }
         }
         storage &local_mailboxes
