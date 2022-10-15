@@ -48,7 +48,7 @@ data:
 
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
         auth ldap {
-
+            debug on
             dn_template "cn={username},ou=users,dc=ldap,dc=mylogin,dc=space"
 
             urls ldaps://ldap.mylogin.space:636
@@ -57,4 +57,5 @@ data:
         storage &local_mailboxes
 
         insecure_auth true
+        debug yes
     }`}}
