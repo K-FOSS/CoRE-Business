@@ -44,6 +44,26 @@ data:
       }
     }
 
+    #
+    # IMAP
+    # 
+    mail_location = imapc:
+    # Change the line below to reflect the IP address of your Exchange Server.
+    imapc_host = mail.mylogin.space
+    imapc_ssl = imaps
+
+    imapc_port = 993
+    imapc_user = %{userdb:uid}
+
+    service imap {
+      # Most of the memory goes to mmap()ing files. You may need to increase this
+      # limit if you have huge mailboxes.
+      #vsz_limit = $default_vsz_limit
+
+      # Max. number of IMAP processes (connections)
+      #process_limit = 1024
+    }
+
 
     namespace {
       inbox = yes

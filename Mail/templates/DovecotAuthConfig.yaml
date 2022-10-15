@@ -15,6 +15,7 @@ data:
     user_filter = (&(objectClass=user)(cn=%u))
     user_attrs = \
                =mail=%{ldap:mail}
+               =uid=%{ldap:uid}
 
     pass_filter = (&(objectClass=user)(cn=%u))
     iterate_filter = (objectClass=user)

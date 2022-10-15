@@ -22,13 +22,12 @@ spec:
     #   targetPort: lmtp
 
 
-    # - name: imap-default
+    - name: imaps-default
 
-    #   protocol: TCP
-    #   #appProtocol: submission
+      protocol: TCP
 
-    #   port: 143
-    #   targetPort: imap
+      port: 1993
+      targetPort: imaps
 
 
 
