@@ -15,7 +15,7 @@ data:
 
     search_base = ou=users,dc=ldap,dc=mylogin,dc=space
     query_filter     = (&(mail=%s))
-    result_attribute = mail
+    result_attribute = cn
     `}}
 
   ldap-in.cf: |
