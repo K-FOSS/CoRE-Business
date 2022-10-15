@@ -13,8 +13,14 @@ data:
     auth_bind = yes
     base = dc=ldap,dc=mylogin,dc=space
     user_filter = (&(objectClass=user)(cn=%u))
+    user_attrs = \
+               =mail=%{ldap:mail}
+
     pass_filter = (&(objectClass=user)(cn=%u))
     iterate_filter = (objectClass=user)
+    pass_attrs = \
+               =password=%{ldap:userPassword}, \
+               =user=%{ldap:mail}
     `}}
   dovecot-oauth2.conf.ext: |
     {{`
