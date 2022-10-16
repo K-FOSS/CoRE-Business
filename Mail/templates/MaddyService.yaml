@@ -3,8 +3,13 @@ kind: Service
 metadata:
   name: maddy
 
+  labels:
+    lan-mode: private
+
   annotations:
     metallb.universe.tf/allow-shared-ip: mail
+    external-dns.alpha.kubernetes.io/hostname: 'int-imap.mylogin.space'
+
 spec:
   selector:
     app.kubernetes.io/name: mail
@@ -29,6 +34,5 @@ spec:
 
   publishNotReadyAddresses: true
   loadBalancerIP: 10.1.1.25
-  externalIPs:
-    - 66.165.222.125
+
   type: LoadBalancer
