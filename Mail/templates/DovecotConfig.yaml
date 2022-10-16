@@ -13,6 +13,13 @@ data:
     ## this is sometimes needed
     #first_valid_uid = uid-of-vmail-user
 
+    #
+    # Users
+    #
+    lmtp_save_to_detail_mailbox = yes
+    recipient_delimiter = +
+
+
     ###############
     # Authentication
     ###############
