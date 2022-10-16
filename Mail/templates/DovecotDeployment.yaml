@@ -108,3 +108,6 @@ spec:
               containerPort: 993
               protocol: TCP
 
+            - name: lmtp
+              containerPort: 2525
+              protocol: TCP

@@ -27,15 +27,6 @@ spec:
       port: 993
       targetPort: imaps
 
-
-    - name: imap-transport
-
-      protocol: TCP
-      #appProtocol: submissions
-
-      port: 2525
-      targetPort: lmtp
-
   publishNotReadyAddresses: true
   loadBalancerIP: 10.1.1.25
   externalIPs:

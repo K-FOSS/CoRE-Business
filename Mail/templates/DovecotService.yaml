@@ -38,6 +38,14 @@ spec:
       port: 12345
       targetPort: sasl
 
+    - name: imap-transport
+
+      protocol: TCP
+      #appProtocol: submissions
+
+      port: 2525
+      targetPort: lmtp
+
 
   loadBalancerIP: 10.1.1.25
   externalIPs:
