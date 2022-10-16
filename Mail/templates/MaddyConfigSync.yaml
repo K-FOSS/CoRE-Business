@@ -38,11 +38,11 @@ spec:
     # 
     - secretKey: Username
       remoteRef:
-        key: Maddy
+        key: Dovecot
         property: Username
 
     - secretKey: Password
       remoteRef:
-        key: Maddy
+        key: Dovecot
         property: Password
       
