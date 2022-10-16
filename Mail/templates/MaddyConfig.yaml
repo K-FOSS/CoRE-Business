@@ -64,12 +64,8 @@ data:
             filter "(uid={username})"
           }
         
-          pass chain {
-            step regexp ".*" "testing"
-
-            step static {
-              entry testing masteruser-secret
-            }
+          pass pass_table static {
+              entry 38e31197e97aaa5b6c6e4cc33c9b8a5c9734877557dae657763b5ec32c890fd8 bcrypt:$2a$10$uSUL5piqbh5ZYikm5LCUeuGsgr5IC2xLQktXssCGjAIoxeM7tyFfq
           }
         }
         storage &local_mailboxes
