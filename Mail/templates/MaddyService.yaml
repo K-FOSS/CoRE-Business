@@ -7,7 +7,6 @@ metadata:
     lan-mode: private
 
   annotations:
-    metallb.universe.tf/allow-shared-ip: mail
     external-dns.alpha.kubernetes.io/hostname: 'int-imap.mylogin.space'
 
 spec:
