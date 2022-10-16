@@ -53,7 +53,7 @@ data:
     imapc_ssl = imaps
 
     imapc_port = 993
-    imapc_user = %{userdb:uuid}
+    imapc_user = %{userdb:uuid}@mylogin.space
     imapc_password = masteruser-secret
     imapc_sasl_mechanisms = login
 
