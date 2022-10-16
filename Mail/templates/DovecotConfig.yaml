@@ -56,7 +56,7 @@ data:
     # 
     mail_location = imapc:
     # Change the line below to reflect the IP address of your Exchange Server.
-    imapc_host = mail.mylogin.space
+    imapc_host = int-imap.mylogin.space
     imapc_ssl = imaps
 
     imapc_port = 993

@@ -32,7 +32,4 @@ spec:
       port: 993
       targetPort: imaps
 
-  publishNotReadyAddresses: true
-  loadBalancerIP: 10.1.1.25
-
-  type: LoadBalancer
+  type: ClusterIP
