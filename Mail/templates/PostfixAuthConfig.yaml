@@ -29,6 +29,6 @@ data:
     bind_pw = {{ .Password }}
 
     search_base = ou=users,dc=ldap,dc=mylogin,dc=space
-    query_filter = (&(objectClass=user)(|(cn=%s)(mail=%s)))
+    query_filter = (&(objectClass=user)(|(cn=%u)(mail=%s)))
     result_attribute = cn
     `}}
