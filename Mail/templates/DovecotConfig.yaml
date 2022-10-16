@@ -55,7 +55,7 @@ data:
     imapc_port = 993
     imapc_user = %{userdb:uuid}
     imapc_password = masteruser-secret
-    imapc_sasl_mechanisms = external plain login
+    imapc_sasl_mechanisms = login
 
     service imap {
       # Most of the memory goes to mmap()ing files. You may need to increase this
