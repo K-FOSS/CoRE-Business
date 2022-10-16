@@ -41,8 +41,18 @@ spec:
         key: Dovecot
         property: Username
 
+    - secretKey: LDAPUsername
+      remoteRef:
+        key: Maddy
+        property: Username
+
     - secretKey: Password
       remoteRef:
         key: Dovecot
+        property: Password
+
+    - secretKey: LDAPPassword
+      remoteRef:
+        key: Maddy
         property: Password
       

@@ -58,7 +58,7 @@ data:
             debug on
 
             urls ldaps://ldap.mylogin.space:636
-            bind plain "cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .Password }}"
+            bind plain "cn={{ .LDAPUsername }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .LDAPPassword }}"
 
             base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
             filter "(uid={username})"
