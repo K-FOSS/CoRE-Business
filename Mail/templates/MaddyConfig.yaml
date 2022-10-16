@@ -53,20 +53,14 @@ data:
     # IMAP endpoints
 
     imap tls://0.0.0.0:993 tcp://0.0.0.0:143 {
-        auth plain_separate {
-          user ldap {
-            debug on
+        auth ldap {
+          debug on
 
-            urls ldaps://ldap.mylogin.space:636
-            bind plain "cn={{ .LDAPUsername }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .LDAPPassword }}"
+          urls ldaps://ldap.mylogin.space:636
+          bind plain "cn={{ .LDAPUsername }},ou=users,dc=ldap,dc=mylogin,dc=space" "{{ .LDAPPassword }}"
 
-            base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
-            filter "(uid={username})"
-          }
-        
-          pass pass_table static {
-              entry 38e31197e97aaa5b6c6e4cc33c9b8a5c9734877557dae657763b5ec32c890fd8 bcrypt:$2a$10$uSUL5piqbh5ZYikm5LCUeuGsgr5IC2xLQktXssCGjAIoxeM7tyFfq
-          }
+          base_dn "ou=users,dc=ldap,dc=mylogin,dc=space"
+          filter "(uid={username})"
         }
         storage &local_mailboxes
 
