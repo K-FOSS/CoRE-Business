@@ -12,7 +12,7 @@ data:
     auth_bind_userdn = cn=%u,ou=users,dc=ldap,dc=mylogin,dc=space
     auth_bind = yes
     base = dc=ldap,dc=mylogin,dc=space
-    user_filter = (&(objectClass=user)(|(cn=%u)(mail=%u)))
+    user_filter = (&(objectClass=user)(|(cn=%n)(mail=%u)))
     user_attrs = \
                =uuid=%{ldap:uid}, \
                =uid=%{ldap:uidNumber}, \
