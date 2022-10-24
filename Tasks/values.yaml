@@ -29,6 +29,9 @@ vikunja:
     config: |-
       
       auth:
+        local:
+          # Enable or disable local authentication
+          enabled: false
         openid:
           # Enable or disable OpenID Connect authentication
           enabled: true
