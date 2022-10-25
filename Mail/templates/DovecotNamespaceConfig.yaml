@@ -4,6 +4,44 @@ metadata:
   name: business-mail-dovecot-namespaces
 
 data:
+  main.conf: |
+    namespace inbox {
+      # Namespace type: private, shared or public
+      #type = private
+
+      # Hierarchy separator to use. You should use the same separator for all
+      # namespaces or some clients get confused. '/' is usually a good one.
+      # The default however depends on the underlying mail storage format.
+      #separator =
+
+      # Prefix required to access this namespace. This needs to be different for
+      # all namespaces. For example "Public/".
+      #prefix =
+
+      # Physical location of the mailbox. This is in same format as
+      # mail_location, which is also the default for it.
+      #location =
+
+      # There can be only one INBOX, and this setting defines which namespace
+      # has it.
+      inbox = yes
+
+      # If namespace is hidden, it's not advertised to clients via NAMESPACE
+      # extension. You'll most likely also want to set list=no. This is mostly
+      # useful when converting from another server with different namespaces which
+      # you want to deprecate but still keep working. For example you can create
+      # hidden namespaces with prefixes "~/mail/", "~%u/mail/" and "mail/".
+      #hidden = no
+
+      # Show the mailboxes under this namespace with LIST command. This makes the
+      # namespace visible for clients that don't support NAMESPACE extension.
+      # "children" value lists child mailboxes, but hides the namespace prefix.
+      #list = yes
+
+      # Namespace handles its own subscriptions. If set to "no", the parent
+      # namespace handles them (empty prefix should always have this as "yes")
+      #subscriptions = yes
+    }
   mailboxes.conf: |
     ##
     ## Mailbox definitions
@@ -53,6 +91,7 @@ data:
 
     # NOTE: Assumes "namespace inbox" has been defined in 10-mail.conf.
     namespace inbox {
+      inbox = yes
       # These mailboxes are widely used and could perhaps be created automatically:
       mailbox Drafts {
         auto = subscribe
