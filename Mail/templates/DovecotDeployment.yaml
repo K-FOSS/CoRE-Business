@@ -62,8 +62,8 @@ spec:
                 path: dovecot-storage.conf.ext
 
         - name: dovecot-namespace
-          secret:
-            secretName: business-mail-dovecot-namespaces
+          configMap:
+            name: business-mail-dovecot-namespaces
             items:
               - key: mailboxes.conf
                 path: mailboxes.conf
