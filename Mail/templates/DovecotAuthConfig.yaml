@@ -28,11 +28,14 @@ data:
     {{`
     ### OAuth2 password database configuration
 
-    ## url for verifying token validity. Token is appended to the URL
-    # tokeninfo_url = http://endpoint/oauth/tokeninfo?access_token=
-
-    ## introspection endpoint, used to gather extra fields and other information.
-    # introspection_url = http://endpoint/oauth/me
+    tokeninfo_url = https://idp.mylogin.space/application/o/userinfo/?access_token=
+    introspection_url = https://{{ .OpenIDClientID }}:{{ .OpenIDClientSecret }}@idp.mylogin.space/application/o/introspect/
+    introspection_mode = post
+    force_introspection = yes
+    active_attribute = active
+    active_value = true
+    username_attribute = email
+    tls_ca_cert_file = /etc/ssl/certs/ca-certificates.crt
 
     client_id = {{ .OpenIDClientID }}
     client_secret = {{ .OpenIDClientSecret }}
@@ -55,7 +58,7 @@ data:
     # scope = something
 
     ## username attribute in response (default: email)
-    username_attribute = email
+    #username_attribute = email
 
     ## username normalization format (default: %Lu)
     # username_format = %Lu
@@ -71,7 +74,7 @@ data:
 
 
     ## URL to RFC 7628 OpenID Provider Configuration Information schema
-    openid_configuration_url = https://idp.mylogin.space/application/o/mail/.well-known/openid-configuration
+    #openid_configuration_url = https://idp.mylogin.space/application/o/mail/.well-known/openid-configuration
 
     ## Extra fields to set in passdb response (in passdb static style)
     # pass_attrs =
