@@ -80,8 +80,4 @@ data:
       #process_limit = 1024
     }
 
-
-    namespace {
-      inbox = yes
-      separator = /
-    }
+    !include /etc/dovecot/namespaces/*.conf

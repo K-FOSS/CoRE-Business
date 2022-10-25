@@ -61,6 +61,12 @@ spec:
               - key: dovecot-storage.conf.ext
                 path: dovecot-storage.conf.ext
 
+        - name: dovecot-namespace
+          secret:
+            secretName: business-mail-dovecot-namespaces
+            items:
+              - key: mailboxes.conf
+                path: mailboxes.conf
 
       containers:
         - name: dovecot
@@ -85,6 +91,9 @@ spec:
             - name: dovecot-storage
               mountPath: /etc/dovecot/dovecot-storage.conf.ext
               subPath: dovecot-storage.conf.ext
+
+            - name: dovecot-namespace
+              mountPath: /etc/dovecot/namespaces
 
 
             #
