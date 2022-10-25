@@ -68,9 +68,6 @@ spec:
               - key: mailboxes.conf
                 path: mailboxes.conf
 
-              - key: main.conf
-                path: main.conf
-
       containers:
         - name: dovecot
           image: dovecot/dovecot:2.3.19
