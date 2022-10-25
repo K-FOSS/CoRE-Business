@@ -4,7 +4,7 @@ metadata:
   name: business-mail-dovecot-namespaces
 
 data:
-  main.conf: |
+  0-main.conf: |
     namespace inbox {
       # Namespace type: private, shared or public
       #type = private
