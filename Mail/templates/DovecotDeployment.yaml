@@ -65,6 +65,9 @@ spec:
           configMap:
             name: business-mail-dovecot-namespaces
             items:
+              - key: 10-mail.conf
+                path: 10-mail.conf
+
               - key: mailboxes.conf
                 path: mailboxes.conf
 
