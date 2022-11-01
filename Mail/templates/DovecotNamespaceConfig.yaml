@@ -4,6 +4,13 @@ metadata:
   name: business-mail-dovecot-namespaces
 
 data:
+  10-mail.conf: |
+    namespace inbox {
+      type = private
+      separator = /
+      prefix =
+      inbox = yes
+    }
   mailboxes.conf: |
     ##
     ## Mailbox definitions
@@ -53,7 +60,9 @@ data:
 
     # NOTE: Assumes "namespace inbox" has been defined in 10-mail.conf.
     namespace inbox {
-      inbox = yes
+      mailbox Inbox {
+        auto = subscribe
+      }
 
       # These mailboxes are widely used and could perhaps be created automatically:
       mailbox Drafts {
