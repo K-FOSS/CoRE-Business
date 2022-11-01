@@ -81,7 +81,7 @@ nextcloud:
   ##
   image:
     repository: nextcloud
-    tag: stable-fpm-alpine
+    tag: fpm-alpine
     pullPolicy: Always
     # pullSecrets:
     #   - myRegistrKeySecretName
