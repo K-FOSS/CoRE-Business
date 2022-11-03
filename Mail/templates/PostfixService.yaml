@@ -43,7 +43,6 @@ spec:
       port: 10025
       targetPort: smtp-auth
 
-  publishNotReadyAddresses: true
   loadBalancerIP: 10.1.1.25
   externalIPs:
     - 66.165.222.125
