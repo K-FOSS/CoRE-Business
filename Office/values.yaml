@@ -653,6 +653,7 @@ nextcloud:
         <?php
         $CONFIG = array (
           'log_type' => 'syslog',
+          'logtimezone' => 'America/Winnipeg',
         );
 
       redis.config.php: |-
