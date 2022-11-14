@@ -47,7 +47,6 @@ spec:
       targetPort: lmtp
 
 
-  loadBalancerIP: 10.1.1.25
-  externalIPs:
-    - 66.165.222.125
+  loadBalancerIP: 66.165.222.125
+
   type: LoadBalancer
