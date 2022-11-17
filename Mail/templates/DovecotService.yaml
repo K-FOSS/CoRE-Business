@@ -9,6 +9,7 @@ metadata:
     purelb.io/allow-shared-ip: mail
 
 spec:
+  allocateLoadBalancerNodePorts: false
   selector:
     app.kubernetes.io/name: mail
     app.kubernetes.io/component: dovecot
