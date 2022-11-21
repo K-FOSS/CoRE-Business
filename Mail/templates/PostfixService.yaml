@@ -4,9 +4,7 @@ metadata:
   name: postfix
   annotations:
     
-    metallb.universe.tf/address-pool: 'dummy'
-    purelb.io/service-group: 'pubanycast-pool'
-    purelb.io/allow-shared-ip: mail
+    metallb.universe.tf/allow-shared-ip: mail
 spec:
   selector:
     app.kubernetes.io/name: simplelogin
