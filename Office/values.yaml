@@ -687,6 +687,7 @@ nextcloud:
           $CONFIG = array (
             'passwordsalt' => getenv('PASSWORD_SALT'),
             'secret' => getenv('SECRET'),
+            'allow_local_remote_servers' => true,
           );
 
     ## Strategy used to replace old pods
