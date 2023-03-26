@@ -1,0 +1,48 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}-vosk
+
+  labels:
+    app: {{ $fullName }}-vosk
+
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: {{ $fullName }}-vosk
+
+  template:
+    metadata:
+      labels:
+        app: {{ $fullName }}-vosk
+        logs: loki-myloginspace
+
+    spec:
+      containers:
+        - image: alphacep/kaldi-en:latest
+          imagePullPolicy: Always
+          name: vosk-api
+
+          ports:
+            - name: http
+              containerPort: 2700
+              protocol: TCP
+
+
+
+          # env:
+          #   - name: CONTEXTUALISE_SETTINGS
+          #     value: /src/contextualise/settings.cfg
+
+        #   volumeMounts:
+        #     - name: asterisk-secret-config
+        #       subPath: pjsip.conf
+        #       mountPath: /etc/asterisk/pjsip.conf
+
+
+    #   volumes:
+    #     - name: asterisk-config
