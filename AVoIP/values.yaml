@@ -288,6 +288,8 @@ jitsi-meet:
 
   prosody:
     enabled: true
+    persistence:
+      enabled: false
     server:
     extraEnvFrom:
     - secretRef:
