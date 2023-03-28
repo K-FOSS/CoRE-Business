@@ -249,6 +249,9 @@ outline:
   postgresql:
     enabled: false
 
+  minio:
+    enabled: false
+
   initContainers:
     1-migratedb:
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
