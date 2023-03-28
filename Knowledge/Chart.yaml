@@ -23,5 +23,5 @@ dependencies:
   # Outline
   #
   - name: outline
-    version: 3.0.32
+    version: 6.0.23
     repository: https://charts.truecharts.org/
