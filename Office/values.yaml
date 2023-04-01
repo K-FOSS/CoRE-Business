@@ -7,7 +7,7 @@ collabora-code:
 
   image:
     repository: collabora/code
-    tag: 6.4.14.3
+    tag: latest
     pullPolicy: IfNotPresent
 
   strategy: Recreate
