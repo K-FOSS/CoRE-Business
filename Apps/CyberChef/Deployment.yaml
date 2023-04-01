@@ -19,7 +19,7 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
       containers:
-        - image: mpepping/cyberchef:v9.32.3
+        - image: mpepping/cyberchef:v10.4.0
           name: cyberchef-ui
           ports:
             - name: http
