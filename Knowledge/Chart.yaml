@@ -15,5 +15,5 @@ dependencies:
   # Outline
   #
   - name: outline
-    version: 0.0.7
-    repository: https://gitlab.com/api/v4/projects/30221184/packages/helm/stable/
+    version: 6.0.23
+    repository: https://charts.truecharts.org/
