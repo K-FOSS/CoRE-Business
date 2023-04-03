@@ -8,4 +8,5 @@ spec:
   instance: core-mysql # This has to be match with DbInstance name
   deletionProtected: true
   backup:
-    enable: false
+    enable: false # turn it to true when you want to use back up feature. currently only support postgres
+    cron: "0 0 * * *"
