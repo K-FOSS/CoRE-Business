@@ -1,12 +1,12 @@
 apiVersion: kci.rocks/v1beta1
 kind: Database
 metadata:
-  name: openemr
+  name: monica-db
 
 spec:
-  secretName: openemr-database
+  secretName: monica-database
   instance: core-mysql # This has to be match with DbInstance name
-  deletionProtected: false
+  deletionProtected: true
   backup:
     enable: false # turn it to true when you want to use back up feature. currently only support postgres
     cron: "0 0 * * *"
