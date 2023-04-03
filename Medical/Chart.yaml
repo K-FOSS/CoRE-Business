@@ -4,13 +4,8 @@ name: medical-core
 
 dependencies:
   #
-  # People Management
+  # OpenEMR
   #
-  - name: monica
-    version: 8.2.0
-    repository: https://geek-cookbook.github.io/charts/
-    condition: monica.enabled
-
   - name: openemr
     version: 5.2.0
     repository: https://geek-cookbook.github.io/charts/
