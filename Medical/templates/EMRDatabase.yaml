@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: openemr-database
   instance: core-mysql # This has to be match with DbInstance name
-  deletionProtected: true
+  deletionProtected: false
   backup:
     enable: false # turn it to true when you want to use back up feature. currently only support postgres
     cron: "0 0 * * *"
