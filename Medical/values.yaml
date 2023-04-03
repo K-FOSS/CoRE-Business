@@ -25,19 +25,11 @@ openemr:
 
     SWARM_MODE: 'yes'
 
-    MANUAL_SETUP: 'yes'
-    
     MYSQL_DATABASE:
       valueFrom:
         secretKeyRef:
           name: openemr-database
           key: DB
-
-    MYSQL_ROOT_PASS:
-      valueFrom:
-        secretKeyRef:
-          name: mysql-admin-secret
-          key: password
 
     MYSQL_USER:
       valueFrom:
