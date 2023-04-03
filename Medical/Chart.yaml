@@ -1,0 +1,17 @@
+apiVersion: v2
+version: 1.0.0
+name: medical-core
+
+dependencies:
+  #
+  # People Management
+  #
+  - name: monica
+    version: 8.2.0
+    repository: https://geek-cookbook.github.io/charts/
+    condition: monica.enabled
+
+  - name: openemr
+    version: 5.2.0
+    repository: https://geek-cookbook.github.io/charts/
+    condition: openemr.enabled

@@ -1,0 +1,9 @@
+apiVersion: kci.rocks/v1beta1
+kind: Database
+metadata:
+  name: openemr-db
+
+spec:
+  secretName: openemr-database
+  instance: core-mysql # This has to be match with DbInstance name
+  deletionProtected: true
