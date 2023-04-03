@@ -51,8 +51,8 @@ openemr:
           name: openemr-database
           key: PASSWORD
 
-    # OE_USER: admin
-    # OE_PASS: pass
+    OE_USER: admin
+    OE_PASS: pass
 
   # -- Configures service settings for the chart.
   # @default -- See values.yaml
