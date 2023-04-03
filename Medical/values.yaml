@@ -74,7 +74,11 @@ openemr:
 
     sites:
       enabled: true
+      type: pvc
       mountPath: /var/www/localhost/htdocs/openemr/sites
+      accessMode: ReadWriteOnce
+      size: 1Gi
+
 
   # -- Enable and configure mariadb database subchart under this key.
   #    For more options see [mariadb chart documentation](https://github.com/bitnami/charts/tree/master/bitnami/mariadb)
