@@ -7,3 +7,5 @@ spec:
   secretName: openemr-database
   instance: core-mysql # This has to be match with DbInstance name
   deletionProtected: true
+  backup:
+    enable: false
