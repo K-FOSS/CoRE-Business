@@ -20,8 +20,10 @@ openemr:
   env:
     # -- Set the container timezone
     TZ: UTC
+
+    MYSQL_HOST: '172.18.67.224'
     
-    MYSQL_HOST:
+    MYSQL_DATABASE:
       valueFrom:
         secretKeyRef:
           name: openemr-database
