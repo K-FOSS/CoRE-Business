@@ -24,6 +24,8 @@ openemr:
     MYSQL_HOST: '172.18.67.224'
 
     SWARM_MODE: 'yes'
+
+    MANUAL_SETUP: 'yes'
     
     MYSQL_DATABASE:
       valueFrom:
