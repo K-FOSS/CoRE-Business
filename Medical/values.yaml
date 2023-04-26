@@ -25,6 +25,12 @@ openemr:
 
     SWARM_MODE: 'yes'
 
+    MYSQL_ROOT_PASS: 
+      valueFrom:
+        secretKeyRef:
+          name: mysql-admin-secret
+          key: password
+
     MYSQL_DATABASE:
       valueFrom:
         secretKeyRef:
