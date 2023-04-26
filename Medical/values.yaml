@@ -21,27 +21,27 @@ openemr:
     # -- Set the container timezone
     TZ: UTC
 
-    # MYSQL_HOST: '172.18.67.224'
+    MYSQL_HOST: '172.18.67.224'
 
-    # SWARM_MODE: 'yes'
+    SWARM_MODE: 'yes'
 
-    # MYSQL_DATABASE:
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: openemr-database
-    #       key: DB
+    MYSQL_DATABASE:
+      valueFrom:
+        secretKeyRef:
+          name: openemr-database
+          key: DB
 
-    # MYSQL_USER:
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: openemr-database
-    #       key: USER
+    MYSQL_USER:
+      valueFrom:
+        secretKeyRef:
+          name: openemr-database
+          key: USER
 
-    # MYSQL_PASS:
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: openemr-database
-    #       key: PASSWORD
+    MYSQL_PASS:
+      valueFrom:
+        secretKeyRef:
+          name: openemr-database
+          key: PASSWORD
 
     OE_USER: admin
     OE_PASS: pass
