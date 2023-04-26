@@ -83,7 +83,7 @@ openemr:
       type: pvc
       mountPath: /var/www/localhost/htdocs/openemr/sites/default
       accessMode: ReadWriteOnce
-      size: 1Gi
+      size: 10Gi
 
 
   # -- Enable and configure mariadb database subchart under this key.
