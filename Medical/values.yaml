@@ -31,17 +31,9 @@ openemr:
           name: mysql-admin-secret
           key: password
 
-    MYSQL_DATABASE:
-      valueFrom:
-        secretKeyRef:
-          name: openemr-database
-          key: DB
+    MYSQL_DATABASE: openemr-db
 
-    MYSQL_USER:
-      valueFrom:
-        secretKeyRef:
-          name: openemr-database
-          key: USER
+    MYSQL_USER: openemr-user
 
     MYSQL_PASS:
       valueFrom:
