@@ -78,6 +78,14 @@ openemr:
       enabled: false
       mountPath: /var/log
 
+    ssl:
+      enabled: true
+      type: pvc
+      mountPath: /etc/ssl
+      accessMode: ReadWriteOnce
+      size: 1Gi
+
+
     sites:
       enabled: true
       type: pvc
