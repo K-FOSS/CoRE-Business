@@ -81,7 +81,7 @@ openemr:
     sites:
       enabled: true
       type: pvc
-      mountPath: /var/www/localhost/htdocs/openemr/sites/default
+      mountPath: /var/www/localhost/htdocs/openemr/sites
       accessMode: ReadWriteOnce
       size: 10Gi
 
