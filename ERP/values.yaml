@@ -142,35 +142,6 @@ erpnext:
           - bash
           - -c
           - echo "Ping backing services";
-          {{- if .Values.mariadb.enabled }}
-          {{- if eq .Values.mariadb.architecture "replication" }}
-          - wait-for-it {{ .Release.Name }}-mariadb-primary:{{ .Values.mariadb.primary.service.ports.mysql }} -t 1;
-          {{- else }}
-          - wait-for-it {{ .Release.Name }}-mariadb:{{ .Values.mariadb.primary.service.ports.mysql }} -t 1;
-          {{- end }}
-          {{- else if .Values.dbHost }}
-          - wait-for-it {{ .Values.dbHost }}:{{ .Values.mariadb.primary.service.ports.mysql }} -t 1;
-          {{- end }}
-          {{- if index .Values "redis-cache" "host" }}
-          - wait-for-it {{ .Release.Name }}-redis-cache-master:{{ index .Values "redis-cache" "master" "containerPorts" "redis" }} -t 1;
-          {{- else if index .Values "redis-cache" "host" }}
-          - wait-for-it {{ index .Values "redis-cache" "host" }} -t 1;
-          {{- end }}
-          {{- if index .Values "redis-queue" "host" }}
-          - wait-for-it {{ .Release.Name }}-redis-queue-master:{{ index .Values "redis-queue" "master" "containerPorts" "redis" }} -t 1;
-          {{- else if index .Values "redis-queue" "host" }}
-          - wait-for-it {{ index .Values "redis-queue" "host" }} -t 1;
-          {{- end }}
-          {{- if index .Values "redis-socketio" "host" }}
-          - wait-for-it {{ .Release.Name }}-redis-socketio-master:{{ index .Values "redis-socketio" "master" "containerPorts" "redis" }} -t 1;
-          {{- else if index .Values "redis-socketio" "host" }}
-          - wait-for-it {{ index .Values "redis-socketio" "host" }} -t 1;
-          {{- end }}
-          {{- if .Values.postgresql.host }}
-          - wait-for-it {{ .Values.postgresql.host }}:{{ .Values.postgresql.primary.service.ports.postgresql }} -t 1;
-          {{- else if .Values.postgresql.enabled }}
-          - wait-for-it {{ .Release.Name }}-postgresql:{{ .Values.postgresql.primary.service.ports.postgresql }} -t 1;
-          {{- end }}
       initialDelaySeconds: 15
       periodSeconds: 5
 
@@ -248,9 +219,9 @@ erpnext:
       affinity: {}
 
     createSite:
-      enabled: false
+      enabled: true
       forceCreate: false
-      siteName: "erp.cluster.local"
+      siteName: erp.mylogin.space
       adminPassword: "changeit"
       installApps:
       - "erpnext"
@@ -326,7 +297,7 @@ erpnext:
   redis-cache:
     # https://github.com/bitnami/charts/tree/master/bitnami/redis
     enabled: false
-    host: 10.1.1.68
+    host: redis://10.1.1.68/201
     architecture: standalone
     auth:
       enabled: false
@@ -340,7 +311,7 @@ erpnext:
   redis-queue:
     # https://github.com/bitnami/charts/tree/master/bitnami/redis
     enabled: false
-    host: 10.1.1.68
+    host: redis://10.1.1.68/202
     architecture: standalone
     auth:
       enabled: false
@@ -354,7 +325,7 @@ erpnext:
   redis-socketio:
     # https://github.com/bitnami/charts/tree/master/bitnami/redis
     enabled: false
-    host: 10.1.1.68
+    host: redis://10.1.1.68/203
     architecture: standalone
     auth:
       enabled: false
