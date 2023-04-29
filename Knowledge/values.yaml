@@ -5,7 +5,7 @@ monica:
   # This chart inherits from our common library chart. You can check the default values/options here:
   # https://github.com/geek-cookbook/library-charts/tree/main/charts/stable/common/values.yaml
   #
-  enabled: false
+  enabled: true
 
   image:
     # -- image repository
