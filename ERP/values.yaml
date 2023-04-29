@@ -219,7 +219,7 @@ erpnext:
       affinity: {}
 
     createSite:
-      enabled: true
+      enabled: false
       forceCreate: false
       siteName: erp.mylogin.space
       adminPassword: "changeit"
@@ -263,12 +263,60 @@ erpnext:
       affinity: {}
 
     custom:
-      enabled: false
-      jobName: ""
+      enabled: true
+      jobName: "initstuff"
       labels: {}
       backoffLimit: 0
       initContainers: []
-      containers: []
+      containers:
+        - args:
+            - >
+              bench new-site $(SITE_NAME) --no-mariadb-socket
+              --db-type=$(DB_TYPE) --db-host=$(DB_HOST) --db-port=$(DB_PORT)
+              --admin-password=$(ADMIN_PASSWORD)
+              --mariadb-root-username=$(DB_ROOT_USER)
+              --mariadb-root-password=$(DB_ROOT_PASSWORD) --install-app=erpnext
+              ;rm -f currentsite.txt
+          command:
+            - bash
+            - '-c'
+          env:
+            - name: SITE_NAME
+              value: erp.mylogin.space
+            - name: DB_TYPE
+              value: mariadb
+            - name: DB_HOST
+              value: 172.18.67.224
+            - name: DB_PORT
+              value: '3306'
+
+            - name: DB_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: mysql-admin-secret
+
+            - name: DB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: mysql-admin-secret
+
+            - name: ADMIN_PASSWORD
+              value: changeit
+          image: 'frappe/erpnext:v14.21.0'
+          imagePullPolicy: IfNotPresent
+          name: create-site
+          resources: {}
+          securityContext:
+            capabilities:
+              add:
+                - CAP_CHOWN
+          volumeMounts:
+            - mountPath: /home/frappe/frappe-bench/sites
+              name: sites-dir
+            - mountPath: /home/frappe/frappe-bench/logs
+              name: logs
       restartPolicy: Never
       volumes: []
       nodeSelector: {}
