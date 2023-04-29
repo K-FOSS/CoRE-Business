@@ -200,7 +200,7 @@ erpnext:
   persistence:
     worker:
       enabled: true
-      # existingClaim: ""
+      existingClaim: k0s-cntrl-erpnext
       size: 8Gi
       # storageClass: "nfs"
     logs:
@@ -326,7 +326,7 @@ erpnext:
   redis-cache:
     # https://github.com/bitnami/charts/tree/master/bitnami/redis
     enabled: false
-    # host: ""
+    host: 10.1.1.68
     architecture: standalone
     auth:
       enabled: false
@@ -340,7 +340,7 @@ erpnext:
   redis-queue:
     # https://github.com/bitnami/charts/tree/master/bitnami/redis
     enabled: false
-    # host: ""
+    host: 10.1.1.68
     architecture: standalone
     auth:
       enabled: false
@@ -354,7 +354,7 @@ erpnext:
   redis-socketio:
     # https://github.com/bitnami/charts/tree/master/bitnami/redis
     enabled: false
-    # host: ""
+    host: 10.1.1.68
     architecture: standalone
     auth:
       enabled: false
