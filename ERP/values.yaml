@@ -202,7 +202,7 @@ erpnext:
       enabled: true
       existingClaim: k0s-cntrl-erpnext
       size: 8Gi
-      # storageClass: "nfs"
+      storageClass: infra1-storage
     logs:
       # Container based log search and analytics stack recommended
       enabled: false
