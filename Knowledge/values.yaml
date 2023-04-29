@@ -29,10 +29,26 @@ monica:
     # Use `php artisan key:generate` or `echo -n 'base64:'; openssl rand -base64 32` to generate a random key.
     # -- The URL of your application.
     APP_URL: https://humans.mylogin.space
-    # DB_HOST -- Database hostname
-    # DB_DATABASE -- Database to connect to
-    # DB_USERNAME -- Database username
-    # DB_PASSWORD -- Database password
+    
+    DB_HOST: 172.18.67.224
+
+    DB_DATABASE:
+      valueFrom:
+        secretKeyRef:
+          name: monica-database
+          key: DB
+
+    DB_USERNAME:
+      valueFrom:
+        secretKeyRef:
+          name: monica-database
+          key: USER
+    
+    DB_PASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: monica-database
+          key: PASSWORD
 
   # -- Configures service settings for the chart.
   # @default -- See values.yaml
