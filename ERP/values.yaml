@@ -266,7 +266,7 @@ erpnext:
 
   jobs:
     volumePermissions:
-      enabled: false
+      enabled: true
       backoffLimit: 0
       resources: {}
       nodeSelector: {}
@@ -280,16 +280,7 @@ erpnext:
       resources: {}
       nodeSelector: {}
       tolerations: []
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution: 
-            - labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/instance
-                    operator: In 
-                    values:
-                      - k0s-cntrl-business-erp-worker-s
-              topologyKey: kubernetes.io/hostname
+      affinity: {}
 
     createSite:
       enabled: false
