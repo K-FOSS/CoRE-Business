@@ -3,6 +3,8 @@ erpnext:
   # This is a YAML-formatted file.
   # Declare variables to be passed into your templates.
 
+  enabled: true
+
   # Configure external database host
   dbHost: 172.18.67.224
   dbPort: 3306
