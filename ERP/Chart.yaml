@@ -1,0 +1,12 @@
+apiVersion: v2
+version: 1.0.0
+name: erp-core
+
+dependencies:
+  #
+  # ERPNext
+  #
+  - name: erpnext
+    version: 6.0.22
+    repository: https://helm.erpnext.com
+    condition: erpnext.enabled

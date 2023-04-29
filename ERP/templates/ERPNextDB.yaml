@@ -1,0 +1,12 @@
+apiVersion: kci.rocks/v1beta1
+kind: Database
+metadata:
+  name: erpnext-db
+
+spec:
+  secretName: erpnext-database
+  instance: core-mysql # This has to be match with DbInstance name
+  deletionProtected: true
+  backup:
+    enable: false # turn it to true when you want to use back up feature. currently only support postgres
+    cron: "0 0 * * *"
