@@ -267,7 +267,36 @@ erpnext:
       jobName: "initstuff"
       labels: {}
       backoffLimit: 0
-      initContainers: []
+
+      initContainers:
+        - args:
+            - >
+              export start=`date +%s`; until [[ -n `grep -hs ^
+              sites/common_site_config.json | jq -r ".db_host // empty"` ]] && \
+                [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_cache // empty"` ]] && \
+                [[ -n `grep -hs ^ sites/common_site_config.json | jq -r ".redis_queue // empty"` ]];
+              do
+                echo "Waiting for sites/common_site_config.json to be created";
+                sleep 5;
+                if (( `date +%s`-start > 600 )); then
+                  echo "could not find sites/common_site_config.json with required keys";
+                  exit 1
+                fi
+              done; echo "sites/common_site_config.json found";
+          command:
+            - bash
+            - '-c'
+          image: 'frappe/erpnext:v14.21.0'
+          imagePullPolicy: IfNotPresent
+          name: validate-config
+          resources: {}
+          securityContext:
+            capabilities:
+              add:
+                - CAP_CHOWN
+          volumeMounts:
+            - mountPath: /home/frappe/frappe-bench/sites
+              name: sites-dir
       containers:
         - args:
             - >
@@ -318,7 +347,13 @@ erpnext:
             - mountPath: /home/frappe/frappe-bench/logs
               name: logs
       restartPolicy: Never
-      volumes: []
+      volumes:
+        - name: sites-dir
+          persistentVolumeClaim:
+            claimName: k0s-cntrl-erpnext
+            readOnly: false
+        - emptyDir: {}
+          name: logs
       nodeSelector: {}
       affinity: {}
       tolerations: []
