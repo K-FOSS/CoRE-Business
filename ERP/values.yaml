@@ -300,7 +300,7 @@ erpnext:
       containers:
         - args:
             - >
-              bench new-site $(SITE_NAME) --no-mariadb-socket
+              bench new-site $(SITE_NAME) --db-name=erpnext --no-mariadb-socket
               --db-type=$(DB_TYPE) --db-host=$(DB_HOST) --db-port=$(DB_PORT)
               --admin-password=$(ADMIN_PASSWORD)
               --mariadb-root-username=$(DB_ROOT_USER)
@@ -320,10 +320,7 @@ erpnext:
               value: '3306'
 
             - name: DB_ROOT_USER
-              valueFrom:
-                secretKeyRef:
-                  key: password
-                  name: mysql-admin-secret
+              value: 'root'
 
             - name: DB_ROOT_PASSWORD
               valueFrom:
