@@ -121,16 +121,7 @@ erpnext:
       resources: {}
       nodeSelector: {}
       tolerations: []
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution: 
-            - labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/instance
-                    operator: In 
-                    values:
-                      - k0s-cntrl-business-erp-worker-s
-              topologyKey: kubernetes.io/hostname
+      affinity: {}
       livenessProbe:
         override: false
         probe: {}
