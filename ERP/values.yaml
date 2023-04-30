@@ -6,7 +6,7 @@ erpnext:
   enabled: true
 
   # Configure external database host
-  dbHost: 172.18.67.224
+  dbHost: 172.18.24.251
   dbPort: 3306
   # dbRootUser: ""
   # dbRootPassword: ""
@@ -370,7 +370,7 @@ erpnext:
             - name: DB_TYPE
               value: mariadb
             - name: DB_HOST
-              value: 172.18.67.224
+              value: 172.18.24.251
             - name: DB_PORT
               value: '3306'
 
