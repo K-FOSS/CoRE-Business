@@ -6,9 +6,9 @@ erpnext:
   enabled: true
 
   # Configure external database host
-  dbHost: 172.18.24.251
+  dbHost: mariadb.service.dc1.kjdev
   dbPort: 3306
-  # dbRootUser: ""
+  #dbRootUser: ""
   # dbRootPassword: ""
   # dbRds: false
 
@@ -370,7 +370,7 @@ erpnext:
             - name: DB_TYPE
               value: mariadb
             - name: DB_HOST
-              value: 172.18.24.251
+              value: mariadb.service.dc1.kjdev
             - name: DB_PORT
               value: '3306'
 
