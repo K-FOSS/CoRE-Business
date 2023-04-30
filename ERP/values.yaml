@@ -380,8 +380,8 @@ erpnext:
             - name: DB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: password
-                  name: mysql-admin-secret
+                  key: root-password
+                  name: mariadb
 
             - name: ADMIN_PASSWORD
               value: changeit
