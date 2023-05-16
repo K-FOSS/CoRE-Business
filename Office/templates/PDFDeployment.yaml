@@ -26,6 +26,9 @@ spec:
       containers:
         - image: frooodle/s-pdf
           name: pdf-edit-ui
+          env:
+            - name: SERVER_PORT
+              value: '8080'
         #   securityContext:
         #     readOnlyRootFilesystem: true
 
