@@ -4,5 +4,5 @@ name: core-business-passwords
 
 dependencies:
   - name: vaultwarden
-    version: 16.0.38
-    repository: https://charts.truecharts.org/
+    version: 5.4.0
+    repository: https://geek-cookbook.github.io/charts/
