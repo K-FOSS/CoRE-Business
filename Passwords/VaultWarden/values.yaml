@@ -3,6 +3,16 @@ vaultwarden:
     sidecar.istio.io/inject: 'true'
     logs: loki-myloginspace
 
+  image:
+    # -- image repository
+    repository: ghcr.io/dani-garcia/vaultwarden
+    # -- image pull policy
+    pullPolicy: IfNotPresent
+    # -- image tag
+    # @default -- chart.appVersion
+    tag: alpine
+
+
   podAnnotations:
     sidecar.istio.io/inject: 'true'
 
