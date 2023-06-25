@@ -10,4 +10,5 @@ dependencies:
   #
   - name: mattermost-team-edition
     repository: https://helm.mattermost.com
+    condition: mattermost-team-edition.enabled
     version: 6.6.9
