@@ -4,6 +4,8 @@ mattermost-team-edition:
 
   fullnameOverride: core-teams
 
+  enabled: false
+
   # Default values for mattermost-team-edition.
   # This is a YAML-formatted file.
   # Declare variables to be passed into your templates.
