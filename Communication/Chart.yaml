@@ -12,3 +12,10 @@ dependencies:
     repository: https://helm.mattermost.com
     condition: mattermost-team-edition.enabled
     version: 6.6.9
+
+  #
+  # Matrix
+  #
+  - name: synapse
+    repository: https://halkeye.github.io/helm-charts/
+    version: 0.19.0
