@@ -4,8 +4,10 @@ metadata:
   name: business-mail-dovecot-auth-config
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
+
   target:
     name: business-mail-dovecot-auth-config
     template:
@@ -26,23 +28,23 @@ spec:
     #
     - secretKey: OpenIDClientID
       remoteRef:
-        key: Dovecot
-        property: OpenIDClientID
+        key: Mail/Dovecot/OIDC
+        property: ClientID
 
     - secretKey: OpenIDClientSecret
       remoteRef:
         key: Dovecot
-        property: OpenIDClientSecret
+        property: ClientSecret
 
     #
     # General AAA
     #
     - secretKey: Username
       remoteRef:
-        key: Dovecot
+        key: Mail/Dovecot/LDAP
         property: Username
 
     - secretKey: Password
       remoteRef:
-        key: Dovecot
+        key: Mail/Dovecot/LDAP
         property: Password
