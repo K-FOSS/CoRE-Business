@@ -55,8 +55,8 @@ spec:
                 path: dovecot-ldap.conf.ext
 
         - name: dovecot-storage
-          secret:
-            secretName: business-mail-dovecot-storage-config
+          configMap:
+            name: business-mail-dovecot-storage-config
             items:
               - key: dovecot-storage.conf.ext
                 path: dovecot-storage.conf.ext

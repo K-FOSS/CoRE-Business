@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: business-mail-dovecot-storage-config-tpl
+  name: business-mail-dovecot-storage-config
 
 data:
   dovecot-storage.conf.ext: |
