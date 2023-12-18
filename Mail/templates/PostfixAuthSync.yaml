@@ -4,8 +4,9 @@ metadata:
   name: business-mail-postfix-auth-config
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+  
   target:
     name: business-mail-postfix-auth-config
     template:
@@ -26,10 +27,10 @@ spec:
     #
     - secretKey: Username
       remoteRef:
-        key: Postfix
+        key: Mail/Postfix/LDAP
         property: Username
 
     - secretKey: Password
       remoteRef:
-        key: Postfix
+        key: Mail/Postfix/LDAP
         property: Password
