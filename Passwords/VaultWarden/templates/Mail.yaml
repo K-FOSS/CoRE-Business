@@ -4,8 +4,9 @@ metadata:
   name: business-vaultwarden-mail-prod-sync
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: vault-backend
+
   target:
     name: business-vaultwarden-mail-prod
 

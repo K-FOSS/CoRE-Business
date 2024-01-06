@@ -1,6 +1,5 @@
 vaultwarden:
   podLabels:
-    sidecar.istio.io/inject: 'true'
     logs: loki-myloginspace
 
   image:
@@ -12,9 +11,7 @@ vaultwarden:
     # @default -- chart.appVersion
     tag: alpine
 
-
-  podAnnotations:
-    sidecar.istio.io/inject: 'true'
+  podAnnotations: {}
 
   strategy:
     type: RollingUpdate
