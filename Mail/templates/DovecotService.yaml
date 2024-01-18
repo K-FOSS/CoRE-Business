@@ -51,7 +51,4 @@ spec:
       port: 2525
       targetPort: lmtp
 
-
-  loadBalancerIP: 66.165.222.125
-
   type: LoadBalancer
