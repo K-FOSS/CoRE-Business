@@ -10,6 +10,7 @@ data:
     log_path = /dev/stderr
     info_log_path = /dev/stdout
     debug_log_path = /dev/stdout
+    disable_plaintext_auth = no
     ## this is sometimes needed
     #first_valid_uid = uid-of-vmail-user
 
