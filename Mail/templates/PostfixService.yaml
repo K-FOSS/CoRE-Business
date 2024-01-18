@@ -48,6 +48,5 @@ spec:
       port: 10025
       targetPort: smtp-auth
 
-  loadBalancerIP: 66.165.222.125
   allocateLoadBalancerNodePorts: false
   type: LoadBalancer
