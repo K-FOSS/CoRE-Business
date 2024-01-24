@@ -5,7 +5,9 @@ metadata:
 spec:
   secretStoreRef:
     kind: ClusterSecretStore
-    name: vault-backend
+    name: mainvault-core
+
+
 
   target:
     name: business-vaultwarden-database-prod
