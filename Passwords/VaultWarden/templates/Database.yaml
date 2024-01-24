@@ -13,20 +13,25 @@ spec:
       engineVersion: v2
       data:
         # multiline string
-        DBURI: '{{`postgresql://{{ .Username }}:{{ .Password }}@psql.service.kjdev:5432/{{ .DatabaseDatabase }}`}}'
+        DBURI: '{{`postgresql://{{ .Username }}:{{ .Password }}@{{ .Hostname }}:5432/{{ .Database }}`}}'
 
   data:
-    - secretKey: DatabaseDatabase
+    - secretKey: Hostname
       remoteRef:
-        key: VaultWarden
-        property: DatabaseDatabase
+        key: Bitwarden/Database
+        property: Hostname
+
+    - secretKey: Database
+      remoteRef:
+        key: Bitwarden/Database
+        property: Database
 
     - secretKey: Username
       remoteRef:
-        key: VaultWarden
+        key: Bitwarden/Database
         property: Username
       
     - secretKey: Password
       remoteRef:
-        key: VaultWarden
+        key: Bitwarden/Database
         property: Password
