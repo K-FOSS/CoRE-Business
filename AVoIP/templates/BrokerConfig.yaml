@@ -4,8 +4,9 @@ metadata:
   name: business-avoip-ejabberd-cfg
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: corevault-rootsecrets
+
   target:
     name: business-avoip-ejabberd-cfg-tpl
     template:
@@ -23,10 +24,10 @@ spec:
     #
     - secretKey: Username
       remoteRef:
-        key: eJabberD
+        key: AVoIP/eJabberD/LDAP
         property: Username
 
     - secretKey: Password
       remoteRef:
-        key: eJabberD
+        key: AVoIP/eJabberD/LDAP
         property: Password
