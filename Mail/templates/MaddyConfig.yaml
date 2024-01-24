@@ -21,7 +21,7 @@ data:
 
     storage.imapsql local_mailboxes {
       driver postgres
-      dsn "user={{ .Username }} password={{ .Password }} host=psql.service.dc1.kjdev dbname=email sslmode=disable"
+      dsn "user={{ .Username }} password={{ .Password }} host=psql.mylogin.space dbname=email"
 
       
 
