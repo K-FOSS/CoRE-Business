@@ -4,8 +4,11 @@ metadata:
   name: business-mail-maddy-config
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
+
+
   target:
     name: business-mail-maddy-config
     template:
@@ -25,34 +28,24 @@ spec:
     #
     - secretKey: S3AccessKey
       remoteRef:
-        key: Dovecot
-        property: S3AccessKey
+        key: Mail/Maddy/S3
+        property: AccessKey
 
     - secretKey: S3SecretKey
       remoteRef:
-        key: Dovecot
-        property: S3SecretKey
+        key: Mail/Maddy/S3
+        property: SecretKey
 
     #
     # LDAP
     # 
     - secretKey: Username
       remoteRef:
-        key: Dovecot
+        key: Mail/Maddy/Database
         property: Username
 
-    - secretKey: LDAPUsername
-      remoteRef:
-        key: Maddy
-        property: Username
 
     - secretKey: Password
       remoteRef:
-        key: Dovecot
+        key: Mail/Maddy/Database
         property: Password
-
-    - secretKey: LDAPPassword
-      remoteRef:
-        key: Maddy
-        property: Password
-      
