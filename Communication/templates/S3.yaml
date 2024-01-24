@@ -4,8 +4,8 @@ metadata:
   name: 'business-communications-s3-sync-{{ .Values.environment }}'
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
 
   target:
     name: 'business-communications-s3-{{ .Values.environment }}'
