@@ -9,7 +9,11 @@ metadata:
 
 spec:
   parentRefs:
-    - name: ingress-gw
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: main-gw
+      namespace: kuadrant-core-prod
+
   hostnames:
     - 'cyberchef.mylogin.space'
   rules:
