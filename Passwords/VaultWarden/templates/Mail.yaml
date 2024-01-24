@@ -5,7 +5,10 @@ metadata:
 spec:
   secretStoreRef:
     kind: ClusterSecretStore
-    name: vault-backend
+    name: mainvault-core
+
+
+
 
   target:
     name: business-vaultwarden-mail-prod
@@ -13,20 +16,20 @@ spec:
   data:
     - secretKey: Hostname
       remoteRef:
-        key: SMTP
+        key: Bitwarden/Mail
         property: Hostname
 
     - secretKey: Port
       remoteRef:
-        key: SMTP
+        key: Bitwarden/Mail
         property: Port
 
     - secretKey: Username
       remoteRef:
-        key: SMTP
+        key: Bitwarden/Mail
         property: Username
       
     - secretKey: Password
       remoteRef:
-        key: SMTP
+        key: Bitwarden/Mail
         property: Password
