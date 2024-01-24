@@ -9,7 +9,12 @@ metadata:
 
 spec:
   parentRefs:
-    - name: ingress-gw
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: kuadrant-core-prod
+      name: main-gw
+      sectionName: https
+
   hostnames:
     - 'passwords.mylogin.space'
   rules:
