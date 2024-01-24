@@ -12,8 +12,7 @@ spec:
     name: business-mail-dovecot-auth-config
     template:
       engineVersion: v2
-      data:
-        test: 'hi'
+
       templateFrom:
         - configMap:
             # name of the configmap to pull in
@@ -33,7 +32,7 @@ spec:
 
     - secretKey: OpenIDClientSecret
       remoteRef:
-        key: Dovecot
+        key: Mail/Dovecot/OIDC
         property: ClientSecret
 
     #
