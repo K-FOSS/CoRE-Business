@@ -4,8 +4,9 @@ metadata:
   name: business-office-nextcloud-database-prod-sync
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
   target:
     name: business-office-nextcloud-database-prod
 
