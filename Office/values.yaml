@@ -92,12 +92,10 @@ nextcloud:
   deploymentAnnotations: {}
 
 
-  podAnnotations:
-    sidecar.istio.io/inject: 'true'
+  podAnnotations: {}
 
   podLabels:
     logs: loki-myloginspace
-    sidecar.istio.io/inject: 'true'
 
 
 
