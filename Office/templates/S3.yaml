@@ -4,23 +4,24 @@ metadata:
   name: business-office-nextcloud-s3-prod-sync
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
   target:
     name: business-office-nextcloud-s3-prod
 
   data:
     - secretKey: S3Bucket
       remoteRef:
-        key: Nextcloud
-        property: S3Bucket
+        key: Nextcloud/S3
+        property: Bucket
 
     - secretKey: S3AccessKey
       remoteRef:
-        key: Nextcloud
-        property: S3AccessKey
+        key: Nextcloud/S3
+        property: AccessKey
       
     - secretKey: S3SecretKey
       remoteRef:
-        key: Nextcloud
-        property: S3SecretKey
+        key: Nextcloud/S3
+        property: SecretKey
