@@ -4,34 +4,35 @@ metadata:
   name: business-office-nextcloud-keys-prod-sync
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
   target:
     name: business-office-nextcloud-keys-prod
 
   data:
     - secretKey: PasswordSalt
       remoteRef:
-        key: Nextcloud
+        key: Nextcloud/Encryption
         property: PasswordSalt
 
     - secretKey: Secret
       remoteRef:
-        key: Nextcloud
+        key: Nextcloud/Encryption
         property: Secret
 
     - secretKey: AdminUser
       remoteRef:
-        key: Nextcloud
-        property: AdminUser
+        key: Nextcloud/Admin
+        property: Username
 
     - secretKey: AdminPassword
       remoteRef:
-        key: Nextcloud
-        property: AdminPassword
+        key: Nextcloud/Admin
+        property: Password
 
     - secretKey: TOKEN
       remoteRef:
-        key: Nextcloud
-        property: TOKEN
+        key: Nextcloud/Encryption
+        property: Token
 
