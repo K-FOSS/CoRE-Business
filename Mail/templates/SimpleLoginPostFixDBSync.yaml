@@ -34,7 +34,7 @@ spec:
     - secretKey: Password
       remoteRef:
         key: Mail/SimpleLogin/Database
-        property: DatabasePassword
+        property: Password
 
     - secretKey: Usernaname
       remoteRef:
