@@ -14,9 +14,9 @@ spec:
     - secretKey: S3AccessKey
       remoteRef:
         key: Avatars/S3
-        property: S3AccessKey
+        property: AccessKey
       
     - secretKey: S3SecretKey
       remoteRef:
         key: Avatars/S3
-        property: S3SecretKey
+        property: SecretKey
