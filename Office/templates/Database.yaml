@@ -10,17 +10,17 @@ spec:
     name: business-office-nextcloud-database-prod
 
   data:
-    - secretKey: DatabaseDatabase
+    - secretKey: Database
       remoteRef:
-        key: Nextcloud
-        property: DatabaseDatabase
+        key: Nextcloud/Database
+        property: Database
 
     - secretKey: Username
       remoteRef:
-        key: Nextcloud
+        key: Nextcloud/Database
         property: Username
       
     - secretKey: Password
       remoteRef:
-        key: Nextcloud
+        key: Nextcloud/Database
         property: Password
