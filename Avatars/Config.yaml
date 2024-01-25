@@ -4,8 +4,10 @@ metadata:
   name: business-avatars-config-prod-sync
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
+
   target:
     name: business-avatars-config-prod
     template:
@@ -270,10 +272,10 @@ spec:
   data:
     - secretKey: OpenIDClientID
       remoteRef:
-        key: Avatar
-        property: OpenIDClientID
+        key: Avatars/OIDC
+        property: ClientID
       
     - secretKey: OpenIDClientSecret
       remoteRef:
-        key: Avatar
-        property: OpenIDClientSecret
+        key: Avatars/OIDC
+        property: ClientSecret
