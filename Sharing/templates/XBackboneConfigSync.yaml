@@ -4,14 +4,13 @@ metadata:
   name: business-sharing-xbackbone-config-tpl
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
   target:
     name: business-sharing-xbackbone-config
     template:
       engineVersion: v2
-      data:
-        test: 'hi'
       templateFrom:
         - configMap:
             name: business-sharing-xbackbone-config-tpl
@@ -24,12 +23,12 @@ spec:
     #
     - secretKey: Username
       remoteRef:
-        key: XBackbone
+        key: Sharing/XBackbone/LDAP
         property: Username
 
     - secretKey: Password
       remoteRef:
-        key: XBackbone
+        key: Sharing/XBackbone/LDAP
         property: Password
 
     #
@@ -37,10 +36,10 @@ spec:
     #
     - secretKey: S3Bucket
       remoteRef:
-        key: XBackbone
-        property: S3Bucket
+        key: Sharing/XBackbone/S3
+        property: Bucket
 
     - secretKey: S3SecretKey
       remoteRef:
-        key: XBackbone
-        property: S3SecretKey
+        key: Sharing/XBackbone/S3
+        property: SecretKey
