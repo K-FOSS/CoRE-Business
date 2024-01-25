@@ -4,18 +4,19 @@ metadata:
   name: business-avatars-s3-prod-sync
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
   target:
     name: business-avatars-s3-prod
 
   data:
     - secretKey: S3AccessKey
       remoteRef:
-        key: Avatar
+        key: Avatars/S3
         property: S3AccessKey
       
     - secretKey: S3SecretKey
       remoteRef:
-        key: Avatar
+        key: Avatars/S3
         property: S3SecretKey
