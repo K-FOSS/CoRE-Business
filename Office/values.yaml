@@ -675,7 +675,7 @@ nextcloud:
           $CONFIG = array (
             'dbtype' => 'pgsql',
             'dbname' => getenv('POSTGRES_DB'),
-            'dbhost' => 'psql.service.dc1.kjdev:5432',
+            'dbhost' => 'psql.mylogin.space:5432',
             'dbport' => '',
             'dbtableprefix' => 'oc_',
             'dbuser' => getenv('POSTGRES_USER'),
@@ -748,12 +748,6 @@ nextcloud:
       # S3
       #
 
-      - name: OBJECTSTORE_S3_BUCKET
-        valueFrom:
-          secretKeyRef:
-            name: business-office-nextcloud-s3-prod
-            key: S3Bucket
-
       #
       # Redis
       #
@@ -765,14 +759,6 @@ nextcloud:
       #
       - name: OBJECTSTORE_S3_HOST
         value: s3.mylogin.space
-
-      - name: OBJECTSTORE_S3_USEPATH_STYLE
-        value: 'true'
-
-      - name: OBJECTSTORE_S3_LEGACYAUTH
-        value: 'false'
-
-
 
       - name: OBJECTSTORE_S3_PORT
         value: '443'
@@ -798,11 +784,6 @@ nextcloud:
             name: business-office-nextcloud-s3-prod
             key: S3SecretKey
 
-    #  - name: SOME_SECRET_ENV
-    #    valueFrom:
-    #      secretKeyRef:
-    #        name: nextcloud
-    #        key: secret_key
 
     # Extra mounts for the pods. Example shown is for connecting a legacy NFS volume
     # to NextCloud pods in Kubernetes. This can then be configured in External Storage
@@ -1002,10 +983,7 @@ nextcloud:
     type: postgresql
 
     ## Database host
-    host: psql.service.dc1.kjdev:5432
-
-    ## Database password
-    password:
+    host: psql.mylogin.space:5432
 
     ## Database name
     database: SzS9n9UxZS
