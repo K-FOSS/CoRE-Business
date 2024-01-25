@@ -4,22 +4,24 @@ metadata:
   name: business-testing-liberespeed-db-prod-sync
 spec:
   secretStoreRef:
-    name: vault-backend
     kind: ClusterSecretStore
+    name: mainvault-core
+
   target:
     name: business-testing-liberespeed-db-prod
+
   data:
     - secretKey: Database
       remoteRef:
-        key: LibreSpeed
+        key: LibreSpeed/Database
         property: Database
 
     - secretKey: Username
       remoteRef:
-        key: LibreSpeed
+        key: LibreSpeed/Database
         property: Username
       
     - secretKey: Password
       remoteRef:
-        key: LibreSpeed
+        key: LibreSpeed/Database
         property: Password
