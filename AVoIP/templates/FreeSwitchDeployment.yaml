@@ -43,6 +43,16 @@ spec:
               containerPort: 5061
               protocol: TCP
 
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+                - NET_ADMIN
+                - NET_RAW
+                - NET_BROADCAST
+                - SYS_NICE
+                - SYS_RESOURCE
+
           # env:
           #   - name: CONTEXTUALISE_SETTINGS
           #     value: /src/contextualise/settings.cfg
@@ -69,7 +79,7 @@ spec:
 
             - name: freeswitch-upstream-config
               subPath: flowroute.xml
-              mountPath: /etc/freeswitch/sip_profiles/flowroute.xml
+              mountPath: /etc/freeswitch/sip_profiles/external/flowroute.xml
 
             #
             # Dialplan

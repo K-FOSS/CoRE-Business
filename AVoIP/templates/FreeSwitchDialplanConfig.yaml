@@ -29,6 +29,25 @@ data:
           </condition>
         </extension>
 
+        <extension name="18077893501">
+          <condition field="destination_number" expression="^(18077893501)$"/>
+            <action application="tone_detect" data="fax 1100 r +5000 transfer 'fax XML default' 1"/>
+            <action application="answer"/>
+            <action application="sleep" data="1000"/>
+            <action application="ivr" data="main"/>
+            <action application="hangup"/>
+          </condition>
+        </extension>
+
+        <extension name="fax">
+          <condition field="destination_number" expression="^fax$">
+            <action application="answer" />
+            <action application="playback" data="silence_stream://2000"/>
+            <action application="rxfax" data="/usr/local/freeswitch/fax/${caller_id_number}-${strftime(%Y-%m-%d-%H-%M-%S)}.tiff"/>
+            <action application="hangup"/>
+          </condition>
+        </extension>
+
         <!-- Example of doing things based on time of day.
 
       year = 4 digit year. Example year="2009"

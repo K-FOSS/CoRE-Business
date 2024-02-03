@@ -7,22 +7,15 @@ metadata:
 
 data:
   flowroute.xml: |{{`
-    <profile name="flowroute">
-        <gateways>
-          <gateway name="flowroute">
-            <param name="username" value="{{ .Username }}"/>
-            <param name="auth-username" value="{{ .Username }}"/>
-            <param name="password" value="{{ .Password }}"/>
-            <param name="proxy" value="sip.flowroute.com"/>
-            <param name="expire-seconds" value="600"/>
-            <param name="register" value="true"/>
-            <param name="retry-seconds" value="30"/>
-            <param name="ping" value="25"/> `}}
-          </gateway>
-        </gateways>
-        <settings>
-            <param name="context" value="public"/><!-- WHERE DO CALLS FROM ASTERISK COME INTO? -->
-            <param name="rtp-ip" value="0.0.0.0"/><!-- this FreeSWITCH MEDIA IP -->
-            <param name="sip-ip" value="0.0.0.0"/><!-- this FreeSWITCH SIP IP -->
-        </settings>
-    </profile>
+    <include>
+        <gateway name="flowroute">
+            <param name="username" value="18077893501" />
+            <param name="auth-username" value="{{ .Username }}" />
+            <param name="password" value="{{ .Password }}" />
+            <param name="proxy" value="sip.flowroute.com" />
+            <param name="expire-seconds" value="600" />
+            <param name="register" value="true" />
+            <param name="retry-seconds" value="30" />
+            <param name="ping" value="25" />
+        </gateway>
+    </include>`}}
