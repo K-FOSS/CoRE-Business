@@ -202,26 +202,6 @@ data:
     ; registration go to an endpoint automatically the "line" and "endpoint" options must
     ; be set. The "endpoint" option specifies what endpoint the incoming call should be
     ; associated with
-    {{`
-    [mytrunk]
-    type=registration
-    transport=transport-udp
-    outbound_auth=mytrunk_auth
-    server_uri=sip:us-west-or.sip.flowroute.com:5060
-    client_uri=sip:{{ .Username }}@us-west-or.sip.flowroute.com:5060
-    contact_user={{ .Username }}
-    auth_rejection_permanent=no
-    expiration=300
-    retry_interval=60
-    line=yes
-    endpoint=mytrunk
-
-    [mytrunk_auth]
-    type=auth
-    auth_type=userpass
-    password={{ .Password }}
-    username={{ .Username }}
-    `}}
 
     ;===============ENDPOINT CONFIGURED AS A TRUNK, OUTBOUND AUTHENTICATION=======
     ;

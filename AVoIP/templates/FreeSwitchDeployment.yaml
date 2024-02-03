@@ -67,6 +67,10 @@ spec:
               subPath: asterisk.xml
               mountPath: /etc/freeswitch/sip_profiles/asterisk.xml
 
+            - name: freeswitch-upstream-config
+              subPath: flowroute.xml
+              mountPath: /etc/freeswitch/sip_profiles/flowroute.xml
+
             #
             # Dialplan
             #
@@ -154,6 +158,13 @@ spec:
             items:
               - key: default.xml
                 path: default.xml
+
+        - name: freeswitch-upstream-config
+          secret:
+            secretName: {{ $fullName }}-freeswitch-upstream
+            items:
+              - key: flowroute.xml
+                path: flowroute.xml
 
         - name: data-volume
           emptyDir: {}

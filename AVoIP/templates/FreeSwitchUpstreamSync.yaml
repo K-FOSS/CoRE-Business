@@ -1,0 +1,35 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: ExternalSecret
+metadata:
+  name: {{ $fullName }}-freeswitch-upstream
+spec:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: corevault-rootsecrets
+
+  target:
+    name: {{ $fullName }}-freeswitch-upstream
+
+    template:
+      engineVersion: v2
+      templateFrom:
+        - configMap:
+            # name of the configmap to pull in
+            name: {{ $fullName }}-freeswitch-upstream
+            # here you define the keys that should be used as template
+            items:
+              - key: flowroute.xml
+
+  data:
+    - secretKey: Username
+      remoteRef:
+        key: AVoIP/SIP/FlowRoute
+        property: Username
+
+    - secretKey: Password
+      remoteRef:
+        key: AVoIP/SIP/FlowRoute
+        property: Password
+
