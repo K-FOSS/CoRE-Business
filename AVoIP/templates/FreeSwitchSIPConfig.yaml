@@ -51,7 +51,7 @@ data:
         <param name="debug" value="0"/>
         <!-- If you want FreeSWITCH to shutdown if this profile fails to load, uncomment the next line. -->
         <!-- <param name="shutdown-on-fail" value="true"/> -->
-        <param name="sip-trace" value="no"/>
+        <param name="sip-trace" value="yes"/>
         <param name="sip-capture" value="no"/>
         <param name="rfc2833-pt" value="101"/>
         <!-- RFC 5626 : Send reg-id and sip.instance -->
