@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: {{ $fullName }}-freeswitch
+
+  labels:
+    wan-mode: public
+    lan-mode: private
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: main-gw
+      namespace: kuadrant-core-prod
+      sectionName: sip-tls
+
+  hostnames:
+    - sip.resolvemy.host
+
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: passthrough-echoserver
+          port: 443
+          weight: 1

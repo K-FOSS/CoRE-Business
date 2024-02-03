@@ -63,8 +63,25 @@ spec:
               mountPath: /etc/freeswitch/freeswitch.xml
 
             - name: freeswitch-config
+              subPath: vars.xml
+              mountPath: /etc/freeswitch/vars.xml
+
+            - name: freeswitch-config
               subPath: extensions.conf
               mountPath: /etc/freeswitch/extensions.conf
+
+
+            #
+            # TLS
+            #
+
+            - name: freeswitch-tls-certs
+              subPath: agent.pem
+              mountPath: /etc/freeswitch/tls/agent.pem
+
+            - name: freeswitch-tls-certs
+              subPath: cafile.pem
+              mountPath: /etc/freeswitch/tls/cafile.pem
 
             #
             # SIP
@@ -123,7 +140,11 @@ spec:
 
               - key: extensions.conf
                 path: extensions.conf
-            
+
+              - key: vars.xml
+                path: vars.xml
+
+
         - name: freeswitch-misc-config
           configMap:
             name: {{ $fullName }}-freeswitch-misc-configs
@@ -175,6 +196,17 @@ spec:
             items:
               - key: flowroute.xml
                 path: flowroute.xml
+
+        - name: freeswitch-tls-certs
+          secret:
+            secretName: resolvemyhost-default-certificates
+            items:
+              - key: tls-combined.pem
+                path: agent.pem
+
+              - key: ca.crt
+                path: cafile.pem
+
 
         - name: data-volume
           emptyDir: {}
