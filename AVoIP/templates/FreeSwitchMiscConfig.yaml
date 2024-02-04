@@ -479,6 +479,9 @@ data:
         <list name="asterisk" default="deny">
           <node type="allow" cidr="10.0.0.0/8"/>
         </list>
+        <list name="flowroute" default="deny">
+          <node type="allow" cidr="10.0.0.0/8"/>
+        </list>
       </network-lists>
     </configuration>
 

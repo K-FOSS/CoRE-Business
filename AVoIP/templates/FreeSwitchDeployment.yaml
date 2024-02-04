@@ -107,6 +107,9 @@ spec:
               subPath: default.xml
               mountPath: /etc/freeswitch/dialplan/default.xml
 
+            - name: freeswitch-dialplan-config
+              subPath: public.xml
+              mountPath: /etc/freeswitch/dialplan/public.xml
             
             #
             # Modules
@@ -190,6 +193,9 @@ spec:
             items:
               - key: default.xml
                 path: default.xml
+
+              - key: public.xml
+                path: public.xml
 
         - name: freeswitch-upstream-config
           secret:
