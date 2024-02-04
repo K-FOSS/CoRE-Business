@@ -59,23 +59,20 @@ data:
         <load module="mod_verto"/>
 
         <!-- Applications -->
-        <load module="mod_signalwire"/>
         <load module="mod_commands"/>
         <load module="mod_conference"/>
         <!-- <load module="mod_curl"/> -->
         <load module="mod_db"/>
         <load module="mod_dptools"/>
         <load module="mod_expr"/>
-        <load module="mod_fifo"/>
+  
         <load module="mod_hash"/>
         <!--<load module="mod_mongo"/> -->
-        <load module="mod_voicemail"/>
         <!--<load module="mod_directory"/>-->
         <!--<load module="mod_distributor"/>-->
         <!--<load module="mod_lcr"/>-->
         <!--<load module="mod_easyroute"/>-->
         <load module="mod_esf"/>
-        <load module="mod_fsv"/>
         <!--<load module="mod_cluechoo"/>-->
         <load module="mod_valet_parking"/>
         <!--<load module="mod_fsk"/>-->
