@@ -1,0 +1,19 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: UDPRoute
+metadata:
+  name: {{ $fullName }}-freeswitch
+
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: kuadrant-core-prod
+      name: main-gw
+      sectionName: sip-udp
+
+  rules:
+    - backendRefs:
+      - name: {{ $fullName }}-freeswitch
+        port: 5060
