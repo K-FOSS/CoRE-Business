@@ -8,14 +8,22 @@ metadata:
 data:
   flowroute.xml: |{{`
     <include>
-        <gateway name="flowroute">
-            <param name="username" value="18077893501" />
-            <param name="auth-username" value="{{ .Username }}" />
-            <param name="password" value="{{ .Password }}" />
-            <param name="proxy" value="sip.flowroute.com" />
-            <param name="expire-seconds" value="600" />
-            <param name="register" value="true" />
-            <param name="retry-seconds" value="30" />
-            <param name="ping" value="25" />
-        </gateway>
+      <user id="$${default_provider}">
+        <gateways>
+          <gateway name="flowroute">
+              <param name="username" value="18077893501" />
+              <param name="auth-username" value="{{ .Username }}" />
+              <param name="password" value="{{ .Password }}" />
+              <param name="proxy" value="sip.flowroute.com" />
+              <param name="expire-seconds" value="600" />
+              <param name="register" value="true" />
+              <param name="retry-seconds" value="30" />
+              <param name="ping" value="25" />
+              <param name="register-transport" value="tls"/>
+          </gateway>
+        </gateways>
+        <params>
+          <param name="password" value="$${default_provider_password}"/>
+        </params>
+      </user>
     </include>`}}
