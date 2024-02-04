@@ -44,6 +44,19 @@ spec:
               containerPort: 5061
               protocol: TCP
 
+          env:
+            - name: LDAP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-aaa
+                  key: username
+
+            - name: LDAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-aaa
+                  key: password
+
           securityContext:
             capabilities:
               add:
@@ -173,6 +186,9 @@ spec:
 
               - key: sofia.conf.xml
                 path: sofia.conf.xml
+
+              - key: voicemail.conf.xml
+                path: voicemail.conf.xml
           
           
 
