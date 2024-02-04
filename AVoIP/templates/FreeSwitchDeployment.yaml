@@ -23,11 +23,12 @@ spec:
 
     spec:
       containers:
-        - image: kristianfjones/freeswitch:core
+        - image: mmtnrw/freeswitch:latest
           imagePullPolicy: Always
           name: freeswitch
 
           args:
+            - freeswitch
             - -c
 
           ports:
