@@ -23,6 +23,6 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: passthrough-echoserver
-          port: 443
+          name: {{ $fullName }}-freeswitch
+          port: 5060
           weight: 1
