@@ -80,7 +80,7 @@ spec:
               mountPath: /etc/freeswitch/tls/agent.pem
 
             - name: freeswitch-tls-certs
-              subPath: cafile.pem
+              subPath: tls.crt
               mountPath: /etc/freeswitch/tls/cafile.pem
 
             #
@@ -205,7 +205,7 @@ spec:
                 path: agent.pem
 
               - key: tls.crt
-                path: cafile.pem
+                path: tls.crt
 
 
         - name: data-volume
