@@ -6,7 +6,7 @@ asterisk:
 freeswitch:
   rtp:
     min: 11000
-    max: 13000
+    max: 11100
 
 jitsi-meet:
   # Default values for jitsi-meet.
