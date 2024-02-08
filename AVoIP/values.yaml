@@ -3,6 +3,11 @@ asterisk:
     min: 10000
     max: 10100
 
+freeswitch:
+  rtp:
+    min: 11000
+    max: 13000
+
 jitsi-meet:
   # Default values for jitsi-meet.
   # This is a YAML-formatted file.
