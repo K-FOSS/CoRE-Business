@@ -19,10 +19,6 @@ spec:
       targetPort: {{ . }}
       protocol: UDP
       name: 'udp-{{ . }}'
-    - port: {{ . }}
-      targetPort: {{ . }}
-      protocol: TCP
-      name: 'tcp-{{ . }}'
 {{ end }}
 
   selector:
