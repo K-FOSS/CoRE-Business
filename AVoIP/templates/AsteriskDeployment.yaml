@@ -34,7 +34,7 @@ spec:
 
             - name: udp-sip
               containerPort: 5060
-              protocol: TCP
+              protocol: UDP
 
             - name: tls-sips
               containerPort: 5061
