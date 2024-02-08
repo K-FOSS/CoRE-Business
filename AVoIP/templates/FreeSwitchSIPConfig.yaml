@@ -51,12 +51,12 @@ data:
         <param name="debug" value="0"/>
         <!-- If you want FreeSWITCH to shutdown if this profile fails to load, uncomment the next line. -->
         <!-- <param name="shutdown-on-fail" value="true"/> -->
-        <param name="sip-trace" value="yes"/>
+        <param name="sip-trace" value="no"/>
         <param name="sip-capture" value="no"/>
         <param name="rfc2833-pt" value="101"/>
         <!-- RFC 5626 : Send reg-id and sip.instance -->
         <!--<param name="enable-rfc-5626" value="true"/> -->
-        <param name="sip-port" value="5060"/>
+        <param name="sip-port" value="$${external_sip_port}"/>
         <param name="dialplan" value="XML"/>
         <param name="context" value="public"/>
         <param name="dtmf-duration" value="2000"/>
@@ -88,28 +88,27 @@ data:
         <param name="nonce-ttl" value="60"/>
         <param name="auth-calls" value="false"/>
         <param name="inbound-late-negotiation" value="true"/>
-        <param name="inbound-zrtp-passthru" value="true"/> <!-- (also enables late negotiation) -->
         <!--
             DO NOT USE HOSTNAMES, ONLY IP ADDRESSES IN THESE SETTINGS!
         -->
-        <param name="rtp-ip" value="0.0.0.0"/>
-        <param name="sip-ip" value="0.0.0.0"/>
-        <param name="ext-rtp-ip" value="66.165.222.103"/>
-        <param name="ext-sip-ip" value="66.165.222.103"/>
+        <param name="rtp-ip" value="$${local_ip_v4}"/>
+        <param name="sip-ip" value="$${local_ip_v4}"/>
+        <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
+        <param name="ext-sip-ip" value="$${external_sip_ip}"/>
         <param name="rtp-timeout-sec" value="300"/>
         <param name="rtp-hold-timeout-sec" value="1800"/>
         <!--<param name="enable-3pcc" value="true"/>-->
 
         <!-- TLS: disabled by default, set to "true" to enable -->
-        <param name="tls" value="true"/>
+        <param name="tls" value="$${external_ssl_enable}"/>
         <!-- Set to true to not bind on the normal sip-port but only on the TLS port -->
         <param name="tls-only" value="false"/>
         <!-- additional bind parameters for TLS -->
         <param name="tls-bind-params" value="transport=tls"/>
         <!-- Port to listen on for TLS requests. (5081 will be used if unspecified) -->
-        <param name="tls-sip-port" value="5061"/>
+        <param name="tls-sip-port" value="$${external_tls_port}"/>
         <!-- Location of the agent.pem and cafile.pem ssl certificates (needed for TLS server) -->
-        -<param name="tls-cert-dir" value="/etc/freeswitch/tls" />
+        <!--<param name="tls-cert-dir" value=""/>-->
         <!-- Optionally set the passphrase password used by openSSL to encrypt/decrypt TLS private key files -->
         <param name="tls-passphrase" value=""/>
         <!-- Verify the date on TLS certificates -->

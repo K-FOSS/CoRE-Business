@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $fullName }}-freeswitch
+  name: {{ $fullName }}-ext-freeswitch
 
 spec:
   type: ClusterIP
@@ -12,17 +12,17 @@ spec:
     - name: tcp-sip
       port: 5060
       protocol: TCP
-      targetPort: tcp-sip
+      targetPort: tcp-sipext
 
     - name: udp-sip
       port: 5060
       protocol: UDP
-      targetPort: udp-sip
+      targetPort: udp-sipext
 
     - name: tls-sips
       port: 5061
       protocol: TCP
-      targetPort: tls-sips
+      targetPort: tls-sipext
   selector:
     app: {{ $fullName }}-freeswitch
 

@@ -23,6 +23,6 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: {{ $fullName }}-freeswitch
+          name: {{ $fullName }}-ext-freeswitch
           port: 5061
           weight: 1

@@ -23,25 +23,39 @@ spec:
 
     spec:
       containers:
-        - image: mmtnrw/freeswitch:latest
+        - image: dheaps/freeswitch:latest
           imagePullPolicy: Always
           name: freeswitch
 
-          args:
-            - freeswitch
-            - -c
+          command:
+            - /usr/bin/freeswitch
+            - '-nonat'
+            - '-c'
 
           ports:
-            - name: tcp-sip
-              containerPort: 5060
-              protocol: TCP
-
             - name: udp-sip
               containerPort: 5060
               protocol: UDP
 
+            - name: tcp-sip
+              containerPort: 5060
+              protocol: TCP
+
             - name: tls-sips
               containerPort: 5061
+              protocol: TCP
+
+
+            - name: udp-sipext
+              containerPort: 5080
+              protocol: UDP
+
+            - name: tcp-sipext
+              containerPort: 5080
+              protocol: TCP
+
+            - name: tls-sipext
+              containerPort: 5081
               protocol: TCP
 
           env:
@@ -66,10 +80,6 @@ spec:
                 - NET_BROADCAST
                 - SYS_NICE
                 - SYS_RESOURCE
-
-          # env:
-          #   - name: CONTEXTUALISE_SETTINGS
-          #     value: /src/contextualise/settings.cfg
 
           volumeMounts:
             - name: freeswitch-config
@@ -147,6 +157,11 @@ spec:
               subPath: sofia.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/sofia.conf.xml
 
+      securityContext:
+        fsGroup: 499
+        runAsGroup: 499
+        runAsUser: 0
+
       volumes:
         - name: freeswitch-config
           configMap:
@@ -189,9 +204,6 @@ spec:
 
               - key: voicemail.conf.xml
                 path: voicemail.conf.xml
-          
-          
-
 
         - name: freeswitch-sip-config
           configMap:
