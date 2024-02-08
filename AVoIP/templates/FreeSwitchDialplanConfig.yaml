@@ -46,6 +46,13 @@ data:
       <action application="transfer" data="$1 XML default"/>
           </condition>
         </extension>
+
+        <extension name="public_did">
+          <condition field="destination_number"expression="^(18077893501)$">
+            <action application="set" data="domain_name=$${domain}"/>
+            <action application="transfer" data="1000 XML default"/>
+          </condition>
+        </extension>
         
         <!--
       You can place files in the public directory to get included.
