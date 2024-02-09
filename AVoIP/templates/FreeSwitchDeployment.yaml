@@ -82,6 +82,9 @@ spec:
                 - SYS_RESOURCE
 
           volumeMounts:
+            #
+            # Main Configs
+            #
             - name: freeswitch-config
               subPath: freeswitch.xml
               mountPath: /etc/freeswitch/freeswitch.xml
@@ -94,6 +97,40 @@ spec:
               subPath: extensions.conf
               mountPath: /etc/freeswitch/extensions.conf
 
+            #
+            # Modules
+            #
+            - name: freeswitch-misc-config
+              subPath: modules.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/modules.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: ivr.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/ivr.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: switch.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/switch.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: logfile.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/logfile.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: acl.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/acl.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: sofia.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/sofia.conf.xml
+
+            #
+            # IVRs
+            #
+
+            - name: freeswitch-ivr-config
+              subPath: demo-ivr.xml
+              mountPath: /etc/freeswitch/ivr_menus/demo-ivr.xml
 
             #
             # TLS
@@ -134,28 +171,7 @@ spec:
               subPath: public.xml
               mountPath: /etc/freeswitch/dialplan/public.xml
             
-            #
-            # Modules
-            #
-            - name: freeswitch-misc-config
-              subPath: modules.conf.xml
-              mountPath: /etc/freeswitch/autoload_configs/modules.conf.xml
 
-            - name: freeswitch-misc-config
-              subPath: switch.conf.xml
-              mountPath: /etc/freeswitch/autoload_configs/switch.conf.xml
-
-            - name: freeswitch-misc-config
-              subPath: logfile.conf.xml
-              mountPath: /etc/freeswitch/autoload_configs/logfile.conf.xml
-
-            - name: freeswitch-misc-config
-              subPath: acl.conf.xml
-              mountPath: /etc/freeswitch/autoload_configs/acl.conf.xml
-
-            - name: freeswitch-misc-config
-              subPath: sofia.conf.xml
-              mountPath: /etc/freeswitch/autoload_configs/sofia.conf.xml
 
       securityContext:
         fsGroup: 499
@@ -163,6 +179,10 @@ spec:
         runAsUser: 0
 
       volumes:
+        #
+        # Main Config
+        #
+
         - name: freeswitch-config
           configMap:
             name: {{ $fullName }}-freeswitch-configs
@@ -176,13 +196,18 @@ spec:
               - key: vars.xml
                 path: vars.xml
 
-
+        #
+        # Module Autoload Configs
+        #
         - name: freeswitch-misc-config
           configMap:
             name: {{ $fullName }}-freeswitch-misc-configs
             items:
               - key: modules.conf.xml
                 path: modules.conf.xml
+
+              - key: ivr.conf.xml
+                path: ivr.conf.xml
 
               - key: console.conf.xml
                 path: console.conf.xml
@@ -205,6 +230,20 @@ spec:
               - key: voicemail.conf.xml
                 path: voicemail.conf.xml
 
+        #
+        # IVRs
+        #
+
+        - name: freeswitch-ivr-config
+          configMap:
+            name: {{ $fullName }}-freeswitch-ivr-configs
+            items:
+              - key: demo-ivr.xml
+                path: demo-ivr.xml
+
+        #
+        # SIP Configs
+        #
         - name: freeswitch-sip-config
           configMap:
             name: {{ $fullName }}-freeswitch-sip-configs
@@ -214,6 +253,10 @@ spec:
 
               - key: asterisk.xml
                 path: asterisk.xml
+
+        #
+        # Dial Plans
+        #
 
         - name: freeswitch-dialplan-config
           configMap:
@@ -225,12 +268,20 @@ spec:
               - key: public.xml
                 path: public.xml
 
+        
+
+        #
+        # Gateways
+        #
+
         - name: freeswitch-upstream-config
           secret:
             secretName: {{ $fullName }}-freeswitch-upstream
             items:
               - key: flowroute.xml
                 path: flowroute.xml
+
+        
 
         - name: freeswitch-tls-certs
           secret:
