@@ -8,7 +8,43 @@ metadata:
 data:
   freeswitch.xml: |
     <?xml version="1.0"?>
+    <!--
+        NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE
+
+        This is the FreeSWITCH default config.  Everything you see before you now traverses
+        down into all the directories including files which include more files.  The default
+        config comes out of the box already working in most situations as a PBX.  This will
+        allow you to get started testing and playing with various things in FreeSWITCH.
+
+        Before you start to modify this default please visit this wiki page:
+
+        https://developer.signalwire.com/freeswitch/FreeSWITCH-Explained/Configuration/Default-Configuration_6587388/#6-configuration-files
+
+        If all else fails you can read our FAQ located at:
+
+        https://developer.signalwire.com/freeswitch/FreeSWITCH-Explained/Miscellaneous/FAQ/
+
+        NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE
+    -->
     <document type="freeswitch/xml">
+      <!--#comment
+          All comments starting with #command will be preprocessed and never sent to the xml parser
+          Valid instructions:
+          #include ==> Include another file to this exact point
+                      (partial xml should be encased in <include></include> tags)
+          #set     ==> Set a global variable (can be expanded during preprocessing with $$ variables)
+                      (note the double $$ which denotes preprocessor variables)
+          #comment ==> A general comment such as this
+
+          The preprocessor will compile the full xml document to ${prefix}/log/freeswitch.xml.fsxml
+          Don't modify it while freeswitch is running cos it is mem mapped in most cases =D
+
+          The same can be achieved with the <X-PRE-PROCESS> tag where the attrs 'cmd' and 'data' are
+          parsed in the same way.
+      -->
+      <!--#comment
+          vars.xml contains all the #set directives for the preprocessor.
+      -->
       <X-PRE-PROCESS cmd="include" data="vars.xml"/>
 
       <section name="configuration" description="Various Configuration">
@@ -352,7 +388,7 @@ data:
           If unspecified, the bind_server_ip value is used.
           Used by: sofia.conf.xml dingaling.conf.xml
       -->
-      <X-PRE-PROCESS cmd="stun-set" data="external_sip_ip=stun:stun.freeswitch.org"/>
+      <X-PRE-PROCESS cmd="stun-set" data="external_sip_ip=66.165.222.103"/>
 
       <!-- unroll-loops
           Used to turn on sip loopback unrolling.
@@ -471,7 +507,7 @@ data:
       <X-PRE-PROCESS cmd="set" data="external_auth_calls=false"/>
       <X-PRE-PROCESS cmd="set" data="external_sip_port=5080"/>
       <X-PRE-PROCESS cmd="set" data="external_tls_port=5081"/>
-      <X-PRE-PROCESS cmd="set" data="external_ssl_enable=false"/>
+      <X-PRE-PROCESS cmd="set" data="external_ssl_enable=true"/>
 
       <!-- Video Settings -->
       <!-- Setting the max bandwdith -->

@@ -6,6 +6,7 @@ metadata:
   name: {{ $fullName }}-freeswitch
 
   labels:
+    app.kubernetes.io/name: {{ $fullName }}-freeswitch
     app: {{ $fullName }}-freeswitch
 
 spec:
@@ -13,11 +14,13 @@ spec:
   revisionHistoryLimit: 3
   selector:
     matchLabels:
+      app.kubernetes.io/name: {{ $fullName }}-freeswitch
       app: {{ $fullName }}-freeswitch
 
   template:
     metadata:
       labels:
+        app.kubernetes.io/name: {{ $fullName }}-freeswitch
         app: {{ $fullName }}-freeswitch
         logs: loki-myloginspace
 
@@ -100,6 +103,10 @@ spec:
             #
             # Modules
             #
+            - name: freeswitch-sms-config
+              subPath: sms_flowroute.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/sms_flowroute.conf.xml
+
             - name: freeswitch-misc-config
               subPath: modules.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/modules.conf.xml
@@ -229,6 +236,16 @@ spec:
 
               - key: voicemail.conf.xml
                 path: voicemail.conf.xml
+
+        #
+        # Auto Load Secrets
+        #
+        - name: freeswitch-sms-config
+          secret:
+            secretName: {{ $fullName }}-freeswitch-sms
+            items:
+              - key: sms_flowroute.conf.xml
+                path: sms_flowroute.conf.xml
 
         #
         # IVRs

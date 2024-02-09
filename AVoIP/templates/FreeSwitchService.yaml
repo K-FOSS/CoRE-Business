@@ -24,5 +24,4 @@ spec:
       protocol: TCP
       targetPort: tls-sips
   selector:
-    app: {{ $fullName }}-freeswitch
-
+    app.kubernetes.io/name: {{ $fullName }}-freeswitch

@@ -5,6 +5,8 @@ kind: ConfigMap
 metadata:
   name: {{ $fullName }}-freeswitch-dialplan-configs
 
+  labels:
+    app.kubernetes.io/name: {{ $fullName }}-freeswitch
 data:
   public.xml: |
     <!-- http://wiki.freeswitch.org/wiki/Dialplan_XML -->

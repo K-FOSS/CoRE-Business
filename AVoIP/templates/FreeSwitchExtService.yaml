@@ -5,6 +5,8 @@ kind: Service
 metadata:
   name: {{ $fullName }}-ext-freeswitch
 
+  labels:
+    app.kubernetes.io/name: {{ $fullName }}-freeswitch
 spec:
   type: ClusterIP
 
@@ -24,5 +26,5 @@ spec:
       protocol: TCP
       targetPort: tls-sipext
   selector:
-    app: {{ $fullName }}-freeswitch
+    app.kubernetes.io/name: {{ $fullName }}-freeswitch
 
