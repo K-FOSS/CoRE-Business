@@ -171,6 +171,8 @@ synapse:
   # Default values for synapse.
   # This is a YAML-formatted file.
   # Declare variables to be passed into your templates.
+  enabled: false
+
 
   replicaCounts:
     master: 1
