@@ -15,5 +15,5 @@ spec:
 
   rules:
     - backendRefs:
-      - name: {{ $fullName }}-ext-freeswitch
+      - name: {{ $fullName }}-freeswitch
         port: 5060

@@ -14,8 +14,20 @@ spec:
   type: LoadBalancer
 
   ports:
+    - name: sip-udp
+      port: 5060
+      protocol: UDP
+      targetPort: 5080
+
+    - name: sip-tcp
+      port: 5060
+      protocol: TCP
+      targetPort: 5080
+
+
 {{- range untilStep (.Values.freeswitch.rtp.min|int) (.Values.freeswitch.rtp.max|int) 1 }}
     - port: {{ . }}
+      nodeport: {{ . }}
       targetPort: {{ . }}
       protocol: UDP
       name: 'udp-{{ . }}'

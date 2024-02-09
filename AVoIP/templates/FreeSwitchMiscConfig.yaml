@@ -6,6 +6,12 @@ metadata:
   name: {{ $fullName }}-freeswitch-misc-configs
 
 data:
+  ivr.conf.xml: |
+    <configuration name="ivr.conf" description="IVR menus">
+      <menus>
+        <X-PRE-PROCESS cmd="include" data="../ivr_menus/*.xml"/>
+      </menus>
+    </configuration>
   modules.conf.xml: |
     <configuration name="modules.conf" description="Modules">
       <modules>

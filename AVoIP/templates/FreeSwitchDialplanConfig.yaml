@@ -14,7 +14,7 @@ data:
         <extension name="unloop">
           <condition field="${unroll_loops}" expression="^true$"/>
           <condition field="${sip_looped_call}" expression="^true$">
-      <action application="deflect" data="${destination_number}"/>
+          <action application="deflect" data="${destination_number}"/>
           </condition>
         </extension>
         <!--
@@ -24,33 +24,35 @@ data:
         -->
         <extension name="outside_call" continue="true">
           <condition>
-      <action application="set" data="outside_call=true"/>
-      <action application="export" data="RFC2822_DATE=${strftime(%a, %d %b %Y %T %z)}"/>
+            <action application="set" data="outside_call=true"/>
+            <action application="export" data="RFC2822_DATE=${strftime(%a, %d %b %Y %T %z)}"/>
           </condition>
         </extension>
 
         <extension name="call_debug" continue="true">
           <condition field="${call_debug}" expression="^true$" break="never">
-      <action application="info"/>
+          <action application="info"/>
           </condition>
         </extension>
 
         <extension name="public_extensions">
           <condition field="destination_number" expression="^(10[01][0-9])$">
-      <action application="transfer" data="$1 XML default"/>
+          <action application="transfer" data="$1 XML default"/>
           </condition>
         </extension>
 
         <extension name="public_conference_extensions">
           <condition field="destination_number" expression="^(3[5-8][01][0-9])$">
-      <action application="transfer" data="$1 XML default"/>
+          <action application="transfer" data="$1 XML default"/>
           </condition>
         </extension>
 
         <extension name="public_did">
           <condition field="destination_number"expression="^(18077893501)$">
             <action application="set" data="domain_name=$${domain}"/>
-            <action application="transfer" data="1000 XML default"/>
+            <action application="set" data="instant_ringback=true"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            <action application="ivr" data="demo_ivr"/>
           </condition>
         </extension>
         
@@ -65,13 +67,13 @@ data:
         <!--
         <extension name="check_auth" continue="true">
           <condition field="${sip_authorized}" expression="^true$" break="never">
-      <anti-action application="respond" data="407"/>
+            <anti-action application="respond" data="407"/>
           </condition>
         </extension>
         
         <extension name="transfer_to_default">
           <condition>
-      <action application="transfer" data="${destination_number} XML default"/>
+            <action application="transfer" data="${destination_number} XML default"/>
           </condition>
         </extension>
         -->
@@ -174,25 +176,25 @@ data:
 
         <extension name="global-intercept">
           <condition field="destination_number" expression="^886$">
-      <action application="answer"/>
-      <action application="intercept" data="${hash(select/${domain_name}-last_dial_ext/global)}"/>
-      <action application="sleep" data="2000"/>
+            <action application="answer"/>
+            <action application="intercept" data="${hash(select/${domain_name}-last_dial_ext/global)}"/>
+            <action application="sleep" data="2000"/>
           </condition>
         </extension>
 
         <extension name="group-intercept">
           <condition field="destination_number" expression="^\*8$">
-      <action application="answer"/>
-      <action application="intercept" data="${hash(select/${domain_name}-last_dial_ext/${callgroup})}"/>
-      <action application="sleep" data="2000"/>
+            <action application="answer"/>
+            <action application="intercept" data="${hash(select/${domain_name}-last_dial_ext/${callgroup})}"/>
+            <action application="sleep" data="2000"/>
           </condition>
         </extension>
 
         <extension name="intercept-ext">
           <condition field="destination_number" expression="^\*\*(\d+)$">
-      <action application="answer"/>
-      <action application="intercept" data="${hash(select/${domain_name}-last_dial_ext/$1)}"/>
-      <action application="sleep" data="2000"/>
+            <action application="answer"/>
+            <action application="intercept" data="${hash(select/${domain_name}-last_dial_ext/$1)}"/>
+            <action application="sleep" data="2000"/>
           </condition>
         </extension>
 
