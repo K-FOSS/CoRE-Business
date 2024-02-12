@@ -116,6 +116,10 @@ spec:
               containerPort: 12345
               protocol: TCP
 
+            - name: imap
+              containerPort: 143
+              protocol: TCP
+
             - name: imaps
               containerPort: 993
               protocol: TCP

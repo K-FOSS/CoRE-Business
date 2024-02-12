@@ -4,15 +4,18 @@ metadata:
   name: postfix
 
   annotations:
-    metallb.universe.tf/allow-shared-ip: mail
-    metallb.universe.tf/loadBalancerIPs: 66.165.222.125
-    io.cilium/lb-ipam-sharing-key: mail
-    io.cilium/lb-ipam-ips: 66.165.222.125
+    purelb.io/allow-shared-ip: mail.mylogin.space
+    purelb.io/service-group: anycast
+    purelb.io/allow-local: 'true'
 
 spec:
-  selector:
-    app.kubernetes.io/name: simplelogin
-    app.kubernetes.io/component: postfix
+  allocateLoadBalancerNodePorts: false
+  type: LoadBalancer
+
+  loadBalancerIP: 66.165.222.125
+  loadBalancerClass: purelb.io/purelb
+
+
   ports:
     - name: smtp
 
@@ -48,5 +51,7 @@ spec:
       port: 10025
       targetPort: smtp-auth
 
-  allocateLoadBalancerNodePorts: false
-  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: simplelogin
+    app.kubernetes.io/component: postfix
+

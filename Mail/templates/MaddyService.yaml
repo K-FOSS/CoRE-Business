@@ -5,6 +5,7 @@ metadata:
 
   labels:
     lan-mode: private
+    wan-mode: public
 
   annotations:
     external-dns.alpha.kubernetes.io/hostname: 'int-imap.mylogin.space'

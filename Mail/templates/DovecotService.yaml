@@ -4,27 +4,25 @@ metadata:
   name: dovecot
 
   annotations:
-    metallb.universe.tf/allow-shared-ip: mail
-    metallb.universe.tf/loadBalancerIPs: 66.165.222.125
-    io.cilium/lb-ipam-sharing-key: mail
-    io.cilium/lb-ipam-ips: 66.165.222.125
+    purelb.io/allow-shared-ip: mail.mylogin.space
+    purelb.io/service-group: anycast
+    purelb.io/allow-local: 'true'
 
 spec:
+  type: LoadBalancer
+
   allocateLoadBalancerNodePorts: false
-  selector:
-    app.kubernetes.io/name: mail
-    app.kubernetes.io/component: dovecot
+  
+  loadBalancerIP: 66.165.222.125
+  loadBalancerClass: purelb.io/purelb
+
   ports:
+    - name: imap
 
+      protocol: TCP
 
-
-    # - name: imap-transport
-
-    #   protocol: TCP
-    #   #appProtocol: submissions
-
-    #   port: 2525
-    #   targetPort: lmtp
+      port: 143
+      targetPort: imap
 
 
     - name: imaps-default
@@ -51,4 +49,6 @@ spec:
       port: 2525
       targetPort: lmtp
 
-  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: mail
+    app.kubernetes.io/component: dovecot
