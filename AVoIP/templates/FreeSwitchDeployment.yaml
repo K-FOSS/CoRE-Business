@@ -239,6 +239,24 @@ spec:
           configMap:
             name: {{ $fullName }}-freeswitch-misc-configs
             items:
+              - key: opus.conf.xml
+                path: opus.conf.xml
+
+              - key: opal.conf.xml
+                path: opal.conf.xml
+
+              - key: verto.conf.xml
+                path: verto.conf.xml
+
+              - key: alsa.conf.xml
+                path: alsa.conf.xml
+
+              - key: fifo.conf.xml
+                path: fifo.conf.xml
+
+              - key: local_stream.conf.xml
+                path: local_stream.conf.xml
+
               - key: modules.conf.xml
                 path: modules.conf.xml
 
