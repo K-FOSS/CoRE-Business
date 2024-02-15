@@ -71,6 +71,12 @@ spec:
                   name: {{ $fullName }}-aaa
                   key: password
 
+            - name: SOUND_TYPES
+              value: 'music:en-us-callie'
+
+            - name: SOUND_RATES
+              value: '8000:16000'
+
           securityContext:
             capabilities:
               add:
@@ -103,6 +109,32 @@ spec:
             - name: freeswitch-sms-config
               subPath: sms_flowroute.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/sms_flowroute.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: verto.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/verto.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: opus.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/opus.conf.xml
+
+
+            - name: freeswitch-misc-config
+              subPath: opal.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/opal.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: alsa.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/alsa.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: fifo.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/fifo.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: local_stream.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/local_stream.conf.xml
+
 
             - name: freeswitch-misc-config
               subPath: modules.conf.xml

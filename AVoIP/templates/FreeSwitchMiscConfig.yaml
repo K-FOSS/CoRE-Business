@@ -6,6 +6,201 @@ metadata:
   name: {{ $fullName }}-freeswitch-misc-configs
 
 data:
+  opus.conf.xml: |
+    <configuration name="opus.conf">
+        <settings>
+            <param name="use-vbr" value="1"/>
+            <!--<param name="use-dtx" value="1"/>-->
+            <param name="complexity" value="10"/>
+      <!-- Set the initial packet loss percentage 0-100 -->
+            <!--<param name="packet-loss-percent" value="10"/>-->
+      <!-- Support asymmetric sample rates -->
+            <!--<param name="asymmetric-sample-rates" value="1"/>-->
+
+      <!-- Enable bitrate negotiation -->
+            <!--<param name="bitrate-negotiation" value="1"/>-->
+
+      <!-- Keep FEC Enabled -->
+            <param name="keep-fec-enabled" value="1"/>
+      <!--<param name="use-jb-lookahead" value="true"/> -->
+            <!--
+              maxaveragebitrate: the maximum average codec bitrate (values: 6000 to 510000 in bps) 0 is not considered
+              maxplaybackrate: the maximum codec internal frequency (values: 8000, 12000, 16000, 24000, 48000 in Hz) 0 is not considered
+              This will set the local encoder and instruct the remote encoder trough specific "fmtp" attibute in the SDP.
+
+              Example: if you receive "maxaveragebitrate=20000" from SDP and you have set "maxaveragebitrate=24000" in this configuration
+                        the lowest will prevail in this case "20000" is set on the encoder and the corresponding fmtp attribute will be set
+                        to instruct the remote encoder to do the same.
+            -->
+            <param name="maxaveragebitrate" value="0"/>
+            <param name="maxplaybackrate" value="0"/>
+      <!-- Max capture rate, 8000, 12000, 16000, 24000 and 48000 are valid options -->
+            <!--<param name="sprop-maxcapturerate" value="0"/>-->
+      <!-- Enable automatic bitrate variation during the call based on RTCP feedback -->
+      <!--<param name="adjust-bitrate" value="1"/>-->
+      <!-- will enforce mono even if the remote party wants stereo. must be used in conjunction with param "max-audio-channels" set to 1 in switch.conf.xml. -->
+        <param name="mono" value="0"/>
+        </settings>
+    </configuration>
+  opal.conf.xml: |
+    <configuration name="opal.conf" description="Opal Endpoints">
+      <settings>
+          <param name="trace-level" value="3"/>
+          <param name="context" value="default"/>
+          <param name="dialplan" value="XML"/>
+          <param name="dtmf-type" value="signal"/>                   <!-- string, signal, rfc2833, in-band -->
+          <param name="jitter-size" value="40,100"/>                 <!-- Jitter buffer min/max size, milliseconds -->
+          <!-- <param name="codec-prefs" value="PCMU,PCMA"/> -->     <!-- list, and preferecnce order, of codecs -->
+          <!-- <param name="disable-transcoding" value="true"/> -->  <!-- do not transcode, use source channel codec only -->
+          <param name="gk-address" value=""/>                        <!-- empty to disable, "*" to search LAN -->
+          <param name="gk-identifer" value=""/>                      <!-- optional name of gk -->
+          <param name="gk-interface" value="$${local_ip_v4}"/>       <!-- optional listener interface name -->
+      </settings>
+      <listeners>
+          <listener name="default">
+            <param name="h323-ip" value="$${local_ip_v4}"/>
+            <param name="h323-port" value="1720"/>
+          </listener>
+      </listeners>
+    </configuration>
+  verto.conf.xml: |
+    <configuration name="verto.conf" description="HTML5 Verto Endpoint">
+
+      <settings>
+        <param name="debug" value="0"/>
+        <!-- <param name="kslog" value="true"/> -->
+        <!-- seconds to wait before hanging up a disconnected channel -->
+        <!-- <param name="detach-timeout-sec" value="120"/> -->
+        <!-- enable broadcasting all FreeSWITCH events in Verto -->
+        <!-- <param name="enable-fs-events" value="false"/> -->
+        <!-- enable broadcasting FreeSWITCH presence events in Verto -->
+        <!-- <param name="enable-presence" value="true"/> -->
+      </settings>
+
+      <profiles>
+        <profile name="default-v4">
+          <param name="bind-local" value="$${local_ip_v4}:8081"/>
+          <param name="bind-local" value="$${local_ip_v4}:8082" secure="true"/>
+          <param name="force-register-domain" value="$${domain}"/>
+          <param name="secure-combined" value="$${certs_dir}/wss.pem"/>
+          <param name="secure-chain" value="$${certs_dir}/wss.pem"/>
+          <param name="userauth" value="true"/>
+          <!-- setting this to true will allow anyone to register even with no account so use with care -->
+          <param name="blind-reg" value="false"/>
+          <param name="mcast-ip" value="224.1.1.1"/>
+          <param name="mcast-port" value="1337"/>
+          <param name="rtp-ip" value="$${local_ip_v4}"/>
+          <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
+          <param name="local-network" value="localnet.auto"/>
+          <param name="outbound-codec-string" value="opus,h264,vp8"/>
+          <param name="inbound-codec-string" value="opus,h264,vp8"/>
+
+          <param name="apply-candidate-acl" value="localnet.auto"/>
+          <param name="apply-candidate-acl" value="wan_v4.auto"/>
+          <param name="apply-candidate-acl" value="rfc1918.auto"/>
+          <param name="apply-candidate-acl" value="any_v4.auto"/>
+          <param name="timer-name" value="soft"/>
+          
+        </profile>
+
+        <profile name="default-v6">
+          <param name="bind-local" value="[$${local_ip_v6}]:8081"/>
+          <param name="bind-local" value="[$${local_ip_v6}]:8082" secure="true"/>
+          <param name="force-register-domain" value="$${domain}"/>
+          <param name="secure-combined" value="$${certs_dir}/wss.pem"/>
+          <param name="secure-chain" value="$${certs_dir}/wss.pem"/>
+          <param name="userauth" value="true"/>
+          <!-- setting this to true will allow anyone to register even with no account so use with care -->
+          <param name="blind-reg" value="false"/>
+          <param name="rtp-ip" value="$${local_ip_v6}"/>
+          <!--  <param name="ext-rtp-ip" value=""/> -->
+          <param name="outbound-codec-string" value="opus,h264,vp8"/>
+          <param name="inbound-codec-string" value="opus,h264,vp8"/>
+
+          <param name="apply-candidate-acl" value="wan_v6.auto"/>
+          <param name="apply-candidate-acl" value="rfc1918.auto"/>
+          <param name="apply-candidate-acl" value="any_v6.auto"/>
+          <param name="apply-candidate-acl" value="wan_v4.auto"/>
+          <param name="apply-candidate-acl" value="any_v4.auto"/>
+          <param name="timer-name" value="soft"/>
+          
+        </profile>
+      </profiles>
+    </configuration>
+  alsa.conf.xml: |
+    <configuration name="alsa.conf" description="Soundcard Endpoint">
+      <settings>
+        <!--Default dialplan and caller-id info -->
+        <param name="dialplan" value="XML"/>
+        <param name="cid-name" value="N800 Alsa"/>
+        <param name="cid-num" value="5555551212"/>
+
+        <!--audio sample rate and interval -->
+        <param name="sample-rate" value="8000"/>
+        <param name="codec-ms" value="20"/>
+      </settings>
+    </configuration>
+  fifo.conf.xml: |
+    <configuration name="fifo.conf" description="FIFO Configuration">
+      <settings>
+        <param name="delete-all-outbound-member-on-startup" value="false"/>
+      </settings>
+      <fifos>
+        <fifo name="cool_fifo@$${domain}" importance="0">
+          <!--<member timeout="60" simo="1" lag="20">{member_wait=nowait}user/1005@$${domain}</member>-->
+        </fifo>
+      </fifos>
+    </configuration>
+  local_stream.conf.xml: |
+    <configuration name="local_stream.conf" description="stream files from local dir">
+      <!-- fallback to default if requested moh class isn't found -->
+      <directory name="default" path="$${sounds_dir}/music/8000">
+        <param name="rate" value="8000"/>
+        <param name="shuffle" value="true"/>
+        <param name="channels" value="1"/>
+        <param name="interval" value="20"/>
+        <param name="timer-name" value="soft"/>
+        <!-- list of short files to break in with every so often -->
+        <!--<param name="chime-list" value="file1.wav,file2.wav"/>-->
+        <!-- frequency of break-in (seconds)-->
+        <!--<param name="chime-freq" value="30"/>-->
+        <!-- limit to how many seconds the file will play -->
+        <!--<param name="chime-max" value="500"/>-->
+      </directory>
+
+      <directory name="moh/8000" path="$${sounds_dir}/music/8000">
+        <param name="rate" value="8000"/>
+        <param name="shuffle" value="true"/>
+        <param name="channels" value="1"/>
+        <param name="interval" value="20"/>
+        <param name="timer-name" value="soft"/>
+      </directory>
+
+      <directory name="moh/16000" path="$${sounds_dir}/music/16000">
+        <param name="rate" value="16000"/>
+        <param name="shuffle" value="true"/>
+        <param name="channels" value="1"/>
+        <param name="interval" value="20"/>
+        <param name="timer-name" value="soft"/>
+      </directory>
+
+      <directory name="moh/32000" path="$${sounds_dir}/music/32000">
+        <param name="rate" value="32000"/>
+        <param name="shuffle" value="true"/>
+        <param name="channels" value="1"/>
+        <param name="interval" value="20"/>
+        <param name="timer-name" value="soft"/>
+      </directory>
+
+      <directory name="moh/48000" path="$${sounds_dir}/music/48000">
+        <param name="rate" value="48000"/>
+        <param name="shuffle" value="true"/>
+        <param name="channels" value="1"/>
+        <param name="interval" value="10"/>
+        <param name="timer-name" value="soft"/>
+      </directory>
+
+    </configuration>
   ivr.conf.xml: |
     <configuration name="ivr.conf" description="IVR menus">
       <menus>
