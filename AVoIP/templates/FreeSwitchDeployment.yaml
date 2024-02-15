@@ -11,6 +11,9 @@ metadata:
 spec:
   replicas: 1
   revisionHistoryLimit: 3
+
+  minReadySeconds: 30
+
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ $fullName }}-freeswitch
@@ -23,14 +26,9 @@ spec:
 
     spec:
       containers:
-        - image: dheaps/freeswitch:latest
+        - image: dheaps/freeswitch:full
           imagePullPolicy: Always
           name: freeswitch
-
-          command:
-            - /usr/bin/freeswitch
-            - '-nonat'
-            - '-c'
 
           ports:
             - name: udp-sip
@@ -91,9 +89,12 @@ spec:
             #
             # Main Configs
             #
+            - mountPath: /etc/freeswitch
+              name: data-volume
+
             - name: freeswitch-config
               subPath: freeswitch.xml
-              mountPath: /etc/freeswitch/freeswitch.xml
+              mountpath: /usr/share/freeswitch/conf/vanilla/freeswitch.xml
 
             - name: freeswitch-config
               subPath: vars.xml
