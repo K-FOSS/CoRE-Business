@@ -31,11 +31,6 @@ spec:
 
           name: freeswitch
 
-          command:
-            - /usr/bin/freeswitch
-            - '-nonat'
-            - '-c'
-
           ports:
             - name: udp-sip
               containerPort: 5060
