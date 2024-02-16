@@ -1,0 +1,23 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: office-ingress
+
+  labels:
+    wan-mode: 'public'
+    lan-mode: 'private'
+
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: kuadrant-core-prod
+      name: main-gw
+      sectionName: https
+
+  hostnames:
+    - 'office.mylogin.space'
+  rules:
+    - backendRefs:
+        - name: k0s-cntrl-business-office-nextcloud
+          port: 8080
