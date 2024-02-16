@@ -1,0 +1,14 @@
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ $fullName }}-freeswitch
+
+spec:
+  name: FreeSwitch
+  groups:
+    - LDAPService
+
+  writeConnectionSecretToRef:
+    name: {{ $fullName }}-freeswitch
