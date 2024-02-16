@@ -27,4 +27,30 @@ data:
         <!-- default is 300 seconds, override here -->
         <!--param name="download-timeout" value="300"/-->
       </settings>
+      <profiles>
+          <profile name="s3-compatible">
+              <!-- Credentials for AWS account or any account on s3-like storage service -->
+              <aws-s3>
+                  <!-- Required: Key identifier -->
+                  <access-key-id><![CDATA[506665ebbbaffc1701aaf5a61ad88421]]></access-key-id>
+                  <!-- Required: Key secret -->
+                  <secret-access-key><![CDATA[2dd63d700744e2c1c277be7dc81bfb1b]]></secret-access-key>
+                  <!-- Optional: Base domain for the service -->
+                  <!-- If you want to use your own s3-compatible service, base domain MUST be set -->
+                  <base-domain><![CDATA[s3.mylogin.space]]></base-domain>
+                  <!-- Required: Storage region -->
+                  <region><![CDATA[HCM]]></region>
+                  <!-- Optional: Expiration time in seconds for URL signature. Default is 604800s (a week) -->
+                  <expires>604800</expires>
+              </aws-s3>
+
+              <!-- Optional: List of domains that this profile will automatically be applied to -->
+              <!-- Domains in this list must have the same base domain with base-domain (if base-domain is set)  -->
+              <!-- If you wish to apply the s3 credentials to a domain not listed here, then use {profile=s3}http://foo.s3... -->
+              <domains>
+                  <domain name="bucket1.stg.vinadata.vn"/>
+                  <domain name="bucket2.stg.vinadata.vn"/>
+              </domains>
+          </profile>
+      </profiles>
     </configuration>

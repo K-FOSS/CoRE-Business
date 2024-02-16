@@ -26,9 +26,15 @@ spec:
 
     spec:
       containers:
-        - image: dheaps/freeswitch:full
+        - image: kristianfjones/freeswitch
           imagePullPolicy: Always
+
           name: freeswitch
+
+          command:
+            - /usr/bin/freeswitch
+            - '-nonat'
+            - '-c'
 
           ports:
             - name: udp-sip
@@ -69,11 +75,11 @@ spec:
                   name: {{ $fullName }}-aaa
                   key: password
 
-            - name: SOUND_TYPES
-              value: 'music:en-us-callie'
-
-            - name: SOUND_RATES
-              value: '8000:16000'
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullName }}-aaa
+                  key: password
 
           securityContext:
             capabilities:
@@ -89,12 +95,9 @@ spec:
             #
             # Main Configs
             #
-            - mountPath: /etc/freeswitch
-              name: data-volume
-
             - name: freeswitch-config
               subPath: freeswitch.xml
-              mountpath: /usr/share/freeswitch/conf/vanilla/freeswitch.xml
+              mountpath: /etc/freeswitch/freeswitch.xml
 
             - name: freeswitch-config
               subPath: vars.xml
@@ -208,12 +211,10 @@ spec:
               subPath: public.xml
               mountPath: /etc/freeswitch/dialplan/public.xml
             
-
-
       securityContext:
-        fsGroup: 499
-        runAsGroup: 499
-        runAsUser: 0
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsUser: 1000
 
       volumes:
         #

@@ -53,32 +53,13 @@ data:
           <condition field="destination_number"expression="^(18077893501)$">
             <action application="set" data="domain_name=$${domain}"/>
             <action application="set" data="instant_ringback=true"/>
-            <action application="set" data="hangup_after_bridge=true"/>
+            <action application="acknowledge_call"/>
+            <action application="ring_ready"/>
+            <action application="answer"/>
+            <action application="sleep" data="2000"/>
             <action application="ivr" data="demo_ivr"/>
           </condition>
         </extension>
-        
-        <!--
-      You can place files in the public directory to get included.
-        -->
-        <X-PRE-PROCESS cmd="include" data="public/*.xml"/>
-        <!--
-      If you have made it this far lets challenge the caller and if they authenticate
-      lets try what they dialed in the default context. (commented out by default)
-        -->
-        <!--
-        <extension name="check_auth" continue="true">
-          <condition field="${sip_authorized}" expression="^true$" break="never">
-            <anti-action application="respond" data="407"/>
-          </condition>
-        </extension>
-        
-        <extension name="transfer_to_default">
-          <condition>
-            <action application="transfer" data="${destination_number} XML default"/>
-          </condition>
-        </extension>
-        -->
       </context>
     </include>
   default.xml: |
