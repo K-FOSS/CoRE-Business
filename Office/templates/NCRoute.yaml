@@ -13,11 +13,55 @@ spec:
       kind: Gateway
       namespace: kuadrant-core-prod
       name: main-gw
-      sectionName: https
 
   hostnames:
     - 'office.mylogin.space'
   rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /.well-known/carddav
+
+        - path:
+            type: PathPrefix
+            value: /.well-known/caldav
+
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /nextcloud/remote.php/dav
+            statusCode: 301
+
+
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /.well-known/webfinger
+
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /nextcloud/index.php/.well-known/webfinger
+            statusCode: 301
+
+
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /.well-known/nodeinfo
+
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /nextcloud/index.php/.well-known/nodeinfo 
+            statusCode: 301
+
     - backendRefs:
         - name: k0s-cntrl-business-office-nextcloud
           port: 8080
