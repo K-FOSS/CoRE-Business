@@ -41,7 +41,7 @@ data:
 
   CONF_VIRTUAL_TRANSPORT: 'lmtp:inet:mail.mylogin.space:2525'
   CONF_VIRTUAL_MAILBOX_DOMAINS: 'mylogin.space'
-  #CONF_VIRTUAL_ALIAS_MAPS: 'ldap:/etc/postfix/ldap.cf'
+  CONF_VIRTUAL_ALIAS_MAPS: 'ldap:/etc/postfix/ldap.cf'
   CONF_VIRTUAL_MAILBOX_MAPS: 'ldap:/etc/postfix/ldap-in.cf'
   CONF_LMTP_HOST_LOOKUP: 'native'
   CONF_SMTPD_SENDER_LOGIN_MAPS: 'ldap:/etc/postfix/ldap-auth.cf'
