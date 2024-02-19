@@ -12,12 +12,14 @@ spec:
     matchLabels:
       app.kubernetes.io/name: mail
       app.kubernetes.io/component: rspam
+
   template:
     metadata:
       labels:
         app.kubernetes.io/name: mail
         app.kubernetes.io/component: rspam
         logs: loki-myloginspace
+
     spec:
       affinity:
         podAntiAffinity:
@@ -28,9 +30,11 @@ spec:
                     - key: app.kubernetes.io/component
                       operator: In
                       values:
-                        - postfix
+                        - rspam
+
                 topologyKey: kubernetes.io/hostname
               weight: 100
+
       volumes:
         - name: rspamd-config
           configMap:
