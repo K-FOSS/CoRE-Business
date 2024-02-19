@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simplelogin-rspamd
+  labels:
+    app.kubernetes.io/name: mail
+    app.kubernetes.io/component: rspam
+
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mail
+      app.kubernetes.io/component: rspam
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mail
+        app.kubernetes.io/component: rspam
+        logs: loki-myloginspace
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - postfix
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      volumes:
+        - name: rspamd-config
+          configMap:
+            name: business-mail-rspamd-config
+            items:
+              - key: worker-proxy.inc
+                path: override.d/worker-proxy.inc
+
+              - key: worker-normal.inc
+                path: override.d/worker-normal.inc
+
+              - key: worker-controller.inc
+                path: override.d/worker-controller.inc
+
+              - key: redis.conf
+                path: local.d/redis.conf
+
+              - key: classifier-bayes.conf
+                path: local.d/classifier-bayes.conf
+
+              - key: dkim_signing.conf
+                path: local.d/dkim_signing.conf
+
+              - key: mx_check.conf
+                path: local.d/mx_check.conf
+
+              - key: phishing.conf
+                path: local.d/phishing.conf
+
+              - key: replies.conf
+                path: local.d/replies.conf
+
+              - key: surbl.conf
+                path: local.d/surbl.conf
+
+              - key: url_reputation.conf
+                path: local.d/url_reputation.conf
+
+              - key: url_tags.conf
+                path: local.d/url_tags.conf
+
+
+
+        - name: dkim-secrets
+          secret:
+            secretName: selector1-mail-myloginspace
+            items:
+              - key: mail.mylogin.space.selector1.key
+                path: dkim.key
+
+      containers:
+        - name: rspamd
+          image: rspamd/rspamd
+
+          volumeMounts:
+            #
+            # Misc
+            #
+            - name: rspamd-config
+              mountPath: /etc/rspamd
+
+            - name: tls-certs
+              mountPath: /etc/tls/mail
+
+            - mountPath: /secret/dkim.key
+              name: dkim-secrets
+              subPath: dkim.key
+
+          ports:
+            - name: worker-proxy
+              containerPort: 9900
+
+            - name: worker-normal
+              containerPort: 11333
+
+            - name: worker-controller
+              containerPort: 11334

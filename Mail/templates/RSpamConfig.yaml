@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: business-mail-rspamd-config
+
+  labels:
+    app.kubernetes.io/name: mail
+    app.kubernetes.io/component: rspam
+
+data:
+  worker-proxy.inc: |
+    bind_socket = "rspamd:9900";
+    milter = true;
+    upstream "local" {
+      name = "localhost";
+      default = true;
+      hosts = "rspamd:11333"
+    }
+    reject_message = "This message does not meet our delivery requirements";
+    .include(try=true; priority=30) "$CONFDIR/override.d/worker-proxy.custom.inc"
+
+  worker-normal.inc: |
+    bind_socket = "*:11333";
+    task_timeout = 25s;
+    count = 1;
+    .include(try=true; priority=30) "$CONFDIR/override.d/worker-normal.custom.inc"
+
+  worker-controller.inc: |
+    bind_socket = "*:11334";
+    count = 1;
+    secure_ip = "127.0.0.1";
+    secure_ip = "::1";
+    bind_socket = "/var/lib/rspamd/rspamd.sock mode=0666 owner=nobody";
+    .include(try=true; priority=10) "$CONFDIR/override.d/worker-controller-password.inc"
+    .include(try=true; priority=30) "$CONFDIR/override.d/worker-controller.custom.inc" 
+
+  redis.conf: |
+    # just specifying a server enables redis for all modules that can use it
+    servers = "redis.mylogin.space";
+
+  classifier-bayes.conf: |
+    autolearn = true;
+    backend = "redis";
+
+  dkim_signing.conf: |
+    # enable dkim signing - we will set this up in the DKIM section later
+    path = "/secret/dkim.key/$domain.$selector.key";
+    selector = "selector1";
+
+  mx_check.conf: |
+    # checks if sender's domain has at least one connectable MX record
+    enabled = true;
+
+  phishing.conf: |
+    # check messages against some anti-phishing databases
+    openphish_enabled = true;
+    phishtank_enabled = true;
+
+  replies.conf: |
+    # whitelist messages from threads that have been replied to
+    action = "no action";
+
+  surbl.conf: |
+    # follow redirects when checking URLs in emails for spaminess
+    redirector_hosts_map = "/usr/local/etc/rspamd/redirectors.inc";
+
+  url_reputation.conf: |
+    # check URLs within messages for spaminess
+    enabled = true;
+
+  url_tags.conf: |
+    # cache some URL tags in redis
+    enabled = true;
