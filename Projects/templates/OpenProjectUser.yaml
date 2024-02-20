@@ -1,0 +1,18 @@
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ .Release.Name }}
+
+spec:
+  name: OpenProject
+  groups:
+    - LDAPService
+
+  database:
+    name: Gmdfb5HXbk
+
+  buckets:
+    - ba8f4fed-33ed-6b22-9d0a-3a7b064db6dc-6g7ka2
+
+  writeConnectionSecretToRef:
+    name: {{ .Release.Name }}
