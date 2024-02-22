@@ -8,6 +8,9 @@ metadata:
 spec:
   name: Vaultwarden
 
+  psql:
+    uri: postgresql://
+
   database:
     name: bitwarden
 
