@@ -1,5 +1,7 @@
 URL: 'https://mail.mylogin.space'
 
+clusterDNS: 'k0s.resolvemy.host'
+
 email:
   domain: mail.mylogin.space
   support: k@mylogin.space
