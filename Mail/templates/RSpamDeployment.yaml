@@ -96,9 +96,6 @@ spec:
             - name: rspamd-config
               mountPath: /etc/rspamd
 
-            - name: tls-certs
-              mountPath: /etc/tls/mail
-
             - mountPath: /secret/dkim.key
               name: dkim-secrets
               subPath: dkim.key
