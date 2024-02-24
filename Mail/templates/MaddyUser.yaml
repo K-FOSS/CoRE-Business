@@ -1,7 +1,7 @@
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:
-  name: office-user
+  name: {{ .Release.Name }}-maddy
 
 spec:
   name: Maddy Email
