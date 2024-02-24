@@ -11,12 +11,6 @@ email:
 
 dkim-manager:
   image:
-    # image.repository -- dkim-manager image repository to use.
-    repository: ghcr.io/hsn723/dkim-manager
-
-    # image.tag -- dkim-manager image tag to use.
-    # @default -- `{{ .Chart.AppVersion }}`
-    tag: 1.2.2
 
     # image.pullPolicy -- dkim-manager image pullPolicy.
     pullPolicy: Always
