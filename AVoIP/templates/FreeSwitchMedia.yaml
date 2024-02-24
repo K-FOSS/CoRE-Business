@@ -6,12 +6,13 @@ metadata:
   name: {{ $fullName }}-freeswitch-rtp
 
   annotations:
-    io.cilium/lb-ipam-sharing-key: main-gw
-    metallb.universe.tf/address-pool: pub-pool
-    metallb.universe.tf/allow-shared-ip: main-gw
-    metallb.universe.tf/ip-allocated-from-pool: pub-pool
+    purelb.io/allow-shared-ip: main-gw.resolvemy.host
+    purelb.io/service-group: main-public
+    purelb.io/allow-local: 'true'
+
 spec:
   type: LoadBalancer
+  loadBalancerClass: purelb.io/purelb
 
   ports:
     - name: sip-udp
