@@ -104,11 +104,11 @@ spec:
               subPath: dkim.key
 
           ports:
-            - name: worker-proxy
+            - name: proxy
               containerPort: 9900
 
-            - name: worker-normal
+            - name: normal
               containerPort: 11333
 
-            - name: worker-controller
+            - name: controller
               containerPort: 11334
