@@ -4,11 +4,5 @@ version: 1.0.0
 
 name: core-business-automation
 
-dependencies:
-  #
-  # n8n
-  #
-  - name: n8n 
-    version: 4.0.54
-    repository: https://charts.truecharts.org/
+dependencies: []
 
