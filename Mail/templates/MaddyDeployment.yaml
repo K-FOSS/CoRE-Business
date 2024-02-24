@@ -22,17 +22,12 @@ spec:
     spec:
       volumes:
         - name: maddy-config
-          secret:
-            secretName: business-mail-maddy-config
+          configMap:
+            name: business-mail-maddy-config
             items:
               - key: maddy.conf
                 path: maddy.conf
 
-        - name: test-script
-          configMap:
-            name: business-mail-maddy-config-tpl
-            defaultMode: 0777
-            items:
               - key: checkScript.sh
                 path: checkScript.sh
 
@@ -46,9 +41,56 @@ spec:
 
       containers:
         - name: maddy
+          #
+          # TODO: Get Renovate managing this and setup proper tests
+          #
           image: foxcpp/maddy:0.6.2
           stdin: true
           tty: true
+
+          env:
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-maddy-s3
+                  key: AccessKey
+
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-maddy-s3
+                  key: SecretKey
+
+            - name: PSQL_HOSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-maddy-creds
+                  key: psqlHostname
+
+            - name: PSQL_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-maddy-creds
+                  key: psqlPort
+
+            - name: PSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-maddy-creds
+                  key: database
+
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-maddy-creds
+                  key: username
+
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-maddy-creds
+                  key: password
+
           volumeMounts:
             #
             # Configs
@@ -57,7 +99,7 @@ spec:
               mountPath: /data/maddy.conf
               subPath: maddy.conf
 
-            - name:  test-script
+            - name: maddy-config
               mountPath: /data/checkScript.sh
               subPath: checkScript.sh
 
