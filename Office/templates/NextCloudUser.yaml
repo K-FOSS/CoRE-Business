@@ -1,0 +1,19 @@
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: office-user
+
+spec:
+  name: NextCloud
+
+  database:
+    name: SzS9n9UxZS
+
+  buckets:
+    - f85b4a70-285a-110b-d970-84d3b7ca35d1-fy5mhz
+
+  groups:
+    - LDAPService
+
+  writeConnectionSecretToRef:
+    name: nc-office-creds
