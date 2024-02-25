@@ -92,7 +92,7 @@ spec:
             #
             - name: freeswitch-config
               subPath: freeswitch.xml
-              mountpath: /etc/freeswitch/freeswitch.xml
+              mountPath: /etc/freeswitch/freeswitch.xml
 
             - name: freeswitch-config
               subPath: vars.xml
