@@ -18,6 +18,8 @@ data:
   CONF_BERKELEY_DB_CREATE_BUFFER_SIZE: '33554432'
   CONF_RECIPIENT_DELIMITER: '+'
 
+  CONF_SMTPD_MILTERS: 'inet:int-rspamd-proxy.mylogin.space:11332'
+
   #
   # TLS
   #

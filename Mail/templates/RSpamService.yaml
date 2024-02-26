@@ -12,25 +12,33 @@ metadata:
 
 spec:
   selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/name: mail
     app.kubernetes.io/component: rspam
+    app.kubernetes.io/worker: proxy
 
   ports:
-    - name: imap-default
+    - name: proxy
 
       protocol: TCP
-      appProtocol: imap
 
-      port: 143
-      targetPort: imap
+      port: 11332
+      targetPort: proxy
 
 
-    - name: imaps-default
+    - name: normal
 
       protocol: TCP
-      appProtocol: imaps
 
-      port: 993
-      targetPort: imaps
+      port: 11333
+      targetPort: normal
+
+
+    - name: controller
+
+      protocol: TCP
+
+      port: 11334
+      targetPort: controller
 
   type: ClusterIP
