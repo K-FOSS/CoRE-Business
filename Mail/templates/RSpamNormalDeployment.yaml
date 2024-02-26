@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/component: rspam
 
 spec:
-  replicas: 5
+  replicas: 2
   selector:
     matchLabels:
       app.kubernetes.io/name: mail
@@ -19,7 +19,7 @@ spec:
         app.kubernetes.io/name: mail
         app.kubernetes.io/component: rspam
         logs: loki-myloginspace
-        app.kubernetes.io/worker: normal
+        app.kubernetes.io/worker: proxy
 
     spec:
       affinity:
@@ -77,8 +77,6 @@ spec:
               - key: url_tags.conf
                 path: local.d/url_tags.conf
 
-
-
         - name: dkim-secrets
           secret:
             secretName: selector1-mail-myloginspace
@@ -103,7 +101,7 @@ spec:
 
           ports:
             - name: proxy
-              containerPort: 9900
+              containerPort: 11332
 
             - name: normal
               containerPort: 11333

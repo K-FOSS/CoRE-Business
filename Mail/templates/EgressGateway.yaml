@@ -58,4 +58,3 @@ spec:
       matchLabels:
         kubernetes.io/os: linux
     egressIP: 66.165.222.125
-    interface: kube-lb0

@@ -9,15 +9,16 @@ metadata:
 
 data:
   worker-proxy.inc: |
-    bind_socket = "rspamd:9900";
-    milter = true;
+    bind_socket = "*:11332";
+
     upstream "local" {
-      name = "localhost";
-      default = true;
-      hosts = "rspamd-normal.{{ .Release.Namespace }}.svc.{{ .Values.clusterDNS }}:11333"
+      default = yes;
+      self_scan = yes;
     }
+
+    milter = true;
+
     reject_message = "This message does not meet our delivery requirements";
-    .include(try=true; priority=30) "$CONFDIR/override.d/worker-proxy.custom.inc"
 
   worker-normal.inc: |
     bind_socket = "*:11333";
