@@ -394,8 +394,8 @@ data:
           Used to turn on sip loopback unrolling.
       -->
       <X-PRE-PROCESS cmd="set" data="unroll_loops=true"/>
-      <X-PRE-PROCESS cmd="env-set" data="ldap_username=$LDAP_USERNAME"/>
-      <X-PRE-PROCESS cmd="env-set" data="ldap_password=$LDAP_PASSWORD"/>
+      <X-PRE-PROCESS cmd="env-set" data="username=$USERNAME"/>
+      <X-PRE-PROCESS cmd="env-set" data="password=$PASSWORD"/>
 
 
       <!-- outbound_caller_id and outbound_caller_name

@@ -58,22 +58,16 @@ spec:
               protocol: TCP
 
           env:
-            - name: LDAP_USERNAME
+            - name: USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ $fullName }}-aaa
+                  name: {{ $fullName }}-freeswitch
                   key: username
-
-            - name: LDAP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $fullName }}-aaa
-                  key: password
 
             - name: PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ $fullName }}-aaa
+                  name: {{ $fullName }}-freeswitch
                   key: password
 
           securityContext:
@@ -112,6 +106,10 @@ spec:
             - name: freeswitch-misc-config
               subPath: verto.conf.xml
               mountPath: /etc/freeswitch/autoload_configs/verto.conf.xml
+
+            - name: freeswitch-misc-config
+              subPath: ldap.conf.xml
+              mountPath: /etc/freeswitch/autoload_configs/ldap.conf.xml
 
             - name: freeswitch-misc-config
               subPath: opus.conf.xml
@@ -180,7 +178,7 @@ spec:
               mountPath: /etc/freeswitch/tls/cafile.pem
 
             #
-            # SIP
+            # SIP 
             #
             - name: freeswitch-sip-config
               subPath: external.xml
@@ -280,6 +278,9 @@ spec:
 
               - key: voicemail.conf.xml
                 path: voicemail.conf.xml
+
+              - key: ldap.conf.xml
+                path: ldap.conf.xml
 
         #
         # Auto Load Secrets
