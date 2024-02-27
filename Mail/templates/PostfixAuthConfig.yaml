@@ -3,19 +3,6 @@ kind: ConfigMap
 metadata:
   name: simplelogin-postfix-aaa-config-tpl
 data:
-  ldap.cf: |
-    server_host = ldaps://ldap.mylogin.space:636
-    start_tls = no
-    version = 3
-
-    bind = yes
-    {{`
-    bind_dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
-    bind_pw = {{ .Password }}
-    `}}
-
-    search_base = ou=users,dc=ldap,dc=mylogin,dc=space
-
   ldap-auth.cf: |
     {{`
     server_host = ldaps://ldap.mylogin.space:636
@@ -27,9 +14,24 @@ data:
     bind_pw = {{ .Password }}
 
     search_base = ou=users,dc=ldap,dc=mylogin,dc=space
-    query_filter = (&(mail=%s))
+    query_filter = (&(objectClass=user)(|(cn=%u)(mail=%s)))
     result_attribute = cn
     `}}
+
+  ldap.cf: |
+    server_host = ldaps://ldap.mylogin.space:636
+    start_tls = no
+    version = 3
+
+    bind = yes
+    {{`
+    bind_dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
+    bind_pw = {{ .Password }}
+    `}}
+
+    search_base = dc=ldap,dc=mylogin,dc=space
+    result_attribute = cn
+    special_result_attribute = member
 
   ldap-in.cf: |
     {{`

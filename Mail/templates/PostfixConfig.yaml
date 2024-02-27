@@ -19,6 +19,10 @@ data:
   CONF_RECIPIENT_DELIMITER: '+'
 
   CONF_SMTPD_MILTERS: 'inet:int-rspamd.mylogin.space:11332'
+  CONF_NON_SMTPD_MILTERS: 'inet:int-rspamd.mylogin.space:11332'
+  CONF_MILTER_DEFAULT_ACTION: 'accept'
+  CONF_MILTER_MAIL_MACROS: 'i {mail_addr} {client_addr} {client_name} {auth_authen}'
+
 
   #
   # TLS

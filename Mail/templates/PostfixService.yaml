@@ -15,7 +15,6 @@ spec:
   loadBalancerIP: 66.165.222.125
   loadBalancerClass: purelb.io/purelb
 
-
   ports:
     - name: smtp
 

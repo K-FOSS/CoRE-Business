@@ -11,8 +11,6 @@ spec:
     name: business-mail-postfix-auth-config
     template:
       engineVersion: v2
-      data:
-        test: 'hi'
       templateFrom:
         - configMap:
             # name of the configmap to pull in
@@ -20,6 +18,9 @@ spec:
             # here you define the keys that should be used as template
             items:
               - key: ldap-in.cf
+
+              - key: ldap.cf
+
               - key: ldap-auth.cf
   data:
     #

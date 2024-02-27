@@ -7,15 +7,18 @@ metadata:
     app.kubernetes.io/component: api
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app.kubernetes.io/name: simplelogin
       app.kubernetes.io/component: api
+
   template:
     metadata:
       labels:
         app.kubernetes.io/name: simplelogin
         app.kubernetes.io/component: api
+
     spec:
       volumes:
         - name: simplelogin-data
@@ -25,13 +28,6 @@ spec:
         - name: config-env
           secret:
             secretName: business-mail-simplelogin-db-prod
-
-        - name: dkim-public
-          configMap:
-            name: simplelogin-dkim-public-cert
-            items:
-              - key: dkim.pub.key
-                path: dkim.pub.key
 
         - name: dkim-secrets
           secret:
@@ -64,10 +60,6 @@ spec:
             - mountPath: /secret/dkim.key
               name: dkim-secrets
               subPath: dkim.key
-
-            - mountPath: /secret/dkim.pub.key
-              name: dkim-public
-              subPath: dkim.pub.key
 
         - name: simplelogin-initapp
           image: simplelogin/app:3.4.0
