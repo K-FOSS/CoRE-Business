@@ -116,7 +116,7 @@ vaultwarden:
       # Log to file.
       file: ""
       # Log level. Options are "trace", "debug", "info", "warn", "error" or "off".
-      level: "trace"
+      level: 'off'
       ## Log timestamp format. See https://docs.rs/chrono/0.4.15/chrono/format/strftime/index.html. Defaults to time in milliseconds.
       # timeFormat: ""
 
