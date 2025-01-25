@@ -19,5 +19,5 @@ spec:
     - 'passwords.mylogin.space'
   rules:
     - backendRefs:
-        - name: k0s-cntrl-business-passwords-vaultwarden
+        - name: dc1-k3s-node1-business-passwords-vaultwarden
           port: 80
