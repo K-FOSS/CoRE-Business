@@ -63,5 +63,5 @@ spec:
             statusCode: 301
 
     - backendRefs:
-        - name: k0s-cntrl-business-office-nextcloud
+        - name: dc1-k3s-node1-business-office-nextcloud
           port: 8080
