@@ -7,7 +7,7 @@ dependencies:
   # Collabora
   #
   - name: collabora-code
-    version: 2.6.0
+    version: 2.5.0
     repository: https://chrisingenhaag.github.io/helm/
   
   #
