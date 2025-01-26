@@ -35,7 +35,7 @@ collabora-online:
     # External hostname:port of the server running coolwsd.
     # If empty, it's derived from the request (please set it if this doesn't work).
     # May be specified when behind a reverse-proxy or when the hostname is not reachable directly.
-    server_name: collabora.mylogin.space
+    server_name: collabora.mylogin.space:443
 
     existingSecret:
       enabled: false
