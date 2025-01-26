@@ -29,14 +29,13 @@ collabora-online:
     #   aliases: ["<protocol>://<its-first-alias>:<port>, <protocol>://<its-second-alias>:<port>"]
     aliasgroups:
         - host: "https://collabora.mylogin.space:443"
-        - host: "https://office.mylogin.space:443"
 
     extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4 --o:net.post_allow.host[0]=.+ --o:storage.wopi.host[0]=.+
 
     # External hostname:port of the server running coolwsd.
     # If empty, it's derived from the request (please set it if this doesn't work).
     # May be specified when behind a reverse-proxy or when the hostname is not reachable directly.
-    server_name: collabora.mylogin.space:443
+    #server_name: collabora.mylogin.space:443
 
     existingSecret:
       enabled: false
@@ -238,7 +237,7 @@ collabora-online:
   replicaCount: 1
 
   autoscaling:
-    enabled: true
+    enabled: false
     minReplicas: 2
     maxReplicas: 100
     targetCPUUtilizationPercentage: 70
