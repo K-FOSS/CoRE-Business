@@ -122,9 +122,6 @@ spec:
             - mountPath: /var/www/html/themes
               name: nextcloud-main
               subPath: themes
-            - mountPath: /var/www/html/config/db.config.php
-              name: nextcloud-config
-              subPath: db.config.php
             - mountPath: /var/www/html/config/redis.config.php
               name: nextcloud-config
               subPath: redis.config.php
