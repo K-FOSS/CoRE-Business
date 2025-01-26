@@ -19,5 +19,8 @@ spec:
     - 'collabora.mylogin.space'
   rules:
     - backendRefs:
-        - name: k0s-cntrl-business-office-collabora-code
+        - group: ''
+          kind: Service
+          name: k0s-cntrl-business-office-collabora-code
           port: 9980
+          weight: 1

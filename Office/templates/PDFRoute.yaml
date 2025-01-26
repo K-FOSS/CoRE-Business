@@ -19,5 +19,8 @@ spec:
     - 'pdf.mylogin.space'
   rules:
     - backendRefs:
-        - name: pdf-edit-ui
+        - group: ''
+          kind: Service
+          name: pdf-edit-ui
           port: 80
+          weight: 1
