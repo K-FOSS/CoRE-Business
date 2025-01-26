@@ -74,7 +74,7 @@ spec:
             - name: NEXTCLOUD_DATA_DIR
               value: /var/www/html/data
             - name: REDIS_HOST
-              value: 10.1.1.68
+              value: redis.mylogin.space
             - name: OBJECTSTORE_S3_HOST
               value: s3.mylogin.space
             - name: OBJECTSTORE_S3_USEPATH_STYLE
