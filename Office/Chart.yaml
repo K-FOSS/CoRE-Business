@@ -6,9 +6,9 @@ dependencies:
   #
   # Collabora
   #
-  - name: collabora-code
-    version: 2.5.0
-    repository: https://chrisingenhaag.github.io/helm/
+  - name: collabora-online
+    version: 1.1.31
+    repository: https://collaboraonline.github.io/online/
   
   #
   # NextCloud
