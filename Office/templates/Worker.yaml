@@ -11,13 +11,13 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/component: worker
-      app.kubernetes.io/instance: k0s-cntrl-business-office
+      app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/name: nextcloud
   template:
     metadata:
       labels:
         app.kubernetes.io/component: worker
-        app.kubernetes.io/instance: k0s-cntrl-business-office
+        app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/name: nextcloud
     spec:
       affinity:
@@ -28,16 +28,16 @@ spec:
                   - key: app.kubernetes.io/instance 
                     operator: In 
                     values:
-                      - k0s-cntrl-business-office
+                      - {{ .Release.Name }}
               topologyKey: kubernetes.io/hostname
       volumes:
         - name: nextcloud-main
           persistentVolumeClaim:
-            claimName: k0s-cntrl-business-office-nextcloud-nextcloud
+            claimName: '{{ .Release.Name }}-nextcloud-nextcloud'
 
         - configMap:
             defaultMode: 420
-            name: k0s-cntrl-business-office-nextcloud-config
+            name: '{{ .Release.Name }}-nextcloud-config'
           name: nextcloud-config
       containers:
         - name: nextcloud-worker
@@ -45,20 +45,20 @@ spec:
           command: ['/cron.sh']
           args: []
           env:
-            - name: POSTGRES_HOST
-              value: 'psql.service.dc1.kjdev:5432'
-            - name: POSTGRES_DB
-              value: SzS9n9UxZS
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  key: Username
-                  name: business-office-nextcloud-database-prod
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  key: Password
-                  name: business-office-nextcloud-database-prod
+            # - name: POSTGRES_HOST
+            #   value: 'psql.service.dc1.kjdev:5432'
+            # - name: POSTGRES_DB
+            #   value: SzS9n9UxZS
+            # - name: POSTGRES_USER
+            #   valueFrom:
+            #     secretKeyRef:
+            #       key: Username
+            #       name: business-office-nextcloud-database-prod
+            # - name: POSTGRES_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       key: Password
+            #       name: business-office-nextcloud-database-prod
             - name: NEXTCLOUD_ADMIN_USER
               valueFrom:
                 secretKeyRef:
