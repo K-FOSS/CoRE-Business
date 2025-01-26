@@ -30,6 +30,7 @@ spec:
                     values:
                       - {{ .Release.Name }}
               topologyKey: kubernetes.io/hostname
+
       volumes:
         - name: nextcloud-main
           persistentVolumeClaim:
@@ -42,6 +43,10 @@ spec:
       containers:
         - name: nextcloud-worker
           image: nextcloud:fpm-alpine
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 82
+
           command: 
             - 'php' 
             - 'occ' 
