@@ -29,6 +29,7 @@ collabora-online:
     #   aliases: ["<protocol>://<its-first-alias>:<port>, <protocol>://<its-second-alias>:<port>"]
     aliasgroups:
         - host: "https://collabora.mylogin.space:443"
+        - host: "https://office.mylogin.space:443"
 
     extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4 --o:net.post_allow.host[0]=.+ --o:storage.wopi.host[0]=.+
 
