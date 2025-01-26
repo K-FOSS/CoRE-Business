@@ -30,7 +30,7 @@ collabora-code:
     DONT_GEN_SSL_CERT: true
     domain: office\\.mylogin\\.space
     extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4 --o:net.post_allow.host[0]=.+ --o:storage.wopi.host[0]=.+
-    server_name: collabora\.mylogin\.space
+    server_name: collabora.mylogin.space
     password: examplepass
     username: admin
     dictionaries: de_DE en_GB en_US es_ES fr_FR it nl pt_BR pt_PT ru
@@ -650,7 +650,7 @@ nextcloud:
       logging.config.php: |-
         <?php
         $CONFIG = array (
-          'log_type' => 'syslog',
+          'log_type' => 'file',
           'logtimezone' => 'America/Winnipeg',
         );
 
