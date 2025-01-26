@@ -673,7 +673,7 @@ nextcloud:
           $CONFIG = array (
             'dbtype' => 'pgsql',
             'dbname' => getenv('POSTGRES_DB'),
-            'dbhost' => 'psql-core.mylogin.space:5432',
+            'dbhost' => 'psql-int.mylogin.space:5432',
             'dbport' => '',
             'dbtableprefix' => 'oc_',
             'dbuser' => getenv('POSTGRES_USER'),
@@ -981,7 +981,7 @@ nextcloud:
     type: postgresql
 
     ## Database host
-    host: psql-core.mylogin.space:5432
+    host: psql-int.mylogin.space:5432
 
     ## Database name
     database: SzS9n9UxZS
