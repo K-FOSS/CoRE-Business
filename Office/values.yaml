@@ -668,17 +668,17 @@ nextcloud:
           )
         );
 
-      db.config.php: |-
-        <?php
-          $CONFIG = array (
-            'dbtype' => 'pgsql',
-            'dbname' => getenv('POSTGRES_DB'),
-            'dbhost' => 'psql-int.mylogin.space:5432',
-            'dbport' => '',
-            'dbtableprefix' => 'oc_',
-            'dbuser' => getenv('POSTGRES_USER'),
-            'dbpassword' => getenv('POSTGRES_PASSWORD'),
-          );
+      # db.config.php: |-
+      #   <?php
+      #     $CONFIG = array (
+      #       'dbtype' => 'pgsql',
+      #       'dbname' => getenv('POSTGRES_DB'),
+      #       'dbhost' => 'psql-int.mylogin.space:5432',
+      #       'dbport' => '',
+      #       'dbtableprefix' => 'oc_',
+      #       'dbuser' => getenv('POSTGRES_USER'),
+      #       'dbpassword' => getenv('POSTGRES_PASSWORD'),
+      #     );
 
       secrets.config.php: |-
         <?php
@@ -824,23 +824,23 @@ nextcloud:
   ## External database configuration
   ##
   externalDatabase:
-    enabled: true
+    enabled: false
 
     ## Supported database engines: mysql or postgresql
-    type: postgresql
+    # type: postgresql
 
-    ## Database host
-    host: psql-int.mylogin.space:5432
+    # ## Database host
+    # host: psql-int.mylogin.space:5432
 
-    ## Database name
-    database: SzS9n9UxZS
+    # ## Database name
+    # database: SzS9n9UxZS
 
-    ## Use a existing secret
-    existingSecret:
-      enabled: true
-      secretName: nc-office-creds
-      usernameKey: username
-      passwordKey: password
+    # ## Use a existing secret
+    # existingSecret:
+    #   enabled: true
+    #   secretName: nc-office-creds
+    #   usernameKey: username
+    #   passwordKey: password
 
   ##
   ## MariaDB chart configuration
