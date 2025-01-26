@@ -42,7 +42,12 @@ spec:
       containers:
         - name: nextcloud-worker
           image: nextcloud:fpm-alpine
-          command: ['/cron.sh']
+          command: 
+            - 'php' 
+            - 'occ' 
+            - 'background-job:worker'
+            - '-t=60' 
+            - 'OC\TaskProcessing\SynchronousBackgroundJob'
           args: []
           env:
             # - name: POSTGRES_HOST
