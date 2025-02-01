@@ -54,6 +54,10 @@ spec:
             type: PathPrefix
             value: /.well-known/nodeinfo
 
+      timeouts:
+        request: 30s
+        backendRequest: 15s
+
       filters:
         - type: RequestRedirect
           requestRedirect:
