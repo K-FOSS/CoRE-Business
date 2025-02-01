@@ -72,3 +72,7 @@ spec:
           name: dc1-k3s-node1-business-office-nextcloud
           port: 8080
           weight: 1
+
+      timeouts:
+        request: 120s
+        backendRequest: 100s
