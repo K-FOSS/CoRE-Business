@@ -15,7 +15,7 @@ openproject:
     enabled: false
 
   storage:
-    storageClassName: infra1-storage
+    storageClassName: ''
     capacity: 5G
     persistenentVolume:
       create: false
