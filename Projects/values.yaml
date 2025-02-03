@@ -5,7 +5,7 @@ openproject:
   image:
     repository: openproject/community
     pullPolicy: IfNotPresent
-    tag: '13'
+    tag: '12'
 
   service:
     type: ClusterIP
