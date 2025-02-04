@@ -19,9 +19,6 @@ spec:
         POSTGRES_USER: '{{`{{ .Username }}`}}'
         POSTGRES_PASSWORD: '{{`{{ .Username }}`}}'
 
-        CONF_RELAY_DOMAINS: 'pgsql:/etc/postfix/pgsql-relay-domains.cf'
-        CONF_TRANSPORT_MAPS: 'pgsql:/etc/postfix/pgsql-transport-maps.cf'
-
         DB_URI: '{{`postgresql://{{ .Username }}:{{ .Password }}@psql.mylogin.space:5432/{{ .Database }}`}}'
 
         URL: '{{ .Values.URL }}'
