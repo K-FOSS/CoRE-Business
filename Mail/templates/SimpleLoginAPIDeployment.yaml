@@ -84,10 +84,6 @@ spec:
               name: dkim-secrets
               subPath: dkim.key
 
-            - mountPath: /secret/dkim.pub.key
-              name: dkim-public
-              subPath: dkim.pub.key
-
 
       containers:
         - name: simplelogin-api
@@ -111,8 +107,3 @@ spec:
             - mountPath: /secret/dkim.key
               name: dkim-secrets
               subPath: dkim.key
-
-            - mountPath: /secret/dkim.pub.key
-              name: dkim-public
-              subPath: dkim.pub.key
-
