@@ -5,7 +5,7 @@ metadata:
 data:
   CONF_APPEND_DOT_MYDOMAIN: 'no'
 
-  CONF_MYNETWORKS: '10.0.0.0/8'
+  CONF_MYNETWORKS: '172.20.52.0/22'
 
   #
   # Limits
@@ -29,8 +29,13 @@ data:
   #
   CONF_SMTPD_TLS_CERT_FILE: '/etc/tls/mail/tls.crt'
   CONF_SMTPD_TLS_KEY_FILE: '/etc/tls/mail/tls.key'
+
+
   CONF_SMTP_TLS_SECURITY_LEVEL: 'may'
+  CONF_SMTP_TLS_WRAPPERMODE: 'yes'
+
   CONF_SMTPD_TLS_SECURITY_LEVEL: 'may'
+  
   CONF_SMTPD_SASL_PATH: 'inet:mail.mylogin.space:12345'  
   CONF_SMTPD_SASL_TYPE: 'dovecot'
   CONF_SMTPD_SASL_AUTH_ENABLE: 'yes'
