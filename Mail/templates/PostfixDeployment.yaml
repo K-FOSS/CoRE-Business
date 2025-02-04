@@ -31,17 +31,6 @@ spec:
                 topologyKey: kubernetes.io/hostname
               weight: 100
       volumes:
-        - name: simplelogin-configs
-          secret:
-            secretName: simplelogin-postfix-config
-            optional: false
-            items:
-              - key: pgsql-relay-domains.cf
-                path: pgsql-relay-domains.cf
-
-              - key: pgsql-transport-maps.cf
-                path: pgsql-transport-maps.cf
-
         - name: misc-config
           configMap:
             name: simplelogin-postfix-misc-config
@@ -91,15 +80,6 @@ spec:
             - name: misc-config
               mountPath: /etc/postfix/master.cf
               subPath: master.cf
-
-
-            - name: simplelogin-configs
-              mountPath: /etc/postfix/pgsql-relay-domains.cf
-              subPath: pgsql-relay-domains.cf
-
-            - name: simplelogin-configs
-              mountPath: /etc/postfix/pgsql-transport-maps.cf
-              subPath: pgsql-transport-maps.cf
 
             #
             # Dovecot
