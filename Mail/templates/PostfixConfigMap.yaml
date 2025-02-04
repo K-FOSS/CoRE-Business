@@ -6,7 +6,7 @@ data:
   pgsql-relay-domains.cf: |
     {{`
       # postgres config
-      hosts = psql.mylogin.space
+      hosts = psql-int.mylogin.space
       user = {{ .DatabaseUser }}
       password = {{ .DatabasePassword }}
       dbname = {{ .DatabaseDatabase }}`}}
@@ -17,7 +17,7 @@ data:
   pgsql-transport-maps.cf: |
     {{`
       # postgres config
-      hosts = psql.mylogin.space
+      hosts = psql-int.mylogin.space
       user = {{ .DatabaseUser }}
       password = {{ .DatabasePassword }}
       dbname = {{ .DatabaseDatabase }}`}}
