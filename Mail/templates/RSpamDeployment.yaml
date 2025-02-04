@@ -44,7 +44,7 @@ spec:
       volumes:
         - name: rspamd-config
           configMap:
-            name: {{ .Release.Name }}-rspamd
+            name: business-mail-rspamd
             items:
               - key: worker-proxy.inc
                 path: override.d/worker-proxy.inc
