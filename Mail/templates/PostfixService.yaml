@@ -7,13 +7,11 @@ metadata:
     purelb.io/allow-shared-ip: mail.mylogin.space
     purelb.io/service-group: anycast
     purelb.io/allow-local: 'true'
+    purelb.io/addresses: '66.165.222.125'
 
 spec:
   allocateLoadBalancerNodePorts: false
   type: LoadBalancer
-
-  loadBalancerIP: 66.165.222.125
-  loadBalancerClass: purelb.io/purelb
 
   ports:
     - name: smtp
