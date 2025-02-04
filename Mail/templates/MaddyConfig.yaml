@@ -19,7 +19,7 @@ data:
 
     storage.imapsql local_mailboxes {
       driver postgres
-      dsn "user={env:USERNAME} password={env:PASSWORD} host={env:PSQL_HOSTNAME} dbname={env:PSQL_DATABASE}"
+      dsn "user={env:USERNAME} password={env:PASSWORD} host={env:PSQL_HOSTNAME} dbname={env:USERNAME}"
 
       msg_store s3 {
         endpoint s3.mylogin.space

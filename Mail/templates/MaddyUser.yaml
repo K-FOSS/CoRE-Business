@@ -6,9 +6,6 @@ metadata:
 spec:
   name: Maddy Email
 
-  database:
-    name: email
-
   buckets:
     - mail-main
 
