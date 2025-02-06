@@ -66,6 +66,14 @@ spec:
       containers:
         - name: postfix
           image: kristianfoss/postfix:core
+          resources:
+            requests:
+              cpu: 15m
+              memory: 105M
+            limits:
+              cpu: 15m
+              memory: 105M
+
           envFrom:
             - secretRef:
                 name: business-mail-simplelogin-postfix-db-prod
