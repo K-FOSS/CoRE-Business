@@ -16,6 +16,14 @@ vaultwarden:
   strategy:
     type: RollingUpdate
 
+  resources:
+    requests:
+      cpu: 15m
+      memory: 204M
+    limits:
+      cpu: 15m
+      memory: 204M
+
   service:
     main:
       ports:
