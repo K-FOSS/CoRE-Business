@@ -1359,10 +1359,10 @@ nextcloud:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      cpu: 100m
+      cpu: '1'
       memory: 1556M
     requests:
-      cpu: '1'
+      cpu: 100m
       memory: 1556M
 
   ## Liveness and readiness probe values
