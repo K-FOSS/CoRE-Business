@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: simplelogin
     app.kubernetes.io/component: api
 spec:
-  replicas: 1
+  replicas: 0
 
   selector:
     matchLabels:
