@@ -19,10 +19,10 @@ vaultwarden:
   resources:
     requests:
       cpu: 15m
-      memory: 204M
+      memory: 100M
     limits:
-      cpu: 15m
-      memory: 204M
+      cpu: 200m
+      memory: 256M
 
   service:
     main:
