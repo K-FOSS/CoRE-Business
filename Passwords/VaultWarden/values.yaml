@@ -1,3 +1,11 @@
+env: prod
+
+gateway:
+  name: main-gw
+  namespace: core-prod
+  sectionName: https-myloginspace
+  domainName: passwords.mylogin.space
+
 vaultwarden:
   podLabels:
     logs: loki-myloginspace

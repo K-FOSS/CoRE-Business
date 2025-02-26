@@ -6,18 +6,35 @@ metadata:
   labels:
     wan-mode: 'public'
     lan-mode: 'private'
+    resolvemy.host/gw: '{{ .Values.gateway.name }}'
+    resolvemy.host/gw-ns: '{{ .Values.gateway.namespace }}' 
+    resolvemy.host/security: 'public'
+    resolvemy.host/env: '{{ .Values.env }}'
 
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      namespace: core-prod
-      name: main-gw
-      sectionName: https
+      namespace: {{ .Values.gateway.name }}
+      name: {{ .Values.gateway.name }}
+      sectionName: {{ .Values.gateway.sectionName }}
 
   hostnames:
-    - 'passwords.mylogin.space'
+    - {{ .Values.gateway.domainName }}
+
   rules:
-    - backendRefs:
-        - name: dc1-k3s-node1-business-passwords-vaultwarden
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+      backendRefs:
+        - group: ''
+          kind: Service
+          name: dc1-k3s-node1-business-passwords-vaultwarden
           port: 80
+          weight: 1
+
+      timeouts:
+        backendRequest: 120s
+        request: 120s
