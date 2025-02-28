@@ -14,6 +14,10 @@ email:
 simplelogin:
   enabled: false
 
+dns:
+  automagic:
+    enabled: false
+
 dkim-manager:
   image:
 
