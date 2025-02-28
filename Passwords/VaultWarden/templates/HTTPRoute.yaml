@@ -15,7 +15,7 @@ spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      namespace: {{ .Values.gateway.name }}
+      namespace: {{ .Values.gateway.namespace }}
       name: {{ .Values.gateway.name }}
       sectionName: {{ .Values.gateway.sectionName }}
 
