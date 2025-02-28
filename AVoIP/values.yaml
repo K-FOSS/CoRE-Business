@@ -1,9 +1,13 @@
 asterisk:
+  stunServers:
+    - stuns:nat.mylogin.space:3478
+
   rtp:
     min: 10000
     max: 10100
 
 freeswitch:
+  enabled: false
   rtp:
     min: 11000
     max: 11050

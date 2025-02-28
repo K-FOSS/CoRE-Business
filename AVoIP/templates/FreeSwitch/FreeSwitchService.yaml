@@ -1,3 +1,4 @@
+{{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -25,3 +26,4 @@ spec:
       targetPort: tls-sips
   selector:
     app.kubernetes.io/name: {{ $fullName }}-freeswitch
+{{- end }}

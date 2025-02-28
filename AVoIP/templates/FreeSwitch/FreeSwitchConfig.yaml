@@ -1,3 +1,4 @@
+{{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -547,4 +548,4 @@ data:
     ; either the names of a field in caller_profile or a string of variables to expand.
     caller_id_number => 2137991400,n,Goto(default|music)
     ${sip_from_user} => bill,n,Goto(default|music)
-
+{{- end }}

@@ -1,3 +1,4 @@
+{{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -19,3 +20,4 @@ data:
           <param name="ping" value="25" />
       </gateway>
     </include>`}}
+{{- end }}

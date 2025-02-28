@@ -1,3 +1,4 @@
+{{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -54,3 +55,4 @@ data:
           </profile>
       </profiles>
     </configuration>
+{{- end }}

@@ -1,3 +1,4 @@
+{{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: mylogin.space/v1alpha1
@@ -12,3 +13,4 @@ spec:
 
   writeConnectionSecretToRef:
     name: {{ $fullName }}-freeswitch
+{{- end }}
