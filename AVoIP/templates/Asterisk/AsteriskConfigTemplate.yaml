@@ -1,3 +1,4 @@
+{{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -1572,3 +1573,4 @@ data:
     ;mailbox_state_filter=     ; Optional regular expression used to filter what
                             ; mailboxes we accept events for.
 
+{{- end }}

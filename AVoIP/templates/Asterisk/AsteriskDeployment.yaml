@@ -1,3 +1,4 @@
+{{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: apps/v1
@@ -109,3 +110,4 @@ spec:
 
         - name: data-volume
           emptyDir: {}
+{{- end }}

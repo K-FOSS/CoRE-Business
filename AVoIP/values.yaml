@@ -1,6 +1,10 @@
 asterisk:
+  enabled: false
   stunServers:
-    - stuns:nat.mylogin.space:3478
+    - nat.mylogin.space:3478
+
+  turnServers:
+    - turn.mylogin.space:5478
 
   rtp:
     min: 10000

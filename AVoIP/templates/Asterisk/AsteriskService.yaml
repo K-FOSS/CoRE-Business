@@ -1,3 +1,4 @@
+{{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -21,4 +22,4 @@ spec:
 
   selector:
     app: {{ $fullName }}-asterisk
-
+{{- end }}

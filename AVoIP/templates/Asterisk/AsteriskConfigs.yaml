@@ -1,3 +1,4 @@
+{{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1
@@ -373,7 +374,7 @@ data:
     ;
     ; e.g. turnaddr=myturn.server.com:34780
     ;
-    turnaddr=nat.ipaddr.network:3478
+    turnaddr=turn.mylogin.space:3478
     ;
     ; Username used to authenticate with TURN relay server.
     turnusername=demo
@@ -1326,11 +1327,12 @@ data:
     ; ---- STUN Server configuration ---
     ;  Setting the 'stunaddr' option to a valid address enables the STUN monitor.
     ;
-    ;stunaddr = nat.ipaddr.network:3478    ; Address of the STUN server to query.
+    stunaddr = {{ index .Values.asterisk.stunServers 0 }}    ; Address of the STUN server to query.
                                     ; Valid form:
                                     ;   [(hostname | IP-address) [':' port]]
                                     ; The port defaults to the standard STUN port (3478).
                                     ; Set to an empty value to disable STUN monitoring.
                                     ;   Default is disabled.
-    ;stunrefresh = 30               ; Number of seconds between STUN refreshes.
+    stunrefresh = 30               ; Number of seconds between STUN refreshes.
                                     ;   Default is 30.
+{{- end }}
