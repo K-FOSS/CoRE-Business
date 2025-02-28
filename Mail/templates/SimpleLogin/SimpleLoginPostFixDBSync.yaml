@@ -1,3 +1,4 @@
+{{- if .Values.simplelogin.enabled }}
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -37,3 +38,4 @@ spec:
       remoteRef:
         key: Mail/SimpleLogin/Database
         property: Username
+{{- end }}
