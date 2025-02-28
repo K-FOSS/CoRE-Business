@@ -29,8 +29,8 @@ vaultwarden:
       cpu: 15m
       memory: 100M
     limits:
-      cpu: 200m
-      memory: 256M
+      cpu: 800m
+      memory: 512M
 
   service:
     main:
