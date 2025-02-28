@@ -8,10 +8,15 @@ freeswitch:
     min: 11000
     max: 11050
 
+ejabberd:
+  tls:
+    secretName: myloginspace-default-certificates
+
 jitsi-meet:
   # Default values for jitsi-meet.
   # This is a YAML-formatted file.
   # Declare variables to be passed into your templates.
+  enabled: false
 
   global:
     podLabels: {}
@@ -309,3 +314,7 @@ jitsi-meet:
     image:
       repository: jitsi/prosody
       tag: 'stable'
+
+
+vosk:
+  enabled: false
