@@ -1,3 +1,4 @@
+{{- if .Values.simplelogin.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -82,3 +83,4 @@ spec:
             - mountPath: /secret/dkim.pub.key
               name: dkim-public
               subPath: dkim.pub.key
+{{- end }}

@@ -1,3 +1,4 @@
+{{- if .Values.simplelogin.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -107,3 +108,4 @@ spec:
             - mountPath: /secret/dkim.key
               name: dkim-secrets
               subPath: dkim.key
+{{- end }}

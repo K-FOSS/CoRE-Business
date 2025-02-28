@@ -11,6 +11,9 @@ email:
   postfix:
     server: 10.1.1.25
 
+simplelogin:
+  enabled: false
+
 dkim-manager:
   image:
 
