@@ -9,7 +9,7 @@ metadata:
     app: {{ $fullName }}-mycroft-mimic
 
 spec:
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 3
   selector:
     matchLabels:
@@ -22,12 +22,12 @@ spec:
 
     spec:
       containers:
-        - image: mycroftai/mimic3:latest
+        - image: smartgic/ovos-tts-server-bark:alpha
           name: mimic
 
           ports:
             - name: http
-              containerPort: 59125
+              containerPort: 9666
               protocol: TCP
           volumeMounts:
             - name: data-volume
