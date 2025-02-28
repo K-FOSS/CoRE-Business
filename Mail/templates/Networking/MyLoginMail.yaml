@@ -1,4 +1,4 @@
-{{- .Values.dns.automagic.enabled }}
+{{- if .Values.dns.automagic.enabled  }}
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
