@@ -503,6 +503,7 @@ nextcloud:
 
   podLabels:
     logs: loki-myloginspace
+    resolvemy.host/env: 'prod'
 
 
 
