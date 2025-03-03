@@ -13,6 +13,7 @@ spec:
       kind: Gateway
       name: main-gw
       namespace: core-prod
+      sectionName: https-myloginspace
 
   hostnames:
     - 'draw.mylogin.space'
