@@ -1,3 +1,5 @@
+env: prod
+
 collabora-online:
   # Default values for newchart.
   # This is a YAML-formatted file.
@@ -496,7 +498,8 @@ nextcloud:
   deploymentAnnotations: {}
 
 
-  podAnnotations: {}
+  podAnnotations:
+    backup.velero.io/backup-volumes: 'nextcloud-main'
 
   podLabels:
     logs: loki-myloginspace
