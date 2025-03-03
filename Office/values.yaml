@@ -510,8 +510,6 @@ nextcloud:
     logs: loki-myloginspace
     resolvemy.host/env: 'prod'
 
-
-
   # Number of replicas to be deployed
   replicaCount: 1
 
@@ -1368,8 +1366,8 @@ nextcloud:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     limits:
-      cpu: '1'
-      memory: 1556M
+      cpu: '4'
+      memory: 4G
     requests:
       cpu: 100m
       memory: 1556M
