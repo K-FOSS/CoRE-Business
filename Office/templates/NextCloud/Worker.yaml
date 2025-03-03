@@ -5,20 +5,24 @@ metadata:
   labels:
     app.kubernetes.io/name: nextcloud
     app.kubernetes.io/component: worker
+
 spec:
   # modify replicas according to your case
   replicas: 1
+
   selector:
     matchLabels:
       app.kubernetes.io/component: worker
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/name: nextcloud
+
   template:
     metadata:
       labels:
         app.kubernetes.io/component: worker
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/name: nextcloud
+
     spec:
       affinity:
         podAffinity:
@@ -69,47 +73,61 @@ spec:
             #     secretKeyRef:
             #       key: Password
             #       name: business-office-nextcloud-database-prod
+
             - name: NEXTCLOUD_ADMIN_USER
               valueFrom:
                 secretKeyRef:
                   key: AdminUser
                   name: business-office-nextcloud-keys-prod
+
             - name: NEXTCLOUD_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   key: AdminPassword
                   name: business-office-nextcloud-keys-prod
+
             - name: NEXTCLOUD_TRUSTED_DOMAINS
               value: office.mylogin.space
+
             - name: NEXTCLOUD_DATA_DIR
               value: /var/www/html/data
+
             - name: REDIS_HOST
               value: redis.mylogin.space
+
             - name: OBJECTSTORE_S3_HOST
               value: s3.mylogin.space
+
             - name: OBJECTSTORE_S3_USEPATH_STYLE
               value: 'true'
+
             - name: OBJECTSTORE_S3_LEGACYAUTH
               value: 'false'
+
             - name: OBJECTSTORE_S3_PORT
               value: '443'
+
             - name: OBJECTSTORE_S3_SSL
               value: 'true'
+
             - name: OBJECTSTORE_S3_BUCKET
               valueFrom:
                 secretKeyRef:
                   key: S3Bucket
                   name: business-office-nextcloud-s3-prod
+
             - name: OBJECTSTORE_S3_KEY
               valueFrom:
                 secretKeyRef:
                   key: S3AccessKey
                   name: business-office-nextcloud-s3-prod
+
             - name: OBJECTSTORE_S3_SECRET
               valueFrom:
                 secretKeyRef:
                   key: S3SecretKey
                   name: business-office-nextcloud-s3-prod
+
           volumeMounts:
             - mountPath: /var/www/
               name: nextcloud-main

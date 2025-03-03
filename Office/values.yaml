@@ -1,5 +1,10 @@
 env: prod
 
+gateway:
+  name: main-gw
+  namespace: core-prod
+  sectionName: https-myloginspace
+
 collabora-online:
   # Default values for newchart.
   # This is a YAML-formatted file.
