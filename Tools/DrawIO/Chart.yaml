@@ -1,0 +1,12 @@
+apiVersion: v2
+version: 1.0.0
+
+name: core-business-tools-drawio
+
+dependencies:
+  #
+  # TODO: Get this automatically updated with Renovate or similar
+  #  
+  - name: common
+    version: '3.7.1'
+    repository: https://bjw-s.github.io/helm-charts/
