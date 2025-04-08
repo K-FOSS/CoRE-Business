@@ -12,7 +12,7 @@ controllers:
     containers:
       drawio:
         image:
-          repository: jgraph/drawio:latest
+          repository: jgraph/drawio
 
           #
           # TODO: Get this fully automated with Renovate or similar
