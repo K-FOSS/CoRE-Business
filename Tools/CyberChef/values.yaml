@@ -113,7 +113,7 @@ route:
         name: main-gw
         # Namespace of the referent resource
         namespace: core-prod
-        sectionName: https
+        sectionName: https-myloginspace
 
     # -- Host addresses. Helm template can be passed.
     hostnames:
