@@ -1,0 +1,12 @@
+apiVersion: v2
+version: 1.0.0
+name: core-business-ai
+
+dependencies:
+  #
+  # OpenWebUI
+  #
+  - name: open-webui
+    version: 6.29.0
+    repository: https://helm.openwebui.com
+    condition: open-webui.enabled
