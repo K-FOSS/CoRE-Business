@@ -1,0 +1,110 @@
+
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: {{ .Release.Name }}-oidc
+spec:
+  providerConfigRef:
+    name: authentik
+
+  writeConnectionSecretToRef:
+    namespace: {{ .Release.Namespace }}
+    name: {{ .Release.Name }}-oidc
+
+  forProvider:
+    source: Inline
+    module: |
+      data "authentik_flow" "default-authorization-flow" {
+        slug = "default-provider-authorization-explicit-consent"
+      }
+
+      data "authentik_flow" "default-provider-invalidation-flow" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+          "goauthentik.io/providers/oauth2/scope-offline_access"
+        ]
+      }
+
+      data "authentik_certificate_key_pair" "cert" {
+        name = "tls"
+      }
+
+      resource "random_password" "client-secret" {
+        length  = 128
+        lower   = true
+        numeric = true
+        upper   = true
+        special = true
+      }
+
+      resource "authentik_provider_oauth2" "auth-provider" {
+        name          = "OpenWebUI {{ .Values.cluster.name }} {{ .Values.datacenter }} {{ .Values.region }}"
+        client_id     = "{{ .Values.oauth.indexKey }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
+        client_secret = random_password.client-secret.result
+        signing_key = data.authentik_certificate_key_pair.cert.id
+        allowed_redirect_uris = [
+          {
+            matching_mode = "regex",
+            url           = "https://openwebui.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.resolvemy.host/.*",
+          },
+        ]
+
+        property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
+        authorization_flow = data.authentik_flow.default-authorization-flow.id
+        invalidation_flow = data.authentik_flow.default-provider-invalidation-flow.id
+      }
+
+      resource "authentik_application" "application" {
+        name              = "OpenWebUI"
+        slug              = "{{ .Values.oauth.indexKey }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
+        group             = "{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
+        protocol_provider = authentik_provider_oauth2.auth-provider.id
+      }
+
+      resource "authentik_group" "group" {
+        name         = "Home AI Users"
+        is_superuser = false
+      }
+
+      resource "authentik_application_entitlement" "ent-0" {
+        name        = "${authentik_group.group.id}-ent"
+        application = authentik_application.application.uuid
+      }
+
+      resource "authentik_policy_binding" "ent-0-access" {
+        target = authentik_application_entitlement.ent-0.id
+        group  = authentik_group.group.id
+        order  = 0
+      } 
+
+      resource "authentik_policy_binding" "ent-0-app-access" {
+        target = authentik_application.application.uuid
+        group  = authentik_group.group.id
+        order  = 0
+      }
+    
+      output "OIDC_CLIENT_ID" {
+        value = authentik_provider_oauth2.auth-provider.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client-secret.result
+        sensitive = true
+      }
+
+      output "OIDC_ISSUER_URL" {
+        value = "{{ .Values.oauth.authentik.urlBase }}/application/o/{{ .Values.oauth.indexKey }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}/"
+        sensitive = true
+      }
+
+      output "OIDC_SCOPES" {
+        value     = "{{ .Values.oauth.scopes }}"
+        sensitive = true
+      }
