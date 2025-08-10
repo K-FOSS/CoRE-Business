@@ -269,18 +269,18 @@ rbac:
             - list
             - delete
 
-  bindings:
-    kubedock:
-      # -- Enables or disables the Role. Can be templated.
-      enabled: true
-      # -- Set to RoleBinding,ClusterRoleBinding
-      type: RoleBinding
-      # -- Can be an identifier of rbac.roles or a custom name and kind
-      roleRef:
-        identifier: kubedock
-      # -- If using an identifier it will be automatically filled, otherwise every key will need to be explicitly declared
-      subjects:
-        - identifier: kubedock
+  # bindings:
+  #   kubedock:
+  #     # -- Enables or disables the Role. Can be templated.
+  #     enabled: true
+  #     # -- Set to RoleBinding,ClusterRoleBinding
+  #     type: RoleBinding
+  #     # -- Can be an identifier of rbac.roles or a custom name and kind
+  #     roleRef:
+  #       identifier: kubedock
+  #     # -- If using an identifier it will be automatically filled, otherwise every key will need to be explicitly declared
+  #     subjects:
+  #       - identifier: kubedock
 
 serviceAccount:
   kubedock:
