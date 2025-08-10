@@ -155,8 +155,8 @@ controllers:
 persistence:
   config:
     enabled: true
-    type: secret
-    name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-prod-config'
+    type: configMap
+    name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}'
 
     advancedMounts:
       openwebuimcp: # the controller with the "main" identifier
