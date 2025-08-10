@@ -1,4 +1,4 @@
-{{- if .Values.ai.namespace.enabled }}
+{{- if .Values.ai.namespace.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
