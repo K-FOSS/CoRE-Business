@@ -366,7 +366,7 @@ service:
         # -- The port number
         port: 80
 
-        targetPort: http
+        targetPort: 8000
 
         # -- Port protocol.
         # Support values are `HTTP`, `HTTPS`, `TCP` and `UDP`.
