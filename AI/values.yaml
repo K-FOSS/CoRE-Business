@@ -72,8 +72,8 @@ controllers:
 
       mcpo:
         image:
-          repository: ghcr.io/open-webui/mcpo
-          tag: 'main'
+          repository: kristianfoss/openwebui
+          tag: 'core-mcp'
           pullPolicy: IfNotPresent
 
         args:
