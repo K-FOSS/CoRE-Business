@@ -29,7 +29,7 @@ defaultPodOptions:
     logs: loki-myloginspace
 
 controllers:
-  openwebuimcp:
+  docker:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
     # DaemonSets/CronJobs ignore this.
@@ -56,6 +56,14 @@ controllers:
           - name: http
             containerPort: 2475
 
+
+  openwebuimcp:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
       docker:
         image:
           repository: docker
@@ -68,10 +76,6 @@ controllers:
         args:
           - --config=/config/config.json
 
-        env:
-          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
-            value: '-p 0.0.0.0:2376:2376/tcp'
-
         ports:
           - name: http
             containerPort: 2376
@@ -81,6 +85,11 @@ controllers:
           repository: kristianfoss/openwebui
           tag: 'core-mcp'
           pullPolicy: IfNotPresent
+
+        command:
+          - sh
+          - -c
+          - "until [ -S /var/run/docker.sock ]; do sleep 1; done; exec mcpo"
 
         args:
           - --config=/config/config.json
