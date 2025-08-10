@@ -59,6 +59,9 @@ controllers:
           tag: '28-dind-rootless'
           pullPolicy: IfNotPresent
 
+        securityContext:
+          privileged: true
+
         args:
           - --config=/config/config.json
 
