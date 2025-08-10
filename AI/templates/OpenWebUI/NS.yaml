@@ -1,0 +1,17 @@
+{{- if .Values.ai.namespace.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.ai.namespace.name }}
+
+  labels:
+    kubernetes.io/metadata.name: {{ .Values.ai.namespace.name }}
+    pod-security.kubernetes.io/enforce: privileged
+
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+
+spec:
+  finalizers:
+    - kubernetes
+{{- end }}

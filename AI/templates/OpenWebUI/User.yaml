@@ -3,6 +3,8 @@ kind: User
 metadata:
   name: {{ .Release.Name }}-openwebui
 
+  namespace: core-{{ .Values.env }}
+
 spec:
   name: OpenWebUI 
 

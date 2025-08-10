@@ -3,6 +3,8 @@ apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
 metadata:
   name: {{ .Release.Name }}-oidc
+
+  namespace: core-{{ .Values.env }}
 spec:
   providerConfigRef:
     name: authentik

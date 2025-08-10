@@ -3,6 +3,10 @@ version: 1.0.0
 name: core-business-ai
 
 dependencies:
+  - name: common
+    version: 3.6.1
+    repository: https://bjw-s-labs.github.io/helm-charts/
+
   #
   # OpenWebUI
   #

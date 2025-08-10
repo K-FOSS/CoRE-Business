@@ -1,0 +1,7 @@
+Chart.lock
+**/charts
+**/charts/**
+
+Meta/Configs
+**tmp**
+TMP

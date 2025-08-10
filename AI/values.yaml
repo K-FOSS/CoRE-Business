@@ -1,4 +1,156 @@
 
+
+env: prod
+
+hub: true
+
+ai:
+  namespace:
+    name: core-ai-testing
+
+    create: true
+
+cluster:
+  name: k8s
+  domain: cluster.local
+
+
+gateway:
+  name: main-gw
+  namespace: core-prod
+  sectionName: https-myloginspace
+
+datacenter: dc1
+
+region: yxl
+
+defaultPodOptions:
+  labels:
+    logs: loki-myloginspace
+
+controllers:
+  openwebuimcp:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      mcpo:
+        image:
+          repository: ghcr.io/open-webui/mcpo
+          tag: 'main'
+          pullPolicy: IfNotPresent
+
+        args:
+          - --config=/config/config.json
+
+        ports:
+          - name: http
+            containerPort: 8000
+
+        # -- Probe configuration
+        # -- [[ref]](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+        # @default -- See below
+        probes:
+          # -- Liveness probe configuration
+          # @default -- See below
+          liveness:
+            # -- Enable the liveness probe
+            enabled: false
+            # -- Set this to `true` if you wish to specify your own livenessProbe
+            custom: false
+            # -- sets the probe type when not using a custom probe
+            # @default -- "TCP"
+            type: TCP
+            # -- The spec field contains the values for the default livenessProbe.
+            # If you selected `custom: true`, this field holds the definition of the livenessProbe.
+            # @default -- See below
+            spec:
+              initialDelaySeconds: 0
+              periodSeconds: 10
+              timeoutSeconds: 1
+              failureThreshold: 3
+
+          # -- Redainess probe configuration
+          # @default -- See below
+          readiness:
+            # -- Enable the readiness probe
+            enabled: false
+            # -- Set this to `true` if you wish to specify your own readinessProbe
+            custom: false
+            # -- sets the probe type when not using a custom probe
+            # @default -- "TCP"
+            type: TCP
+            # -- The spec field contains the values for the default readinessProbe.
+            # If you selected `custom: true`, this field holds the definition of the readinessProbe.
+            # @default -- See below
+            spec:
+              initialDelaySeconds: 0
+              periodSeconds: 10
+              timeoutSeconds: 1
+              failureThreshold: 3
+
+          # -- Startup probe configuration
+          # @default -- See below
+          startup:
+            # -- Enable the startup probe
+            enabled: false
+            # -- Set this to `true` if you wish to specify your own startupProbe
+            custom: false
+            # -- sets the probe type when not using a custom probe
+            # @default -- "TCP"
+            type: TCP
+            # -- The spec field contains the values for the default startupProbe.
+            # If you selected `custom: true`, this field holds the definition of the startupProbe.
+            # @default -- See below
+            spec:
+              initialDelaySeconds: 0
+              timeoutSeconds: 1
+              ## This means it has a maximum of 5*30=150 seconds to start up before it fails
+              periodSeconds: 5
+              failureThreshold: 30
+
+persistence:
+  config:
+    enabled: true
+    type: secret
+    name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-prod-config'
+
+    advancedMounts:
+      openwebuimcp: # the controller with the "main" identifier
+        mcpo: # the container with the "main" identifier
+          - path: /config/config.json
+            readOnly: true
+            subPath: config.json
+
+  # tls:
+  #   enabled: true
+  #   type: secret
+  #   name: myloginspace-default-certificates
+  #   mountPath: /etc/tls
+
+configMaps:
+  config:
+    # -- Enables or disables the configMap
+    enabled: true
+    # -- Labels to add to the configMap
+    labels: {}
+    # -- Annotations to add to the configMap
+    annotations: {}
+    # -- configMap data content. Helm template enabled.
+    data:
+      config.json: |
+        {
+          "mcpServers": {
+            "k8s": {
+              "type": "streamable-http",
+              "url": "http://testing.com:8002/mcp"
+            } // Streamable HTTP MCP Server
+          }
+        }
+
+
 oauth:
   indexKey: openwebui
   scopes: ''
