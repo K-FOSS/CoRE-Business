@@ -36,6 +36,23 @@ controllers:
     strategy: RollingUpdate
 
     containers:
+      kubedock:
+        image:
+          repository: joyrex2001/kubedock
+          tag: 'latest'
+          pullPolicy: IfNotPresent
+
+        # args:
+        #   - --config=/config/config.json
+
+        # env:
+        #   - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
+        #     value: '-p 0.0.0.0:2376:2376/tcp'
+
+        ports:
+          - name: http
+            containerPort: 2475
+
       docker:
         image:
           repository: docker
@@ -194,6 +211,84 @@ configMaps:
           }
         }
 
+
+rbac:
+  roles:
+    kubedock:
+      # -- Enables or disables the Role. Can be templated.
+      enabled: true
+      # -- Set to Role,ClusterRole
+      type: Role
+      rules:
+        - apiGroups:
+            - ''
+          resources: 
+            - pods
+          verbs: 
+            - create
+            - get
+            - list
+            - delete
+            - watch
+
+        - apiGroups:
+            - ''
+          resources:
+            - pods/log
+          verbs:
+            - list
+            - get
+
+        - apiGroups:
+            - ''
+          resources: 
+            - pods/exec
+          verbs:
+            - create
+
+        - apiGroups:
+            - ''
+          resources:
+            - services
+          verbs:
+            - create
+            - get
+            - list
+            - delete
+
+        - apiGroups:
+            - ''
+          resources:
+            - configmaps
+          verbs:
+            - create
+            - get
+            - list
+            - delete
+
+  # bindings:
+  #   binding1:
+  #     # -- Force replace the name of the object.
+  #     forceRename: <force name>
+  #     # -- Enables or disables the Role. Can be templated.
+  #     enabled: true
+  #     # -- Set to RoleBinding,ClusterRoleBinding
+  #     type: RoleBinding
+  #     # -- Can be an identifier of rbac.roles or a custom name and kind
+  #     roleRef:
+  #       name: test-role
+  #       kind: Role
+  #       identifier: test
+  #     # -- If using an identifier it will be automatically filled, otherwise every key will need to be explicitly declared
+  #     subjects:
+  #       - identifier: default
+  #       - kind: ServiceAccount
+  #         name: test
+  #         namespace: "{{ .Release.Namespace }}"
+  #       - kind: Group
+  #         name: oidc:/test-user
+  #       - kind: User
+  #         name: username
 
 oauth:
   indexKey: openwebui
