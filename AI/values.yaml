@@ -36,6 +36,23 @@ controllers:
     strategy: RollingUpdate
 
     containers:
+      docker:
+        image:
+          repository: docker
+          tag: '28-dind-rootless'
+          pullPolicy: IfNotPresent
+
+        args:
+          - --config=/config/config.json
+
+        env:
+          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
+            value: '-p 0.0.0.0:2376:2376/tcp'
+
+        ports:
+          - name: http
+            containerPort: 2376
+
       mcpo:
         image:
           repository: ghcr.io/open-webui/mcpo
@@ -111,6 +128,7 @@ controllers:
               periodSeconds: 5
               failureThreshold: 30
 
+
 persistence:
   config:
     enabled: true
@@ -123,6 +141,32 @@ persistence:
           - path: /config/config.json
             readOnly: true
             subPath: config.json
+
+  dockercerts:
+    enabled: true
+    type: emptyDir
+
+    advancedMounts:
+      openwebuimcp: # the controller with the "main" identifier
+        docker: # the container with the "main" identifier
+          - path: /certs/client
+
+
+        mcpo: # the container with the "main" identifier
+          - path: /certs/client
+
+  dockersocket:
+    enabled: true
+    type: emptyDir
+
+    advancedMounts:
+      openwebuimcp: # the controller with the "main" identifier
+        docker: # the container with the "main" identifier
+          - path: /var/run
+
+
+        mcpo: # the container with the "main" identifier
+          - path: /var/run
 
   # tls:
   #   enabled: true
