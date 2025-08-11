@@ -65,6 +65,9 @@ controllers:
 
     name: openwebuimcp
 
+    annotations:
+      k8s.v1.cni.cncf.io/networks: core-testing/backend-network
+
     containers:
       frr:
         image:
