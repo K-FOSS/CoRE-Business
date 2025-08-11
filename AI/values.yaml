@@ -157,7 +157,7 @@ controllers:
           # @default -- See below
           readiness:
             # -- Enable the readiness probe
-            enabled: false
+            enabled: true
             # -- Set this to `true` if you wish to specify your own readinessProbe
             custom: false
             # -- sets the probe type when not using a custom probe
