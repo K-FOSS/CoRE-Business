@@ -213,7 +213,7 @@ persistence:
   config:
     enabled: true
     type: configMap
-    name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}'
+    identifier: config
 
     advancedMounts:
       openwebuimcp: # the controller with the "main" identifier
@@ -427,7 +427,8 @@ configMaps:
                 "run",
                 "-i",
                 "--net=host",
-                "-v /var/run/docker.sock:/var/run/docker.sock",
+                "-v",
+                "/var/run/docker.sock:/var/run/docker.sock",
                 "--rm",
                 "kristianfoss/docker-mcp:testing"
               ],
