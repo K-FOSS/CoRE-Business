@@ -178,7 +178,7 @@ persistence:
     advancedMounts:
       openwebuimcp: # the controller with the "main" identifier
         docker: # the container with the "main" identifier
-          - path: /usr/local/bin/docker-entrypoint.sh
+          - path: /usr/local/bin/dockerd-entrypoint.sh
             readOnly: true
             subPath: docker-entrypoint.sh
 
