@@ -459,6 +459,16 @@ configMaps:
               ],
               "env": {}
             },
+            "minecraft-wiki": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "--rm",
+                "mcp/minecraft-wiki"
+              ]
+            },
             "domaintools": {
               "command": "docker",
               "args": [
@@ -466,7 +476,7 @@ configMaps:
                 "-i",
                 "--net=host",
                 "--rm",
-                "ghcr.io/patrickdappollonio/mcp-domaintools:latest"
+                "kristianfoss/mcp-domaintools:core-mcp"
               ],
               "env": {}
             },
