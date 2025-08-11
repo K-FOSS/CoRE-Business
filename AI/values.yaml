@@ -24,9 +24,9 @@ datacenter: dc1
 
 region: yxl
 
-defaultPodOptions:
-  labels:
-    logs: loki-myloginspace
+# defaultPodOptions:
+#   labels:
+#     logs: loki-myloginspace
 
 controllers:
   docker:
@@ -63,6 +63,8 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
+    name: openwebuimcp
+
     containers:
       docker:
         image:
@@ -76,6 +78,9 @@ controllers:
         env:
           - name: DOCKERD_ROOTLESS_ROOTLESSKIT_NET
             value: 'host'
+
+          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
+            value: ''
 
         # args:
         #   - 
@@ -93,10 +98,7 @@ controllers:
         command:
           - sh
           - -c
-          - "until [ -S /var/run/docker.sock ]; do sleep 1; done; exec mcpo"
-
-        args:
-          - --config=/config/config.json
+          - "until [ -S /var/run/docker.sock ]; do sleep 1; done; exec mcpo --config=/config/config.json"
 
         ports:
           - name: http
