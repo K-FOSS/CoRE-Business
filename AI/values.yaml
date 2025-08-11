@@ -372,17 +372,12 @@ configMaps:
           match ip address prefix-list ADV
         exit
         !
-        router bgp 64567
-          bgp router-id 10.1.1.1
-          no bgp ebgp-requires-policy
-          bgp disable-ebgp-connected-route-check
-          bgp bestpath peer-type multipath-relax
-          bgp graceful-restart stalepath-time 300
-          !
-          address-family ipv4 unicast
-            maximum-paths 64
-            maximum-paths ibgp 64
-          exit-address-family
+        interface net1
+          ip address 172.31.192.19/24
+          ip ospf area 0.0.0.0
+        exit
+        router ospf
+          auto-cost reference-bandwidth 100000 
         exit
         !
         end
@@ -410,6 +405,17 @@ configMaps:
               ],
               "env": {}
             },
+            "mcp-timeserver": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--rm",
+                "ghcr.io/metorial/mcp-container--secretiveshell--mcp-timeserver--mcp-timeserver",
+                "mcp-timeserver"
+              ],
+              "env": {}
+            }
             "code-sandbox": {
               "command": "docker",
               "args": [
