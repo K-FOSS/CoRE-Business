@@ -433,6 +433,19 @@ configMaps:
               ],
               "env": {}
             },
+            "mcp-local-rag": {
+              "command": "docker",
+              "args": [
+                "run",
+                "--rm",
+                "-i",
+                "--net=host",
+                "--init",
+                "-e",
+                "DOCKER_CONTAINER=true",
+                "ghcr.io/nkapila6/mcp-local-rag:latest"
+              ]
+            },
             "mcp-server-docker": {
               "command": "docker",
               "args": [
