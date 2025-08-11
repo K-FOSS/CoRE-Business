@@ -206,20 +206,6 @@ persistence:
             readOnly: true
             subPath: daemons
 
-  dockerscripts:
-    enabled: true
-    type: configMap
-    identifier: dockerscripts
-
-    defaultmode: 0755
-
-    advancedMounts:
-      openwebuimcp: # the controller with the "main" identifier
-        docker: # the container with the "main" identifier
-          - path: /usr/local/bin/dockerd-entrypoint.sh
-            readOnly: true
-            subPath: dockerd-entrypoint.sh
-
   config:
     enabled: true
     type: configMap
