@@ -420,7 +420,19 @@ configMaps:
                 "mcp-timeserver"
               ],
               "env": {}
-            }
+            },
+            "mcp-server-docker": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "-v /var/run/docker.sock:/var/run/docker.sock",
+                "--rm",
+                "kristianfoss/docker-mcp:testing"
+              ],
+              "env": {}
+            },
             "code-sandbox": {
               "command": "docker",
               "args": [
