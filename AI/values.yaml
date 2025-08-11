@@ -92,7 +92,7 @@ controllers:
         image:
           repository: kristianfoss/docker
           tag: 'core-mcp'
-          pullPolicy: IfNotPresent
+          pullPolicy: Always
 
         securityContext:
           privileged: true
