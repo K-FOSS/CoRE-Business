@@ -96,6 +96,7 @@ controllers:
 
         securityContext:
           privileged: true
+          runAsUser: 0
 
         env:
           - name: DOCKERD_ROOTLESS_ROOTLESSKIT_NET
