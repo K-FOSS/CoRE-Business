@@ -479,6 +479,16 @@ configMaps:
               ],
               "env": {}
             },
+            "wikipedia-mcp": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "--rm",
+                "mcp/wikipedia-mcp"
+              ]
+            },
             "code-sandbox": {
               "command": "docker",
               "args": [
