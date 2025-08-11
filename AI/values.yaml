@@ -480,10 +480,30 @@ configMaps:
       config.json: |
         {
           "mcpServers": {
-            "k8s": {
-              "type": "streamable-http",
-              "url": "http://testing.com:8002/mcp"
-            } // Streamable HTTP MCP Server
+            "crypto-feargreed-mcp": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--rm",
+                "ghcr.io/metorial/mcp-container--kukapay--crypto-feargreed-mcp--crypto-feargreed-mcp",
+                "python main.py"
+              ],
+              "env": {}
+            },
+            "code-sandbox": {
+              "command": "docker",
+              "args": [
+                "run", "--rm", "--interactive",
+                "--read-only",
+                "--tmpfs", "/tmp",
+                "--tmpfs", "/app/tmp",
+                "--memory", "512m",
+                "--cpus", "0.5",
+                "--cap-drop", "ALL",
+                "ghcr.io/timlikesai/code-sandbox-mcp:latest"
+              ]
+            }
           }
         }
 
