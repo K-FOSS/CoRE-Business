@@ -443,7 +443,7 @@ configMaps:
                 "--init",
                 "-e",
                 "DOCKER_CONTAINER=true",
-                "ghcr.io/nkapila6/mcp-local-rag:latest"
+                "kristianfoss/mcp-search:core-mcp"
               ]
             },
             "mcp-server-docker": {
