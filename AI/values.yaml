@@ -180,7 +180,7 @@ persistence:
         docker: # the container with the "main" identifier
           - path: /usr/local/bin/dockerd-entrypoint.sh
             readOnly: true
-            subPath: docker-entrypoint.sh
+            subPath: dockerd-entrypoint.sh
 
   config:
     enabled: true
@@ -231,7 +231,7 @@ configMaps:
     enabled: true
 
     data:
-      docker-entrypoint.sh: |
+      dockerd-entrypoint.sh: |
         #!/bin/sh
         set -eu
 
