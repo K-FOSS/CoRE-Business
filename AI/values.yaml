@@ -90,8 +90,8 @@ controllers:
 
       docker:
         image:
-          repository: docker
-          tag: '28-dind-rootless'
+          repository: kristianfoss/docker
+          tag: 'core-mcp'
           pullPolicy: IfNotPresent
 
         securityContext:
