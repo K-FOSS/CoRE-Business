@@ -73,8 +73,12 @@ controllers:
         securityContext:
           privileged: true
 
-        args:
-          - --config=/config/config.json
+        env:
+          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_NET
+            value: 'host'
+
+        # args:
+        #   - 
 
         ports:
           - name: http
