@@ -466,16 +466,7 @@ configMaps:
                 "-i",
                 "--net=host",
                 "--rm",
-                "ghcr.io/patrickdappollonio/mcp-domaintools:latest",
-                // Add custom options if needed:
-                // "--remote-server-address=https://your-custom-doh-server.com/dns-query",
-                // "--custom-whois-server=whois.yourdomain.com",
-                // "--timeout=5s",
-                // "--ping-timeout=5s",
-                // "--ping-count=4",
-                // "--http-ping-timeout=10s",
-                // "--http-ping-count=1",
-                // "--tls-timeout=10s"
+                "ghcr.io/patrickdappollonio/mcp-domaintools:latest"
               ],
               "env": {}
             },
