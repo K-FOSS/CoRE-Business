@@ -189,7 +189,7 @@ controllers:
               initialDelaySeconds: 30
               timeoutSeconds: 1
               ## This means it has a maximum of 5*30=150 seconds to start up before it fails
-              periodSeconds: 15
+              periodSeconds: 30
               failureThreshold: 30
 
 
