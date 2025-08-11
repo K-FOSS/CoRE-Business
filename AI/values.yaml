@@ -421,6 +421,18 @@ configMaps:
               ],
               "env": {}
             },
+            "whois-mcp": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "--rm",
+                "ghcr.io/metorial/mcp-container--bharathvaj-ganesan--whois-mcp--whois-mcp",
+                "node dist/index.js"
+              ],
+              "env": {}
+            },
             "mcp-server-docker": {
               "command": "docker",
               "args": [
