@@ -489,6 +489,20 @@ configMaps:
                 "mcp/wikipedia-mcp"
               ]
             },
+            "mcp-wolfram-alpha": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "--rm",
+                "ghcr.io/metorial/mcp-container--secretiveshell--mcp-wolfram-alpha--mcp-wolfram-alpha",
+                "mcp-wolfram-alpha"
+              ],
+              "env": {
+                "WOLFRAM_API_KEY": "wolfram-api-key"
+              }
+            },
             "code-sandbox": {
               "command": "docker",
               "args": [
