@@ -402,6 +402,7 @@ configMaps:
               "args": [
                 "run",
                 "-i",
+                "--net=host",
                 "--rm",
                 "ghcr.io/metorial/mcp-container--kukapay--crypto-feargreed-mcp--crypto-feargreed-mcp",
                 "python main.py"
@@ -413,6 +414,7 @@ configMaps:
               "args": [
                 "run",
                 "-i",
+                "--net=host",
                 "--rm",
                 "ghcr.io/metorial/mcp-container--secretiveshell--mcp-timeserver--mcp-timeserver",
                 "mcp-timeserver"
@@ -427,6 +429,7 @@ configMaps:
                 "--tmpfs", "/tmp",
                 "--tmpfs", "/app/tmp",
                 "--memory", "512m",
+                "--net=host",
                 "--cpus", "0.5",
                 "--cap-drop", "ALL",
                 "ghcr.io/timlikesai/code-sandbox-mcp:latest"
