@@ -56,6 +56,86 @@ controllers:
           - name: http
             containerPort: 2475
 
+  openwebui:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    name: openwebui
+
+    containers:
+      frr:
+        image:
+          repository: ghcr.io/open-webui/open-webui
+          #
+          # TODO: Get Renovate or similar managing this
+          #
+          tag: main
+          pullPolicy: Always
+
+        securityContext:
+          seLinuxOptions: {}
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          seccompProfile:
+            type: "RuntimeDefault"
+
+        env:
+          - name: WEBUI_NAME
+            value: 'CoRE-AI'
+
+          - name: ENABLE_CODE_EXECUTION
+            value: 'False'
+
+          - name: ENABLE_CODE_INTERPRETER
+            value: 'False'
+
+          - name: ENABLE_LDAP
+            value: 'True'
+
+          - name: LDAP_SERVER_HOST
+            value: 'ldap.mylogin.space'
+
+          - name: LDAP_SERVER_PORT
+            value: '636'
+
+          - name: LDAP_ATTRIBUTE_FOR_USERNAME
+            value: 'cn'
+
+          - name: ENABLE_LDAP_GROUP_MANAGEMENT
+            value: 'True'
+
+          - name: ENABLE_LDAP_GROUP_CREATION
+            value: 'True'
+
+          - name: LDAP_SEARCH_BASE
+            value: 'ou=users,dc=ldap,dc=mylogin,dc=space'
+
+          - name: LDAP_APP_DN
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                key: ldapsBIND
+
+          - name: LDAP_APP_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                key: password
+
+          - name: REDIS_URL
+            value: 'redis://redis.mylogin.space/150'
+
+          - name: WEBSOCKET_REDIS_URL
+            value: 'redis://redis.mylogin.space/151'
+
+
+        ports:
+          - name: http
+            containerPort: 8080
 
   openwebuimcp:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
