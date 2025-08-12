@@ -78,8 +78,6 @@ controllers:
           seLinuxOptions: {}
           privileged: false
           allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          readOnlyRootFilesystem: true
           seccompProfile:
             type: "RuntimeDefault"
 
