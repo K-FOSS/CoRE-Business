@@ -4,6 +4,17 @@ env: prod
 
 hub: true
 
+localai:
+  enabled: false
+
+
+owui:
+  enabled: true
+
+
+mcp:
+  enabled: false
+
 ai:
   namespace:
     name: core-ai-testing
@@ -29,142 +40,6 @@ region: yxl
 #     logs: loki-myloginspace
 
 controllers:
-  docker:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
-    strategy: RollingUpdate
-
-    serviceAccount:
-      identifier: kubedock
-
-    containers:
-      kubedock:
-        image:
-          repository: joyrex2001/kubedock
-          tag: 'latest'
-          pullPolicy: IfNotPresent
-
-        # args:
-        #   - --config=/config/config.json
-
-        # env:
-        #   - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
-        #     value: '-p 0.0.0.0:2376:2376/tcp'
-
-        ports:
-          - name: http
-            containerPort: 2475
-
-  openwebui:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
-    strategy: RollingUpdate
-
-    name: openwebui
-
-    containers:
-      openwebui:
-        image:
-          repository: ghcr.io/open-webui/open-webui
-          #
-          # TODO: Get Renovate or similar managing this
-          #
-          tag: main
-          pullPolicy: Always
-
-        securityContext:
-          seLinuxOptions: {}
-          privileged: false
-          allowPrivilegeEscalation: false
-          seccompProfile:
-            type: "RuntimeDefault"
-
-        env:
-          - name: WEBUI_NAME
-            value: 'CoRE-AI'
-
-          - name: ENABLE_CODE_EXECUTION
-            value: 'False'
-
-          - name: ENABLE_CODE_INTERPRETER
-            value: 'False'
-
-          #
-          # OIDC
-          #
-          - name: OAUTH_CLIENT_ID
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
-                key: OIDC_CLIENT_ID
-
-          - name: OAUTH_CLIENT_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
-                key: OIDC_CLIENT_SECRET
-
-          - name: OPENID_PROVIDER_URL
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
-                key: OIDC_ISSUER_URL
-
-          - name: OAUTH_SCOPES
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
-                key: OIDC_SCOPES
-
-          #
-          # LDAP
-          #
-          - name: ENABLE_LDAP
-            value: 'True'
-
-          - name: LDAP_SERVER_HOST
-            value: 'ldap.mylogin.space'
-
-          - name: LDAP_SERVER_PORT
-            value: '636'
-
-          - name: LDAP_ATTRIBUTE_FOR_USERNAME
-            value: 'cn'
-
-          - name: ENABLE_LDAP_GROUP_MANAGEMENT
-            value: 'True'
-
-          - name: ENABLE_LDAP_GROUP_CREATION
-            value: 'True'
-
-          - name: LDAP_SEARCH_BASE
-            value: 'ou=users,dc=ldap,dc=mylogin,dc=space'
-
-          - name: LDAP_APP_DN
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
-                key: ldapsBIND
-
-          - name: LDAP_APP_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
-                key: password
-
-          - name: REDIS_URL
-            value: 'redis://redis.mylogin.space/150'
-
-          - name: WEBSOCKET_REDIS_URL
-            value: 'redis://redis.mylogin.space/151'
-
-
-        ports:
-          - name: http
-            containerPort: 8080
-
   openwebuimcp:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
