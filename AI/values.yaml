@@ -266,10 +266,10 @@ controllers:
             # If you selected `custom: true`, this field holds the definition of the startupProbe.
             # @default -- See below
             spec:
-              initialDelaySeconds: 30
+              initialDelaySeconds: 300
               timeoutSeconds: 1
               ## This means it has a maximum of 5*30=150 seconds to start up before it fails
-              periodSeconds: 30
+              periodSeconds: 60
               failureThreshold: 30
 
 
