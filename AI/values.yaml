@@ -65,7 +65,7 @@ controllers:
     name: openwebui
 
     containers:
-      frr:
+      openwebui:
         image:
           repository: ghcr.io/open-webui/open-webui
           #
