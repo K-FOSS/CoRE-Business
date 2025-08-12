@@ -1,3 +1,4 @@
+{{- if .Values.owui.enabled }}
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:
@@ -11,4 +12,4 @@ spec:
 
   writeConnectionSecretToRef:
     name: {{ .Release.Name }}-openwebui-user
-
+{{- end }}

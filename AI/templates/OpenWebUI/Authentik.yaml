@@ -1,4 +1,4 @@
-
+{{- if .Values.owui.enabled }}
 apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
 metadata:
@@ -109,3 +109,4 @@ spec:
         value     = "{{ .Values.oauth.scopes }}"
         sensitive = true
       }
+{{- end }}
