@@ -93,6 +93,36 @@ controllers:
           - name: ENABLE_CODE_INTERPRETER
             value: 'False'
 
+          #
+          # OIDC
+          #
+          - name: OAUTH_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                key: OIDC_CLIENT_ID
+
+          - name: OAUTH_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                key: OIDC_CLIENT_SECRET
+
+          - name: OPENID_PROVIDER_URL
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                key: OIDC_ISSUER_URL
+
+          - name: OAUTH_SCOPES
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                key: OIDC_SCOPES
+
+          #
+          # LDAP
+          #
           - name: ENABLE_LDAP
             value: 'True'
 
