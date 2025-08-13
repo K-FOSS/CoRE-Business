@@ -481,6 +481,51 @@ service:
   {{- end }}
 
 
+
+route:
+  {{- if .Values.owui.enabled }}
+  unifi-web:
+    # -- Enables or disables the route
+    enabled: true
+
+    # -- Set the route kind
+    # Valid options are GRPCRoute, HTTPRoute, TCPRoute, TLSRoute, UDPRoute
+    kind: HTTPRoute
+
+    # -- Provide additional labels which may be required.
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+
+    hostnames:
+      - ai.{{ .Values.datacenter }}.mylogin.space
+
+    # -- Configure the resource the route attaches to.
+    parentRefs:
+      - # Group of the referent resource.
+        group: gateway.networking.k8s.io
+
+        # Kind of the referent resource.
+        kind: Gateway
+
+        # Name of the referent resource
+        name: {{ .Values.gateway.name }}
+
+        sectionName: {{ .Values.gateway.sectionName }}
+
+        # Namespace of the referent resource
+        namespace: {{ .Values.gateway.namespace }}
+
+    # -- Configure rules for routing. Defaults to the primary service.
+    rules:
+      - backendRefs:
+          - kind: Service
+            port: 80
+            name: openwebui
+            weight: 1
+  {{- end }}
+
+
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
 
