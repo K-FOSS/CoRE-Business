@@ -20,6 +20,30 @@ controllers:
       kubernetes.io/hostname: hpc3
 
     containers:
+      {{- if .Values.localai.llama }}
+      server:
+        image:
+          repository: ghcr.io/ggerganov/llama.cpp
+          tag: 'server'
+          pullPolicy: Always
+
+        args:
+          - --model=/models/Qwen3-0.6B-Q4_0.gguf
+          - --host=0.0.0.0
+          - --port=8001
+          - --threads=12
+          - --ctx-size=4096
+          - --batch-size=256
+
+        # env:
+        #   - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
+        #     value: '-p 0.0.0.0:2376:2376/tcp'
+
+        ports:
+          - name: http
+            containerPort: 8001
+      {{- end }}
+
       localai:
         image:
           repository: localai/localai
@@ -193,6 +217,11 @@ persistence:
 
     advancedMounts:
       localai:
+        {{- if .Values.localai.llama }}
+        server:
+          - path: /models
+        {{- end }}
+
         localai: # the container with the "main" identifier
           - path: /models
         
