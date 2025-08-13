@@ -189,7 +189,7 @@ persistence:
 
     accessMode: ReadWriteOnce
 
-    storageClass: ssd-storage
+    #storageClass: ssd-storage
 
     advancedMounts:
       localai:
@@ -204,7 +204,7 @@ persistence:
 
     accessMode: ReadWriteOnce
 
-    storageClass: ssd-storage
+    #storageClass: 
 
     advancedMounts:
       localai:
