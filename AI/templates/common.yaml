@@ -184,6 +184,8 @@ persistence:
 
     size: 50G
 
+    accessMode: ReadWriteOnce
+
     advancedMounts:
       localai:
         localai: # the container with the "main" identifier
