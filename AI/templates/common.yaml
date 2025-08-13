@@ -192,6 +192,21 @@ persistence:
       localai:
         localai: # the container with the "main" identifier
           - path: /models
+        
+  backends:
+    enabled: true
+    type: persistentVolumeClaim
+
+    size: 50Gi
+
+    accessMode: ReadWriteOnce
+
+    storageClass: ssd-storage
+
+    advancedMounts:
+      localai:
+        localai: # the container with the "main" identifier
+          - path: /backends
   {{- end }}
 
 service:
