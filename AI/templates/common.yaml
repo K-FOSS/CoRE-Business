@@ -186,6 +186,8 @@ persistence:
 
     accessMode: ReadWriteOnce
 
+    storageClass: longhorn
+
     advancedMounts:
       localai:
         localai: # the container with the "main" identifier
