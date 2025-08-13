@@ -62,9 +62,9 @@ controllers:
         # args:
         #   - --config=/config/config.json
 
-        # env:
-        #   - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
-        #     value: '-p 0.0.0.0:2376:2376/tcp'
+        env:
+          - name: LLAMACPP_GRPC_SERVERS
+            value: 'test:50062'
 
         ports:
           - name: http
@@ -296,9 +296,9 @@ service:
         primary: true
 
         # -- The port number
-        port: 80
+        port: 50052
 
-        targetPort: 8001
+        targetPort: 50052
 
         # -- Port protocol.
         # Support values are `HTTP`, `HTTPS`, `TCP` and `UDP`.
