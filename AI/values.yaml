@@ -5,7 +5,7 @@ env: prod
 hub: true
 
 localai:
-  enabled: false
+  enabled: true
 
 
 owui:
