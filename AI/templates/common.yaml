@@ -28,7 +28,8 @@ controllers:
           pullPolicy: Always
 
         args:
-          - --model=/models/Qwen3-0.6B-Q4_0.gguf
+          - --model
+          - /models/Qwen3-0.6B-Q4_0.gguf
           - --host
           - 0.0.0.0
           - --port
