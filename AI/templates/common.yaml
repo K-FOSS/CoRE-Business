@@ -182,7 +182,7 @@ persistence:
     enabled: true
     type: persistentVolumeClaim
 
-    size: 50G
+    size: 25Gi
 
     accessMode: ReadWriteOnce
 
