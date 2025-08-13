@@ -186,7 +186,7 @@ persistence:
 
     accessMode: ReadWriteOnce
 
-    storageClass: longhorn
+    storageClass: local-path
 
     advancedMounts:
       localai:
