@@ -182,11 +182,11 @@ persistence:
     enabled: true
     type: persistentVolumeClaim
 
-    size: 25Gi
+    size: 50Gi
 
     accessMode: ReadWriteOnce
 
-    storageClass: local-path
+    storageClass: ssd-storage
 
     advancedMounts:
       localai:
