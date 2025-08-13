@@ -9,6 +9,32 @@ global:
 {{ end }}
 
 controllers:
+  {{- if .Values.localai.enabled }}
+  localai:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      localai:
+        image:
+          repository: localai/localai
+          tag: 'latest'
+          pullPolicy: Always
+
+        # args:
+        #   - --config=/config/config.json
+
+        # env:
+        #   - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
+        #     value: '-p 0.0.0.0:2376:2376/tcp'
+
+        ports:
+          - name: http
+            containerPort: 8080
+  {{- end }}
+
   docker:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
