@@ -29,7 +29,7 @@ controllers:
 
         args:
           - --model
-          - /models/Qwen3-0.6B-Q4_0.gguf
+          - /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
           - --host
           - 0.0.0.0
           - --port
