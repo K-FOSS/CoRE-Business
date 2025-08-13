@@ -77,7 +77,7 @@ controllers:
 
         env:
           - name: LLAMACPP_GRPC_SERVERS
-            value: 'test:50062'
+            value: 'localhost:50062'
 
         ports:
           - name: http
