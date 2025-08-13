@@ -23,31 +23,34 @@ controllers:
       {{- if .Values.localai.llama }}
       server:
         image:
-          repository: ghcr.io/ggerganov/llama.cpp
-          tag: 'server'
+          repository: evilfreelancer/llama.cpp-rpc
+          tag: 'latest'
           pullPolicy: Always
 
-        args:
-          - --model
-          - /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
-          - --host
-          - 0.0.0.0
-          - --port
-          - '8001'
-          - --threads
-          - '12'
-          - --ctx-size
-          - '4096'
-          - --batch-size
-          - '256'
+        # args:
+        #   - --model
+        #   - /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
+        #   - --host
+        #   - 0.0.0.0
+        #   - --port
+        #   - '8001'
+        #   - --threads
+        #   - '12'
+        #   - --ctx-size
+        #   - '4096'
+        #   - --batch-size
+        #   - '256'
 
-        # env:
-        #   - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
-        #     value: '-p 0.0.0.0:2376:2376/tcp'
+        env:
+          - name: APP_MODE
+            value: 'backend'
+
+          - name: APP_MEM
+            value: '8192'
 
         ports:
-          - name: http
-            containerPort: 8001
+          - name: grpc
+            containerPort: 50052
       {{- end }}
 
       localai:
