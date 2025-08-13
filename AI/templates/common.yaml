@@ -484,7 +484,7 @@ service:
 
 route:
   {{- if .Values.owui.enabled }}
-  unifi-web:
+  openwebui:
     # -- Enables or disables the route
     enabled: true
 
