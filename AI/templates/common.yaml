@@ -521,7 +521,7 @@ route:
       - backendRefs:
           - kind: Service
             port: 80
-            name: openwebui
+            identifier: openwebui
             weight: 1
   {{- end }}
 
