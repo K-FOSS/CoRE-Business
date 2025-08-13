@@ -29,11 +29,16 @@ controllers:
 
         args:
           - --model=/models/Qwen3-0.6B-Q4_0.gguf
-          - --host=0.0.0.0
-          - --port=8001
-          - --threads=12
-          - --ctx-size=4096
-          - --batch-size=256
+          - --host
+          - 0.0.0.0
+          - --port
+          - '8001'
+          - --threads
+          - '12'
+          - --ctx-size
+          - '4096'
+          - --batch-size
+          - '256'
 
         # env:
         #   - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
