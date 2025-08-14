@@ -16,8 +16,9 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
-    nodeSelector:
-      kubernetes.io/hostname: hpc3
+    pod:
+      nodeSelector:
+        kubernetes.io/hostname: hpc3
 
     containers:
       {{- if .Values.localai.llama }}
