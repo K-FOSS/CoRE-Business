@@ -14,8 +14,8 @@ controllers:
     containers:
       server:
         image:
-          repository: {{ default $model.container.repository "ghcr.io/ggml-org/llama.cpp" }}
-          tag: {{ default $model.container.repository "server" }}
+          repository: {{ default $model.container.image.repository "ghcr.io/ggml-org/llama.cpp" }}
+          tag: {{ default $model.container.image.repository "server" }}
           pullPolicy: Always
 
         command:
@@ -256,11 +256,18 @@ persistence:
     #storageClass: ssd-storage
 
     advancedMounts:
+      {{ range $modelIndex, $model := $.Values.llama.models }}
+      llama-server-{{ $modelIndex }}:
+        server:
+          - path: /models
+      {{- end }}
       localai:
         {{- if .Values.localai.llama }}
         server:
           - path: /models
         {{- end }}
+
+
 
         localai: # the container with the "main" identifier
           - path: /models
