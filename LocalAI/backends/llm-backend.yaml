@@ -1,6 +1,6 @@
 - name: "llm-backend"
   description: "A backend for running LLM models"
-  uri: kristianfoss/localai-backend:llama-cpp
+  uri: oci://registry-1.docker.io/kristianfoss/localai-backend:llama-cpp
   alias: "llm"
   tags:
     - "llm"
