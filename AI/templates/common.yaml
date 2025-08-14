@@ -14,8 +14,8 @@ controllers:
     containers:
       server:
         image:
-          repository: {{ default $model.container.image.repository "ghcr.io/ggml-org/llama.cpp" }}
-          tag: {{ default $model.container.image.repository "server" }}
+          repository: {{ $model.container.image.repository | default "ghcr.io/ggml-org/llama.cpp" }}
+          tag: {{ $model.container.image.repository | default "server" }}
           pullPolicy: Always
 
         command:
