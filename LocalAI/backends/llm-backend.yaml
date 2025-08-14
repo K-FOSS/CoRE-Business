@@ -1,0 +1,7 @@
+name: "llm-backend"
+description: "A backend for running LLM models"
+uri: kristianfoss/localai-backend:llama-cpp
+alias: "llm"
+tags:
+  - "llm"
+  - "text-generation"
