@@ -9,51 +9,31 @@ global:
 {{ end }}
 
 controllers:
-  {{- if .Values.localai.enabled }}
-  localai:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
-    strategy: RollingUpdate
-
-    pod:
-      nodeSelector:
-        kubernetes.io/hostname: hpc3
-
+  {{ range $modelIndex, $model := $.Values.llama.models }}
+  llama-server-{{ $modelIndex }}:
     containers:
-      {{- if .Values.localai.llama }}
       server:
         image:
-          repository: kristianfoss/llama
-          tag: 'test'
+          repository: {{ default $model.container.repository "ghcr.io/ggml-org/llama.cpp" }}
+          tag: {{ default $model.container.repository "server" }}
           pullPolicy: Always
 
-        # command:
-        #   - /app/rpc-server
-        
-        # args:
-        #   - --host
-        #   - 127.0.0.1
-        #   - --port
-        #   - '50052'
-        #   - --mem
-        #   - '8192'
-        #   - --threads
-        #   - '12'
+        command:
+          - /app/llama-server
 
         args:
           - --model
-          - /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
+          - {{ $model.path }}
           - --host
           - 0.0.0.0
           - --port
           - '8001'
           - --threads
-          - '12'
+          - '{{ $model.threads }}'
           - --ctx-size
-          - '4096'
+          - '{{ $model.contextSize }}'
           - --batch-size
-          - '256'
+          - '{{ $model.batchSize }}'
 
         env:
           - name: APP_MODE
@@ -65,7 +45,38 @@ controllers:
         ports:
           - name: http
             containerPort: 8001
-      {{- end }}
+  {{- end }}
+
+  {{- if .Values.localai.enabled }}
+  localai:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      # server:
+      #   image:
+      #     repository: kristianfoss/llama
+      #     tag: 'test'
+      #     pullPolicy: Always
+
+      #   # command:
+      #   #   - /app/rpc-server
+        
+      #   # args:
+      #   #   - --host
+      #   #   - 127.0.0.1
+      #   #   - --port
+      #   #   - '50052'
+      #   #   - --mem
+      #   #   - '8192'
+      #   #   - --threads
+      #   #   - '12'
+
+      #   ports:
+      #     - name: http
+      #       containerPort: 8001
 
       localai:
         image:
@@ -99,9 +110,6 @@ controllers:
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
-
-    serviceAccount:
-      identifier: kubedock
 
     containers:
       kubedock:
@@ -274,14 +282,13 @@ persistence:
   {{- end }}
 
 service:
-  {{- if .Values.localai.enabled}}
-  {{- if .Values.localai.llama }}
-  llama:
+  {{ range $modelIndex, $model := $.Values.llama.models }}
+  llama-server-{{ $modelIndex }}:
     # -- Enables or disables the service
     enabled: true
 
     # -- Configure which controller this service should target
-    controller: localai
+    controller: llama-server-{{ $modelIndex }}
 
     # -- Make this the primary service for this controller (used in probes, notes, etc...).
     # If there is more than 1 service targeting the controller, make sure that only 1 service is
@@ -333,6 +340,7 @@ service:
         appProtocol:
   {{- end }}
 
+  {{- if .Values.localai.enabled}}
   localai:
     # -- Enables or disables the service
     enabled: true
@@ -388,8 +396,8 @@ service:
         # -- Specify the appProtocol value for the Service.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
         appProtocol:
-
   {{- end }}
+
   {{- if .Values.mcp.enabled }}
   openwebuimcp:
     # -- Enables or disables the service
@@ -551,6 +559,88 @@ route:
             weight: 1
   {{- end }}
 
+
+
+rbac:
+  roles:
+    {{- if and $.Values.docker.kubedock.enabled $.Values.docker.kubedock.rbac.create }}
+    kubedock:
+      # -- Enables or disables the Role. Can be templated.
+      enabled: true
+      # -- Set to Role,ClusterRole
+      type: Role
+      rules:
+        - apiGroups:
+            - ''
+          resources: 
+            - pods
+          verbs: 
+            - create
+            - get
+            - list
+            - delete
+            - watch
+
+        - apiGroups:
+            - ''
+          resources:
+            - pods/log
+          verbs:
+            - list
+            - get
+
+        - apiGroups:
+            - ''
+          resources: 
+            - pods/exec
+          verbs:
+            - create
+
+        - apiGroups:
+            - ''
+          resources:
+            - services
+          verbs:
+            - create
+            - get
+            - list
+            - delete
+
+        - apiGroups:
+            - ''
+          resources:
+            - configmaps
+          verbs:
+            - create
+            - get
+            - list
+            - delete
+    {{- end }}
+
+  bindings:
+    {{- if and $.Values.docker.kubedock.enabled $.Values.docker.kubedock.rbac.create }}
+    kubedock:
+      # -- Enables or disables the Role. Can be templated.
+      enabled: true
+      # -- Set to RoleBinding,ClusterRoleBinding
+      type: RoleBinding
+      # -- Can be an identifier of rbac.roles or a custom name and kind
+      roleRef:
+        identifier: kubedock
+      # -- If using an identifier it will be automatically filled, otherwise every key will need to be explicitly declared
+      subjects:
+        - identifier: kubedock
+    {{- end }}
+
+{{- if and $.Values.docker.kubedock.enabled $.Values.docker.kubedock.rbac.create }}
+serviceAccount:
+
+  kubedock:
+    forceRename: kubedock
+    enabled: true
+    annotations: {}
+    labels: {}
+{{- end }}
 
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
