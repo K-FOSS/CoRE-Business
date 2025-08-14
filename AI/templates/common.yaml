@@ -23,12 +23,12 @@ controllers:
       {{- if .Values.localai.llama }}
       server:
         image:
-          repository: evilfreelancer/llama.cpp-rpc
-          tag: 'latest'
+          repository: kristianfoss/llama
+          tag: 'test'
           pullPolicy: Always
 
         command:
-          - /app/rpc-server 
+          - /app/rpc-server
         
         args:
           - --host
@@ -36,7 +36,7 @@ controllers:
           - --port
           - '50052'
           - --mem
-          - '1024' 
+          - '8192'
           - --threads
           - '12'
 
