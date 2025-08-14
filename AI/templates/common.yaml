@@ -77,7 +77,16 @@ controllers:
 
         env:
           - name: LLAMACPP_GRPC_SERVERS
-            value: 'localhost:50062'
+            value: 'localhost:50052'
+
+          - name: LOCALAI_BACKEND_GALLERIES
+            value: |-
+              [
+                {
+                  "name":"CoRE",
+                  "url":"https://raw.githubusercontent.com/K-FOSS/CoRE-Business/main/LocalAI/backends"
+                }
+              ]
 
         ports:
           - name: http
