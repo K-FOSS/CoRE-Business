@@ -37,6 +37,20 @@ llama:
       threads: 12
       batchSize: 256
 
+    - name: qwen3-r1
+      container:
+        image:
+          repository: kristianfoss/llama
+          tag: 'test'
+          pullPolicy: Always
+    
+      path: /models/deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q8_0.gguf
+      contextSize: 8192
+      threads: 12
+      batchSize: 512
+
+
+
 owui:
   enabled: true
 
