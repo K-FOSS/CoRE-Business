@@ -62,8 +62,8 @@ controllers:
             value: '8192'
 
         ports:
-          - name: grpc
-            containerPort: 50052
+          - name: http
+            containerPort: 8001
       {{- end }}
 
       localai:
@@ -318,9 +318,9 @@ service:
         primary: true
 
         # -- The port number
-        port: 50052
+        port: 80
 
-        targetPort: 50052
+        targetPort: 8001
 
         # -- Port protocol.
         # Support values are `HTTP`, `HTTPS`, `TCP` and `UDP`.
