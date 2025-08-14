@@ -49,6 +49,18 @@ llama:
       threads: 12
       batchSize: 512
 
+    - name: nsfw-chat
+      container:
+        image:
+          repository: kristianfoss/llama
+          tag: 'test'
+          pullPolicy: Always
+    
+      path: /models/L3-Nymeria-Maid-8B.Q4_K_M.gguf
+      contextSize: 8192
+      threads: 6
+      batchSize: 512
+
 
 
 owui:
@@ -67,7 +79,6 @@ ai:
 cluster:
   name: k8s
   domain: cluster.local
-
 
 gateway:
   name: main-gw
