@@ -27,32 +27,32 @@ controllers:
           tag: 'test'
           pullPolicy: Always
 
-        command:
-          - /app/rpc-server
+        # command:
+        #   - /app/rpc-server
         
-        args:
-          - --host
-          - 127.0.0.1
-          - --port
-          - '50052'
-          - --mem
-          - '8192'
-          - --threads
-          - '12'
-
         # args:
-        #   - --model
-        #   - /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
         #   - --host
-        #   - 0.0.0.0
+        #   - 127.0.0.1
         #   - --port
-        #   - '8001'
+        #   - '50052'
+        #   - --mem
+        #   - '8192'
         #   - --threads
         #   - '12'
-        #   - --ctx-size
-        #   - '4096'
-        #   - --batch-size
-        #   - '256'
+
+        args:
+          - --model
+          - /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
+          - --host
+          - 0.0.0.0
+          - --port
+          - '8001'
+          - --threads
+          - '12'
+          - --ctx-size
+          - '4096'
+          - --batch-size
+          - '256'
 
         env:
           - name: APP_MODE
