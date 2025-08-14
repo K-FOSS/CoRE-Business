@@ -84,7 +84,7 @@ controllers:
               [
                 {
                   "name":"CoRE",
-                  "url":"https://raw.githubusercontent.com/K-FOSS/CoRE-Business/main/LocalAI/backends"
+                  "url":"https://raw.githubusercontent.com/K-FOSS/CoRE-Business/main/LocalAI/backends/llm-backend.yaml"
                 }
               ]
 
