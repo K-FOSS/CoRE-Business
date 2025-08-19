@@ -498,16 +498,6 @@ configMaps:
               ],
               "env": {}
             },
-            "minecraft-wiki": {
-              "command": "docker",
-              "args": [
-                "run",
-                "-i",
-                "--net=host",
-                "--rm",
-                "mcp/minecraft-wiki"
-              ]
-            },
             "domaintools": {
               "command": "docker",
               "args": [
@@ -558,6 +548,12 @@ configMaps:
               "headers": {
                 "Authorization": "Bearer <path:CORE0_SITE1/data/AI/OpenWebUI/MCPO/HuggingFace#APIKey>"
               }
+            },
+            "packages": {
+              "command": "uvx",
+              "args": [
+                "mcp-server-pacman"
+              ]
             },
             "code-sandbox": {
               "command": "docker",
