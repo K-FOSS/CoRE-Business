@@ -66,6 +66,8 @@ llama:
 owui:
   enabled: true
 
+  mcpo:
+    enabled: true
 
 mcp:
   enabled: false
@@ -532,14 +534,23 @@ configMaps:
               "args": [
                 "run",
                 "-i",
+                "-e",
+                "WOLFRAM_API_KEY",
                 "--net=host",
                 "--rm",
                 "ghcr.io/metorial/mcp-container--secretiveshell--mcp-wolfram-alpha--mcp-wolfram-alpha",
                 "mcp-wolfram-alpha"
               ],
               "env": {
-                "WOLFRAM_API_KEY": "wolfram-api-key"
+                "WOLFRAM_API_KEY": "<path:CORE0_SITE1/data/AI/OpenWebUI/MCPO/WolframAlpha#APIKey>"
               }
+            },
+            "airbnb": {
+              "command": "npx",
+              "args": [
+                "-y",
+                "@openbnb/mcp-server-airbnb"
+              ]
             },
             "code-sandbox": {
               "command": "docker",
