@@ -552,6 +552,13 @@ configMaps:
                 "@openbnb/mcp-server-airbnb"
               ]
             },
+            "huggingface": {
+              "type": "streamable-http",
+              "url": "https://hf.co/mcp",
+              "headers": {
+                "Authorization": "Bearer <path:CORE0_SITE1/data/AI/OpenWebUI/MCPO/HuggingFace#APIKey>"
+              }
+            },
             "code-sandbox": {
               "command": "docker",
               "args": [
