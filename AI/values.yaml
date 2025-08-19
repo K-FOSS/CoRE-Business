@@ -437,14 +437,9 @@ configMaps:
         {
           "mcpServers": {
             "mcp-timeserver": {
-              "command": "docker",
+              "command": "uvx",
               "args": [
-                "run",
-                "-i",
-                "--net=host",
-                "--rm",
-                "ghcr.io/metorial/mcp-container--secretiveshell--mcp-timeserver--mcp-timeserver",
-                "mcp-timeserver"
+                "mcp-server-time"
               ],
               "env": {}
             },
