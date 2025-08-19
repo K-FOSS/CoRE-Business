@@ -436,18 +436,6 @@ configMaps:
       config.json: |
         {
           "mcpServers": {
-            "crypto-feargreed-mcp": {
-              "command": "docker",
-              "args": [
-                "run",
-                "-i",
-                "--net=host",
-                "--rm",
-                "ghcr.io/metorial/mcp-container--kukapay--crypto-feargreed-mcp--crypto-feargreed-mcp",
-                "python main.py"
-              ],
-              "env": {}
-            },
             "mcp-timeserver": {
               "command": "docker",
               "args": [
