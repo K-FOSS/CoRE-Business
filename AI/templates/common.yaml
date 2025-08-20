@@ -11,6 +11,8 @@ global:
 controllers:
   {{ range $modelIndex, $model := $.Values.llama.models }}
   llama-server-{{ $modelIndex }}:
+    strategy: RollingUpdate
+
     containers:
       server:
         image:
