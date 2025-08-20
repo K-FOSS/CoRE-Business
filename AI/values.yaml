@@ -61,7 +61,17 @@ llama:
       threads: 6
       batchSize: 512
 
-
+    - name: small-router
+      container:
+        image:
+          repository: kristianfoss/llama
+          tag: 'test'
+          pullPolicy: Always
+    
+      path: /models/Qwen_Qwen3-4B-Thinking-2507-Q8_0.gguf
+      contextSize: 8192
+      threads: 6
+      batchSize: 512
 
 owui:
   enabled: true
