@@ -97,7 +97,7 @@ gateway:
   namespace: core-prod
   sectionName: https-myloginspace
 
-datacenter: dc1
+#datacenter: dc1
 
 region: yxl
 
