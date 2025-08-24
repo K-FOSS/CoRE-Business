@@ -88,9 +88,9 @@ ai:
 
     create: true
 
-cluster:
-  name: k8s
-  domain: cluster.local
+#cluster:
+#  name: k8s
+#  domain: cluster.local
 
 gateway:
   name: main-gw
@@ -99,7 +99,7 @@ gateway:
 
 #datacenter: dc1
 
-region: yxl
+#region: yxl
 
 # defaultPodOptions:
 #   labels:
