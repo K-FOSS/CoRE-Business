@@ -592,7 +592,7 @@ route:
       lan-mode: 'private'
 
     hostnames:
-      - ai.{{ .Values.datacenter }}.mylogin.space
+      - ai.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.{{ .Values.region }}.mylogin.space
 
     # -- Configure the resource the route attaches to.
     parentRefs:
