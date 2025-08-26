@@ -9,6 +9,38 @@ global:
 {{ end }}
 
 controllers:
+  {{ if .Values.gpustack.enabled }}
+  gpustack:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    pod:
+      {{- with .Values.gpustack.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+
+    containers:
+      gpustack:
+        image:
+          repository: gpustack/gpustack
+          tag: 'latest-cpu'
+          pullPolicy: Always
+
+        # args:
+        #   - --config=/config/config.json
+
+        env:
+          - name: LLAMACPP_GRPC_SERVERS
+            value: 'localhost:50052'
+
+        ports:
+          - name: http
+            containerPort: 80
+  {{- end }}
+
   {{ range $modelIndex, $model := $.Values.llama.models }}
   llama-server-{{ $modelIndex }}:
     strategy: RollingUpdate
@@ -296,6 +328,24 @@ controllers:
 
 
 persistence:
+  {{- if .Values.gpustack.enabled }}
+  gpustack:
+    enabled: true
+    type: persistentVolumeClaim
+
+    size: 50Gi
+
+    accessMode: ReadWriteOnce
+
+    storageClass: ssd-storage
+
+    advancedMounts:
+      gpustack:
+        gpustack:
+          - path: /var/lib/gpustack
+      {{- end }}
+  {{- end }}
+
   {{- if .Values.localai.enabled }}
   models:
     enabled: true
