@@ -19,7 +19,7 @@ gpustack:
     kubernetes.io/hostname: hpc1
 
 localai:
-  enabled: false
+  enabled: true
 
   nodeSelector:
     kubernetes.io/hostname: hpc3
