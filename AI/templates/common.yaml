@@ -335,6 +335,8 @@ persistence:
 
     size: 50Gi
 
+    volumeName: gpu-stack
+
     accessMode: ReadWriteOnce
 
     storageClass: ssd-storage
