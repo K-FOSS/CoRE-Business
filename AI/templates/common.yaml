@@ -343,7 +343,6 @@ persistence:
       gpustack:
         gpustack:
           - path: /var/lib/gpustack
-      {{- end }}
   {{- end }}
 
   {{- if .Values.localai.enabled }}
