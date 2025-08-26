@@ -335,7 +335,7 @@ persistence:
 
     size: 50Gi
 
-    volumeName: gpu-stack
+    suffix: gpu-stack
 
     accessMode: ReadWriteOnce
 
