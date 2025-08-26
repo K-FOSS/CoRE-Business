@@ -1,0 +1,11 @@
+
+apiVersion: v2
+version: 1.0.0
+name: core-business-browsers
+
+dependencies:
+  - name: selenium-grid
+    version: 0.46.0
+    repository: https://www.selenium.dev/docker-selenium
+
+

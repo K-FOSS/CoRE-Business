@@ -1,0 +1,9 @@
+selenium-grid:
+  postgresql:
+    # -- Enable to install PostgreSQL along with Grid
+    enabled: false
+
+  # Configure the ingress resource to access the Grid installation.
+  ingress:
+    # -- Enable to create ingress resource
+    enabled: false
