@@ -12,10 +12,6 @@ datacenter: dc1
 
 region: yxl
 
-mcp:
-  search:
-    enabled: true
-
 mcpservers:
   - name: brave-search
     image: mcp/brave-search
@@ -121,6 +117,9 @@ owui:
 
 mcp:
   enabled: false
+
+  search:
+    enabled: true
 
 ai:
   namespace:
