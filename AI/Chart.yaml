@@ -6,11 +6,3 @@ dependencies:
   - name: common
     version: 4.2.0
     repository: https://bjw-s-labs.github.io/helm-charts/
-
-  #
-  # OpenWebUI
-  #
-  - name: open-webui
-    version: 6.29.0
-    repository: https://helm.openwebui.com
-    condition: open-webui.enabled

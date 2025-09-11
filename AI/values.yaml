@@ -5,15 +5,12 @@ env: prod
 hub: true
 
 cluster:
- name: k8s
- domain: cluster.local
+  name: k8s
+  domain: cluster.local
 
 datacenter: dc1
 
 region: yxl
-
-global:
-  test: 'test'
 
 mcpservers:
   - name: brave-search
@@ -21,16 +18,10 @@ mcpservers:
     tag: latest
 
     env:
-      - name: BRAVE_API_KEY
-        valueFrom:
-          secretKeyRef:
-            name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-brave-search'
-            key: APIKey
-
       - name: BRAVE_MCP_TRANSPORT
         value: 'http'
 
-secrets:
+externalSecrets:
   enabled: true
 
   secretStoreRef:
@@ -38,18 +29,20 @@ secrets:
     name: mainvault-core
 
 gpustack:
-  enabled: true
+  enabled: false
 
   nodeSelector:
     kubernetes.io/hostname: hpc1
 
 localai:
-  enabled: true
+  enabled: false
 
   nodeSelector:
     kubernetes.io/hostname: hpc3
 
 docker:
+  mcp:
+    enabled: false
   kubedock:
     enabled: false
 
@@ -63,57 +56,57 @@ llama:
   server:
     enabled: true
 
-  models:
-    - name: qwen3-large
-      container:
-        image:
-          repository: kristianfoss/llama
-          tag: 'test'
-          pullPolicy: Always
+  models: []
+    # - name: qwen3-large
+    #   container:
+    #     image:
+    #       repository: kristianfoss/llama
+    #       tag: 'test'
+    #       pullPolicy: Always
     
-      path: /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
-      contextSize: 2048
-      threads: 12
-      batchSize: 256
+    #   path: /models/Qwen_Qwen3-30B-A3B-Q4_0.gguf
+    #   contextSize: 2048
+    #   threads: 12
+    #   batchSize: 256
 
-    - name: qwen3-r1
-      container:
-        image:
-          repository: kristianfoss/llama
-          tag: 'test'
-          pullPolicy: Always
+    # - name: qwen3-r1
+    #   container:
+    #     image:
+    #       repository: kristianfoss/llama
+    #       tag: 'test'
+    #       pullPolicy: Always
     
-      path: /models/deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q8_0.gguf
-      contextSize: 8192
-      threads: 12
-      batchSize: 512
+    #   path: /models/deepseek-ai_DeepSeek-R1-0528-Qwen3-8B-Q8_0.gguf
+    #   contextSize: 8192
+    #   threads: 12
+    #   batchSize: 512
 
-    - name: nsfw-chat
-      container:
-        image:
-          repository: kristianfoss/llama
-          tag: 'test'
-          pullPolicy: Always
+    # - name: nsfw-chat
+    #   container:
+    #     image:
+    #       repository: kristianfoss/llama
+    #       tag: 'test'
+    #       pullPolicy: Always
     
-      path: /models/L3-Nymeria-Maid-8B.Q4_K_M.gguf
-      contextSize: 8192
-      threads: 6
-      batchSize: 512
+    #   path: /models/L3-Nymeria-Maid-8B.Q4_K_M.gguf
+    #   contextSize: 8192
+    #   threads: 6
+    #   batchSize: 512
 
-    - name: small-router
-      container:
-        image:
-          repository: kristianfoss/llama
-          tag: 'test'
-          pullPolicy: Always
+    # - name: small-router
+    #   container:
+    #     image:
+    #       repository: kristianfoss/llama
+    #       tag: 'test'
+    #       pullPolicy: Always
     
-      path: /models/Qwen_Qwen3-4B-Thinking-2507-Q8_0.gguf
-      contextSize: 8192
-      threads: 6
-      batchSize: 512
+    #   path: /models/Qwen_Qwen3-4B-Thinking-2507-Q8_0.gguf
+    #   contextSize: 8192
+    #   threads: 6
+    #   batchSize: 512
 
 owui:
-  enabled: true
+  enabled: false
 
   mcpo:
     enabled: true
@@ -121,8 +114,14 @@ owui:
 mcp:
   enabled: false
 
+  frr:
+    enabled: false
+
+  docker:
+    enabled: false
+
   search:
-    enabled: true
+    enabled: false
 
 ai:
   namespace:
@@ -137,1060 +136,9 @@ gateway:
 
 
 
-# defaultPodOptions:
-#   labels:
-#     logs: loki-myloginspace
-
-controllers:
-  openwebuimcp:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
-    strategy: RollingUpdate
-
-    name: openwebuimcp
-
-    annotations:
-      k8s.v1.cni.cncf.io/networks: core-testing/backend-network
-
-    containers:
-      frr:
-        image:
-          repository: frrouting/frr
-          #
-          # TODO: Get Renovate or similar managing this
-          #
-          tag: latest
-          pullPolicy: IfNotPresent
-
-        securityContext:
-          seLinuxOptions: {}
-          privileged: false
-          allowPrivilegeEscalation: false
-          runAsNonRoot: false
-          readOnlyRootFilesystem: false
-          seccompProfile:
-            type: "RuntimeDefault"
-          capabilities:
-            add: 
-              - 'NET_ADMIN'
-              - 'SYS_ADMIN'
-
-      docker:
-        image:
-          repository: kristianfoss/docker
-          tag: 'core-mcp'
-          pullPolicy: Always
-
-        securityContext:
-          privileged: true
-          runAsUser: 0
-
-        env:
-          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_NET
-            value: 'host'
-
-          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
-            value: ''
-
-        # args:
-        #   - 
-
-        ports:
-          - name: http
-            containerPort: 2376
-
-      mcpo:
-        image:
-          repository: kristianfoss/openwebui
-          tag: 'core-mcp'
-          pullPolicy: IfNotPresent
-
-        command:
-          - sh
-          - -c
-          - "until [ -S /var/run/docker.sock ]; do sleep 1; done; exec mcpo --config=/config/config.json"
-
-        ports:
-          - name: http
-            containerPort: 8000
-
-        # -- Probe configuration
-        # -- [[ref]](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
-        # @default -- See below
-        probes:
-          # -- Liveness probe configuration
-          # @default -- See below
-          liveness:
-            # -- Enable the liveness probe
-            enabled: false
-            # -- Set this to `true` if you wish to specify your own livenessProbe
-            custom: false
-            # -- sets the probe type when not using a custom probe
-            # @default -- "TCP"
-            type: TCP
-            # -- The spec field contains the values for the default livenessProbe.
-            # If you selected `custom: true`, this field holds the definition of the livenessProbe.
-            # @default -- See below
-            spec:
-              initialDelaySeconds: 0
-              periodSeconds: 10
-              timeoutSeconds: 1
-              failureThreshold: 3
-
-          # -- Redainess probe configuration
-          # @default -- See below
-          readiness:
-            # -- Enable the readiness probe
-            enabled: true
-            # -- Set this to `true` if you wish to specify your own readinessProbe
-            custom: false
-            # -- sets the probe type when not using a custom probe
-            # @default -- "TCP"
-            type: TCP
-            # -- The spec field contains the values for the default readinessProbe.
-            # If you selected `custom: true`, this field holds the definition of the readinessProbe.
-            # @default -- See below
-            spec:
-              initialDelaySeconds: 0
-              periodSeconds: 10
-              timeoutSeconds: 1
-              failureThreshold: 3
-
-          # -- Startup probe configuration
-          # @default -- See below
-          startup:
-            # -- Enable the startup probe
-            enabled: true
-            # -- Set this to `true` if you wish to specify your own startupProbe
-            custom: false
-            # -- sets the probe type when not using a custom probe
-            # @default -- "TCP"
-            type: TCP
-            # -- The spec field contains the values for the default startupProbe.
-            # If you selected `custom: true`, this field holds the definition of the startupProbe.
-            # @default -- See below
-            spec:
-              initialDelaySeconds: 300
-              timeoutSeconds: 1
-              ## This means it has a maximum of 5*30=150 seconds to start up before it fails
-              periodSeconds: 60
-              failureThreshold: 30
-
-
-persistence:
-  frr:
-    enabled: true
-    type: configMap
-    identifier: frr
-
-    advancedMounts:
-      openwebuimcp:
-        frr:
-          - path: /etc/frr/frr.conf
-            readOnly: true
-            subPath: frr.conf
-
-          - path: /etc/frr/daemons
-            readOnly: true
-            subPath: daemons
-
-  config:
-    enabled: true
-    type: configMap
-    identifier: config
-
-    advancedMounts:
-      openwebuimcp: # the controller with the "main" identifier
-        mcpo: # the container with the "main" identifier
-          - path: /config/config.json
-            readOnly: true
-            subPath: config.json
-
-  dockercerts:
-    enabled: true
-    type: emptyDir
-
-    advancedMounts:
-      openwebuimcp: # the controller with the "main" identifier
-        docker: # the container with the "main" identifier
-          - path: /certs/client
-
-
-        mcpo: # the container with the "main" identifier
-          - path: /certs/client
-
-  dockersocket:
-    enabled: true
-    type: emptyDir
-
-    advancedMounts:
-      openwebuimcp: # the controller with the "main" identifier
-        docker: # the container with the "main" identifier
-          - path: /var/run
-
-
-        mcpo: # the container with the "main" identifier
-          - path: /var/run
-
-  # tls:
-  #   enabled: true
-  #   type: secret
-  #   name: myloginspace-default-certificates
-  #   mountPath: /etc/tls
-
-configMaps:
-  frr:
-    # -- Enables or disables the configMap
-    enabled: true
-    # -- Labels to add to the configMap
-    labels: {}
-    # -- Annotations to add to the configMap
-    annotations: {}
-    # -- configMap data content. Helm template enabled.
-    data:
-      daemons: |
-        # This file tells the frr package which daemons to start.
-        #
-        # Sample configurations for these daemons can be found in
-        # /usr/share/doc/frr/examples/.
-        #
-        # ATTENTION:
-        #
-        # When activating a daemon for the first time, a config file, even if it is
-        # empty, has to be present *and* be owned by the user and group "frr", else
-        # the daemon will not be started by /etc/init.d/frr. The permissions should
-        # be u=rw,g=r,o=.
-        # When using "vtysh" such a config file is also needed. It should be owned by
-        # group "frrvty" and set to ug=rw,o= though. Check /etc/pam.d/frr, too.
-        #
-        # The watchfrr, zebra and staticd daemons are always started.
-        #
-        bgpd=no
-        ospfd=yes
-        ospf6d=no
-        ripd=no
-        ripngd=no
-        isisd=no
-        pimd=no
-        ldpd=no
-        nhrpd=no
-        eigrpd=no
-        babeld=no
-        sharpd=no
-        pbrd=no
-        bfdd=no
-        fabricd=no
-        vrrpd=no
-        pathd=no
-
-        #
-        # If this option is set the /etc/init.d/frr script automatically loads
-        # the config via "vtysh -b" when the servers are started.
-        # Check /etc/pam.d/frr if you intend to use "vtysh"!
-        #
-        vtysh_enable=yes
-        zebra_options="  -A 127.0.0.1 -s 90000000"
-        bgpd_options="--no_kernel -A 127.0.0.1"
-        ospfd_options="  -A 127.0.0.1"
-        ospf6d_options=" -A ::1"
-        ripd_options="   -A 127.0.0.1"
-        ripngd_options=" -A ::1"
-        isisd_options="  -A 127.0.0.1"
-        pimd_options="   -A 127.0.0.1"
-        ldpd_options="   -A 127.0.0.1"
-        nhrpd_options="  -A 127.0.0.1"
-        eigrpd_options=" -A 127.0.0.1"
-        babeld_options=" -A 127.0.0.1"
-        sharpd_options=" -A 127.0.0.1"
-        pbrd_options="   -A 127.0.0.1"
-        staticd_options="-A 127.0.0.1"
-        bfdd_options="   -A 127.0.0.1"
-        fabricd_options="-A 127.0.0.1"
-        vrrpd_options="  -A 127.0.0.1"
-        pathd_options="  -A 127.0.0.1"
-
-        # configuration profile
-        #
-        #frr_profile="traditional"
-        #frr_profile="datacenter"
-
-        #
-        # This is the maximum number of FD's that will be available.
-        # Upon startup this is read by the control files and ulimit
-        # is called.  Uncomment and use a reasonable value for your
-        # setup if you are expecting a large number of peers in
-        # say BGP.
-        #MAX_FDS=1024
-
-        # The list of daemons to watch is automatically generated by the init script.
-        #watchfrr_options=""
-
-        # To make watchfrr create/join the specified netns, use the following option:
-        #watchfrr_options="--netns"
-        # This only has an effect in /etc/frr/<somename>/daemons, and you need to
-        # start FRR with "/usr/lib/frr/frrinit.sh start <somename>".
-
-        # for debugging purposes, you can specify a "wrap" command to start instead
-        # of starting the daemon directly, e.g. to use valgrind on ospfd:
-        #   ospfd_wrap="/usr/bin/valgrind"
-        # or you can use "all_wrap" for all daemons, e.g. to use perf record:
-        #   all_wrap="/usr/bin/perf record --call-graph -"
-        # the normal daemon command is added to this at the end.
-
-      frr.conf: |
-        # default to using syslog. /etc/rsyslog.d/45-frr.conf places the log in
-        # /var/log/frr/frr.log
-        #
-        # Note:
-        # FRR's configuration shell, vtysh, dynamically edits the live, in-memory
-        # configuration while FRR is running. When instructed, vtysh will persist the
-        # live configuration to this file, overwriting its contents. If you want to
-        # avoid this, you can edit this file manually before starting FRR, or instruct
-        # vtysh to write configuration to a different file.
-        log syslog informational
-        !
-        ip prefix-list ADV seq 1 permit any
-        !
-        debug bgp neighbor-events
-        !
-        ip nht resolve-via-default
-        !
-        route-map OUT permit 10
-          match ip address prefix-list ADV
-        exit
-        !
-        interface net1
-          ip address 172.31.192.19/24
-          ip ospf area 0.0.0.0
-        exit
-        router ospf
-          auto-cost reference-bandwidth 100000 
-        exit
-        !
-        end
-
-  config:
-    # -- Enables or disables the configMap
-    enabled: true
-    # -- Labels to add to the configMap
-    labels: {}
-    # -- Annotations to add to the configMap
-    annotations: {}
-    # -- configMap data content. Helm template enabled.
-    data:
-      config.json: |
-        {
-          "mcpServers": {
-            "mcp-timeserver": {
-              "command": "uvx",
-              "args": [
-                "mcp-server-time"
-              ],
-              "env": {}
-            },
-            "mcp-local-rag": {
-              "command": "docker",
-              "args": [
-                "run",
-                "--rm",
-                "-i",
-                "--net=host",
-                "--init",
-                "-e",
-                "DOCKER_CONTAINER=true",
-                "kristianfoss/mcp-search:core-mcp"
-              ]
-            },
-            "mcp-server-docker": {
-              "command": "docker",
-              "args": [
-                "run",
-                "-i",
-                "--net=host",
-                "-v",
-                "/var/run/docker.sock:/var/run/docker.sock",
-                "--rm",
-                "kristianfoss/docker-mcp:testing"
-              ],
-              "env": {}
-            },
-            "domaintools": {
-              "command": "docker",
-              "args": [
-                "run",
-                "-i",
-                "--net=host",
-                "--rm",
-                "kristianfoss/mcp-domaintools:core-mcp"
-              ],
-              "env": {}
-            },
-            "wikipedia-mcp": {
-              "command": "docker",
-              "args": [
-                "run",
-                "-i",
-                "--net=host",
-                "--rm",
-                "mcp/wikipedia-mcp"
-              ]
-            },
-            "mcp-wolfram-alpha": {
-              "command": "docker",
-              "args": [
-                "run",
-                "-i",
-                "-e",
-                "WOLFRAM_API_KEY",
-                "--net=host",
-                "--rm",
-                "ghcr.io/metorial/mcp-container--secretiveshell--mcp-wolfram-alpha--mcp-wolfram-alpha",
-                "mcp-wolfram-alpha"
-              ],
-              "env": {
-                "WOLFRAM_API_KEY": "<path:CORE0_SITE1/data/AI/OpenWebUI/MCPO/WolframAlpha#APIKey>"
-              }
-            },
-            "airbnb": {
-              "command": "npx",
-              "args": [
-                "-y",
-                "@openbnb/mcp-server-airbnb"
-              ]
-            },
-            "huggingface": {
-              "type": "streamable-http",
-              "url": "https://hf.co/mcp",
-              "headers": {
-                "Authorization": "Bearer <path:CORE0_SITE1/data/AI/OpenWebUI/MCPO/HuggingFace#APIKey>"
-              }
-            },
-            "packages": {
-              "command": "uvx",
-              "args": [
-                "mcp-server-pacman"
-              ]
-            },
-            "code-sandbox": {
-              "command": "docker",
-              "args": [
-                "run", "--rm", "--interactive",
-                "--read-only",
-                "--tmpfs", "/tmp",
-                "--tmpfs", "/app/tmp",
-                "--memory", "512m",
-                "--net=host",
-                "--cpus", "0.5",
-                "--cap-drop", "ALL",
-                "ghcr.io/timlikesai/code-sandbox-mcp:latest"
-              ]
-            }
-          }
-        }
-
-
-
-
-
 oauth:
   indexKey: openwebui
   scopes: ''
   groups: []
   authentik:
     urlBase: https://idp.mylogin.space
-
-
-
-cluster:
-  name: k8s
-  domain: cluster.local
-
-datacenter: dc1
-
-region: yxl
-
-
-
-
-
-
-open-webui:
-  nameOverride: ""
-  namespaceOverride: ""
-
-  enabled: false
-  ollama:
-    # -- Automatically install Ollama Helm chart from https://otwld.github.io/ollama-helm/. Use [Helm Values](https://github.com/otwld/ollama-helm/#helm-values) to configure
-    enabled: false
-
-
-  pipelines:
-    # -- Automatically install Pipelines chart to extend Open WebUI functionality using Pipelines: https://github.com/open-webui/pipelines
-    enabled: true
-    # -- This section can be used to pass required environment variables to your pipelines (e.g. Langfuse hostname)
-    extraEnvVars: []
-
-  tika:
-    # -- Automatically install Apache Tika to extend Open WebUI
-    enabled: false
-
-  # -- A list of Ollama API endpoints. These can be added in lieu of automatically installing the Ollama Helm chart, or in addition to it.
-  ollamaUrls: []
-
-  # -- Disables taking Ollama Urls from `ollamaUrls`  list
-  ollamaUrlsFromExtraEnv: false
-
-  websocket:
-    # -- Enables websocket support in Open WebUI with env `ENABLE_WEBSOCKET_SUPPORT`
-    enabled: false
-    # -- Specifies the websocket manager to use with env `WEBSOCKET_MANAGER`: redis (default)
-    manager: redis
-    # -- Specifies the URL of the Redis instance for websocket communication. Template with `redis://[:<password>@]<hostname>:<port>/<db>`
-    url: redis://open-webui-redis:6379/0
-    # -- Node selector for websocket pods
-    nodeSelector: {}
-    # -- Deploys a redis
-    redis:
-      # -- Enable redis installation
-      enabled: false
-      # -- Redis name
-      name: open-webui-redis
-      # -- Redis labels
-      labels: {}
-      # -- Redis annotations
-      annotations: {}
-      # -- Redis pod
-      pods:
-        # -- Redis pod labels
-        labels: {}
-        # -- Redis pod annotations
-        annotations: {}
-      # -- Redis image
-      image:
-        repository: redis
-        tag: 7.4.2-alpine3.21
-        pullPolicy: IfNotPresent
-      # -- Redis command (overrides default)
-      command: []
-      # -- Redis arguments (overrides default)
-      args: []
-      # -- Redis resources
-      resources: {}
-      # -- Redis service
-      service:
-        # -- Redis container/target port
-        containerPort: 6379
-        # -- Redis service type
-        type: ClusterIP
-        # -- Redis service labels
-        labels: {}
-        # -- Redis service annotations
-        annotations: {}
-        # -- Redis service port
-        port: 6379
-        # -- Redis service node port. Valid only when type is `NodePort`
-        nodePort: ""
-      # -- Redis tolerations for pod assignment
-      tolerations: []
-
-      # -- Redis affinity for pod assignment
-      affinity: {}
-
-      # -- Redis security context
-      securityContext:
-        {}
-        # runAsUser: 999
-        # runAsGroup: 1000
-
-  # -- Deploys a Redis cluster with subchart 'redis' from bitnami
-  redis-cluster:
-    # -- Enable Redis installation
-    enabled: false
-    # -- Redis cluster name (recommended to be 'open-webui-redis')
-    # - In this case, redis url will be 'redis://open-webui-redis-master:6379/0' or 'redis://[:<password>@]open-webui-redis-master:6379/0'
-    fullnameOverride: open-webui-redis
-    
-    # -- Specifies the URL of the Redis instance for websocket communication. Template with `redis://[:<password>@]<hostname>:<port>/<db>`
-    url: redis://open-webui-redis:6379/0
-
-  # -- Value of cluster domain
-  clusterDomain: cluster.local
-
-  annotations: {}
-  podAnnotations: {}
-  podLabels: {}
-  replicaCount: 1
-  # -- Revision history limit for the workload manager (deployment).
-  revisionHistoryLimit: 10
-  # -- Priority class name for the Open WebUI pods
-  priorityClassName: ""
-  # -- Strategy for updating the workload manager: deployment or statefulset
-  strategy: {}
-  # -- Open WebUI image tags can be found here: https://github.com/open-webui/open-webui
-  image:
-    repository: ghcr.io/open-webui/open-webui
-    tag: ""
-    pullPolicy: "IfNotPresent"
-
-  # -- Open WebUI container command (overrides default entrypoint)
-  command: []
-  # -- Open WebUI container arguments (overrides default)
-  args: []
-
-  serviceAccount:
-    enable: true
-    name: ""
-    annotations: {}
-    automountServiceAccountToken: false
-
-  # -- Configure imagePullSecrets to use private registry
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry>
-  imagePullSecrets: []
-  # imagePullSecrets:
-  # - name: myRegistryKeySecretName
-
-  # -- Probe for liveness of the Open WebUI container
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes>
-  livenessProbe: {}
-  # livenessProbe:
-  #   httpGet:
-  #     path: /health
-  #     port: http
-  #   failureThreshold: 1
-  #   periodSeconds: 10
-
-  # -- Probe for readiness of the Open WebUI container
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes>
-  readinessProbe: {}
-  # readinessProbe:
-  #   httpGet:
-  #     path: /health/db
-  #     port: http
-  #   failureThreshold: 1
-  #   periodSeconds: 10
-
-  # -- Probe for startup of the Open WebUI container
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes>
-  startupProbe: {}
-  # startupProbe:
-  #   httpGet:
-  #     path: /health
-  #     port: http
-  #   initialDelaySeconds: 30
-  #   periodSeconds: 5
-  #   failureThreshold: 20
-
-  resources: {}
-
-  copyAppData:
-    # -- Open WebUI copy-app-data init container command (overrides default)
-    command: []
-    # -- Open WebUI copy-app-data init container arguments (overrides default)
-    args: []
-
-    resources: {}
-
-  managedCertificate:
-    enabled: false
-    name: "mydomain-chat-cert" # You can override this name if needed
-    domains:
-      - chat.example.com # update to your real domain
-
-  ingress:
-    enabled: false
-    class: ""
-    # -- Use appropriate annotations for your Ingress controller, e.g., for NGINX:
-    annotations: {}
-    #   # Example for GKE Ingress
-    #   kubernetes.io/ingress.class: "gce"
-    #   kubernetes.io/ingress.global-static-ip-name: "open-webui-external-ip"   #  you need to create this address in GCP console
-    #   # Force HTTP to redirect to HTTPS
-    #   nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    #   nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    #   nginx.ingress.kubernetes.io/permanent-redirect: "https://chat.example.com"
-    #   networking.gke.io/managed-certificates: "mydomain-chat-cert"
-    #   # nginx.ingress.kubernetes.io/rewrite-target: /
-    host: "chat.example.com" # update to your real domain
-    additionalHosts: []
-    tls: false
-    existingSecret: ""
-
-    # -- Additional custom labels to add to the Ingress metadata
-    # Useful for tagging, selecting, or applying policies to the Ingress via labels.
-    extraLabels: {}
-    # extraLabels:
-    #   app.kubernetes.io/environment: "staging"
-
-  persistence:
-    enabled: true
-    size: 2Gi
-    # -- Use existingClaim if you want to re-use an existing Open WebUI PVC instead of creating a new one
-    existingClaim: ""
-    # -- Subdirectory of Open WebUI PVC to mount. Useful if root directory is not empty.
-    subPath: ""
-    # -- If using multiple replicas, you must update accessModes to ReadWriteMany
-    accessModes:
-      - ReadWriteOnce
-    storageClass: ""
-    selector: {}
-    annotations: {}
-    # -- Sets the storage provider, availables values are `local`, `s3`, `gcs` or `azure`
-    provider: local
-    s3:
-      # -- Sets the access key ID for S3 storage
-      # @section -- Amazon S3 Storage configuration
-      accessKey: ""
-      # -- Sets the secret access key for S3 storage (ignored if secretKeyExistingSecret is set)
-      # @section -- Amazon S3 Storage configuration
-      secretKey: ""
-      # -- Set the secret access key for S3 storage from existing k8s secret
-      # @section -- Amazon S3 Storage configuration
-      accessKeyExistingSecret: ""
-      # -- Set the secret access key for S3 storage from existing k8s secret key
-      # @section -- Amazon S3 Storage configuration
-      accessKeyExistingAccessKey: ""
-      # -- Set the secret key for S3 storage from existing k8s secret
-      # @section -- Amazon S3 Storage configuration
-      secretKeyExistingSecret: ""
-      # -- Set the secret key for S3 storage from existing k8s secret key
-      # @section -- Amazon S3 Storage configuration
-      secretKeyExistingSecretKey: ""
-      # -- Sets the endpoint url for S3 storage
-      # @section -- Amazon S3 Storage configuration
-      endpointUrl: ""
-      # -- Sets the region name for S3 storage
-      # @section -- Amazon S3 Storage configuration
-      region: ""
-      # -- Sets the bucket name for S3 storage
-      # @section -- Amazon S3 Storage configuration
-      bucket: ""
-      # -- Sets the key prefix for a S3 object
-      # @section -- Amazon S3 Storage configuration
-      keyPrefix: ""
-    gcs:
-      # -- Contents of Google Application Credentials JSON file (ignored if appCredentialsJsonExistingSecret is set). Optional - if not provided, credentials will be taken from the environment. User credentials if run locally and Google Metadata server if run on a Google Compute Engine. File can be generated for a service account following this guide: https://developers.google.com/workspace/guides/create-credentials#service-account
-      # @section -- Google Cloud Storage configuration
-      appCredentialsJson: ""
-      # -- Set the Google Application Credentials JSON file for Google Cloud Storage from existing secret
-      # @section -- Google Cloud Storage configuration
-      appCredentialsJsonExistingSecret: ""
-      # -- Set the Google Application Credentials JSON file for Google Cloud Storage from existing secret key
-      # @section -- Google Cloud Storage configuration
-      appCredentialsJsonExistingSecretKey: ""
-      # -- Sets the bucket name for Google Cloud Storage. Bucket must already exist
-      # @section -- Google Cloud Storage configuration
-      bucket: ""
-    azure:
-      # -- Sets the endpoint URL for Azure Storage
-      # @section -- Azure Storage configuration
-      endpointUrl: ""
-      # -- Sets the container name for Azure Storage
-      # @section -- Azure Storage configuration
-      container: ""
-      # -- Set the access key for Azure Storage (ignored if keyExistingSecret is set). Optional - if not provided, credentials will be taken from the environment. User credentials if run locally and Managed Identity if run in Azure services
-      # @section -- Azure Storage configuration
-      key: ""
-      # -- Set the access key for Azure Storage from existing secret
-      # @section -- Azure Storage configuration
-      keyExistingSecret: ""
-      # -- Set the access key for Azure Storage from existing secret key
-      # @section -- Azure Storage configuration
-      keyExistingSecretKey: ""
-
-  # -- Node labels for pod assignment.
-  nodeSelector: {}
-
-  # -- Tolerations for pod assignment
-  tolerations: []
-
-  # -- Affinity for pod assignment
-  affinity: {}
-
-  # -- Topology Spread Constraints for pod assignment
-  topologySpreadConstraints: []
-
-  # -- HostAliases to be added to hosts-file of each container
-  hostAliases: []
-
-  # -- Service values to expose Open WebUI pods to cluster
-  service:
-    type: ClusterIP
-    annotations: {}
-    port: 80
-    containerPort: 8080
-    nodePort: ""
-    labels: {}
-    loadBalancerClass: ""
-
-  # -- Enables the use of OpenAI APIs
-  enableOpenaiApi: true
-
-  # -- OpenAI base API URL to use. Defaults to the Pipelines service endpoint when Pipelines are enabled, and "https://api.openai.com/v1" if Pipelines are not enabled and this value is blank
-  openaiBaseApiUrl: "https://api.openai.com/v1"
-
-  # -- OpenAI base API URLs to use. Overwrites the value in openaiBaseApiUrl if set
-  openaiBaseApiUrls:
-    []
-    # - "https://api.openai.com/v1"
-    # - "https://api.company.openai.com/v1"
-
-  # -- Env vars added to the Open WebUI deployment. Most up-to-date environment variables can be found here: https://docs.openwebui.com/getting-started/env-configuration/
-  extraEnvVars:
-    # -- Default API key value for Pipelines. Should be updated in a production deployment, or be changed to the required API key if not using Pipelines
-    - name: OPENAI_API_KEY
-      value: "0p3n-w3bu!"
-    # valueFrom:
-    #   secretKeyRef:
-    #     name: pipelines-api-key
-    #     key: api-key
-    # - name: OPENAI_API_KEY
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: openai-api-key
-    #       key: api-key
-    # - name: OLLAMA_DEBUG
-    #   value: "1"
-
-  # -- Env vars added to the Open WebUI deployment, common across environments. Most up-to-date environment variables can be found here: https://docs.openwebui.com/getting-started/env-configuration/ (caution: environment variables defined in both `extraEnvVars` and `commonEnvVars` will result in a conflict. Avoid duplicates)
-  commonEnvVars: []
-    # - name: RAG_EMBEDDING_ENGINE
-    #   value: "openai"
-
-  # -- Env vars added from configmap or secret to the Open WebUI deployment. Most up-to-date environment variables can be found here: https://docs.openwebui.com/getting-started/env-configuration/ (caution: `extraEnvVars` will take precedence over the value from `extraEnvFrom`)
-  extraEnvFrom: []
-    # - configMapRef:
-    #     name: my-config
-    # - secretRef:
-    #     name: my-secret
-
-  # -- Configure runtime class
-  # ref: <https://kubernetes.io/docs/concepts/containers/runtime-class/>
-  runtimeClassName: ""
-
-  # -- Configure container volume mounts
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/>
-  volumeMounts:
-    initContainer: []
-    # - name: ""
-    #   mountPath: ""
-    container: []
-    # - name: ""
-    #   mountPath: ""
-
-  # -- Additional init containers to add to the deployment/statefulset
-  # ref: <https://kubernetes.io/docs/concepts/workloads/pods/init-containers/>
-  extraInitContainers: []
-  # - name: custom-init
-  #   image: busybox:latest
-  #   command: ['sh', '-c', 'echo "Custom init container running"']
-  #   volumeMounts:
-  #   - name: data
-  #     mountPath: /data
-
-  # -- Configure pod volumes
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/>
-  volumes: []
-  # - name: ""
-  #   configMap:
-  #     name: ""
-  # - name: ""
-  #   emptyDir: {}
-
-  # -- Configure pod security context
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container>
-  podSecurityContext:
-    {}
-    # fsGroupChangePolicy: Always
-    # sysctls: []
-    # supplementalGroups: []
-    # fsGroup: 1001
-
-  # -- Configure container security context
-  # ref: <https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-containe>
-  containerSecurityContext:
-    {}
-    # runAsUser: 1001
-    # runAsGroup: 1001
-    # runAsNonRoot: true
-    # privileged: false
-    # allowPrivilegeEscalation: false
-    # readOnlyRootFilesystem: false
-    # capabilities:
-    #   drop:
-    #     - ALL
-    # seccompProfile:
-    #   type: "RuntimeDefault"
-
-  sso:
-    # -- **Enable SSO authentication globally** must enable to use SSO authentication
-    # @section -- SSO Configuration
-    enabled: false
-    # -- Enable account creation when logging in with OAuth (distinct from regular signup)
-    # @section -- SSO Configuration
-    enableSignup: false
-    # -- Allow logging into accounts that match email from OAuth provider (considered insecure)
-    # @section -- SSO Configuration
-    mergeAccountsByEmail: false
-    # -- Enable OAuth role management through access token roles claim
-    # @section -- SSO Configuration
-    enableRoleManagement: false
-    # -- Enable OAuth group management through access token groups claim
-    # @section -- SSO Configuration
-    enableGroupManagement: false
-
-    google:
-      # -- Enable Google OAuth
-      # @section -- Google OAuth configuration
-      enabled: false
-
-    microsoft:
-      # -- Enable Microsoft OAuth
-      # @section -- Microsoft OAuth configuration
-      enabled: false
-
-    github:
-      # -- Enable GitHub OAuth
-      # @section -- GitHub OAuth configuration
-      enabled: false
-      # -- GitHub OAuth client ID
-      # @section -- GitHub OAuth configuration
-      clientId: ""
-      # -- GitHub OAuth client secret (ignored if clientExistingSecret is set)
-      # @section -- GitHub OAuth configuration
-      clientSecret: ""
-      # -- GitHub OAuth client secret from existing secret
-      # @section -- GitHub OAuth configuration
-      clientExistingSecret: ""
-      # -- GitHub OAuth client secret key from existing secret
-      # @section -- GitHub OAuth configuration
-      clientExistingSecretKey: ""
-
-    oidc:
-      # -- Enable OIDC authentication
-      # @section -- OIDC configuration
-      enabled: false
-      # -- OIDC client ID
-      # @section -- OIDC configuration
-      clientId: ""
-      # -- OIDC client secret (ignored if clientExistingSecret is set)
-      # @section -- OIDC configuration
-      clientSecret: ""
-      # -- OICD client secret from existing secret
-      # @section -- OIDC configuration
-      clientExistingSecret: ""
-      # -- OIDC client secret key from existing secret
-      # @section -- OIDC configuration
-      clientExistingSecretKey: ""
-      # -- OIDC provider well known URL
-      # @section -- OIDC configuration
-      providerUrl: ""
-      # -- Name of the provider to show on the UI
-      # @section -- OIDC configuration
-      providerName: "SSO"
-      # -- Scopes to request (space-separated).
-      # @section -- OIDC configuration
-      scopes: "openid email profile"
-
-    roleManagement:
-      # -- The claim that contains the roles (can be nested, e.g., user.roles)
-      # @section -- Role management configuration
-      rolesClaim: "roles"
-      # -- Comma-separated list of roles allowed to log in (receive open webui role user)
-      # @section -- Role management configuration
-      allowedRoles: ""
-      # -- Comma-separated list of roles allowed to log in as admin (receive open webui role admin)
-      # @section -- Role management configuration
-      adminRoles: ""
-
-    groupManagement:
-      # -- The claim that contains the groups (can be nested, e.g., user.memberOf)
-      # @section -- SSO Configuration
-      groupsClaim: "groups"
-
-    trustedHeader:
-      # -- Enable trusted header authentication
-      # @section -- SSO trusted header authentication
-      enabled: false
-      # -- Header containing the user's email address
-      # @section -- SSO trusted header authentication
-      emailHeader: ""
-      # -- Header containing the user's name (optional, used for new user creation)
-      # @section -- SSO trusted header authentication
-      nameHeader: ""
-
-  # -- Extra resources to deploy with Open WebUI
-  extraResources:
-    []
-    # - apiVersion: v1
-    #   kind: ConfigMap
-    #   metadata:
-    #     name: example-configmap
-    #   data:
-    #     example-key: example-value
-
-  # -- Configure database URL, needed to work with Postgres (example: `postgresql://<user>:<password>@<service>:<port>/<database>`), leave empty to use the default sqlite database
-  databaseUrl: ""
-
-  # -- Postgresql configuration (see. https://artifacthub.io/packages/helm/bitnami/postgresql)
-  postgresql:
-    enabled: false
-    architecture: standalone
-    auth:
-      database: open-webui
-      postgresPassword: 0p3n-w3bu!
-      username: open-webui
-      password: 0p3n-w3bu!
-    primary:
-      persistence:
-        size: 1Gi
-      resources:
-        requests:
-          memory: 256Mi
-          cpu: 250m
-        limits:
-          memory: 512Mi
-          cpu: 500m
-
-  # Configure Application logging levels (see. https://docs.openwebui.com/getting-started/advanced-topics/logging#-logging-levels-explained)
-  logging:
-    # -- Set the global log level ["notset", "debug", "info" (default), "warning", "error", "critical"]
-    # @section -- Logging configuration
-    level: ""
-
-    # Optional granularity: override log levels per subsystem/component
-    # if not set, it will use the global level (see. https://docs.openwebui.com/getting-started/advanced-topics/logging#%EF%B8%8F-appbackend-specific-logging-levels)
-    components:
-      # -- Set the log level for the Audio processing component
-      # @section -- Logging configuration
-      audio: ""
-      # -- Set the log level for the ComfyUI Integration component
-      # @section -- Logging configuration
-      comfyui: ""
-      # -- Set the log level for the Configuration Management component
-      # @section -- Logging configuration
-      config: ""
-      # -- Set the log level for the Database Operations (Peewee) component
-      # @section -- Logging configuration
-      db: ""
-      # -- Set the log level for the Image Generation component
-      # @section -- Logging configuration
-      images: ""
-      # -- Set the log level for the Main Application Execution component
-      # @section -- Logging configuration
-      main: ""
-      # -- Set the log level for the Model Management component
-      # @section -- Logging configuration
-      models: ""
-      # -- Set the log level for the Ollama Backend Integration component
-      # @section -- Logging configuration
-      ollama: ""
-      # -- Set the log level for the OpenAI API Integration component
-      # @section -- Logging configuration
-      openai: ""
-      # -- Set the log level for the Retrieval-Augmented Generation (RAG) component
-      # @section -- Logging configuration
-      rag: ""
-      # -- Set the log level for the Authentication Webhook component
-      # @section -- Logging configuration
-      webhook: ""

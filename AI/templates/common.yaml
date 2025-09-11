@@ -34,7 +34,7 @@ controllers:
 
   {{- end }}
 
-  {{ if .Values.gpustack.enabled }}
+  {{ if $.Values.gpustack.enabled }}
   gpustack:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
@@ -156,7 +156,7 @@ controllers:
               failureThreshold: 30
   {{- end }}
 
-  {{- if .Values.localai.enabled }}
+  {{- if $.Values.localai.enabled }}
   localai:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
@@ -214,6 +214,7 @@ controllers:
             containerPort: 8080
   {{- end }}
 
+  {{- if $.Values.docker.mcp.enabled }}
   docker:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
@@ -237,9 +238,10 @@ controllers:
         ports:
           - name: http
             containerPort: 2475
+  {{- end }}
 
 
-  {{- if .Values.owui.enabled }}
+  {{- if $.Values.owui.enabled }}
   openwebui:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
@@ -350,9 +352,205 @@ controllers:
             containerPort: 8080
   {{- end }}
 
+  {{- if $.Values.mcp.enabled }}
+  openwebuimcp:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    name: openwebuimcp
+
+
+    containers:
+      {{- if $.Values.mcp.frr.enabled }}
+      frr:
+        image:
+          repository: frrouting/frr
+          #
+          # TODO: Get Renovate or similar managing this
+          #
+          tag: latest
+          pullPolicy: IfNotPresent
+
+        securityContext:
+          seLinuxOptions: {}
+          privileged: false
+          allowPrivilegeEscalation: false
+          runAsNonRoot: false
+          readOnlyRootFilesystem: false
+          seccompProfile:
+            type: "RuntimeDefault"
+          capabilities:
+            add: 
+              - 'NET_ADMIN'
+              - 'SYS_ADMIN'
+      {{- end }}
+
+      {{- if .Values.mcp.docker.enabled }}
+      docker:
+        image:
+          repository: kristianfoss/docker
+          tag: 'core-mcp'
+          pullPolicy: Always
+
+        securityContext:
+          privileged: true
+          runAsUser: 0
+
+        env:
+          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_NET
+            value: 'host'
+
+          - name: DOCKERD_ROOTLESS_ROOTLESSKIT_FLAGS
+            value: ''
+
+        # args:
+        #   - 
+
+        ports:
+          - name: http
+            containerPort: 2376
+      {{- end }}
+
+      mcpo:
+        image:
+          repository: kristianfoss/openwebui
+          tag: 'core-mcp'
+          pullPolicy: IfNotPresent
+
+        command:
+          - sh
+          - -c
+          - "until [ -S /var/run/docker.sock ]; do sleep 1; done; exec mcpo --config=/config/config.json"
+
+        ports:
+          - name: http
+            containerPort: 8000
+
+        # -- Probe configuration
+        # -- [[ref]](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+        # @default -- See below
+        probes:
+          # -- Liveness probe configuration
+          # @default -- See below
+          liveness:
+            # -- Enable the liveness probe
+            enabled: false
+            # -- Set this to `true` if you wish to specify your own livenessProbe
+            custom: false
+            # -- sets the probe type when not using a custom probe
+            # @default -- "TCP"
+            type: TCP
+            # -- The spec field contains the values for the default livenessProbe.
+            # If you selected `custom: true`, this field holds the definition of the livenessProbe.
+            # @default -- See below
+            spec:
+              initialDelaySeconds: 0
+              periodSeconds: 10
+              timeoutSeconds: 1
+              failureThreshold: 3
+
+          # -- Redainess probe configuration
+          # @default -- See below
+          readiness:
+            # -- Enable the readiness probe
+            enabled: true
+            # -- Set this to `true` if you wish to specify your own readinessProbe
+            custom: false
+            # -- sets the probe type when not using a custom probe
+            # @default -- "TCP"
+            type: TCP
+            # -- The spec field contains the values for the default readinessProbe.
+            # If you selected `custom: true`, this field holds the definition of the readinessProbe.
+            # @default -- See below
+            spec:
+              initialDelaySeconds: 0
+              periodSeconds: 10
+              timeoutSeconds: 1
+              failureThreshold: 3
+
+          # -- Startup probe configuration
+          # @default -- See below
+          startup:
+            # -- Enable the startup probe
+            enabled: true
+            # -- Set this to `true` if you wish to specify your own startupProbe
+            custom: false
+            # -- sets the probe type when not using a custom probe
+            # @default -- "TCP"
+            type: TCP
+            # -- The spec field contains the values for the default startupProbe.
+            # If you selected `custom: true`, this field holds the definition of the startupProbe.
+            # @default -- See below
+            spec:
+              initialDelaySeconds: 300
+              timeoutSeconds: 1
+              ## This means it has a maximum of 5*30=150 seconds to start up before it fails
+              periodSeconds: 60
+              failureThreshold: 30
+  {{- end }}
 
 
 persistence:
+  {{- if .Values.docker.mcp.enabled }}
+  dockercerts:
+    enabled: true
+    type: emptyDir
+
+    advancedMounts:
+      openwebuimcp:
+        docker:
+          - path: /certs/client
+
+        mcpo:
+          - path: /certs/client
+
+  dockersocket:
+    enabled: true
+    type: emptyDir
+
+    advancedMounts:
+      openwebuimcp:
+        docker:
+          - path: /var/run
+
+        mcpo:
+          - path: /var/run
+  {{- end }}
+
+  {{- if .Values.mcp.frr.enabled }}
+  frr:
+    enabled: true
+    type: configMap
+    identifier: frr
+
+    advancedMounts:
+      openwebuimcp:
+        frr:
+          - path: /etc/frr/frr.conf
+            readOnly: true
+            subPath: frr.conf
+
+          - path: /etc/frr/daemons
+            readOnly: true
+            subPath: daemons
+  {{- end }}
+
+  {{- if .Values.mcp.enabled }}
+  config:
+    enabled: true
+    type: configMap
+    identifier: config
+
+    advancedMounts:
+      openwebuimcp:
+        mcpo:
+          - path: /config/config.json
+            readOnly: true
+            subPath: config.json
+  {{- end }}
+
   {{- if .Values.gpustack.enabled }}
   gpustack:
     enabled: true
@@ -395,8 +593,6 @@ persistence:
         server:
           - path: /models
         {{- end }}
-
-
 
         localai: # the container with the "main" identifier
           - path: /models
@@ -777,6 +973,260 @@ serviceAccount:
     annotations: {}
     labels: {}
 {{- end }}
+
+configMaps:
+  {{- if $.Values.mcp.frr.enabled }}
+  frr:
+    # -- Enables or disables the configMap
+    enabled: true
+    # -- Labels to add to the configMap
+    labels: {}
+    # -- Annotations to add to the configMap
+    annotations: {}
+    # -- configMap data content. Helm template enabled.
+    data:
+      daemons: |
+        # This file tells the frr package which daemons to start.
+        #
+        # Sample configurations for these daemons can be found in
+        # /usr/share/doc/frr/examples/.
+        #
+        # ATTENTION:
+        #
+        # When activating a daemon for the first time, a config file, even if it is
+        # empty, has to be present *and* be owned by the user and group "frr", else
+        # the daemon will not be started by /etc/init.d/frr. The permissions should
+        # be u=rw,g=r,o=.
+        # When using "vtysh" such a config file is also needed. It should be owned by
+        # group "frrvty" and set to ug=rw,o= though. Check /etc/pam.d/frr, too.
+        #
+        # The watchfrr, zebra and staticd daemons are always started.
+        #
+        bgpd=no
+        ospfd=yes
+        ospf6d=no
+        ripd=no
+        ripngd=no
+        isisd=no
+        pimd=no
+        ldpd=no
+        nhrpd=no
+        eigrpd=no
+        babeld=no
+        sharpd=no
+        pbrd=no
+        bfdd=no
+        fabricd=no
+        vrrpd=no
+        pathd=no
+
+        #
+        # If this option is set the /etc/init.d/frr script automatically loads
+        # the config via "vtysh -b" when the servers are started.
+        # Check /etc/pam.d/frr if you intend to use "vtysh"!
+        #
+        vtysh_enable=yes
+        zebra_options="  -A 127.0.0.1 -s 90000000"
+        bgpd_options="--no_kernel -A 127.0.0.1"
+        ospfd_options="  -A 127.0.0.1"
+        ospf6d_options=" -A ::1"
+        ripd_options="   -A 127.0.0.1"
+        ripngd_options=" -A ::1"
+        isisd_options="  -A 127.0.0.1"
+        pimd_options="   -A 127.0.0.1"
+        ldpd_options="   -A 127.0.0.1"
+        nhrpd_options="  -A 127.0.0.1"
+        eigrpd_options=" -A 127.0.0.1"
+        babeld_options=" -A 127.0.0.1"
+        sharpd_options=" -A 127.0.0.1"
+        pbrd_options="   -A 127.0.0.1"
+        staticd_options="-A 127.0.0.1"
+        bfdd_options="   -A 127.0.0.1"
+        fabricd_options="-A 127.0.0.1"
+        vrrpd_options="  -A 127.0.0.1"
+        pathd_options="  -A 127.0.0.1"
+
+        # configuration profile
+        #
+        #frr_profile="traditional"
+        #frr_profile="datacenter"
+
+        #
+        # This is the maximum number of FD's that will be available.
+        # Upon startup this is read by the control files and ulimit
+        # is called.  Uncomment and use a reasonable value for your
+        # setup if you are expecting a large number of peers in
+        # say BGP.
+        #MAX_FDS=1024
+
+        # The list of daemons to watch is automatically generated by the init script.
+        #watchfrr_options=""
+
+        # To make watchfrr create/join the specified netns, use the following option:
+        #watchfrr_options="--netns"
+        # This only has an effect in /etc/frr/<somename>/daemons, and you need to
+        # start FRR with "/usr/lib/frr/frrinit.sh start <somename>".
+
+        # for debugging purposes, you can specify a "wrap" command to start instead
+        # of starting the daemon directly, e.g. to use valgrind on ospfd:
+        #   ospfd_wrap="/usr/bin/valgrind"
+        # or you can use "all_wrap" for all daemons, e.g. to use perf record:
+        #   all_wrap="/usr/bin/perf record --call-graph -"
+        # the normal daemon command is added to this at the end.
+
+      frr.conf: |
+        # default to using syslog. /etc/rsyslog.d/45-frr.conf places the log in
+        # /var/log/frr/frr.log
+        #
+        # Note:
+        # FRR's configuration shell, vtysh, dynamically edits the live, in-memory
+        # configuration while FRR is running. When instructed, vtysh will persist the
+        # live configuration to this file, overwriting its contents. If you want to
+        # avoid this, you can edit this file manually before starting FRR, or instruct
+        # vtysh to write configuration to a different file.
+        log syslog informational
+        !
+        ip prefix-list ADV seq 1 permit any
+        !
+        debug bgp neighbor-events
+        !
+        ip nht resolve-via-default
+        !
+        route-map OUT permit 10
+          match ip address prefix-list ADV
+        exit
+        !
+        interface net1
+          ip address 172.31.192.19/24
+          ip ospf area 0.0.0.0
+        exit
+        router ospf
+          auto-cost reference-bandwidth 100000 
+        exit
+        !
+        end
+  {{- end }}
+
+  {{- if $.Values.mcp.enabled }}
+  config:
+    # -- Enables or disables the configMap
+    enabled: true
+    # -- Labels to add to the configMap
+    labels: {}
+    # -- Annotations to add to the configMap
+    annotations: {}
+    # -- configMap data content. Helm template enabled.
+    data:
+      config.json: |
+        {
+          "mcpServers": {
+            "mcp-timeserver": {
+              "command": "uvx",
+              "args": [
+                "mcp-server-time"
+              ],
+              "env": {}
+            },
+            "mcp-local-rag": {
+              "command": "docker",
+              "args": [
+                "run",
+                "--rm",
+                "-i",
+                "--net=host",
+                "--init",
+                "-e",
+                "DOCKER_CONTAINER=true",
+                "kristianfoss/mcp-search:core-mcp"
+              ]
+            },
+            "mcp-server-docker": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "-v",
+                "/var/run/docker.sock:/var/run/docker.sock",
+                "--rm",
+                "kristianfoss/docker-mcp:testing"
+              ],
+              "env": {}
+            },
+            "domaintools": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "--rm",
+                "kristianfoss/mcp-domaintools:core-mcp"
+              ],
+              "env": {}
+            },
+            "wikipedia-mcp": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "--net=host",
+                "--rm",
+                "mcp/wikipedia-mcp"
+              ]
+            },
+            "mcp-wolfram-alpha": {
+              "command": "docker",
+              "args": [
+                "run",
+                "-i",
+                "-e",
+                "WOLFRAM_API_KEY",
+                "--net=host",
+                "--rm",
+                "ghcr.io/metorial/mcp-container--secretiveshell--mcp-wolfram-alpha--mcp-wolfram-alpha",
+                "mcp-wolfram-alpha"
+              ],
+              "env": {
+                "WOLFRAM_API_KEY": "<path:CORE0_SITE1/data/AI/OpenWebUI/MCPO/WolframAlpha#APIKey>"
+              }
+            },
+            "airbnb": {
+              "command": "npx",
+              "args": [
+                "-y",
+                "@openbnb/mcp-server-airbnb"
+              ]
+            },
+            "huggingface": {
+              "type": "streamable-http",
+              "url": "https://hf.co/mcp",
+              "headers": {
+                "Authorization": "Bearer <path:CORE0_SITE1/data/AI/OpenWebUI/MCPO/HuggingFace#APIKey>"
+              }
+            },
+            "packages": {
+              "command": "uvx",
+              "args": [
+                "mcp-server-pacman"
+              ]
+            },
+            "code-sandbox": {
+              "command": "docker",
+              "args": [
+                "run", "--rm", "--interactive",
+                "--read-only",
+                "--tmpfs", "/tmp",
+                "--tmpfs", "/app/tmp",
+                "--memory", "512m",
+                "--net=host",
+                "--cpus", "0.5",
+                "--cap-drop", "ALL",
+                "ghcr.io/timlikesai/code-sandbox-mcp:latest"
+              ]
+            }
+          }
+        }
+  {{- end }}
 
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
