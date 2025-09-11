@@ -12,6 +12,18 @@ datacenter: dc1
 
 region: yxl
 
+mcpservers:
+  - name: brave-search
+    image: mcp/brave-search
+    tag: latest
+
+    env:
+      - name: BRAVE_API_KEY
+        value: ''
+
+      - name: BRAVE_MCP_TRANSPORT
+        value: 'http'
+
 gpustack:
   enabled: true
 

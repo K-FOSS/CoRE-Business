@@ -9,6 +9,31 @@ global:
 {{ end }}
 
 controllers:
+  {{ range $mcpIndex, $mcpServer := $.Values.mcpservers }}
+  mcpserver-{{ $mcpServer.name }}:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      {{ $mcpServer.name }}:
+        image:
+          repository: {{ $mcpServer.image }}
+          tag: {{ default "latest" $mcpServer.image }}
+          pullPolicy: Always
+
+        {{- with $mcpServer.env }}
+        env:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+
+        ports:
+          - name: http
+            containerPort: 8080
+
+  {{- end }}
+
   {{ if .Values.gpustack.enabled }}
   gpustack:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
