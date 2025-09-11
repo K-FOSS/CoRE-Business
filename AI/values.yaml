@@ -24,7 +24,7 @@ mcpservers:
       - name: BRAVE_API_KEY
         valueFrom:
           secretKeyRef:
-            name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-brave-search'
+            name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-core-business-ai-brave-search'
             key: APIKey
 
       - name: BRAVE_MCP_TRANSPORT
