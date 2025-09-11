@@ -9,7 +9,33 @@ global:
 {{ end }}
 
 controllers:
-  {{ range $mcpIndex, $mcpServer := $.Values.mcpservers }}
+  {{- if $.Values.mcp.hub.enabled }}
+  mcphub:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      mcphub:
+        image:
+          repository: samanhappy/mcphub
+          tag: 'latest'
+          pullPolicy: IfNotPresent
+
+        # args:
+        #   - --config=/config/config.json
+
+        env:
+          - name: PORT
+            value: '8080'
+
+        ports:
+          - name: http
+            containerPort: 8080
+  {{- end }}
+
+  {{- range $mcpIndex, $mcpServer := $.Values.mcp.containers }}
   mcpserver-{{ $mcpServer.name }}:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
@@ -493,6 +519,21 @@ controllers:
 
 
 persistence:
+  {{- if $.Values.mcp.hub.enabled }}
+  mcphub:
+    enabled: true
+    type: configMap
+    identifier: mcphub-config
+
+    advancedMounts:
+      mcphub:
+        mcphub:
+          - path: /app/mcp_settings.json
+            readOnly: true
+            subPath: mcp_settings.json
+
+  {{- end }}
+
   {{- if .Values.docker.mcp.enabled }}
   dockercerts:
     enabled: true
@@ -614,7 +655,7 @@ persistence:
   {{- end }}
 
 service:
-  {{- range $mcpIndex, $mcpServer := $.Values.mcpservers }}
+  {{- range $mcpIndex, $mcpServer := $.Values.mcp.containers }}
   mcpserver-{{ $mcpServer.name }}:
     # -- Enables or disables the service
     enabled: true
@@ -1033,6 +1074,27 @@ serviceAccount:
 {{- end }}
 
 configMaps:
+  {{- if $.Values.mcp.hub.enabled }}
+  mcphub-config:
+    # -- Enables or disables the configMap
+    enabled: true
+    # -- Labels to add to the configMap
+    labels: {}
+    # -- Annotations to add to the configMap
+    annotations: {}
+    # -- configMap data content. Helm template enabled.
+    data:
+      mcp_settings.json: |
+        {
+          "mcpServers": {
+            "fetch": {
+              "command": "uvx",
+              "args": ["mcp-server-fetch"]
+            }
+          }
+        }
+  {{- end }}
+
   {{- if $.Values.mcp.frr.enabled }}
   frr:
     # -- Enables or disables the configMap

@@ -16,19 +16,9 @@ global:
   test: 'test'
 
 mcpservers:
-  - name: brave-search
-    image: mcp/brave-search
-    tag: latest
 
-    env:
-      - name: BRAVE_API_KEY
-        valueFrom:
-          secretKeyRef:
-            name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-core-business-ai-brave-search'
-            key: APIKey
 
-      - name: BRAVE_MCP_TRANSPORT
-        value: 'http'
+
 
 externalSecrets:
   enabled: true
@@ -122,6 +112,24 @@ owui:
 
 mcp:
   enabled: true
+
+  hub:
+    enabled: true
+
+  containers:
+    - name: brave-search
+      image: mcp/brave-search
+      tag: latest
+
+      env:
+        - name: BRAVE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-core-business-ai-brave-search'
+              key: APIKey
+
+        - name: BRAVE_MCP_TRANSPORT
+          value: 'http'
 
   frr:
     enabled: true
