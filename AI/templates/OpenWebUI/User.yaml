@@ -10,6 +10,9 @@ spec:
   groups:
     - LDAPService
 
+  psql:
+    enabled: true
+
   writeConnectionSecretToRef:
     name: {{ .Release.Name }}-openwebui-user
 {{- end }}
