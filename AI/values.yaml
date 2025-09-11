@@ -12,6 +12,9 @@ datacenter: dc1
 
 region: yxl
 
+global:
+  test: 'test'
+
 mcpservers:
   - name: brave-search
     image: mcp/brave-search
