@@ -12,6 +12,10 @@ datacenter: dc1
 
 region: yxl
 
+mcp:
+  search:
+    enabled: true
+
 mcpservers:
   - name: brave-search
     image: mcp/brave-search
@@ -19,10 +23,20 @@ mcpservers:
 
     env:
       - name: BRAVE_API_KEY
-        value: ''
+        valueFrom:
+          secretKeyRef:
+            name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-brave-search'
+            key: APIKey
 
       - name: BRAVE_MCP_TRANSPORT
         value: 'http'
+
+secrets:
+  enabled: true
+
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: mainvault-core
 
 gpustack:
   enabled: true
