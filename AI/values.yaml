@@ -118,16 +118,16 @@ owui:
     enabled: true
 
 mcp:
-  enabled: false
+  enabled: true
 
   frr:
-    enabled: false
+    enabled: true
 
   docker:
-    enabled: false
+    enabled: true
 
   search:
-    enabled: false
+    enabled: true
 
 ai:
   namespace:
