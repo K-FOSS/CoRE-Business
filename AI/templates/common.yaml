@@ -364,7 +364,7 @@ persistence:
 
     accessMode: ReadWriteOnce
 
-    #storageClass: ssd-storage
+    storageClass: ssd-storage
 
     advancedMounts:
       gpustack:
