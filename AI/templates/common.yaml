@@ -20,7 +20,7 @@ controllers:
       {{ $mcpServer.name }}:
         image:
           repository: {{ $mcpServer.image }}
-          tag: {{ default "latest" $mcpServer.image }}
+          tag: {{ default "latest" $mcpServer.tag }}
           pullPolicy: Always
 
         {{- with $mcpServer.env }}

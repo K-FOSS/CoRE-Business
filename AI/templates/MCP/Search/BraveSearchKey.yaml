@@ -6,7 +6,7 @@ metadata:
 spec:
   {{- with .Values.externalSecrets.secretStoreRef }}
   secretStoreRef:
-    {{ toYaml . | nindent 4  }}
+    {{- toYaml . | nindent 4  }}
   {{- end }}
 
   target:
