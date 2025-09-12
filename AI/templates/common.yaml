@@ -347,7 +347,7 @@ controllers:
 
           {{- if $.Values.mcpbox.enabled }}
           - name: LOCALAGI_MCPBOX_URL
-            value: 'http://{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-mcpbox.{{ .Release.Namespace }}.svc.{{ $.Values.cluster.domain }}'
+            value: 'http://{{ include "bjw-s.common.lib.chart.names.name" . }}-mcpbox.{{ .Release.Namespace }}.svc.{{ $.Values.cluster.domain }}'
 
           {{- end }}
 
