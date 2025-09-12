@@ -9,7 +9,7 @@ global:
 {{ end }}
 
 controllers:
-  {{- if .Values.wyoming.enabled }}
+  {{- if $.Values.wyoming.enabled }}
   wyoming:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
@@ -19,12 +19,9 @@ controllers:
     containers:
       wyoming:
         image:
-          repository: {{- .Values.wyoming.image }}
-          tag: {{-  default "latest" .Values.wyoming.image }}
+          repository: {{ .Values.wyoming.image }}
+          tag: {{ default "latest" .Values.wyoming.image }}
           pullPolicy: IfNotPresent
-
-        # args:
-        #   - --config=/config/config.json
 
         env:
           - name: WYOMING_URI
@@ -46,16 +43,16 @@ controllers:
             value: 'LOCALAI'
 
           - name: TTS_OPENAI_URL
-            value: 'http://172.31.192.12:8880/v1'
+            value: '{{ $.Values.wyoming.tts.endpoint }}'
 
           - name: TTS_MODELS
-            value: 'tts-1-hd'
+            value: '{{ $.Values.wyoming.tts.models }}'
 
           - name: TTS_BACKEND
             value: 'OPENAI'
 
           - name: TTS_VOICES
-            value: 'af_bella'
+            value: '{{ $.Values.wyoming.tts.voices }}'
 
         ports:
           - name: http
