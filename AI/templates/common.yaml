@@ -515,19 +515,19 @@ controllers:
           - name: DATABASE_NAME
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                name: '{{ $.Release.Name }}-openwebui-user'
                 key: username
 
           - name: DATABASE_USER
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                name: '{{ $.Release.Name }}-openwebui-user'
                 key: username
 
           - name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                name: '{{ $.Release.Name }}-openwebui-user'
                 key: password
           {{- end }}
 
