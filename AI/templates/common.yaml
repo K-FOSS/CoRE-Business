@@ -345,6 +345,12 @@ controllers:
           - name: LOCALAGI_TIMEOUT
             value: '5m'
 
+          {{- if $.Values.mcpbox.enabled }}
+          - name: LOCALAGI_MCPBOX_URL
+            value: 'http://{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-mcpbox.{{ .Release.Namespace }}.svc.{{ $.Values.cluster.domain }}'
+
+          {{- end }}
+
           - name: LOCALAGI_LLM_API_URL
             value: 'http://172.31.192.12:8080'
 
