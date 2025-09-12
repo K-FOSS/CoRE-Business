@@ -520,17 +520,33 @@ controllers:
 
 persistence:
   {{- if $.Values.mcp.hub.enabled }}
-  mcphub:
+
+  mcphub-data:
     enabled: true
-    type: configMap
-    identifier: mcphub-config
+    type: persistentVolumeClaim
+
+    size: 5Gi
+
+    accessMode: ReadWriteOnce
+
+    storageClass: ssd-storage
 
     advancedMounts:
       mcphub:
         mcphub:
-          - path: /app/mcp_settings.json
-            readOnly: true
-            subPath: mcp_settings.json
+          - path: /app/data
+
+  # mcphub:
+  #   enabled: true
+  #   type: configMap
+  #   identifier: mcphub-config
+
+  #   advancedMounts:
+  #     mcphub:
+  #       mcphub:
+  #         - path: /app/mcp_settings.json
+  #           readOnly: true
+  #           subPath: mcp_settings.json
 
   {{- end }}
 
