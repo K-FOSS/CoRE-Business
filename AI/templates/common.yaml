@@ -435,25 +435,25 @@ controllers:
           - name: OAUTH_CLIENT_ID
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                name: '{{ $.Release.Name }}-oidc'
                 key: OIDC_CLIENT_ID
 
           - name: OAUTH_CLIENT_SECRET
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                name: '{{ $.Release.Name }}-oidc'
                 key: OIDC_CLIENT_SECRET
 
           - name: OPENID_PROVIDER_URL
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                name: '{{ $.Release.Name }}-oidc'
                 key: OIDC_ISSUER_URL
 
           - name: OAUTH_SCOPES
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-oidc'
+                name: '{{ $.Release.Name }}-oidc'
                 key: OIDC_SCOPES
 
           #
@@ -483,13 +483,13 @@ controllers:
           - name: LDAP_APP_DN
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                name: '{{ $.Release.Name }}-openwebui-user'
                 key: ldapsBIND
 
           - name: LDAP_APP_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                name: '{{ $.Release.Name }}-openwebui-user'
                 key: password
 
           #
