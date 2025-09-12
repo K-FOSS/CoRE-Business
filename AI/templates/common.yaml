@@ -797,6 +797,24 @@ persistence:
           - path: /backends
   {{- end }}
 
+  {{- if and $.Values.localagi.enabled $.Values.localagi.persistence.enabled }}
+  localagi-data:
+    enabled: true
+    type: persistentVolumeClaim
+
+    size: 5Gi
+
+    accessMode: ReadWriteOnce
+
+    storageClass: ssd-storage
+
+    advancedMounts:
+
+      localagi:
+        localagi:
+          - path: /pool
+  {{- end }}
+
 service:
   {{- if and $.Values.wyoming.enabled $.Values.wyoming.service.enabled }}
   wyoming:

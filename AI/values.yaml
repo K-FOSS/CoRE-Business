@@ -21,6 +21,9 @@ tts:
 localagi:
   enabled: true
 
+  persistence:
+    enabled: true
+
   image: quay.io/mudler/localagi
   tag: main
 
