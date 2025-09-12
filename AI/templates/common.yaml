@@ -463,7 +463,7 @@ controllers:
             value: 'True'
 
           - name: LDAP_SERVER_HOST
-            value: 'ldap.mylogin.space'
+            value: 'ldap-home1.mylogin.space'
 
           - name: LDAP_SERVER_PORT
             value: '636'
@@ -478,7 +478,7 @@ controllers:
             value: 'True'
 
           - name: LDAP_SEARCH_BASE
-            value: 'ou=users,dc=ldap,dc=mylogin,dc=space'
+            value: 'dc=ldap,dc=mylogin,dc=space'
 
           - name: LDAP_APP_DN
             valueFrom:
