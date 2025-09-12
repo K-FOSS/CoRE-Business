@@ -46,7 +46,7 @@ externalSecrets:
     name: mainvault-core
 
 gpustack:
-  enabled: false
+  enabled: true
 
   nodeSelector:
     kubernetes.io/hostname: hpc1
