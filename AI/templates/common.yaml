@@ -359,29 +359,6 @@ controllers:
             containerPort: 3000
   {{- end }}
 
-  {{- if $.Values.mcpbox.enabled }}
-  mcpbox:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
-    strategy: RollingUpdate
-
-    containers:
-      mcpbox:
-        image:
-          repository: {{ $.Values.mcpbox.image }}
-          tag: {{ default "latest" $.Values.mcpbox.tag }}
-          pullPolicy: IfNotPresent
-
-        env:
-          - name: DOCKER_HOST=
-            value: 'tcp://172.20.60.41:2475'
-
-        ports:
-          - name: http
-            containerPort: 8080
-  {{- end }}
-
   #
   # KubeDock
   #
@@ -542,8 +519,19 @@ controllers:
 
     name: openwebuimcp
 
-
     containers:
+      {{- if $.Values.mcpbox.enabled }}
+      mcpbox:
+        image:
+          repository: {{ $.Values.mcpbox.image }}
+          tag: {{ default "latest" $.Values.mcpbox.tag }}
+          pullPolicy: IfNotPresent
+
+        ports:
+          - name: http-alt
+            containerPort: 8080
+      {{- end }}
+
       {{- if $.Values.mcp.frr.enabled }}
       frr:
         image:
@@ -714,6 +702,11 @@ persistence:
         docker:
           - path: /certs/client
 
+        {{- if $.Values.mcpbox.enabled }}
+        mcpbox:
+          - path: /certs/client
+        {{- end }}
+
         mcpo:
           - path: /certs/client
 
@@ -725,6 +718,11 @@ persistence:
       openwebuimcp:
         docker:
           - path: /var/run
+
+        {{- if $.Values.mcpbox.enabled }}
+        mcpbox:
+          - path: /var/run
+        {{- end }}
 
         mcpo:
           - path: /var/run
@@ -1197,7 +1195,7 @@ service:
     enabled: true
 
     # -- Configure which controller this service should target
-    controller: mcpbox
+    controller: openwebuimcp
 
     # -- Make this the primary service for this controller (used in probes, notes, etc...).
     # If there is more than 1 service targeting the controller, make sure that only 1 service is
@@ -1237,7 +1235,7 @@ service:
         # -- The port number
         port: 80
 
-        targetPort: http
+        targetPort: 8080
 
         # -- Port protocol.
         # Support values are `HTTP`, `HTTPS`, `TCP` and `UDP`.
