@@ -461,7 +461,7 @@ controllers:
             valueFrom:
               secretKeyRef:
                 name: '{{ $.Release.Name }}-oidc'
-                key: OIDC_ISSUER_URL
+                key: OIDC_PROVIDER_URL
 
           - name: OAUTH_SCOPES
             valueFrom:
