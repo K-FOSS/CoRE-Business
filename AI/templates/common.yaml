@@ -424,7 +424,7 @@ controllers:
             value: 'CoRE-AI'
           
           - name: WEBUI_URL
-            value: 'ai.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.{{ .Values.region }}.mylogin.space'
+            value: 'https://ai.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.{{ .Values.region }}.mylogin.space'
 
           - name: ENABLE_CODE_EXECUTION
             value: 'False'
