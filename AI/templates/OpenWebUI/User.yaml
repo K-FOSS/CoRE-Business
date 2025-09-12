@@ -13,6 +13,10 @@ spec:
   psql:
     enabled: true
 
+    crossplane:
+      crossplaneProvider: psql-main
+      terraformProvider: psql
+
   writeConnectionSecretToRef:
     name: {{ .Release.Name }}-openwebui-user
 {{- end }}
