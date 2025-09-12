@@ -351,8 +351,25 @@ controllers:
         ports:
           - name: http
             containerPort: 3000
+  {{- end }}
 
+  {{- if $.Values.mcpbox.enabled }}
+  mcpbox:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
 
+    containers:
+      mcpbox:
+        image:
+          repository: {{ $.Values.mcpbox.image }}
+          tag: {{ default "latest" $.Values.mcpbox.tag }}
+          pullPolicy: IfNotPresent
+
+        ports:
+          - name: http
+            containerPort: 8080
   {{- end }}
 
   #

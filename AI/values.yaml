@@ -18,6 +18,13 @@ global:
 tts:
   enabled: true
 
+mcpbox:
+  enabled: true
+
+  image: quay.io/mudler/localagi-mcpbox
+
+  tag: main
+
 localagi:
   enabled: true
 
