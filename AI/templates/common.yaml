@@ -373,6 +373,10 @@ controllers:
           tag: {{ default "latest" $.Values.mcpbox.tag }}
           pullPolicy: IfNotPresent
 
+        env:
+          - name: DOCKER_HOST=
+            value: 'tcp://172.20.60.41:2475'
+
         ports:
           - name: http
             containerPort: 8080
