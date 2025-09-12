@@ -9,6 +9,59 @@ global:
 {{ end }}
 
 controllers:
+  {{- if .Values.wyoming.enabled }}
+  wyoming:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      wyoming:
+        image:
+          repository: {{- .Values.wyoming.image }}
+          tag: {{-  default "latest" .Values.wyoming.image }}
+          pullPolicy: IfNotPresent
+
+        # args:
+        #   - --config=/config/config.json
+
+        env:
+          - name: WYOMING_URI
+            value: 'tcp://0.0.0.0:10300'
+
+          - name: WYOMING_LOG_LEVEL
+            value: '{{ $.Values.wyoming.logs.level }}'
+
+          - name: STT_OPENAI_URL
+            value: 'http://172.31.192.12:8080/v1'
+
+          - name: STT_MODELS
+            value: 'whisper-small'
+
+          - name: STT_STREAMING_MODELS
+            value: ''
+
+          - name: STT_BACKEND
+            value: 'LOCALAI'
+
+          - name: TTS_OPENAI_URL
+            value: 'http://172.31.192.12:8880/v1'
+
+          - name: TTS_MODELS
+            value: 'tts-1-hd'
+
+          - name: TTS_BACKEND
+            value: 'OPENAI'
+
+          - name: TTS_VOICES
+            value: 'af_bella'
+
+        ports:
+          - name: http
+            containerPort: 10300
+  {{- end }}
+
   {{- if $.Values.mcp.hub.enabled }}
   mcphub:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
