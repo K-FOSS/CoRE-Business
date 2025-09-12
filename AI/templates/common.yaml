@@ -422,6 +422,9 @@ controllers:
         env:
           - name: WEBUI_NAME
             value: 'CoRE-AI'
+          
+          - name: WEBUI_URL
+            value: 'ai.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.{{ .Values.region }}.mylogin.space'
 
           - name: ENABLE_CODE_EXECUTION
             value: 'False'
@@ -443,6 +446,16 @@ controllers:
               secretKeyRef:
                 name: '{{ $.Release.Name }}-oidc'
                 key: OIDC_CLIENT_SECRET
+
+
+          - name: ENABLE_OAUTH_SIGNUP
+            value: 'true'
+
+          - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
+            value: 'true'
+
+          - name: OPENID_REDIRECT_URI
+            value: 'https://ai.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.{{ .Values.region }}.mylogin.space/oauth/oidc/callback'
 
           - name: OPENID_PROVIDER_URL
             valueFrom:
@@ -511,6 +524,9 @@ controllers:
 
           - name: DATABASE_HOST
             value: '{{ $.Values.owui.psql.host }}'
+
+          - name: DATABASE_PORT
+            value: '5432'
 
           - name: DATABASE_NAME
             valueFrom:
