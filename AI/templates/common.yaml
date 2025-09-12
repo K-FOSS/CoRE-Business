@@ -1179,7 +1179,7 @@ service:
         # -- Specify the appProtocol value for the Service.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
         appProtocol:
-  {{-end }}
+  {{- end }}
 
   {{- if .Values.mcp.enabled }}
   openwebuimcp:
