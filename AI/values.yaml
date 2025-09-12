@@ -79,7 +79,7 @@ localai:
 
 docker:
   mcp:
-    enabled: false
+    enabled: true
   kubedock:
     enabled: false
 
