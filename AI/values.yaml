@@ -143,7 +143,12 @@ llama:
     #   batchSize: 512
 
 owui:
-  enabled: false
+  enabled: true
+
+  psql:
+    enabled: true
+
+    host: psql.core-home1-talos-prod.home1.yvr.mylogin.space
 
   mcpo:
     enabled: true

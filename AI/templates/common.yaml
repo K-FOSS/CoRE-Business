@@ -492,12 +492,44 @@ controllers:
                 name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
                 key: password
 
+          #
+          # Redis
+          #
+
           - name: REDIS_URL
             value: 'redis://redis.mylogin.space/150'
 
           - name: WEBSOCKET_REDIS_URL
             value: 'redis://redis.mylogin.space/151'
 
+          #
+          # PSQL
+          #
+          {{- if $.Values.owui.psql.enabled }}
+          - name: DATABASE_TYPE
+            value: 'postgresql'
+
+          - name: DATABASE_HOST
+            value: '{{ $.Values.owui.psql.host }}'
+
+          - name: DATABASE_NAME
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                key: username
+
+          - name: DATABASE_USER
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                key: username
+
+          - name: DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "bjw-s.common.lib.chart.names.fullname" $ }}-openwebui-user'
+                key: password
+          {{- end }}
 
         ports:
           - name: http
