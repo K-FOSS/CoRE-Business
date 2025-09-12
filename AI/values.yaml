@@ -15,6 +15,16 @@ region: yxl
 global:
   test: 'test'
 
+tts:
+  enabled: true
+
+localagi:
+  enabled: true
+
+  image: quay.io/mudler/localagi
+  tag: main
+
+
 wyoming:
   enabled: true
 

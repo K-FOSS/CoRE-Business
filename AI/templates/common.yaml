@@ -9,6 +9,9 @@ global:
 {{ end }}
 
 controllers:
+  #
+  # Wyoming for easy automated configuration of TTS and STS from HomeAssistant and other services
+  #
   {{- if $.Values.wyoming.enabled }}
   wyoming:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -59,6 +62,10 @@ controllers:
             containerPort: 10300
   {{- end }}
 
+  #
+  # MCP Hub
+  #
+
   {{- if $.Values.mcp.hub.enabled }}
   mcphub:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -85,6 +92,10 @@ controllers:
             containerPort: 8080
   {{- end }}
 
+
+  #
+  # Easy configuration of MCP server containers
+  #
   {{- range $mcpIndex, $mcpServer := $.Values.mcp.containers }}
   mcpserver-{{ $mcpServer.name }}:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -110,6 +121,9 @@ controllers:
 
   {{- end }}
 
+  #
+  # GPUStack, TODO: Move my AI infra over to GPUStack without crashing the Windows PC LOL
+  # 
   {{ if $.Values.gpustack.enabled }}
   gpustack:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -142,6 +156,9 @@ controllers:
             containerPort: 80
   {{- end }}
 
+  #
+  # Llama Server Stack
+  #
   {{ range $modelIndex, $model := $.Values.llama.models }}
   llama-server-{{ $modelIndex }}:
     strategy: RollingUpdate
@@ -232,6 +249,9 @@ controllers:
               failureThreshold: 30
   {{- end }}
 
+  #
+  # LocalAI
+  #
   {{- if $.Values.localai.enabled }}
   localai:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -290,6 +310,56 @@ controllers:
             containerPort: 8080
   {{- end }}
 
+  #
+  # LocalAGI
+  #
+  # ChatGPT Responses API and Chat Bot interface by same dev as LocalAI
+  #
+  # TODO: See if I can do some Gateway API fuckery and get HomeAssistant upstream OpenAI Component interfacing 
+  # with local AI Instances, right now I am using a custom component
+  #
+  {{- if $.Values.localagi.enabled }}
+  localagi:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      localagi:
+        image:
+          repository: {{ $.Values.localagi.image }}
+          tag: {{ default "latest" $.Values.localagi.tag }}
+          pullPolicy: IfNotPresent
+
+        env:
+          - name: LOCALAGI_MODEL
+            value: 'tcp://0.0.0.0:10300'
+
+          - name: LOCALAGI_IMAGE_MODEL
+            value: ''
+
+          - name: LOCALAGI_MULTIMODAL_MODEL
+            value: ''
+
+          - name: LOCALAGI_TIMEOUT
+            value: '5m'
+
+          - name: LOCALAGI_LLM_API_URL
+            value: 'http://172.31.192.12:8080'
+
+        ports:
+          - name: http
+            containerPort: 3000
+
+
+  {{- end }}
+
+  #
+  # KubeDock
+  #
+  # TODO: Test this out instead of Docker-in-Docker
+  #
   {{- if $.Values.docker.mcp.enabled }}
   docker:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -316,12 +386,14 @@ controllers:
             containerPort: 2475
   {{- end }}
 
-
+  #
+  # OpenWebUI, a ChatGPT Like Web Interface and API Gateway for AI models and tools and the like in a
+  # Easy to use Web Interface with SSO
+  #
+  # TODO: Checkout other options, ideally with better MCP support lol
+  # 
   {{- if $.Values.owui.enabled }}
   openwebui:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
     name: openwebui
@@ -428,6 +500,12 @@ controllers:
             containerPort: 8080
   {{- end }}
 
+  #
+  # OpenWebUI MCP
+  #
+  # OpenWebUI for some stupid silly reason refuses to adopt the standard MCP in favor of an overly complicated legacy
+  # OpenAPI Integration which makes it annoying for me running MCP and OpenWebUI tools and interfaces
+  #
   {{- if $.Values.mcp.enabled }}
   openwebuimcp:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -570,7 +648,6 @@ controllers:
 
 persistence:
   {{- if $.Values.mcp.hub.enabled }}
-
   mcphub-data:
     enabled: true
     type: persistentVolumeClaim
