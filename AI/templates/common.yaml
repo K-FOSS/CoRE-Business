@@ -20,7 +20,7 @@ controllers:
       wyoming:
         image:
           repository: {{ .Values.wyoming.image }}
-          tag: {{ default "latest" .Values.wyoming.image }}
+          tag: {{ default "latest" .Values.wyoming.tag }}
           pullPolicy: IfNotPresent
 
         env:
