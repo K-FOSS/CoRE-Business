@@ -497,10 +497,10 @@ controllers:
           #
 
           - name: REDIS_URL
-            value: 'redis://redis.mylogin.space/150'
+            value: 'redis://redis.home1.mylogin.space/150'
 
           - name: WEBSOCKET_REDIS_URL
-            value: 'redis://redis.mylogin.space/151'
+            value: 'redis://redis.home1.mylogin.space/151'
 
           #
           # PSQL
