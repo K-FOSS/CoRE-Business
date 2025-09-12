@@ -51,8 +51,8 @@ spec:
         signing_key = data.authentik_certificate_key_pair.cert.id
         allowed_redirect_uris = [
           {
-            matching_mode = "regex",
-            url           = "https://openwebui.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.resolvemy.host/.*",
+            matching_mode = "strict",
+            url           = "https://ai.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.{{ .Values.region }}.mylogin.space/oauth/oidc/callback",
           },
         ]
 
@@ -102,6 +102,11 @@ spec:
 
       output "OIDC_ISSUER_URL" {
         value = "{{ .Values.oauth.authentik.urlBase }}/application/o/{{ .Values.oauth.indexKey }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}/"
+        sensitive = true
+      }
+
+      output "OIDC_PROVIDER_URL" {
+        value = "{{ .Values.oauth.authentik.urlBase }}/application/o/{{ .Values.oauth.indexKey }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}/.well-known/openid-configuration"
         sensitive = true
       }
 
