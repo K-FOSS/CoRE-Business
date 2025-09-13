@@ -1,3 +1,4 @@
+{{- if .Values.nextcloud.enabled }}
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -35,4 +36,4 @@ spec:
       remoteRef:
         key: Nextcloud/Encryption
         property: Token
-
+{{- end }}

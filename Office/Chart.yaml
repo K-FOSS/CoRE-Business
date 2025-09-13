@@ -20,6 +20,7 @@ dependencies:
   #
   - name: nextcloud
     version: '6.6.3'
+    condition: nextcloud.enabled
     repository: https://nextcloud.github.io/helm/
 
   #

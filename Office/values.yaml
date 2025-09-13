@@ -5,7 +5,12 @@ gateway:
   namespace: core-prod
   sectionName: https-myloginspace
 
+externalSecrets:
+  enabled: true
 
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: mainvault-core
 
 pdf:
   enabled: true
@@ -502,6 +507,9 @@ collabora-code:
     path: /
               
 nextcloud:
+
+  enabled: true
+
   ## Official nextcloud image version
   ## ref: https://hub.docker.com/r/library/nextcloud/tags/
   ##
@@ -546,7 +554,6 @@ nextcloud:
     protocol: https
 
   nextcloud:
-
     ## Use an existing secret
     existingSecret:
       enabled: true

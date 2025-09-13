@@ -1,19 +1,26 @@
+{{- if .Values.nextcloud.enabled }}
+
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:
-  name: office-user
+  name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
 
 spec:
   name: NextCloud
 
-  database:
-    name: SzS9n9UxZS
+  psql:
+    enabled: true
 
-  buckets:
-    - f85b4a70-285a-110b-d970-84d3b7ca35d1-fy5mhz
+    crossplane:
+      crossplaneProvider: psql-main
+      terraformProvider: psql
+
+  s3:
+    enabled: true
 
   groups:
     - LDAPService
 
   writeConnectionSecretToRef:
-    name: nc-office-creds
+    name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}-creds
+{{- end }}
