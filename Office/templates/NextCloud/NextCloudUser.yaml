@@ -24,7 +24,7 @@ spec:
       crossplaneProvider: s3-yvr-home1-core
 
     writeCredentialsSecretRef:
-      name: {{ include "loki.fullname" $.Subcharts.loki }}-s3-creds
+      name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}-s3-creds
       namespace: {{ .Release.Namespace }}
 
   groups:
