@@ -12,6 +12,7 @@ dependencies:
   #
   - name: collabora-online
     version: 1.1.31
+    condition: collabora-online.enabled
     repository: https://collaboraonline.github.io/online/
   
   #

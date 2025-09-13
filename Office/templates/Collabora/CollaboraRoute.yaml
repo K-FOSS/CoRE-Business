@@ -1,3 +1,6 @@
+{{- $values := index .Values "collabora-online" }}
+{{- $chart := index $.Subcharts "collabora-online" }}
+{{- if $values.enabled }}
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: HTTPRoute
 metadata:
@@ -16,15 +19,16 @@ spec:
       sectionName: {{ .Values.gateway.sectionName }}
 
   hostnames:
-    - 'collabora.mylogin.space'
+    - {{ $values.domain }}
   rules:
     - backendRefs:
         - group: ''
           kind: Service
-          name: dc1-k3s-node1-business-office-collabora-online
-          port: 9980
+          name: {{ include "collabora-online.fullname" $chart }}
+          port: {{ $values.service.port }}
           weight: 1
 
       timeouts:
         request: 300s
         backendRequest: 300s
+{{- end }}

@@ -5,6 +5,8 @@ gateway:
   namespace: core-prod
   sectionName: https-myloginspace
 
+
+
 pdf:
   enabled: true
 
@@ -18,6 +20,10 @@ collabora-online:
   # Default values for newchart.
   # This is a YAML-formatted file.
   # Declare variables to be passed into your templates.
+
+  enabled: false
+
+  domain: collabora.mylogin.space
 
   image:
     repository: collabora/code
