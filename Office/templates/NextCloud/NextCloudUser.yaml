@@ -24,12 +24,12 @@ spec:
       crossplaneProvider: s3-yvr-home1-core
 
     writeCredentialsSecretRef:
-      name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}-s3-creds
+      name: office-nextcloud-s3-creds
       namespace: {{ .Release.Namespace }}
 
   groups:
     - LDAPService
 
   writeConnectionSecretToRef:
-    name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}-creds
+    name: office-nextcloud-creds
 {{- end }}
