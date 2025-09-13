@@ -4,9 +4,10 @@ kind: ExternalSecret
 metadata:
   name: business-office-nextcloud-keys-prod-sync
 spec:
+  {{- with .Values.externalSecrets.secretStoreRef }}
   secretStoreRef:
-    kind: ClusterSecretStore
-    name: mainvault-core
+    {{- toYaml . | nindent 4  }}
+  {{- end }}
 
   target:
     name: business-office-nextcloud-keys-prod
