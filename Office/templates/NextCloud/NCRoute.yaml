@@ -71,7 +71,7 @@ spec:
     - backendRefs:
         - group: ''
           kind: Service
-          name: dc1-k3s-node1-business-office-nextcloud
+          name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
           port: 8080
           weight: 1
 
