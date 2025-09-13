@@ -5,6 +5,18 @@ gateway:
   namespace: core-prod
   sectionName: https-myloginspace
 
+env: prod
+
+hub: true
+
+cluster:
+  name: k8s
+  domain: cluster.local
+
+datacenter: dc1
+
+region: yxl
+
 externalSecrets:
   enabled: true
 

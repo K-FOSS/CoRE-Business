@@ -1,12 +1,11 @@
 {{- if .Values.nextcloud.enabled }}
-
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:
   name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
 
 spec:
-  name: NextCloud
+  name: NextCloud {{ .Values.region }}
 
   psql:
     enabled: true
