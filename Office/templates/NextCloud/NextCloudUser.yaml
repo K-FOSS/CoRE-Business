@@ -2,7 +2,7 @@
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:
-  name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
+  name: nextcloud-core-{{ .Values.env }}
 
 spec:
   name: NextCloud {{ .Values.region }}
