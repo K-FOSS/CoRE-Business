@@ -1155,7 +1155,7 @@ nextcloud:
       - name: POSTGRES_DB
         valueFrom:
           secretKeyRef:
-            name: {{ .Release.Name }}-creds
+            name: '{{ .Release.Name }}-creds'
             key: username
 
       - name: POSTGRES_USER
