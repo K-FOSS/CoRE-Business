@@ -5,6 +5,15 @@ gateway:
   namespace: core-prod
   sectionName: https-myloginspace
 
+pdf:
+  enabled: true
+
+  domain: pdf.mylogin.space
+
+  image: frooodle/s-pdf
+
+  tag: latest
+
 collabora-online:
   # Default values for newchart.
   # This is a YAML-formatted file.
