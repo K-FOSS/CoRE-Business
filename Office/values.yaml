@@ -1155,20 +1155,20 @@ nextcloud:
       - name: POSTGRES_DB
         valueFrom:
           secretKeyRef:
-            name: '{{ .Release.Name }}-creds'
+            name: office-nextcloud-creds
             key: username
 
       - name: POSTGRES_USER
         valueFrom:
           secretKeyRef:
-            name: business-office-nextcloud-database-prod
-            key: Username
+            name: office-nextcloud-creds
+            key: username
     
       - name: POSTGRES_PASSWORD
         valueFrom:
           secretKeyRef:
-            name: business-office-nextcloud-database-prod
-            key: Password
+            name: office-nextcloud-creds
+            key: password
 
 
       #
@@ -1212,20 +1212,20 @@ nextcloud:
       - name: OBJECTSTORE_S3_BUCKET
         valueFrom:
           secretKeyRef:
-            name: business-office-nextcloud-s3-prod
-            key: S3Bucket
+            name: office-nextcloud-creds
+            key: username
 
       - name: OBJECTSTORE_S3_KEY
         valueFrom:
           secretKeyRef:
-            name: business-office-nextcloud-s3-prod
-            key: S3AccessKey
+            name: office-nextcloud-s3-creds
+            key: AccessKey
 
       - name: OBJECTSTORE_S3_SECRET
         valueFrom:
           secretKeyRef:
-            name: business-office-nextcloud-s3-prod
-            key: S3SecretKey
+            name: office-nextcloud-s3-creds
+            key: SecretAccessKey
 
 
     # Extra mounts for the pods. Example shown is for connecting a legacy NFS volume
