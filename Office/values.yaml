@@ -1257,23 +1257,23 @@ nextcloud:
   ## External database configuration
   ##
   externalDatabase:
-    enabled: false
+    enabled: true
 
     ## Supported database engines: mysql or postgresql
-    # type: postgresql
+    type: postgresql
 
     # ## Database host
-    # host: psql-int.mylogin.space:5432
+    host: psql-int.mylogin.space:5432
 
     # ## Database name
     # database: SzS9n9UxZS
 
     # ## Use a existing secret
-    # existingSecret:
-    #   enabled: true
-    #   secretName: nc-office-creds
-    #   usernameKey: username
-    #   passwordKey: password
+    existingSecret:
+      enabled: true
+      secretName: office-nextcloud-creds
+      usernameKey: username
+      passwordKey: password
 
   ##
   ## MariaDB chart configuration
