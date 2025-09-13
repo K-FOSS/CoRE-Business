@@ -1,0 +1,12 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  compression:
+    - type: Brotli
+    - type: Gzip
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: office-ingress
