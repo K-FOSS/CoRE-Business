@@ -1113,17 +1113,17 @@ nextcloud:
           )
         );
 
-      # db.config.php: |-
-      #   <?php
-      #     $CONFIG = array (
-      #       'dbtype' => 'pgsql',
-      #       'dbname' => getenv('POSTGRES_DB'),
-      #       'dbhost' => 'psql-int.mylogin.space:5432',
-      #       'dbport' => '',
-      #       'dbtableprefix' => 'oc_',
-      #       'dbuser' => getenv('POSTGRES_USER'),
-      #       'dbpassword' => getenv('POSTGRES_PASSWORD'),
-      #     );
+      db.config.php: |-
+        <?php
+          $CONFIG = array (
+            'dbtype' => 'pgsql',
+            'dbname' => getenv('POSTGRES_DB'),
+            'dbhost' => getenv('POSTGRES_HOST'),
+            'dbport' => '',
+            'dbtableprefix' => 'oc_',
+            'dbuser' => getenv('POSTGRES_USER'),
+            'dbpassword' => getenv('POSTGRES_PASSWORD'),
+          );
 
       secrets.config.php: |-
         <?php
@@ -1149,26 +1149,26 @@ nextcloud:
       #
       # Database
       #
-      # - name: POSTGRES_HOST
-      #   value: 'psql.service.dc1.kjdev:5432'
+      - name: POSTGRES_HOST
+        value: 'psql.core-home1-talos-prod.home1.yvr.mylogin.space:5432'
 
-      # - name: POSTGRES_DB
-      #   valueFrom:
-      #     secretKeyRef:
-      #       name: business-office-nextcloud-database-prod
-      #       key: DatabaseDatabase
+      - name: POSTGRES_DB
+        valueFrom:
+          secretKeyRef:
+            name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}-creds
+            key: username
 
-      # - name: POSTGRES_USER
-      #   valueFrom:
-      #     secretKeyRef:
-      #       name: business-office-nextcloud-database-prod
-      #       key: Username
+      - name: POSTGRES_USER
+        valueFrom:
+          secretKeyRef:
+            name: business-office-nextcloud-database-prod
+            key: Username
     
-      # - name: POSTGRES_PASSWORD
-      #   valueFrom:
-      #     secretKeyRef:
-      #       name: business-office-nextcloud-database-prod
-      #       key: Password
+      - name: POSTGRES_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: business-office-nextcloud-database-prod
+            key: Password
 
 
       #
@@ -1195,13 +1195,13 @@ nextcloud:
       # Redis
       #
       - name: REDIS_HOST
-        value: 'redis.mylogin.space'
+        value: 'redis.home1.mylogin.space'
 
       #
       # Storage
       #
       - name: OBJECTSTORE_S3_HOST
-        value: s3.mylogin.space
+        value: s3.core-home1-talos-prod.home1.yvr.mylogin.space
 
       - name: OBJECTSTORE_S3_PORT
         value: '443'
