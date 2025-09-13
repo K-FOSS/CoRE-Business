@@ -17,6 +17,10 @@ spec:
   s3:
     enabled: true
 
+    crossplane:
+      terraformProvider: s3-yvr-home1-core
+      crossplaneProvider: s3-yvr-home1-core
+
   groups:
     - LDAPService
 
