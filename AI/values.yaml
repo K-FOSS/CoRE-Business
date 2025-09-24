@@ -68,6 +68,17 @@ speeches:
     gpu-node: 'true'
 
 
+tts:
+  enabled: true
+
+  image: ghcr.io/remsky/kokoro-fastapi-gpu
+  tag: v0.2.4
+
+  runtimeClassName: nvidia
+
+  nodeSelector:
+    gpu-node: 'true'
+
 externalSecrets:
   enabled: true
 

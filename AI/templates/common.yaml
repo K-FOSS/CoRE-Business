@@ -740,6 +740,35 @@ controllers:
             containerPort: 8000
   {{- end }}
 
+  {{- if $.Values.tts.enabled }}
+  tts:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    pod:
+      {{- with $.Values.tts.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+
+      runtimeClassName: {{ $.Values.tts.runtimeClassName }}
+
+    containers:
+      tts:
+        image:
+          repository: {{ .Values.tts.image }}
+          tag: {{ default "latest" .Values.tts.tag }}
+          pullPolicy: IfNotPresent
+
+        #env:
+
+        ports:
+          - name: http
+            containerPort: 8880
+  {{- end }}
+
 persistence:
   {{- if $.Values.mcp.hub.enabled }}
   mcphub-data:
