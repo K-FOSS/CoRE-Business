@@ -56,6 +56,16 @@ wyoming:
 
   languages: 'en'
 
+speeches:
+  enabled: true
+
+  image: ghcr.io/speaches-ai/speaches
+  tag: latest-cuda
+
+  runtimeClassName: nvidia
+
+  nodeSelector:
+    gpu-node: 'true'
 
 
 externalSecrets:

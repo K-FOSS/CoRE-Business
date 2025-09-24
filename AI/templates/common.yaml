@@ -708,6 +708,34 @@ controllers:
               failureThreshold: 30
   {{- end }}
 
+  {{- if $.Values.speeches.enabled }}
+  speeches:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    pod:
+      {{- with $.Values.speeches.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+
+      runtimeClassName: {{ $.Values.speeches.runtimeClassName }}
+
+    containers:
+      speeches:
+        image:
+          repository: {{ .Values.speeches.image }}
+          tag: {{ default "latest" .Values.speeches.tag }}
+          pullPolicy: IfNotPresent
+
+        #env:
+
+        ports:
+          - name: http
+            containerPort: 8000
+  {{- end }}
 
 persistence:
   {{- if $.Values.mcp.hub.enabled }}
@@ -887,6 +915,22 @@ persistence:
         localagi:
           - path: /pool
   {{- end }}
+
+  {{- if $.Values.speeches.enabled }}
+  speeches-data:
+    enabled: true
+    type: persistentVolumeClaim
+
+    size: 5Gi
+
+    accessMode: ReadWriteOnce
+
+    advancedMounts:
+      speeches:
+        speeches:
+          - path: /home/ubuntu/.cache/huggingface/hub 
+  {{- end }}
+
 
 service:
   {{- if and $.Values.wyoming.enabled $.Values.wyoming.service.enabled }}
