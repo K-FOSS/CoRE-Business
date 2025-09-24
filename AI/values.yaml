@@ -60,7 +60,7 @@ speeches:
   enabled: true
 
   image: ghcr.io/speaches-ai/speaches
-  tag: latest-cuda
+  tag: 0.8.0-rc.3-cuda-12.4.1
 
   runtimeClassName: nvidia
 
