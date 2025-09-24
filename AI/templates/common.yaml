@@ -723,6 +723,9 @@ controllers:
 
       runtimeClassName: {{ $.Values.speeches.runtimeClassName }}
 
+      securityContext:
+        fsGroup: 1000
+
     containers:
       speeches:
         image:
