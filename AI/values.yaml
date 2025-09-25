@@ -15,15 +15,6 @@ region: yxl
 global:
   test: 'test'
 
-tts:
-  enabled: true
-
-  externalBackend:
-    - name: hpc3-windows
-      endpoint:
-        ip:
-          address: 172.31.192.12
-          port: 8880
 
 mcpbox:
   enabled: true
@@ -85,6 +76,14 @@ tts:
 
   nodeSelector:
     gpu-node: 'true'
+
+  externalBackend:
+    - name: hpc3-windows
+      endpoint:
+        ip:
+          address: 172.31.192.12
+          port: 8880
+
 
 externalSecrets:
   enabled: true
