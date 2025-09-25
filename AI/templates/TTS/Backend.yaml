@@ -1,0 +1,13 @@
+{{- if $.Values.tts.enabled }}
+{{- range $backendIndex, $backend := $.Values.tts.externalBackend }}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: {{ $backend.name }}
+
+spec:
+  endpoints:
+    - {{ nindent 6 (toYaml $backend.endpoint) | trim }}
+---
+{{- end }}
+{{- end }}
