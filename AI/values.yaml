@@ -237,6 +237,7 @@ gateway:
       purelb.io/allow-shared-ip: ai.int.mylogin.space
       purelb.io/service-group: core-anycast
       purelb.io/allow-local: 'true'
+      purelb.io/addresses: 10.1.1.19
 
   labels:
     wan-mode: 'public'
