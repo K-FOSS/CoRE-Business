@@ -1688,6 +1688,7 @@ route:
             kind: Backend
             name: {{ $backend.name }}
             namespace: {{ $.Release.Namespace }}
+            port: {{ range $endpoint := $backend.endpoint }}{{ $endpoint.port }}{{ end }}
           {{- end }}
 
           - kind: Service
