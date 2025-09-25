@@ -11,7 +11,7 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
-  gatewayClassName: eg-{{ .Values.tenant }}
+  gatewayClassName: eg-{{ .Values.gateway.tenant }}
 
   {{- with .Values.gateway.service.annotations }}
   infrastructure:
