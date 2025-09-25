@@ -43,7 +43,7 @@ wyoming:
   tag: latest
 
   tts:
-    endpoint: http://172.31.192.12:8880/v1
+    endpoint: https://tts.int.mylogin.space/v1
 
     models: 'tts-1-hd'
 
