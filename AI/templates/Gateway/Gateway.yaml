@@ -1,0 +1,43 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: ai-gw
+
+  {{- with .Values.gateway.labels }}
+  labels:
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ tpl $value $ | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  gatewayClassName: eg-{{ .Values.tenant }}
+
+  {{- with .Values.gateway.service.annotations }}
+  infrastructure:
+    annotations:
+      {{- range $key, $value := . }}
+      {{ $key }}: {{ tpl $value $ | quote }}
+      {{- end }}
+  {{- end }}
+
+  listeners:
+    - name: https
+      port: 443
+      protocol: HTTPS
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ''
+            kind: Secret
+            name: myloginspace-default-certificates
+            namespace: core-prod
+
+          - group: ''
+            kind: Secret
+            name: myloginspace-int-default-certificates
+            namespace: core-prod
+{{- end }}

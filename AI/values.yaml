@@ -223,3 +223,25 @@ oauth:
   groups: []
   authentik:
     urlBase: https://idp.mylogin.space
+
+
+gateway:
+  enabled: true
+
+  tenant: testing
+
+  service:
+    labels:
+
+    annotations:
+      purelb.io/allow-shared-ip: ai.int.mylogin.space
+      purelb.io/service-group: core-anycast
+      purelb.io/allow-local: 'true'
+
+  labels:
+    wan-mode: 'public'
+    lan-mode: 'private'
+    resolvemy.host/gw: 'ai-gw'
+    resolvemy.host/gw-ns: '{{ .Release.Namespace }}'
+    resolvemy.host/security: 'private'
+    resolvemy.host/env: 'prod'
