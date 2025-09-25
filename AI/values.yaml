@@ -210,7 +210,7 @@ ai:
 
     create: true
 
-gateway:
+pubgateway:
   name: main-gw
   namespace: core-prod
   sectionName: https-myloginspace

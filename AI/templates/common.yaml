@@ -1573,12 +1573,12 @@ route:
         kind: Gateway
 
         # Name of the referent resource
-        name: {{ $.Values.gateway.name }}
+        name: {{ $.Values.pubgateway.name }}
 
-        sectionName: {{ $.Values.gateway.sectionName }}
+        sectionName: {{ $.Values.pubgateway.sectionName }}
 
         # Namespace of the referent resource
-        namespace: {{ $.Values.gateway.namespace }}
+        namespace: {{ $.Values.pubgateway.namespace }}
 
     # -- Configure rules for routing. Defaults to the primary service.
     rules:
