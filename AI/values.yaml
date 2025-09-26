@@ -64,7 +64,7 @@ wyoming:
     streamingModels: []
 
   logs:
-    level: INFO
+    level: DEBUG
 
   languages: 'en'
 
