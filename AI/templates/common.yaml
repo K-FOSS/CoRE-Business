@@ -1699,7 +1699,7 @@ route:
           {{- range $backendIndex, $backend := $.Values.speeches.externalBackend }}
           - group: gateway.envoyproxy.io
             kind: Backend
-            name: {{ $backend.name }}-stt
+            name: {{ $backend.name }}-speaches
             namespace: {{ $.Release.Namespace }}
             port: {{ range $endpoint := $backend.endpoint }}{{ $endpoint.port }}{{ end }}
           {{- end }}
