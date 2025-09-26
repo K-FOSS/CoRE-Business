@@ -1668,6 +1668,7 @@ route:
 
     hostnames:
       - stt.int.mylogin.space
+      - tts.int.mylogin.space
 
     # -- Configure the resource the route attaches to.
     parentRefs:
@@ -1690,6 +1691,9 @@ route:
       - matches:
           - path:
               value: /v1/audio/transcriptions
+
+          - path:
+              value: /v1/audio/speech
 
         backendRefs:
           {{- range $backendIndex, $backend := $.Values.speeches.externalBackend }}

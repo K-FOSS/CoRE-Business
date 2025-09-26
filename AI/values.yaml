@@ -81,14 +81,14 @@ speeches:
       endpoint:
         ip:
           address: 172.31.192.12
-          port: 8080
+          port: 8001
 
   nodeSelector:
     gpu-node: 'true'
 
 
 tts:
-  enabled: true
+  enabled: false
 
   image: ghcr.io/remsky/kokoro-fastapi-gpu
   tag: v0.2.4
