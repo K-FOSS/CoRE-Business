@@ -49,7 +49,10 @@ controllers:
             value: '{{ $.Values.wyoming.tts.endpoint }}'
 
           - name: TTS_MODELS
-            value: '{{ $.Values.wyoming.tts.models }}'
+            value: '{{ $.Values.wyoming.tts.models | join " " }}'
+          
+          - name: TTS_STREAMING_MODELS
+            value: '{{ $.Values.wyoming.tts.streamingModels | join " " }}'
 
           - name: TTS_BACKEND
             value: 'OPENAI'

@@ -45,7 +45,11 @@ wyoming:
   tts:
     endpoint: https://tts.int.mylogin.space/v1
 
-    models: 'tts-1-hd'
+    models:
+      - tts-1-hd
+
+    streamingModels:
+      - tts-1-hd
 
     voices: 'af_bella'
 
@@ -55,8 +59,7 @@ wyoming:
     models:
       - Systran/faster-distil-whisper-small.en
 
-    streamingModels:
-      - Systran/faster-distil-whisper-small.en
+    streamingModels: []
 
   logs:
     level: INFO
