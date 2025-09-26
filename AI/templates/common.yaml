@@ -1647,6 +1647,59 @@ route:
             weight: 1
   {{- end }}
 
+  {{- if .Values.speeches.enabled }}
+  speeches:
+    # -- Enables or disables the route
+    enabled: true
+
+    # -- Set the route kind
+    # Valid options are GRPCRoute, HTTPRoute, TCPRoute, TLSRoute, UDPRoute
+    kind: HTTPRoute
+
+    # -- Provide additional labels which may be required.
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+
+    hostnames:
+      - stt.int.mylogin.space
+
+    # -- Configure the resource the route attaches to.
+    parentRefs:
+      - # Group of the referent resource.
+        group: gateway.networking.k8s.io
+
+        # Kind of the referent resource.
+        kind: Gateway
+
+        # Name of the referent resource
+        name: ai-gw
+
+        sectionName: https
+
+        # Namespace of the referent resource
+        namespace: {{ $.Release.Namespace }}
+
+    # -- Configure rules for routing. Defaults to the primary service.
+    rules:
+      - matches:
+          - path:
+              value: /v1/audio/transcriptions
+
+        backendRefs:
+          {{- range $backendIndex, $backend := $.Values.speeches.externalBackend }}
+          - group: gateway.envoyproxy.io
+            kind: Backend
+            name: {{ $backend.name }}-stt
+            namespace: {{ $.Release.Namespace }}
+            port: {{ range $endpoint := $backend.endpoint }}{{ $endpoint.port }}{{ end }}
+          {{- end }}
+
+          - kind: Service
+            port: 80
+            identifier: speeches
+  {{- end }}
+
   {{- if .Values.tts.enabled }}
   tts:
     # -- Enables or disables the route
@@ -1682,11 +1735,15 @@ route:
 
     # -- Configure rules for routing. Defaults to the primary service.
     rules:
-      - backendRefs:
+      - matches:
+          - path:
+              value: /v1/audio/speech
+
+        backendRefs:
           {{- range $backendIndex, $backend := $.Values.tts.externalBackend }}
           - group: gateway.envoyproxy.io
             kind: Backend
-            name: {{ $backend.name }}
+            name: {{ $backend.name }}-tts
             namespace: {{ $.Release.Namespace }}
             port: {{ range $endpoint := $backend.endpoint }}{{ $endpoint.port }}{{ end }}
           {{- end }}

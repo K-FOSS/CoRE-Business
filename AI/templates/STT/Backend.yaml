@@ -1,9 +1,9 @@
-{{- if $.Values.tts.enabled }}
-{{- range $backendIndex, $backend := $.Values.tts.externalBackend }}
+{{- if $.Values.speeches.enabled }}
+{{- range $backendIndex, $backend := $.Values.speeches.externalBackend }}
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: Backend
 metadata:
-  name: {{ $backend.name }}-tts
+  name: {{ $backend.name }}-stt
 
 spec:
   endpoints:

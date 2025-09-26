@@ -62,6 +62,13 @@ speeches:
 
   runtimeClassName: nvidia
 
+  externalBackend:
+    - name: hpc3-windows
+      endpoint:
+        ip:
+          address: 172.31.192.12
+          port: 8080
+
   nodeSelector:
     gpu-node: 'true'
 
