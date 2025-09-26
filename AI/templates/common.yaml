@@ -19,6 +19,8 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
+    replicas: {{ default 1 $.Values.wyoming.replicas }}
+
     containers:
       wyoming:
         image:

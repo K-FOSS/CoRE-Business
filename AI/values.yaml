@@ -36,6 +36,8 @@ localagi:
 wyoming:
   enabled: true
 
+  replicas: 2
+
   service:
     enabled: true
 
