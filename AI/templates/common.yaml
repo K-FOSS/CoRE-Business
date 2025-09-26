@@ -34,13 +34,13 @@ controllers:
             value: '{{ $.Values.wyoming.logs.level }}'
 
           - name: STT_OPENAI_URL
-            value: 'http://172.31.192.12:8080/v1'
+            value: '{{ $.Values.wyoming.stt.endpoint }}'
 
           - name: STT_MODELS
-            value: 'whisper-small'
+            value: '{{ $.Values.wyoming.stt.models | join " " }}'
 
           - name: STT_STREAMING_MODELS
-            value: ''
+            value: '{{ $.Values.wyoming.stt.streamingModels | join " " }}'
 
           - name: STT_BACKEND
             value: 'LOCALAI'

@@ -49,6 +49,15 @@ wyoming:
 
     voices: 'af_bella'
 
+  stt:
+    endpoint: https://stt.int.mylogin.space/v1
+
+    models:
+      - Systran/faster-distil-whisper-small.en
+
+    streamingModels:
+      - Systran/faster-distil-whisper-small.en
+
   logs:
     level: INFO
 
