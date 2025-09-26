@@ -1,12 +1,13 @@
+{{- if $.Values.speeches.enabled }}
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
-  name: {{ .Release.Name }}-tts
+  name: {{ .Release.Name }}-speeches
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      name: {{ .Release.Name }}-tts
+      name: {{ .Release.Name }}-speaches
 
   timeout:
     http:
@@ -21,3 +22,4 @@ spec:
         path: /health
         expectedStatuses:
           - 200
+{{- end }}
