@@ -151,7 +151,7 @@ gpustack:
 
       args:
         - --server-url
-        - https://gpustack.int.mylogin.space
+        - https://gpustack.mylogin.space
         - --token
         - <path:CORE0_SITE1/data/AI/GPUStack#Token>
 
