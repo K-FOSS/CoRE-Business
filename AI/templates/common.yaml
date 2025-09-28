@@ -184,6 +184,10 @@ controllers:
         {{ toYaml . | nindent 8 }}
       {{- end }}
 
+      {{- with $worker.pod }}
+      {{ toYaml . | nindent 6 }}
+      {{- end }}
+
     containers:
       gpustack-worker:
         image:

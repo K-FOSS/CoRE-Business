@@ -161,6 +161,27 @@ gpustack:
       nodeSelector:
         gpu-node: 'false'
 
+    - name: gpu-worker
+      enabled: true
+      image: gpustack/gpustack
+      tag: latest-cuda12.8
+      pullPolicy: Always
+
+      pod:
+        runtimeClassName: nvidia
+
+      args:
+        - --server-url
+        - https://gpustack.mylogin.space
+        - --token
+        - <path:CORE0_SITE1/data/AI/GPUStack#Token>
+
+      controller:
+        type: daemonset
+
+      nodeSelector:
+        gpu-node: 'true'
+
 localai:
   enabled: false
 
