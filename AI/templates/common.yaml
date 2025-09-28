@@ -197,7 +197,7 @@ controllers:
       gpustack-worker:
         image:
           repository: {{ $worker.image }}
-          tag: {{ default $worker.tag "latest" }}
+          tag: {{ default "latest" $worker.tag }}
           pullPolicy: {{ default $worker.pullPolicy "Always" }}
 
         {{- with $worker.args }}
