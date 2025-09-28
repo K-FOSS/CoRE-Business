@@ -1717,6 +1717,51 @@ service:
 
 
 route:
+  {{- if and $.Values.gpustack.enabled $.Values.gpustack.server.enabled $.Values.gpustack.gateway.enabled $.Values.gpustack.gateway.httproute.enabled  }}
+  gpustack:
+    # -- Enables or disables the route
+    enabled: true
+
+    # -- Set the route kind
+    # Valid options are GRPCRoute, HTTPRoute, TCPRoute, TLSRoute, UDPRoute
+    kind: HTTPRoute
+
+    # -- Provide additional labels which may be required.
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+
+    hostnames:
+      {{ toYaml $.Values.gpustack.gateway.httproute.domains | nindent 6 }}
+
+    # -- Configure the resource the route attaches to.
+    parentRefs:
+      - # Group of the referent resource.
+        group: gateway.networking.k8s.io
+
+        # Kind of the referent resource.
+        kind: Gateway
+
+        # Name of the referent resource
+        name: ai-gw
+
+        sectionName: https
+
+        # Namespace of the referent resource
+        namespace: {{ $.Release.Namespace }}
+
+    # -- Configure rules for routing. Defaults to the primary service.
+    rules:
+      - matches:
+          - path:
+              value: /
+
+        backendRefs:
+          - kind: Service
+            port: 80
+            identifier: gpustack
+  {{- end }}
+
   {{- if .Values.owui.enabled }}
   openwebui:
     # -- Enables or disables the route

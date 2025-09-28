@@ -129,10 +129,12 @@ gpustack:
       enabled: true
 
     gateway:
-      enabled:
-      
+      enabled: true
       httproute:
         enabled: true
+
+        domains:
+          - gpustack.mylogin.space
 
         labels:
           test: 'true'
