@@ -1717,7 +1717,7 @@ service:
 
 
 route:
-  {{- if and $.Values.gpustack.enabled $.Values.gpustack.server.enabled $.Values.gpustack.gateway.enabled $.Values.gpustack.gateway.httproute.enabled  }}
+  {{- if and $.Values.gpustack.enabled $.Values.gpustack.server.enabled $.Values.gpustack.server.gateway.enabled $.Values.gpustack.server.gateway.httproute.enabled  }}
   gpustack:
     # -- Enables or disables the route
     enabled: true
