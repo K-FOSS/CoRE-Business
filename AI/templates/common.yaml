@@ -198,7 +198,7 @@ controllers:
         image:
           repository: {{ $worker.image }}
           tag: {{ default "latest" $worker.tag }}
-          pullPolicy: {{ default $worker.pullPolicy "Always" }}
+          pullPolicy: {{ default "Always" $worker.pullPolicy }}
 
         {{- with $worker.args }}
         args:

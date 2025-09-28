@@ -173,13 +173,14 @@ gpustack:
 
         # -- Used to create individual disks for each instance.
         volumeClaimTemplates:
-          - name: data
+          - name: backup
             labels: {}
             annotations: {}
             globalMounts:
-              - path: /var/lib/gpustack
-            accessMode: ReadWriteOnce
-            size: 50Gi
+              - path: /backup
+            accessMode: "ReadWriteOnce"
+            size: 2Gi
+            storageClass: ssd-storage
 
 
       pod:
