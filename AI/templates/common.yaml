@@ -1732,7 +1732,7 @@ route:
       lan-mode: 'private'
 
     hostnames:
-      {{ toYaml $.Values.gpustack.gateway.httproute.domains | nindent 6 }}
+      {{ toYaml $.Values.gpustack.server.gateway.httproute.domains | nindent 6 }}
 
     # -- Configure the resource the route attaches to.
     parentRefs:
