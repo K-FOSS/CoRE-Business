@@ -171,11 +171,15 @@ gpustack:
         # -- Set podManagementPolicy, valid values are Parallel and OrderedReady (default).
         podManagementPolicy: Parallel
 
+        serviceName:
+          identifier: gpu-stackworker-1
+
         # -- Used to create individual disks for each instance.
         volumeClaimTemplates:
-          - name: backup
+          - name: data
             accessMode: "ReadWriteOnce"
-            size: 2G
+            enabled: true
+            size: 25Gi
             storageClass: ssd-storage
 
 
@@ -189,7 +193,7 @@ gpustack:
         - <path:CORE0_SITE1/data/AI/GPUStack#Token>
 
       controller:
-        type: daemonset
+        type: statefulset
 
       nodeSelector:
         gpu-node: 'true'
