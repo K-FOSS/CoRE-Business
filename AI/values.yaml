@@ -174,12 +174,8 @@ gpustack:
         # -- Used to create individual disks for each instance.
         volumeClaimTemplates:
           - name: backup
-            labels: {}
-            annotations: {}
-            globalMounts:
-              - path: /backup
             accessMode: "ReadWriteOnce"
-            size: 2Gi
+            size: 2G
             storageClass: ssd-storage
 
 
