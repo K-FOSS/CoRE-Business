@@ -116,8 +116,48 @@ externalSecrets:
 gpustack:
   enabled: true
 
-  nodeSelector:
-    kubernetes.io/hostname: hpc1
+  server:
+    enabled: true
+
+    image: gpustack/gpustack
+    tag: latest-cuda12.8
+
+    pod:
+      runtimeClassName: nvidia
+    
+    service:
+      enabled: true
+
+    gateway:
+      enabled:
+      
+      httproute:
+        enabled: true
+
+        labels:
+          test: 'true'
+
+    nodeSelector:
+      kubernetes.io/hostname: hpc2
+
+  workers:
+    - name: cpu-worker
+      enabled: true
+      image: gpustack/gpustack
+      tag: latest-cpu
+      pullPolicy: Always
+
+      args:
+        - --server-url
+        - https://gpustack.int.mylogin.space
+        - --token
+        - TODO
+
+      controller:
+        type: daemonset
+
+      nodeSelector:
+        gpu-node: 'false'
 
 localai:
   enabled: false
