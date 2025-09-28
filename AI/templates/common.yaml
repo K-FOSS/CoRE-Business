@@ -148,8 +148,6 @@ controllers:
       {{ toYaml . | nindent 6 }}
       {{- end }}
 
-      runtimeClassName: {{   }}
-
     containers:
       gpustack:
         image:
