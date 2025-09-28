@@ -167,6 +167,21 @@ gpustack:
       tag: latest-cuda12.8
       pullPolicy: Always
 
+      statefulset:
+        # -- Set podManagementPolicy, valid values are Parallel and OrderedReady (default).
+        podManagementPolicy: Parallel
+
+        # -- Used to create individual disks for each instance.
+        volumeClaimTemplates:
+          - name: data
+            labels: {}
+            annotations: {}
+            globalMounts:
+              - path: /var/lib/gpustack
+            accessMode: ReadWriteOnce
+            size: 50Gi
+
+
       pod:
         runtimeClassName: nvidia
 

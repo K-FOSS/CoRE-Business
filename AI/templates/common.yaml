@@ -178,6 +178,11 @@ controllers:
     {{ toYaml . | nindent 4 }}
     {{- end }}
 
+    {{- with $worker.statefulset}}
+    statefulset:
+      {{ toYaml . | nindent 6 }}
+    {{- end }}
+
     pod:
       {{- with $worker.nodeSelector }}
       nodeSelector:
