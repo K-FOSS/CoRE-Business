@@ -174,9 +174,7 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
-    forceRename: true
-
-    prefix: gpustack
+    forceRename: gpustack-work-{{ $workerIndex }}
 
     {{- with $worker.controller }}
     {{ toYaml . | nindent 4 }}
