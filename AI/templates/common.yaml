@@ -180,6 +180,11 @@ controllers:
 
     {{- with $worker.statefulset}}
     statefulset:
+      volumeClaimTemplates:
+        - name: "storage"
+          accessMode: "ReadWriteOnce"
+          size: "10Gi"
+          storageClass: ssd-storage
       {{ toYaml . | nindent 6 }}
     {{- end }}
 
