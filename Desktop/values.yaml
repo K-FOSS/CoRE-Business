@@ -15,5 +15,10 @@ desktops:
     image: kasmweb/ubuntu-noble-nvidia:dev
     tag: dev
 
+    runtimeClassName: nvidia
+
+    nodeSelector:
+      nvidia.com/cuda.runtime.major: '12'
+
 kasm:
   enabled: false

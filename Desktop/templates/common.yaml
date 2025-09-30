@@ -16,6 +16,14 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
+    pod:
+      {{- with $desktopServer.nodeSelector }}
+      nodeSelector:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+
+      runtimeClassName: '{{ $desktopServer.runtimeClassName }}'
+
     containers:
       {{ $desktopServer.name }}:
         image:
