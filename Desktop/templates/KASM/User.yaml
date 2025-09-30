@@ -1,0 +1,22 @@
+{{- if .Values.kasm.enabled }}
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ .Release.Name }}-openwebui
+
+spec:
+  name: KasmWeb {{ .Cluster.name }} {{ .datacenter }} {{ .region }} {{ .env }}
+
+  groups:
+    - LDAPService
+
+  psql:
+    enabled: true
+
+    crossplane:
+      crossplaneProvider: psql-main
+      terraformProvider: psql
+
+  writeConnectionSecretToRef:
+    name: {{ .Release.Name }}-kasm-creds
+{{- end }}

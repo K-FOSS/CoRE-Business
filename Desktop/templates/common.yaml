@@ -1,0 +1,41 @@
+---
+{{- include "bjw-s.common.loader.init" . }}
+
+{{- define "app-template.hardcodedValues" -}}
+# Set the nameOverride based on the release name if no override has been set
+{{ if not .Values.global.nameOverride }}
+global:
+  nameOverride: "{{ .Release.Name }}"
+{{ end }}
+
+controllers:
+  {{- range $desktopIndex, $desktopServer := $.Values.desktops }}
+  desktop-{{ $desktopServer.name }}:
+    # For Deployments, valid values are Recreate (default) and RollingUpdate.
+    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
+    # DaemonSets/CronJobs ignore this.
+    strategy: RollingUpdate
+
+    containers:
+      {{ $desktopServer.name }}:
+        image:
+          repository: {{ $desktopServer.image }}
+          tag: {{ default "latest" $desktopServer.tag }}
+          pullPolicy: Always
+
+        {{- with $desktopServer.env }}
+        env:
+          {{ toYaml . | nindent 10 }}
+        {{- end }}
+
+        ports:
+          - name: http
+            containerPort: 8080
+
+  {{- end }}
+
+{{- end -}}
+{{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
+
+{{/* Render the templates */}}
+{{ include "bjw-s.common.loader.generate" . }}
