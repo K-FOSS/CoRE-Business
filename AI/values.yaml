@@ -1,5 +1,3 @@
-
-
 env: prod
 
 hub: true
@@ -196,7 +194,9 @@ gpustack:
         type: statefulset
 
       nodeSelector:
-        gpu-node: 'true'
+        nvidia.com/cuda.runtime.major: '12'
+        nvidia.com/cuda.runtime.minor: '8'
+
 
 localai:
   enabled: false
