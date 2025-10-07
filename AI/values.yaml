@@ -120,6 +120,8 @@ gpustack:
     image: gpustack/gpustack
     tag: latest-cuda12.8
 
+    replicas: 3
+
     pod:
       runtimeClassName: nvidia
     

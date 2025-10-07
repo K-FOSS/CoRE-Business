@@ -138,6 +138,19 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
+    type: statefulset
+
+    replicas: 2
+
+    statefulset:
+      volumeClaimTemplates:
+        - name: data
+          accessMode: ReadWriteOnce
+          globalMounts:
+            - path: /var/lib/gpustack
+          size: '64Gi'
+          storageClass: ssd-storage
+
     pod:
       {{- with .Values.gpustack.server.nodeSelector }}
       nodeSelector:
@@ -148,12 +161,21 @@ controllers:
       {{ toYaml . | nindent 6 }}
       {{- end }}
 
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: gpustack-{{ $workerIndex }}
+
+
     containers:
       gpustack:
         image:
           repository: {{ default .Values.gpustack.server.image "gpustack/gpustack" }}
           tag: {{ default .Values.gpustack.server.tag "latest-cpu" }}
-          pullPolicy: Always
+          pullPolicy: IfNotPresent
 
         # args:
         #   - --config=/config/config.json
@@ -941,25 +963,6 @@ persistence:
           - path: /config/config.json
             readOnly: true
             subPath: config.json
-  {{- end }}
-
-  {{- if .Values.gpustack.enabled }}
-  gpustack:
-    enabled: true
-    type: persistentVolumeClaim
-
-    size: 50Gi
-
-    suffix: gpu-stack
-
-    accessMode: ReadWriteOnce
-
-    storageClass: ssd-storage
-
-    advancedMounts:
-      gpustack:
-        gpustack:
-          - path: /var/lib/gpustack
   {{- end }}
 
   {{- if .Values.localai.enabled }}
