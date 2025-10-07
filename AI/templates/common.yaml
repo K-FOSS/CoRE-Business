@@ -167,7 +167,7 @@ controllers:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels:
-              app.kubernetes.io/controller: gpustack-{{ $workerIndex }}
+              app.kubernetes.io/controller: gpustack
 
 
     containers:
