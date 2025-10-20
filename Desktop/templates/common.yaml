@@ -42,6 +42,24 @@ controllers:
 
   {{- end }}
 
+persistence:
+  {{- range $desktopIndex, $desktopServer := $.Values.desktops }}
+  {{- if eq (default false $desktopServer.volume.enabled) true }}
+  desktop-{{ $desktopServer.name }}:
+    enabled: true
+    type: persistentVolumeClaim
+
+    size: {{ default '10Gi' $desktopServer.volume.size }}
+
+    accessMode: ReadWriteOnce
+
+    advancedMounts:
+      desktop-{{ $desktopServer.name }}:
+        {{ $desktopServer.name }}:
+          - path: {{ $desktopServer.volume.mount }}
+  {{- end }}
+  {{- end }}
+
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
 

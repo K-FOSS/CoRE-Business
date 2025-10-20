@@ -11,9 +11,16 @@ datacenter: dc1
 region: yxl
 
 desktops:
-  - name: ubuntu-gpu
-    image: kasmweb/ubuntu-noble-nvidia:dev
-    tag: dev
+  - name: dolphin
+    image: lscr.io/linuxserver/dolphin
+    tag: latest
+
+    volume:
+      enabled: true
+
+      size: 10Gi
+
+      mount: /root
 
     runtimeClassName: nvidia
 
