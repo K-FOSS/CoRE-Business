@@ -44,12 +44,12 @@ controllers:
 
 persistence:
   {{- range $desktopIndex, $desktopServer := $.Values.desktops }}
-  {{- if eq (default false $desktopServer.volume.enabled) true }}
+  {{- if and $desktopServer.volume (eq (default false $desktopServer.volume.enabled) true) }}
   desktop-{{ $desktopServer.name }}:
     enabled: true
     type: persistentVolumeClaim
 
-    size: {{ default '10Gi' $desktopServer.volume.size }}
+    size: {{ default "5Gi" $desktopServer.volume.size }}
 
     accessMode: ReadWriteOnce
 
