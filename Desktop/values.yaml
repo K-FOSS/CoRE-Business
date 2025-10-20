@@ -20,5 +20,14 @@ desktops:
     nodeSelector:
       nvidia.com/cuda.runtime.major: '12'
 
+  - name: orcha-slicer
+    image: lscr.io/linuxserver/orcaslicer
+    tag: latest
+
+    runtimeClassName: nvidia
+
+    nodeSelector:
+      nvidia.com/cuda.runtime.major: '12'
+
 kasm:
   enabled: false
