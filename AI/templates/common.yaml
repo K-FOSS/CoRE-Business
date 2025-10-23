@@ -879,7 +879,7 @@ persistence:
     advancedMounts:
       mcphub:
         mcphub:
-          - path: /app/data
+          - path: /app
 
   # mcphub:
   #   enabled: true
