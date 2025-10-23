@@ -876,8 +876,6 @@ persistence:
 
     accessMode: ReadWriteOnce
 
-    storageClass: ssd-storage
-
     advancedMounts:
       mcphub:
         mcphub:
