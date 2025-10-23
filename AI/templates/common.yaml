@@ -880,6 +880,7 @@ persistence:
       mcphub:
         mcphub:
           - path: /app
+            mountPropagation: HostToContainer
 
   # mcphub:
   #   enabled: true
