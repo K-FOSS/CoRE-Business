@@ -8,6 +8,10 @@ global:
   nameOverride: "{{ .Release.Name }}"
 {{ end }}
 
+defaultPodOptions:
+  labels:
+    logs: loki-myloginspace
+
 controllers:
   #
   # Wyoming for easy automated configuration of TTS and STS from HomeAssistant and other services
