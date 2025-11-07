@@ -600,12 +600,16 @@ nextcloud:
     # PHP Configuration files
     # Will be injected in /usr/local/etc/php/conf.d for apache image and in /usr/local/etc/php-fpm.d when nginx.enabled: true
     phpConfigs:
-      redis-cluster.ini: |-
-        session.save_handler = redis
-        redis.session.locking_enabled=1
-        redis.session.lock_retries=-1
-        redis.session.lock_wait_time=10000
+      docker-php-ext-pdo_pgsql.ini: |-
+        extension=pdo_pgsql
 
+        [PostgreSQL]
+        pgsql.allow_persistent = On
+        pgsql.auto_reset_persistent = Off
+        pgsql.max_persistent = 16
+        pgsql.max_links = -1
+        pgsql.ignore_notice = 0
+        pgsql.log_notice = 0
       www.conf: |-
         ; Start a new pool named 'www'.
         ; the variable $pool can be used in any directive and will be replaced by the
