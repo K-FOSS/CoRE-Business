@@ -38,7 +38,7 @@ collabora-online:
   # This is a YAML-formatted file.
   # Declare variables to be passed into your templates.
 
-  enabled: false
+  enabled: true
 
   domain: collabora.mylogin.space
 
