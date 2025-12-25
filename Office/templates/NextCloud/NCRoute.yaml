@@ -72,21 +72,19 @@ spec:
         - path:
             type: RegularExpression
             value: .*\.(css|js|mjs|svg|gif|ico|jpg|png|webp|wasm|tflite|map|ogg|flac|mp4|webm)
-
       filters:
         - type: ResponseHeaderModifier
           responseHeaderModifier:
             add:
               - name: Cache-Control
                 value: public, max-age 86400
-
-    - backendRefs:
+      backendRefs: &nextcloudbackend
         - group: ''
           kind: Service
           name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
           port: 8080
           weight: 1
-
+    - backendRefs: *nextcloudbackend
       timeouts:
         request: 120s
         backendRequest: 100s
