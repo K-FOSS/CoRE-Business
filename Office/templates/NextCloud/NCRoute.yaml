@@ -77,21 +77,20 @@ spec:
           responseHeaderModifier:
             add:
               - name: Cache-Control
-                value: ,public
+                value: ',public'
       backendRefs: &nextcloudbackend
         - group: ''
           kind: Service
           name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
           port: 8080
           weight: 1
-    - backendRefs: *nextcloudbackend
-      filters:
-        - &hsts
-          type: ResponseHeaderModifier
+    - filters:
+        - type: ResponseHeaderModifier
           responseHeaderModifier:
             add:
               - name: strict-transport-security
                 value: max-age=31536000
+      backendRefs: *nextcloudbackend
       timeouts:
         request: 120s
         backendRequest: 100s
