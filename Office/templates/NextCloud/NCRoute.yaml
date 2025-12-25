@@ -68,6 +68,18 @@ spec:
               replaceFullPath: /nextcloud/index.php/.well-known/nodeinfo 
             statusCode: 301
 
+    - matches:
+        - path:
+            type: RegularExpression
+            value: .*\.(css|js|mjs|svg|gif|ico|jpg|png|webp|wasm|tflite|map|ogg|flac|mp4|webm)
+
+      filters:
+        - type: ResponseHeaderModifier
+          responseHeaderModifier:
+            add:
+              - name: Cache-Control
+                value: public, max-age 86400
+
     - backendRefs:
         - group: ''
           kind: Service
