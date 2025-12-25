@@ -77,7 +77,7 @@ spec:
           responseHeaderModifier:
             add:
               - name: Cache-Control
-                value: public, max-age 86400
+                value: ,public
       backendRefs: &nextcloudbackend
         - group: ''
           kind: Service
