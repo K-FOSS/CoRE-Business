@@ -9,7 +9,7 @@ controllers:
 
     nameOverride: cyberchef
 
-    replicas: 1
+    replicas: 2
 
     podDisruptionBudget:
       minAvailable: 1
