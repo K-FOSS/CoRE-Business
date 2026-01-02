@@ -133,5 +133,5 @@ route:
         backendRefs:
           - kind: Service
             port: 80
-            name: cyberchef
+            identifier: cyberchef
             weight: 1
