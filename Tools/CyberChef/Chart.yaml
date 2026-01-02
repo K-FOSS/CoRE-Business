@@ -8,5 +8,5 @@ dependencies:
   # TODO: Get this automatically updated with Renovate or similar
   #  
   - name: common
-    version: '3.7.1'
+    version: '4.5.0'
     repository: https://bjw-s-labs.github.io/helm-charts/

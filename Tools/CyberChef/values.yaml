@@ -9,6 +9,11 @@ controllers:
 
     nameOverride: cyberchef
 
+    replicas: 1
+
+    podDisruptionBudget:
+      minAvailable: 1
+
     containers:
       cyberchef:
         image:
@@ -17,7 +22,7 @@ controllers:
           #
           # TODO: Get this fully automated with Renovate or similar
           #
-          tag: v10.19.4
+          tag: latest@sha256:45ac7df48354fb86bcd6e90710627353ad59980e410917165ae6c24780b44fab
           pullPolicy: IfNotPresent
 
 
