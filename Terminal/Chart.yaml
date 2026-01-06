@@ -1,0 +1,12 @@
+apiVersion: v2
+version: 1.0.0
+
+name: core-business-terminal
+
+dependencies:
+  #
+  # TODO: Get this automatically updated with Renovate or similar
+  #  
+  - name: common
+    version: '4.5.0'
+    repository: https://bjw-s-labs.github.io/helm-charts/
