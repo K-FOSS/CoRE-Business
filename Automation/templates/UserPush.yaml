@@ -1,0 +1,31 @@
+# {{ if and .Values.n8n.enabled .Values.crossplane.userCreation.enabled .Values.hub }}
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: {{ include "automation.fullname" . }}-user
+
+spec:
+  refreshInterval: 1h
+
+  {{- with .Values.secrets.secretStoreRef }}
+  secretStoreRefs:
+    - {{ toYaml . | nindent 6  }}
+  {{- end }}
+
+  selector:
+    secret:
+      name: {{ include "automation.fullname" . }}-autocreds
+
+  data:
+    - match:
+        secretKey: username
+        remoteRef:
+          remoteKey: {{ .Values.secrets.rootPrefix }}/Credentials
+          property: Username
+
+    - match:
+        secretKey: password
+        remoteRef:
+          remoteKey: {{ .Values.secrets.rootPrefix }}/Credentials
+          property: Password
+# {{- end }}

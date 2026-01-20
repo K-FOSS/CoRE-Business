@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+
+  "required": [
+    "env",
+    "gateway",
+    "cluster",
+    "datacenter",
+    "region",
+    "crossplane",
+    "secrets",
+    "n8n"
+  ],
+
+  "properties": {
+    "env": {
+      "type": "string"
+    },
+
+    "gateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "namespace", "sectionName"],
+      "properties": {
+        "name": { "type": "string" },
+        "namespace": { "type": "string" },
+        "sectionName": { "type": "string" }
+      }
+    },
+
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "domain"],
+      "properties": {
+        "name": { "type": "string" },
+        "domain": { "type": "string" }
+      }
+    },
+
+    "datacenter": {
+      "type": "string"
+    },
+
+    "region": {
+      "type": "string"
+    },
+
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "rootPrefix", "secretStoreRef"],
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable external secret integration"
+        },
+        "rootPrefix": {
+          "type": "string",
+          "description": "Root path prefix used for secrets (e.g. S3/CoRE)"
+        },
+        "secretStoreRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "description": "Secret store kind (e.g. ClusterSecretStore)"
+            },
+            "name": {
+              "type": "string",
+              "description": "Name of the referenced secret store"
+            }
+          }
+        }
+      }
+    },
+
+    "crossplane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["userCreation"],
+      "properties": {
+        "userCreation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "providers"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "providers": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["psql", "s3"],
+              "properties": {
+                "psql": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["terraformProvider", "crossplaneProvider"],
+                  "properties": {
+                    "terraformProvider": { "type": "string" },
+                    "crossplaneProvider": { "type": "string" }
+                  }
+                },
+                "s3": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["terraformProvider", "crossplaneProvider"],
+                  "properties": {
+                    "terraformProvider": { "type": "string" },
+                    "crossplaneProvider": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "n8n": {
+      "allOf": [
+        {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable or disable deployment of n8n"
+            }
+          }
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/community-charts/helm-charts/refs/heads/main/charts/n8n/values.schema.json"
+        }
+      ]
+    }
+  }
+}

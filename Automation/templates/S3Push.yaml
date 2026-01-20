@@ -1,0 +1,37 @@
+# {{ if and .Values.n8n.enabled .Values.crossplane.userCreation.enabled .Values.hub }}
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: {{ include "automation.fullname" . }}-s3
+
+spec:
+  refreshInterval: 1h
+
+  {{- with .Values.secrets.secretStoreRef }}
+  secretStoreRefs:
+    - {{ toYaml . | nindent 6  }}
+  {{- end }}
+
+  selector:
+    secret:
+      name: {{ include "automation.fullname" . }}-s3-autocreds
+
+  data:
+    - match:
+        secretKey: AccessKey
+        remoteRef:
+          remoteKey: {{ .Values.secrets.rootPrefix }}/S3
+          property: AccessKey
+
+    - match:
+        secretKey: SecretAccessKey
+        remoteRef:
+          remoteKey: {{ .Values.secrets.rootPrefix }}/S3
+          property: SecretAccessKey:
+
+    - match:
+        secretKey: SessionToken
+        remoteRef:
+          remoteKey: {{ .Values.secrets.rootPrefix }}/S3
+          property: SessionToken
+# {{- end }}

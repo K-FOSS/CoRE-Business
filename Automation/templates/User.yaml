@@ -1,0 +1,39 @@
+# {{- if and  }}
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: n8n-core-{{ .Values.env }}
+
+spec:
+  name: N8n {{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}
+
+  username: n8n-{{ .Values.env }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}
+
+  psql:
+    enabled: true
+
+    crossplane:
+      crossplaneProvider: {{ .Values.crossplane.userCreation.providers.psql.crossplaneProvider }}
+      terraformProvider: {{ .Values.crossplane.userCreation.providers.psql.terraformProvider }}
+
+  s3:
+    enabled: true
+
+    createCredentials: true
+
+    createUserBucket: true
+
+    crossplane:
+      terraformProvider: {{ .Values.crossplane.userCreation.providers.s3.terraformProvider }}
+      crossplaneProvider: {{ .Values.crossplane.userCreation.providers.s3.terraformProvider }}
+
+    writeCredentialsSecretRef:
+      name: {{ include "automation.fullname" . }}-s3-autocreds
+      namespace: {{ .Release.Namespace }}
+
+  groups:
+    - LDAPService
+
+  writeConnectionSecretToRef:
+    name: {{ include "automation.fullname" . }}-autocreds
+# {{- end }}
