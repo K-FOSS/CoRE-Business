@@ -9,7 +9,7 @@ spec:
 
   {{- with .Values.secrets.secretStoreRef }}
   secretStoreRefs:
-    - {{ toYaml . | nindent 6  }}
+    - {{- toYaml . | nindent 6  -}}
   {{- end }}
 
   selector:
@@ -27,7 +27,7 @@ spec:
         secretKey: SecretAccessKey
         remoteRef:
           remoteKey: {{ .Values.secrets.rootPrefix }}/S3
-          property: SecretAccessKey:
+          property: SecretAccessKey
 
     - match:
         secretKey: SessionToken
