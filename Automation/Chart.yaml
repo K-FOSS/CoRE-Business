@@ -10,5 +10,4 @@ dependencies:
     # TODO: Get Renovate (or similar) to automate this (with automated staging testing too ofc)
     #
     version: 1.16.23
-    condition: n8n.enabled
     repository: https://community-charts.github.io/helm-charts

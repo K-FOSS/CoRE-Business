@@ -36,8 +36,6 @@ secrets:
     name: mainvault-core
 
 n8n:
-  enabled: true
-
   db:
     type: postgresdb
 
