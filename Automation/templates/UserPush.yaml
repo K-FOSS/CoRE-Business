@@ -1,4 +1,4 @@
-# {{ if and .Values.n8n.enabled .Values.crossplane.userCreation.enabled .Values.hub }}
+# {{ if and .Values.crossplane.userCreation.enabled .Values.hub }}
 apiVersion: external-secrets.io/v1alpha1
 kind: PushSecret
 metadata:

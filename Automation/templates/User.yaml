@@ -1,4 +1,4 @@
-# {{- if and  }}
+# {{- if and .Values.hub .Values.crossplane.userCreation.enabled  }}
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:
