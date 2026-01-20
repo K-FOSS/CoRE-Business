@@ -44,6 +44,14 @@ spec:
         special = true
       }
 
+      resource "random_password" "api-key" {
+        length  = 32
+        lower   = true
+        numeric = true
+        upper   = true
+        special = true
+      }
+
       resource "authentik_provider_oauth2" "auth-provider" {
         name          = "OpenWebUI {{ .Values.cluster.name }} {{ .Values.datacenter }} {{ .Values.region }}"
         client_id     = "{{ .Values.oauth.indexKey }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
@@ -89,7 +97,12 @@ spec:
         group  = authentik_group.group.id
         order  = 0
       }
-    
+
+      output "WEBUI_SECRET_KEY" {
+        value = random_password.client-secret.api-key
+        sensitive = true
+      }
+
       output "OIDC_CLIENT_ID" {
         value = authentik_provider_oauth2.auth-provider.client_id
         sensitive = true

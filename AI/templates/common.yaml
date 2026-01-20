@@ -571,6 +571,15 @@ controllers:
                 key: OIDC_SCOPES
 
           #
+          # SecretKey
+          #
+          - name: WEBUI_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $.Release.Name }}-oidc'
+                key: WEBUI_SECRET_KEY
+
+          #
           # LDAP
           #
           - name: ENABLE_LDAP
