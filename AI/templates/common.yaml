@@ -527,6 +527,12 @@ controllers:
           - name: WEBUI_URL
             value: 'https://ai.{{ .Values.cluster.name }}.{{ .Values.datacenter }}.{{ .Values.region }}.mylogin.space'
 
+          #
+          # CORS
+          #
+          - name: CORS_ALLOW_ORIGIN
+            value: 'mylogin.space'
+
           - name: ENABLE_CODE_EXECUTION
             value: 'False'
 

@@ -99,7 +99,7 @@ spec:
       }
 
       output "WEBUI_SECRET_KEY" {
-        value = random_password.client-secret.api-key
+        value = random_password.api-key.result
         sensitive = true
       }
 
