@@ -5,7 +5,9 @@
 # Set the nameOverride based on the release name if no override has been set
 {{ if not .Values.global.nameOverride }}
 global:
-  nameOverride: 'core-ambient-{{ .Values.env }}'
+  nameOverride: 'core-ambient'
+
+  fullnameOverride: core-ambient
 {{ end }}
 
 controllers:
