@@ -1,9 +1,8 @@
-
-
 image: ghcr.io/remvze/moodist
 
 tag: latest
 
+env: testing
 
 cluster:
   name: k8s
