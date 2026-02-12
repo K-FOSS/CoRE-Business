@@ -11,8 +11,8 @@ spec:
     enabled: true
 
     crossplane:
-      crossplaneProvider: psql-main
-      terraformProvider: psql
+      crossplaneProvider: psql-home1-yvr
+      terraformProvider: psql-home1-yvr
 
   s3:
     enabled: true
