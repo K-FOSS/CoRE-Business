@@ -39,7 +39,7 @@ data:
     ssl_server_key_file = /etc/tls/mail/tls.key
 
     service auth {
-      inet_listener {
+      inet_listener auth {
         port = 12345
       }
     }
