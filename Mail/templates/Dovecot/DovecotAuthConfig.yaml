@@ -15,7 +15,10 @@ data:
       # 2.3: auth_bind = yes
       bind = yes
 
-      bind_userdn = cn=%{user},ou=users,dc=ldap,dc=mylogin,dc=space
+      filter = (&(objectClass=user)(|(cn=%{user | username})(mail=%{user})))
+      fields {
+        user = %{ldap:mail}
+      }
     }
 
     userdb ldap {
@@ -26,8 +29,8 @@ data:
       fields {
         # You need this because your imapc_user uses %{userdb:uuid}@mylogin.space
         uuid = %{ldap:uid}
-        uid = %{ldap:uidNumber}
-        gid = %{ldap:gidNumber}
+        uid = vmail
+        gid = vmail
       }
 
       iterate_filter = (objectClass=user)
