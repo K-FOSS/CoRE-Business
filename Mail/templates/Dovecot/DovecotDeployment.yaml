@@ -29,7 +29,6 @@ spec:
         #
         # Secrets and Certificates
         #
-
         - name: tls-certs
           secret:
             secretName: {{ .Values.email.tls.secretName }}
@@ -48,18 +47,8 @@ spec:
           secret:
             secretName: business-mail-dovecot-auth-config
             items:
-              - key: dovecot-oauth2.conf.ext
-                path: dovecot-oauth2.conf.ext
-
               - key: dovecot-ldap.conf.ext
                 path: dovecot-ldap.conf.ext
-
-        - name: dovecot-storage
-          configMap:
-            name: business-mail-dovecot-storage-config
-            items:
-              - key: dovecot-storage.conf.ext
-                path: dovecot-storage.conf.ext
 
         - name: dovecot-namespace
           configMap:
@@ -73,7 +62,8 @@ spec:
 
       containers:
         - name: dovecot
-          image: dovecot/dovecot:2.3.19
+          image: dovecot/dovecot:2.4.4
+          imagePullPolicy: IfNotPresent
 
           volumeMounts:
             #
@@ -84,16 +74,8 @@ spec:
               subPath: dovecot.conf
 
             - name: dovecot-auth
-              mountPath: /etc/dovecot/dovecot-oauth2.conf.ext
-              subPath: dovecot-oauth2.conf.ext
-
-            - name: dovecot-auth
-              mountPath: /etc/dovecot/dovecot-ldap.conf.ext
+              mountPath: /etc/dovecot/dovecot-ldap.conf
               subPath: dovecot-ldap.conf.ext
-
-            - name: dovecot-storage
-              mountPath: /etc/dovecot/dovecot-storage.conf.ext
-              subPath: dovecot-storage.conf.ext
 
             - name: dovecot-namespace
               mountPath: /etc/dovecot/namespaces
@@ -108,20 +90,25 @@ spec:
             - mountPath: /secret/dkim.key
               name: dkim-secrets
               subPath: dkim.key
-
-              
-
           ports:
             - name: sasl
               containerPort: 12345
               protocol: TCP
 
             - name: imap
-              containerPort: 143
+              containerPort: 31143
               protocol: TCP
 
             - name: imaps
-              containerPort: 993
+              containerPort: 31993
+              protocol: TCP
+
+            - name: pop3
+              containerPort: 31110
+              protocol: TCP
+
+            - name: pop3s
+              containerPort: 31995
               protocol: TCP
 
             - name: lmtp

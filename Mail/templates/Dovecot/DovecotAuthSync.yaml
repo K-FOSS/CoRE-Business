@@ -19,22 +19,8 @@ spec:
             name: business-mail-dovecot-auth-config-tpl
             # here you define the keys that should be used as template
             items:
-              - key: dovecot-oauth2.conf.ext
               - key: dovecot-ldap.conf.ext
   data:
-    #
-    # Database
-    #
-    - secretKey: OpenIDClientID
-      remoteRef:
-        key: Mail/Dovecot/OIDC
-        property: ClientID
-
-    - secretKey: OpenIDClientSecret
-      remoteRef:
-        key: Mail/Dovecot/OIDC
-        property: ClientSecret
-
     #
     # General AAA
     #
