@@ -9,6 +9,8 @@ data:
     dovecot_config_version = 2.4.0
     dovecot_storage_version = 2.4.0
 
+    !include /etc/dovecot/vendor.d/rootless.conf
+
     protocols = imap pop3 lmtp
     submission_host = mail.mylogin.space:25
     log_path = /dev/stderr
