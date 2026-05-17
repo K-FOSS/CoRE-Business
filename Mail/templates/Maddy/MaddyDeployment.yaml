@@ -44,7 +44,7 @@ spec:
           #
           # TODO: Get Renovate managing this and setup proper tests
           #
-          image: foxcpp/maddy:0.7.1
+          image: foxcpp/maddy:0.8.1
           stdin: true
           tty: true
 
