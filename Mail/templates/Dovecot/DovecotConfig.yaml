@@ -69,6 +69,11 @@ data:
       login = yes
     }
 
+    imapc_features {
+      no-modseq = yes
+      no-fetch-bodystructure = yes
+    }
+
 
     service imap {
     }
