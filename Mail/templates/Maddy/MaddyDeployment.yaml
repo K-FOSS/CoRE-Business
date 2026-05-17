@@ -6,7 +6,18 @@ metadata:
     app.kubernetes.io/name: mail
     app.kubernetes.io/component: maddy
 spec:
-  replicas: 1
+  replicas: 2
+
+  minReadySeconds: 45
+  progressDeadlineSeconds: 900
+  revisionHistoryLimit: 5
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
   selector:
     matchLabels:
       app.kubernetes.io/name: mail
@@ -44,7 +55,7 @@ spec:
           #
           # TODO: Get Renovate managing this and setup proper tests
           #
-          image: foxcpp/maddy:0.8.1
+          image: foxcpp/maddy:0.9.0
           stdin: true
           tty: true
 
