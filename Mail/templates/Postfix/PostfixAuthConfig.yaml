@@ -5,7 +5,7 @@ metadata:
 data:
   ldap-auth.cf: |
     {{`
-    server_host = ldaps://ldap.mylogin.space:636
+    server_host = ldaps://ldap-dc1.mylogin.space:636
     start_tls = no
     version = 3
 
@@ -15,11 +15,11 @@ data:
 
     search_base = ou=users,dc=ldap,dc=mylogin,dc=space
     query_filter = (&(objectClass=user)(|(cn=%u)(mail=%s)))
-    result_attribute = cn
+    result_attribute = mail
     `}}
 
   ldap.cf: |
-    server_host = ldaps://ldap.mylogin.space:636
+    server_host = ldaps://ldap-dc1.mylogin.space:636
     start_tls = no
     version = 3
 
@@ -29,13 +29,13 @@ data:
     bind_pw = {{ .Password }}
     `}}
 
-    search_base = dc=ldap,dc=mylogin,dc=space
+    search_base = dc=ldap-dc1,dc=mylogin,dc=space
     result_attribute = cn
     special_result_attribute = member
 
   ldap-in.cf: |
     {{`
-    server_host = ldaps://ldap.mylogin.space:636
+    server_host = ldaps://ldap-dc1.mylogin.space:636
     start_tls = no
     version = 3
 
