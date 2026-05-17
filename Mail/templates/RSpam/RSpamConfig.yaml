@@ -73,7 +73,7 @@ data:
     # Domain to use for DKIM signing: can be "header" or "envelope"
     use_domain = "header";
     # Whether to normalise domains to eSLD
-    use_esld = true;
+    use_esld = false;
     # Whether to get keys from Redis
     use_redis = false;
 
