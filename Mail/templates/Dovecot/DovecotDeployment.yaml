@@ -6,7 +6,18 @@ metadata:
     app.kubernetes.io/name: mail
     app.kubernetes.io/component: dovecot
 spec:
-  replicas: 1
+  replicas: 2
+
+  minReadySeconds: 45
+  progressDeadlineSeconds: 900
+  revisionHistoryLimit: 5
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
   selector:
     matchLabels:
       app.kubernetes.io/name: mail
