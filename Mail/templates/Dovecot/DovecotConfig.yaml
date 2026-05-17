@@ -76,6 +76,10 @@ data:
 
 
     service imap {
+      imap_capability {	
+        CONDSTORE = no	
+        QRESYNC = no	
+      }
     }
 
     !include /etc/dovecot/namespaces/*.conf
