@@ -6,6 +6,9 @@ gateway:
   sectionName: https-myloginspace
   domainName: passwords.mylogin.space
 
+strategy:
+  type: RollingUpdate
+
 vaultwarden:
   podLabels:
     logs: loki-myloginspace
@@ -17,7 +20,7 @@ vaultwarden:
     pullPolicy: IfNotPresent
     # -- image tag
     # @default -- chart.appVersion
-    tag: alpine
+    tag: 1.36.0-alpine
 
   podAnnotations: {}
 
