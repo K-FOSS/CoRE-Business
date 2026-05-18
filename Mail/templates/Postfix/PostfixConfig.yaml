@@ -60,6 +60,7 @@ data:
   #
   # HELO Restrictions
   #
+  CONF_SMTP_HELO_NAME: 'smtp-out.mylogin.space'
   CONF_SMTPD_DELAY_REJECT: 'yes'
   CONF_SMTPD_HELO_REQUIRED: 'yes'
   CONF_SMTPD_HELO_RESTRICTIONS: |
