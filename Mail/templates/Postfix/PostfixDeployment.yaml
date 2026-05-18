@@ -86,9 +86,6 @@ spec:
               memory: 105M
 
           envFrom:
-            - secretRef:
-                name: business-mail-simplelogin-postfix-db-prod
-
             - configMapRef:
                 name: simplelogin-postfix-cfg
 
