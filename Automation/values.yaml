@@ -60,3 +60,4 @@ n8n:
     host: psql-int.mylogin.space
     port: 5432
     existingSecret: n8n-core-psql-secret
+    existingSecretPasswordKey: postgres-password
