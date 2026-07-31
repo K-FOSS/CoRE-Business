@@ -52,6 +52,8 @@ n8n:
     port: 6379
     username: default
     existingSecret: n8n-core-redis-secret
+    existingUsernameKey: redis-password
+    existingPasswordKey: redis-password
 
     tls:
       enabled: true 
