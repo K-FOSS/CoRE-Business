@@ -42,6 +42,17 @@ n8n:
   worker:
     mode: queue
 
+  taskRunners:
+    mode: external
+    external:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
   strategy:
     type: RollingUpdate
 
