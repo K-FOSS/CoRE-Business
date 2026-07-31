@@ -48,6 +48,7 @@ n8n:
 
   externalRedis:
     database: 189
+    host: dragonfly.k8s.dc1.yxl.mylogin.space
     port: 6379
     username: default
     existingSecret: n8n-core-redis-secret
@@ -56,6 +57,8 @@ n8n:
       enabled: true 
 
   externalPostgresql:
+    host: psql-int.mylogin.space
     port: 5432
-
+    username: n8n-testing-yxl-dc1-k8s
+    database: n8n-testing-yxl-dc1-k8s
     existingSecret: n8n-core-psql-secret
