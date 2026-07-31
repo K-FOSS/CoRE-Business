@@ -9,5 +9,5 @@ dependencies:
     #
     # TODO: Get Renovate (or similar) to automate this (with automated staging testing too ofc)
     #
-    version: 1.16.23
+    version: 1.24.21
     repository: https://community-charts.github.io/helm-charts
