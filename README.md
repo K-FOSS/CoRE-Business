@@ -46,6 +46,25 @@ directories may be inactive, transitional or manually deployed.
 | Standalone/older manifests | `Apps/`, `Avatars/`, `HPSchool/`, `LocalAI/` | Raw manifests and earlier deployment layouts. |
 | Experimental material | `Testing/`, `TMP/` | Validation workloads and temporary/legacy content. |
 
+## Currently deployed charts
+
+The following paths are referenced by non-legacy ApplicationSets in CoRE
+Backplane. Follow each chart README for its deployment inputs and operational
+notes:
+
+| Chart | Backplane owner | Deployment scope |
+| --- | --- | --- |
+| [AI](AI/README.md) | [AI](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml), [AINode2](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AINode2.yaml) | AI hub/MCP services and per-cluster LocalAI workers. |
+| [Automation](Automation/README.md) | [Automation](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Automation.yaml) | n8n with external database, Redis and S3 credentials. |
+| [Ambient](Ambient/README.md) | [Ambient](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Ambient.yaml) | Moodist ambient-sound service on selected infrastructure clusters. |
+| [Browsers](Browsers/README.md) | [Browsers](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Browsers.yaml) | Selenium Grid browser automation. |
+| [Desktop](Desktop/README.md) | [Desktops](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Desktops.yaml) | GPU-backed LinuxServer desktop workloads. |
+| [Office](Office/README.md) | [NextCloud](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml) | Nextcloud, Collabora and supporting office services. |
+| [Vaultwarden](Passwords/VaultWarden/README.md) | [VaultWarden](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml) | Password vault, database identity and secret synchronization. |
+| [Terminal](Terminal/README.md) | [Terminal](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Terminal.yaml) | Browser-accessible terminal workload. |
+| [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
+| [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
+
 See the [repository guide](docs/REPOSITORY.md) for ownership discovery,
 configuration layers and change validation.
 

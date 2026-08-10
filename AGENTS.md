@@ -25,9 +25,17 @@ rules for its subtree but must not weaken these repository-wide requirements.
 - Keep `README.md`, `docs/REPOSITORY.md`, and the nearest component README in
   sync when a change alters deployment, prerequisites, access, recovery,
   storage, public endpoints, secrets, or operator workflow.
+- Every reference to a specific Backplane ApplicationSet must be a Markdown
+  link to that exact file in `K-FOSS/CoRE-Backplane` (normally its `blob/main`
+  GitHub URL). Do not leave ApplicationSet paths as unlinked code text, even in
+  tables or lists. If two ApplicationSets own one chart, link both files.
 - Link external charts, images, controllers, APIs and remote manifests to their
   authoritative upstream documentation. Put links beside the behavior they
   explain and prefer component-specific documentation.
+- Every documented stack must link to each principal upstream project's main
+  website and authoritative documentation or source repository. Use direct
+  component/chart documentation where available; a registry page alone is not
+  sufficient.
 - Separate current behavior from intended behavior. Manifests, the owning
   Backplane ApplicationSet and observed controller state are authoritative.
 - Document required value layers, generated resources, target namespaces,
