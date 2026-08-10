@@ -65,6 +65,15 @@ notes:
 | [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
 | [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
 
+### Legacy deployment references
+
+These charts still have Backplane ApplicationSets but live under its legacy
+substack and should not be treated as current architecture without review:
+
+| Chart | Backplane owner | Deployment scope |
+| --- | --- | --- |
+| [Mail](Mail/README.md) | [Mail](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/Mail.yaml) | Postfix, Dovecot, Rspamd, Maddy, DKIM/DNS and optional SimpleLogin. |
+
 See the [repository guide](docs/REPOSITORY.md) for ownership discovery,
 configuration layers and change validation.
 
