@@ -17,9 +17,22 @@ defaultPodOptions:
 controllers:
   cyberchef:
     strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
     revisionHistoryLimit: 3
     nameOverride: cyberchef
     replicas: {{ .Values.cyberchef.replicas }}
+
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: cyberchef
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
 
     podDisruptionBudget:
       minAvailable: 1
@@ -42,11 +55,32 @@ controllers:
 
         probes:
           liveness:
-            enabled: false
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8000
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 3
           readiness:
-            enabled: false
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 3
           startup:
-            enabled: false
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8000
+            spec:
+              periodSeconds: 5
+              timeoutSeconds: 5
+              failureThreshold: 12
 
 service:
   cyberchef:
@@ -63,6 +97,15 @@ service:
         port: 80
         targetPort: 8000
         protocol: HTTP
+
+networkpolicies:
+  cyberchef:
+    enabled: true
+    controller: cyberchef
+    policyTypes:
+      - Egress
+    rules:
+      egress: []
 
 route:
   cyberchef:

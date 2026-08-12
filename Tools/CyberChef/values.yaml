@@ -1,5 +1,5 @@
 global:
-  createDefaultServiceAccount: false
+  createDefaultServiceAccount: true
 
 gateway:
   name: 'main-gw'
@@ -15,4 +15,10 @@ cyberchef:
     tag: 'latest@sha256:45ac7df48354fb86bcd6e90710627353ad59980e410917165ae6c24780b44fab'
     pullPolicy: 'IfNotPresent'
 
-  resources: {}
+  resources:
+    requests:
+      cpu: '25m'
+      memory: '64Mi'
+    limits:
+      cpu: '500m'
+      memory: '256Mi'
