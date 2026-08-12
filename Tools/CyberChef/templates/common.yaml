@@ -2,13 +2,98 @@
 {{- include "bjw-s.common.loader.init" . }}
 
 {{- define "app-template.hardcodedValues" -}}
-# Set the nameOverride based on the release name if no override has been set
-{{ if not .Values.global.nameOverride }}
 global:
+{{ if not .Values.global.nameOverride }}
   nameOverride: "{{ .Release.Name }}"
 {{ end }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+controllers:
+  cyberchef:
+    strategy: RollingUpdate
+    revisionHistoryLimit: 3
+    nameOverride: cyberchef
+    replicas: {{ .Values.cyberchef.replicas }}
+
+    podDisruptionBudget:
+      minAvailable: 1
+
+    containers:
+      cyberchef:
+        image:
+          repository: {{ .Values.cyberchef.image.repository | quote }}
+          tag: {{ .Values.cyberchef.image.tag | quote }}
+          pullPolicy: {{ .Values.cyberchef.image.pullPolicy | quote }}
+
+        resources:
+          {{- toYaml .Values.cyberchef.resources | nindent 10 }}
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+        probes:
+          liveness:
+            enabled: false
+          readiness:
+            enabled: false
+          startup:
+            enabled: false
+
+service:
+  cyberchef:
+    enabled: true
+    controller: cyberchef
+    nameOverride: cyberchef
+    primary: true
+    type: ClusterIP
+
+    ports:
+      http:
+        enabled: true
+        primary: true
+        port: 80
+        targetPort: 8000
+        protocol: HTTP
+
+route:
+  cyberchef:
+    enabled: true
+    kind: HTTPRoute
+
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+
+    hostnames:
+      - {{ .Values.cyberchef.domain | quote }}
+
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - kind: Service
+            identifier: cyberchef
+            port: 80
+            weight: 1
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
 
-{{/* Render the templates */}}
 {{ include "bjw-s.common.loader.generate" . }}
