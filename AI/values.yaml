@@ -180,7 +180,6 @@ gpustack:
             accessMode: "ReadWriteOnce"
             enabled: true
             size: 25Gi
-            storageClass: ssd-storage
 
 
       pod:
@@ -196,8 +195,7 @@ gpustack:
         type: statefulset
 
       nodeSelector:
-        nvidia.com/cuda.runtime.major: '12'
-        nvidia.com/cuda.runtime.minor: '8'
+        nvidia.com/cuda.runtime.major: '13'
 
 
 localai:
