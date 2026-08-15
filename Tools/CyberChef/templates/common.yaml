@@ -58,7 +58,7 @@ controllers:
             enabled: true
             type: HTTP
             path: /
-            port: 8000
+            port: 8080
             spec:
               periodSeconds: 30
               timeoutSeconds: 5
@@ -67,7 +67,7 @@ controllers:
             enabled: true
             type: HTTP
             path: /
-            port: 8000
+            port: 8080
             spec:
               periodSeconds: 10
               timeoutSeconds: 5
@@ -76,7 +76,7 @@ controllers:
             enabled: true
             type: HTTP
             path: /
-            port: 8000
+            port: 8080
             spec:
               periodSeconds: 5
               timeoutSeconds: 5
@@ -95,7 +95,7 @@ service:
         enabled: true
         primary: true
         port: 80
-        targetPort: 8000
+        targetPort: 8080
         protocol: HTTP
 
 networkpolicies:

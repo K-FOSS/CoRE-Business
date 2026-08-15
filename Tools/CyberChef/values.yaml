@@ -11,8 +11,8 @@ cyberchef:
   replicas: 2
 
   image:
-    repository: 'mpepping/cyberchef'
-    tag: 'latest@sha256:45ac7df48354fb86bcd6e90710627353ad59980e410917165ae6c24780b44fab'
+    repository: ghcr.io/gchq/cyberchef:latest
+    tag: 'latest'
     pullPolicy: 'IfNotPresent'
 
   resources:
