@@ -1,5 +1,5 @@
 {{- if .Values.nextcloud.enabled }}
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: business-office-nextcloud-keys-prod-sync
