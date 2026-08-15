@@ -1,0 +1,22 @@
+schemaVersion: 2.2.0
+
+components:
+  - name: devtools
+    container:
+      image: quay.io/devfile/universal-developer-image:ubi10-latest
+      memoryLimit: 8G
+      memoryRequest: 2G
+
+attributes:
+  pod-overrides:
+    metadata:
+      labels:
+        che-workspace: 'true'
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  che-workspace: 'true'
+              topologyKey: kubernetes.io/hostname
