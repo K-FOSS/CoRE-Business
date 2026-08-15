@@ -11,7 +11,7 @@ cyberchef:
   replicas: 2
 
   image:
-    repository: ghcr.io/gchq/cyberchef:latest
+    repository: ghcr.io/gchq/cyberchef
     tag: 'latest'
     pullPolicy: 'IfNotPresent'
 
