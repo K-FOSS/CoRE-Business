@@ -110,7 +110,10 @@ persistence:
     enabled: true
     type: persistentVolumeClaim
     size: {{ default "5Gi" $desktop.volume.size | quote }}
-    accessMode: ReadWriteOnce
+    accessMode: {{ default "ReadWriteOnce" $desktop.volume.accessMode }}
+    {{- with $desktop.volume.storageClass }}
+    storageClass: {{ . | quote }}
+    {{- end }}
     advancedMounts:
       desktop-{{ $resourceName }}:
         {{ $resourceName }}:
