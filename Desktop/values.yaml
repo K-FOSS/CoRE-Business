@@ -21,9 +21,9 @@ auth:
   applicationName: 'CoRE Desktops'
   accessGroup: 'Desktop Users'
   outpost:
-    name: 'ak-outpost-authentik-embedded-outpost'
-    namespace: 'authentik'
-    port: 9000
+    name: 'aaa-myloginspace-proxy'
+    namespace: 'core-prod'
+    port: 80
 
 desktops:
   - name: 'dolphin'
