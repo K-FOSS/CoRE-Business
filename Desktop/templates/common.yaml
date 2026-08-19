@@ -22,6 +22,10 @@ controllers:
       {{- with $desktop.runtimeClassName }}
       runtimeClassName: {{ . | quote }}
       {{- end }}
+      {{- with $desktop.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     containers:
       {{ $resourceName }}:
         image:

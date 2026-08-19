@@ -90,6 +90,10 @@ desktops:
         value: 'false'
       - name: 'SELKIES_FRAMERATE'
         value: '120'
+      - name: 'SELKIES_H264_STREAMING_MODE'
+        value: 'true'
+      - name: 'SELKIES_USE_PAINT_OVER_QUALITY'
+        value: 'false'
       - name: 'SELKIES_GAMEPAD_ENABLED'
         value: 'true'
       - name: 'DRINODE'
@@ -105,9 +109,13 @@ desktops:
       sizeLimit: '2Gi'
     nodeSelector:
       kubernetes.io/arch: 'amd64'
+      nvidia.com/cuda.runtime.major: '13'
+    runtimeClassName: 'nvidia'
+    tolerations:
+      - operator: Exists
     resources:
       limits:
-        gpu.intel.com/i915: '1'
+        nvidia.com/gpu: '1'
     securityContext:
       seccompProfile:
         type: Unconfined
