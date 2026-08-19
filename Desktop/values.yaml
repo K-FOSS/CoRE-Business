@@ -60,6 +60,8 @@ desktops:
         value: 'true'
       - name: 'SELKIES_DESKTOP'
         value: 'false'
+      - name: 'SELKIES_FRAMERATE'
+        value: '120'
       - name: 'DRINODE'
         value: '/dev/dri/renderD128'
       - name: 'DRI_NODE'
