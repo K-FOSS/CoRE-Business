@@ -10,7 +10,8 @@ global:
 controllers:
   {{- range $desktop := .Values.desktops }}
   {{- if $desktop.enabled }}
-  desktop-{{ $desktop.name }}:
+  {{- $resourceName := default $desktop.name $desktop.resourceName }}
+  desktop-{{ $resourceName }}:
     strategy: Recreate
     revisionHistoryLimit: 3
     pod:
@@ -22,7 +23,7 @@ controllers:
       runtimeClassName: {{ . | quote }}
       {{- end }}
     containers:
-      {{ $desktop.name }}:
+      {{ $resourceName }}:
         image:
           repository: {{ $desktop.image | quote }}
           tag: {{ required (printf "desktops[%s].tag is required" $desktop.name) $desktop.tag | quote }}
@@ -45,10 +46,11 @@ controllers:
 service:
   {{- range $desktop := .Values.desktops }}
   {{- if $desktop.enabled }}
-  desktop-{{ $desktop.name }}:
+  {{- $resourceName := default $desktop.name $desktop.resourceName }}
+  desktop-{{ $resourceName }}:
     enabled: true
-    controller: desktop-{{ $desktop.name }}
-    nameOverride: desktop-{{ $desktop.name }}
+    controller: desktop-{{ $resourceName }}
+    nameOverride: desktop-{{ $resourceName }}
     type: ClusterIP
     ports:
       http:
@@ -60,29 +62,89 @@ service:
   {{- end }}
   {{- end }}
 
+route:
+  {{- range $desktop := .Values.desktops }}
+  {{- if $desktop.enabled }}
+  {{- $resourceName := default $desktop.name $desktop.resourceName }}
+  desktop-{{ $resourceName }}:
+    enabled: true
+    kind: HTTPRoute
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ $.Values.gateway.name | quote }}
+        namespace: {{ $.Values.gateway.namespace | quote }}
+        sectionName: {{ $.Values.gateway.sectionName | quote }}
+    hostnames:
+      - {{ required (printf "desktops[%s].hostname is required" $desktop.name) $desktop.hostname | quote }}
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - kind: Service
+            identifier: desktop-{{ $resourceName }}
+            port: 80
+            weight: 1
+  {{- if $.Values.auth.enabled }}
+  desktop-{{ $resourceName }}-outpost:
+    enabled: true
+    forceRename: desktop-{{ $resourceName }}-outpost
+    kind: HTTPRoute
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ $.Values.gateway.name | quote }}
+        namespace: {{ $.Values.gateway.namespace | quote }}
+        sectionName: {{ $.Values.gateway.sectionName | quote }}
+    hostnames:
+      - {{ $desktop.hostname | quote }}
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: '/outpost.goauthentik.io/'
+        backendRefs:
+          - kind: Service
+            name: {{ $.Values.auth.outpost.name | quote }}
+            namespace: {{ $.Values.auth.outpost.namespace | quote }}
+            port: {{ $.Values.auth.outpost.port }}
+            weight: 1
+  {{- end }}
+  {{- end }}
+  {{- end }}
+
 persistence:
   {{- range $desktop := .Values.desktops }}
   {{- if $desktop.enabled }}
+  {{- $resourceName := default $desktop.name $desktop.resourceName }}
   {{- if and $desktop.volume $desktop.volume.enabled }}
-  desktop-{{ $desktop.name }}:
+  desktop-{{ $resourceName }}:
     enabled: true
     type: persistentVolumeClaim
     size: {{ default "5Gi" $desktop.volume.size | quote }}
     accessMode: ReadWriteOnce
     advancedMounts:
-      desktop-{{ $desktop.name }}:
-        {{ $desktop.name }}:
+      desktop-{{ $resourceName }}:
+        {{ $resourceName }}:
           - path: {{ default "/config" $desktop.volume.mount | quote }}
   {{- end }}
   {{- if and $desktop.shm $desktop.shm.enabled }}
-  desktop-{{ $desktop.name }}-shm:
+  desktop-{{ $resourceName }}-shm:
     enabled: true
     type: emptyDir
     medium: Memory
     sizeLimit: {{ default "1Gi" $desktop.shm.sizeLimit | quote }}
     advancedMounts:
-      desktop-{{ $desktop.name }}:
-        {{ $desktop.name }}:
+      desktop-{{ $resourceName }}:
+        {{ $resourceName }}:
           - path: /dev/shm
   {{- end }}
   {{- end }}

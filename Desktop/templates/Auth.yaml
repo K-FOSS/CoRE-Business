@@ -51,16 +51,17 @@ spec:
 
 {{- range $desktop := .Values.desktops }}
 {{- if $desktop.enabled }}
+{{- $resourceName := default $desktop.name $desktop.resourceName }}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
-  name: {{ $.Release.Name }}-{{ $desktop.name }}-proxy-auth
+  name: {{ $.Release.Name }}-{{ $resourceName }}-proxy-auth
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      name: {{ $.Release.Name }}-desktop-{{ $desktop.name }}
+      name: {{ $.Release.Name }}-desktop-{{ $resourceName }}
   extAuth:
     failOpen: false
     timeout: '10s'

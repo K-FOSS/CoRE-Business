@@ -49,6 +49,7 @@ desktops:
       nvidia.com/cuda.runtime.major: '13'
 
   - name: 'orcha-slicer'
+    resourceName: 'orca'
     enabled: true
     image: 'lscr.io/linuxserver/orcaslicer'
     tag: 'latest'
