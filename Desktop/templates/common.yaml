@@ -90,34 +90,6 @@ route:
             identifier: desktop-{{ $resourceName }}
             port: 80
             weight: 1
-  {{- if $.Values.auth.enabled }}
-  desktop-{{ $resourceName }}-outpost:
-    enabled: true
-    forceRename: desktop-{{ $resourceName }}-outpost
-    kind: HTTPRoute
-    labels:
-      wan-mode: 'public'
-      lan-mode: 'private'
-    parentRefs:
-      - group: gateway.networking.k8s.io
-        kind: Gateway
-        name: {{ $.Values.gateway.name | quote }}
-        namespace: {{ $.Values.gateway.namespace | quote }}
-        sectionName: {{ $.Values.gateway.sectionName | quote }}
-    hostnames:
-      - {{ $desktop.hostname | quote }}
-    rules:
-      - matches:
-          - path:
-              type: PathPrefix
-              value: '/outpost.goauthentik.io/'
-        backendRefs:
-          - kind: Service
-            name: {{ $.Values.auth.outpost.name | quote }}
-            namespace: {{ $.Values.auth.outpost.namespace | quote }}
-            port: {{ $.Values.auth.outpost.port }}
-            weight: 1
-  {{- end }}
   {{- end }}
   {{- end }}
 
