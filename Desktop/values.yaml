@@ -77,5 +77,40 @@ desktops:
       limits:
         gpu.intel.com/i915: '1'
 
+  - name: 'steam'
+    enabled: true
+    image: 'lscr.io/linuxserver/steam'
+    tag: '8beba5cd-ls35'
+    port: 3000
+    hostname: 'steam.mylogin.space'
+    env:
+      - name: 'PIXELFLUX_WAYLAND'
+        value: 'true'
+      - name: 'SELKIES_DESKTOP'
+        value: 'false'
+      - name: 'SELKIES_FRAMERATE'
+        value: '120'
+      - name: 'SELKIES_GAMEPAD_ENABLED'
+        value: 'true'
+      - name: 'DRINODE'
+        value: '/dev/dri/renderD128'
+      - name: 'DRI_NODE'
+        value: '/dev/dri/renderD128'
+    volume:
+      enabled: true
+      size: '250Gi'
+      mount: '/config'
+    shm:
+      enabled: true
+      sizeLimit: '2Gi'
+    nodeSelector:
+      kubernetes.io/arch: 'amd64'
+    resources:
+      limits:
+        gpu.intel.com/i915: '1'
+    securityContext:
+      seccompProfile:
+        type: Unconfined
+
 kasm:
   enabled: false

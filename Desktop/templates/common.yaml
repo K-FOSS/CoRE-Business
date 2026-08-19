@@ -36,6 +36,10 @@ controllers:
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        {{- with $desktop.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         ports:
           - name: http
             containerPort: {{ default 3000 $desktop.port }}
