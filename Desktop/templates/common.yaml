@@ -26,6 +26,19 @@ controllers:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+    {{- with $desktop.autostartCommand }}
+    initContainers:
+      prepare-autostart:
+        image:
+          repository: {{ $desktop.image | quote }}
+          tag: {{ required (printf "desktops[%s].tag is required" $desktop.name) $desktop.tag | quote }}
+          pullPolicy: IfNotPresent
+        command:
+          - '/bin/sh'
+          - '-c'
+        args:
+          - 'mkdir -p /config/.config/labwc'
+    {{- end }}
     containers:
       {{ $resourceName }}:
         image:
@@ -101,6 +114,17 @@ route:
   {{- end }}
   {{- end }}
 
+configMaps:
+  {{- range $desktop := .Values.desktops }}
+  {{- if and $desktop.enabled $desktop.autostartCommand }}
+  {{- $resourceName := default $desktop.name $desktop.resourceName }}
+  desktop-{{ $resourceName }}-autostart:
+    enabled: true
+    data:
+      autostart: {{ $desktop.autostartCommand | quote }}
+  {{- end }}
+  {{- end }}
+
 persistence:
   {{- range $desktop := .Values.desktops }}
   {{- if $desktop.enabled }}
@@ -118,6 +142,22 @@ persistence:
       desktop-{{ $resourceName }}:
         {{ $resourceName }}:
           - path: {{ default "/config" $desktop.volume.mount | quote }}
+        {{- if $desktop.autostartCommand }}
+        prepare-autostart:
+          - path: {{ default "/config" $desktop.volume.mount | quote }}
+        {{- end }}
+  {{- end }}
+  {{- if $desktop.autostartCommand }}
+  desktop-{{ $resourceName }}-autostart:
+    enabled: true
+    type: configMap
+    identifier: desktop-{{ $resourceName }}-autostart
+    advancedMounts:
+      desktop-{{ $resourceName }}:
+        {{ $resourceName }}:
+          - path: '/config/.config/labwc/autostart'
+            subPath: 'autostart'
+            readOnly: true
   {{- end }}
   {{- if and $desktop.shm $desktop.shm.enabled }}
   desktop-{{ $resourceName }}-shm:

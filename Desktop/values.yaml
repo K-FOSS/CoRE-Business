@@ -90,8 +90,10 @@ desktops:
         value: 'false'
       - name: 'SELKIES_FRAMERATE'
         value: '120'
+      - name: 'SELKIES_ENCODER'
+        value: 'x264enc'
       - name: 'SELKIES_H264_STREAMING_MODE'
-        value: 'true'
+        value: 'true|locked'
       - name: 'SELKIES_USE_PAINT_OVER_QUALITY'
         value: 'false'
       - name: 'SELKIES_GAMEPAD_ENABLED'
@@ -125,6 +127,7 @@ desktops:
     securityContext:
       seccompProfile:
         type: Unconfined
+    autostartCommand: '/usr/bin/wrapped-steam -bigpicture'
 
   - name: 'steam-intel'
     resourceName: 'steam-i'
