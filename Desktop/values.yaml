@@ -1,40 +1,80 @@
-env: prod
+env: 'prod'
 
 hub: true
 
 cluster:
-  name: k8s
-  domain: cluster.local
+  name: 'k8s'
+  domain: 'cluster.local'
 
-datacenter: dc1
+datacenter: 'dc1'
+region: 'yxl'
 
-region: yxl
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+auth:
+  enabled: true
+  providerConfigRef: 'authentik'
+  applicationSlug: 'desktop'
+  applicationName: 'CoRE Desktops'
+  accessGroup: 'Desktop Users'
+  outpost:
+    name: 'ak-outpost-authentik-embedded-outpost'
+    namespace: 'authentik'
+    port: 9000
 
 desktops:
-  - name: dolphin
-    image: lscr.io/linuxserver/dolphin
-    tag: latest
-
+  - name: 'dolphin'
+    enabled: true
+    image: 'lscr.io/linuxserver/dolphin'
+    tag: 'latest'
+    port: 3000
+    hostname: 'dolphin.mylogin.space'
+    env:
+      - name: 'PIXELFLUX_WAYLAND'
+        value: 'true'
+      - name: 'SELKIES_DESKTOP'
+        value: 'false'
     volume:
       enabled: true
-
-      size: 30Gi
-
-      mount: /root
-
-    runtimeClassName: nvidia
-
+      size: '30Gi'
+      mount: '/config'
+    shm:
+      enabled: true
+      sizeLimit: '1Gi'
+    runtimeClassName: 'nvidia'
     nodeSelector:
-      nvidia.com/cuda.runtime.major: '12'
+      nvidia.com/cuda.runtime.major: '13'
 
-  - name: orcha-slicer
-    image: lscr.io/linuxserver/orcaslicer
-    tag: latest
-
-    runtimeClassName: nvidia
-
-    nodeSelector:
-      nvidia.com/cuda.runtime.major: '12'
+  - name: 'orcha-slicer'
+    enabled: true
+    image: 'lscr.io/linuxserver/orcaslicer'
+    tag: 'latest'
+    port: 3000
+    hostname: 'orcaslicer.mylogin.space'
+    env:
+      - name: 'PIXELFLUX_WAYLAND'
+        value: 'true'
+      - name: 'SELKIES_DESKTOP'
+        value: 'false'
+      - name: 'DRINODE'
+        value: '/dev/dri/renderD128'
+      - name: 'DRI_NODE'
+        value: '/dev/dri/renderD128'
+    volume:
+      enabled: true
+      size: '30Gi'
+      mount: '/config'
+    shm:
+      enabled: true
+      sizeLimit: '1Gi'
+    resources:
+      requests:
+        gpu.intel.com/i915: '1'
+      limits:
+        gpu.intel.com/i915: '1'
 
 kasm:
   enabled: false

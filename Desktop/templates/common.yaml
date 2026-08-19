@@ -2,66 +2,92 @@
 {{- include "bjw-s.common.loader.init" . }}
 
 {{- define "app-template.hardcodedValues" -}}
-# Set the nameOverride based on the release name if no override has been set
-{{ if not .Values.global.nameOverride }}
+{{- if not .Values.global.nameOverride }}
 global:
   nameOverride: "{{ .Release.Name }}"
-{{ end }}
+{{- end }}
 
 controllers:
-  {{- range $desktopIndex, $desktopServer := $.Values.desktops }}
-  desktop-{{ $desktopServer.name }}:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
-    strategy: RollingUpdate
-
+  {{- range $desktop := .Values.desktops }}
+  {{- if $desktop.enabled }}
+  desktop-{{ $desktop.name }}:
+    strategy: Recreate
+    revisionHistoryLimit: 3
     pod:
-      {{- with $desktopServer.nodeSelector }}
+      {{- with $desktop.nodeSelector }}
       nodeSelector:
-        {{ toYaml . | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
-
-      runtimeClassName: '{{ $desktopServer.runtimeClassName }}'
-
+      {{- with $desktop.runtimeClassName }}
+      runtimeClassName: {{ . | quote }}
+      {{- end }}
     containers:
-      {{ $desktopServer.name }}:
+      {{ $desktop.name }}:
         image:
-          repository: {{ $desktopServer.image }}
-          tag: {{ default "latest" $desktopServer.tag }}
-          pullPolicy: Always
-
-        {{- with $desktopServer.env }}
+          repository: {{ $desktop.image | quote }}
+          tag: {{ required (printf "desktops[%s].tag is required" $desktop.name) $desktop.tag | quote }}
+          pullPolicy: IfNotPresent
+        {{- with $desktop.env }}
         env:
-          {{ toYaml . | nindent 10 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
-
+        {{- with $desktop.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         ports:
           - name: http
-            containerPort: 8080
+            containerPort: {{ default 3000 $desktop.port }}
+            protocol: TCP
+  {{- end }}
+  {{- end }}
 
+service:
+  {{- range $desktop := .Values.desktops }}
+  {{- if $desktop.enabled }}
+  desktop-{{ $desktop.name }}:
+    enabled: true
+    controller: desktop-{{ $desktop.name }}
+    nameOverride: desktop-{{ $desktop.name }}
+    type: ClusterIP
+    ports:
+      http:
+        enabled: true
+        primary: true
+        port: 80
+        targetPort: http
+        protocol: HTTP
+  {{- end }}
   {{- end }}
 
 persistence:
-  {{- range $desktopIndex, $desktopServer := $.Values.desktops }}
-  {{- if and $desktopServer.volume (eq (default false $desktopServer.volume.enabled) true) }}
-  desktop-{{ $desktopServer.name }}:
+  {{- range $desktop := .Values.desktops }}
+  {{- if $desktop.enabled }}
+  {{- if and $desktop.volume $desktop.volume.enabled }}
+  desktop-{{ $desktop.name }}:
     enabled: true
     type: persistentVolumeClaim
-
-    size: {{ default "5Gi" $desktopServer.volume.size }}
-
+    size: {{ default "5Gi" $desktop.volume.size | quote }}
     accessMode: ReadWriteOnce
-
     advancedMounts:
-      desktop-{{ $desktopServer.name }}:
-        {{ $desktopServer.name }}:
-          - path: {{ $desktopServer.volume.mount }}
+      desktop-{{ $desktop.name }}:
+        {{ $desktop.name }}:
+          - path: {{ default "/config" $desktop.volume.mount | quote }}
+  {{- end }}
+  {{- if and $desktop.shm $desktop.shm.enabled }}
+  desktop-{{ $desktop.name }}-shm:
+    enabled: true
+    type: emptyDir
+    medium: Memory
+    sizeLimit: {{ default "1Gi" $desktop.shm.sizeLimit | quote }}
+    advancedMounts:
+      desktop-{{ $desktop.name }}:
+        {{ $desktop.name }}:
+          - path: /dev/shm
   {{- end }}
   {{- end }}
-
+  {{- end }}
 {{- end -}}
-{{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
 
-{{/* Render the templates */}}
+{{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
 {{ include "bjw-s.common.loader.generate" . }}

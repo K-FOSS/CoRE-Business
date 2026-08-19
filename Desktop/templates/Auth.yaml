@@ -1,0 +1,97 @@
+{{- if .Values.auth.enabled }}
+---
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: {{ .Release.Name }}-proxy-auth
+spec:
+  providerConfigRef:
+    name: {{ .Values.auth.providerConfigRef | quote }}
+  forProvider:
+    source: Inline
+    module: |
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      resource "authentik_group" "desktop_users" {
+        name         = "{{ .Values.auth.accessGroup }}"
+        is_superuser = false
+      }
+
+      {{- range $desktop := .Values.desktops }}
+      {{- if $desktop.enabled }}
+      resource "authentik_provider_proxy" "{{ $desktop.name | replace "-" "_" }}" {
+        name               = "{{ $.Values.auth.applicationName }} - {{ $desktop.name }} {{ $.Values.cluster.name }} {{ $.Values.datacenter }} {{ $.Values.region }}"
+        mode               = "forward_single"
+        external_host      = "https://{{ $desktop.hostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "{{ $desktop.name | replace "-" "_" }}" {
+        name              = "{{ $.Values.auth.applicationName }} - {{ $desktop.name }}"
+        slug              = "{{ $.Values.auth.applicationSlug }}-{{ $desktop.name }}-{{ $.Values.region }}-{{ $.Values.datacenter }}-{{ $.Values.cluster.name }}"
+        group             = "{{ $.Values.datacenter }}-{{ $.Values.cluster.name }}"
+        protocol_provider = authentik_provider_proxy.{{ $desktop.name | replace "-" "_" }}.id
+      }
+
+      resource "authentik_policy_binding" "{{ $desktop.name | replace "-" "_" }}_access" {
+        target = authentik_application.{{ $desktop.name | replace "-" "_" }}.uuid
+        group  = authentik_group.desktop_users.id
+        order  = 0
+      }
+
+      {{- end }}
+      {{- end }}
+
+{{- range $desktop := .Values.desktops }}
+{{- if $desktop.enabled }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: {{ $.Release.Name }}-{{ $desktop.name }}-proxy-auth
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ $.Release.Name }}-desktop-{{ $desktop.name }}
+  extAuth:
+    failOpen: false
+    timeout: '10s'
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      backendRefs:
+        - group: ''
+          kind: Service
+          name: {{ $.Values.auth.outpost.name | quote }}
+          namespace: {{ $.Values.auth.outpost.namespace | quote }}
+          port: {{ $.Values.auth.outpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-username'
+        - 'x-authentik-groups'
+        - 'x-authentik-entitlements'
+        - 'x-authentik-email'
+        - 'x-authentik-name'
+        - 'x-authentik-uid'
+        - 'x-authentik-jwt'
+        - 'x-authentik-meta-jwks'
+        - 'x-authentik-meta-outpost'
+        - 'x-authentik-meta-provider'
+        - 'x-authentik-meta-app'
+        - 'x-authentik-meta-version'
+{{- end }}
+{{- end }}
+{{- end }}
