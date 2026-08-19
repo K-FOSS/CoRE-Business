@@ -44,9 +44,9 @@ desktops:
     shm:
       enabled: true
       sizeLimit: '1Gi'
-    runtimeClassName: 'nvidia'
-    nodeSelector:
-      nvidia.com/cuda.runtime.major: '13'
+    resources:
+      limits:
+        gpu.intel.com/i915: '1'
 
   - name: 'orcha-slicer'
     resourceName: 'orca'
@@ -74,8 +74,6 @@ desktops:
       enabled: true
       sizeLimit: '1Gi'
     resources:
-      requests:
-        gpu.intel.com/i915: '1'
       limits:
         gpu.intel.com/i915: '1'
 
