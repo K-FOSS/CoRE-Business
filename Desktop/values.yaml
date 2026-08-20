@@ -110,7 +110,7 @@ desktops:
         value: '*nvidia*'
     volume:
       enabled: true
-      size: '250Gi'
+      size: '450Gi'
       mount: '/config'
     shm:
       enabled: true
