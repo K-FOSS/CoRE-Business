@@ -23,6 +23,12 @@ Do not assume the local defaults represent either deployment role.
 - Gateway API resources expose AI, speech-to-text and text-to-speech endpoints.
 - OpenWebUI identity automation creates a CoRE `User` and an Authentik
   Terraform `Workspace`.
+- GPUStack v2 uses its unified, version-pinned image for the server and workers.
+  A CoRE `User` provisions its PostgreSQL role and database on the site-local
+  `psql-<datacenter>-<region>` cluster, writing credentials to
+  `<release>-gpustack-user`. The server connects to
+  `psql.<cluster>.<datacenter>.<region>.mylogin.space:5432`; both the providers
+  and hostname can be overridden under `gpustack.psql`.
 - MCP search credentials are read through External Secrets.
 - Backend and BackendTrafficPolicy resources configure external/upstream speech
   services.
@@ -40,7 +46,12 @@ For a representative render, merge the values from the specific owning
 ApplicationSet. Validate Gateway API, Envoy Gateway extension APIs, External
 Secrets, Crossplane/Terraform provider configuration and GPU runtime support.
 After sync, test the web UI, OIDC login, model/backend discovery, MCP calls and
-speech endpoints rather than relying only on pod readiness.
+speech endpoints rather than relying only on pod readiness. For GPUStack,
+follow the `User` and PostgreSQL Crossplane conditions, verify the generated
+connection Secret exists, and confirm the server completes its v2 database
+migrations before testing worker registration. Roll back the image and
+manifests together; deleting the `User` can delete the provisioned database
+according to the platform resource's deletion policy.
 
 ## Upstream projects
 

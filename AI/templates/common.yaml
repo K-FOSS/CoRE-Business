@@ -144,7 +144,7 @@ controllers:
 
     type: statefulset
 
-    replicas: 2
+    replicas: {{ default 1 $.Values.gpustack.server.replicas }}
 
     statefulset:
       volumeClaimTemplates:
@@ -161,7 +161,7 @@ controllers:
         {{ toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- with .Values.gpustack.pod }}
+      {{- with .Values.gpustack.server.pod }}
       {{ toYaml . | nindent 6 }}
       {{- end }}
 
@@ -177,8 +177,8 @@ controllers:
     containers:
       gpustack:
         image:
-          repository: {{ default .Values.gpustack.server.image "gpustack/gpustack" }}
-          tag: {{ default .Values.gpustack.server.tag "latest-cpu" }}
+          repository: {{ default "gpustack/gpustack" .Values.gpustack.server.image }}
+          tag: {{ default "v2.2.3" .Values.gpustack.server.tag }}
           pullPolicy: IfNotPresent
 
         # args:
@@ -187,6 +187,29 @@ controllers:
         env:
           - name: LLAMACPP_GRPC_SERVERS
             value: 'localhost:50052'
+
+          {{- if $.Values.gpustack.psql.enabled }}
+          - name: GPUSTACK_DATABASE_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-gpustack-user
+                key: username
+
+          - name: GPUSTACK_DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-gpustack-user
+                key: password
+
+          - name: GPUSTACK_DATABASE_NAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-gpustack-user
+                key: username
+
+          - name: GPUSTACK_DATABASE_URL
+            value: 'postgresql://$(GPUSTACK_DATABASE_USERNAME):$(GPUSTACK_DATABASE_PASSWORD)@{{ default (printf "psql.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $.Values.gpustack.psql.host }}:5432/$(GPUSTACK_DATABASE_NAME)'
+          {{- end }}
 
         ports:
           - name: http

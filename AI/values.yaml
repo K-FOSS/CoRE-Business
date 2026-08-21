@@ -114,11 +114,21 @@ externalSecrets:
 gpustack:
   enabled: true
 
+  psql:
+    enabled: true
+
+    # Defaults to psql.<cluster.name>.<datacenter>.<region>.mylogin.space.
+    host: ''
+
+    # Both providers default to psql-<datacenter>-<region>.
+    crossplaneProvider: ''
+    terraformProvider: ''
+
   server:
     enabled: true
 
     image: gpustack/gpustack
-    tag: latest-cuda12.8
+    tag: v2.2.3
 
     replicas: 3
 
@@ -146,8 +156,8 @@ gpustack:
     - name: cpu-worker
       enabled: true
       image: gpustack/gpustack
-      tag: latest-cpu
-      pullPolicy: Always
+      tag: v2.2.3
+      pullPolicy: IfNotPresent
 
       args:
         - --server-url
@@ -164,8 +174,8 @@ gpustack:
     - name: gpu-worker
       enabled: true
       image: gpustack/gpustack
-      tag: latest-cuda12.8
-      pullPolicy: Always
+      tag: v2.2.3
+      pullPolicy: IfNotPresent
 
       statefulset:
         # -- Set podManagementPolicy, valid values are Parallel and OrderedReady (default).
