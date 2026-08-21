@@ -130,10 +130,7 @@ gpustack:
     image: gpustack/gpustack
     tag: v2.2.3
 
-    replicas: 3
-
-    pod:
-      runtimeClassName: nvidia
+    replicas: 1
     
     service:
       enabled: true
@@ -148,9 +145,6 @@ gpustack:
 
         labels:
           test: 'true'
-
-    nodeSelector:
-      kubernetes.io/hostname: hpc2
 
   workers:
     - name: cpu-worker
