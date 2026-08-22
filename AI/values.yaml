@@ -154,60 +154,7 @@ gpustack:
         labels:
           test: 'true'
 
-  workers:
-    - name: cpu-worker
-      enabled: true
-      image: gpustack/gpustack
-      tag: v2.2.3
-      pullPolicy: IfNotPresent
-
-      args:
-        - --server-url
-        - https://gpustack.mylogin.space
-        - --token
-        - <path:CORE0_SITE1/data/AI/GPUStack#Token>
-
-      controller:
-        type: daemonset
-
-      nodeSelector:
-        gpu-node: 'false'
-
-    - name: gpu-worker
-      enabled: true
-      image: gpustack/gpustack
-      tag: v2.2.3
-      pullPolicy: IfNotPresent
-
-      statefulset:
-        # -- Set podManagementPolicy, valid values are Parallel and OrderedReady (default).
-        podManagementPolicy: Parallel
-
-        serviceName:
-          identifier: gpu-stackworker-1
-
-        # -- Used to create individual disks for each instance.
-        volumeClaimTemplates:
-          - name: data
-            accessMode: "ReadWriteOnce"
-            enabled: true
-            size: 25Gi
-
-
-      pod:
-        runtimeClassName: nvidia
-
-      args:
-        - --server-url
-        - https://gpustack.mylogin.space
-        - --token
-        - <path:CORE0_SITE1/data/AI/GPUStack#Token>
-
-      controller:
-        type: statefulset
-
-      nodeSelector:
-        nvidia.com/cuda.runtime.major: '13'
+  workers: []
 
 
 localai:
