@@ -19,7 +19,11 @@ Do not assume the local defaults represent either deployment role.
 
 ## Integrations and generated resources
 
-- The bjw-s common library renders most workloads from `templates/common.yaml`.
+- The [bjw-s common library](https://bjw-s-labs.github.io/helm-charts/docs/) v5
+  renders most workloads from `templates/common.yaml`. It requires Kubernetes
+  1.31 or newer and Helm 3.18 or newer; v5 creates a dedicated unprivileged
+  ServiceAccount by default and does not mount its token unless explicitly
+  enabled.
 - Gateway API resources expose AI, speech-to-text and text-to-speech endpoints.
 - OpenWebUI identity automation creates a CoRE `User` and an Authentik
   Terraform `Workspace`.

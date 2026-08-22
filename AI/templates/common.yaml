@@ -495,6 +495,11 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
+    {{- if and $.Values.docker.kubedock.enabled $.Values.docker.kubedock.rbac.create }}
+    serviceAccount:
+      identifier: kubedock
+    {{- end }}
+
     containers:
       kubedock:
         image:
@@ -2452,6 +2457,13 @@ configMaps:
 
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
+
+{{/* Common v5 requires an explicit selection whenever an optional second account is enabled. */}}
+{{- range $controller := .Values.controllers }}
+  {{- if not (hasKey $controller "serviceAccount") }}
+    {{- $_ := set $controller "serviceAccount" (dict "identifier" $.Release.Name) }}
+  {{- end }}
+{{- end }}
 
 {{/* Render the templates */}}
 {{ include "bjw-s.common.loader.generate" . }}

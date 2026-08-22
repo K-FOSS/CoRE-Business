@@ -67,7 +67,7 @@ wyoming:
   languages: 'en'
 
 speeches:
-  enabled: true
+  enabled: false
 
   image: ghcr.io/speaches-ai/speaches
   tag: 0.8.0-rc.3-cuda-12.4.1
