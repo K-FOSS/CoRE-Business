@@ -11,7 +11,20 @@ spec:
 
   timeout:
     http:
-      requestTimeout: 300s
+      requestTimeout: 0s
+      maxStreamDuration: 0s
+      streamIdleTimeout: 0s
+
+  loadBalancer:
+    type: ConsistentHash
+    consistentHash:
+      type: Cookie
+      cookie:
+        name: 'core-speaches-session'
+        ttl: '10800s'
+        attributes:
+          SameSite: 'Lax'
+          Secure: 'true'
 
   healthCheck:
     active:

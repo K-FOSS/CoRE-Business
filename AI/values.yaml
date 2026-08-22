@@ -70,7 +70,7 @@ speeches:
   enabled: true
 
   image: 'ghcr.io/speaches-ai/speaches'
-  tag: '0.9.0-rc.3-cpu'
+  tag: 'latest-cpu'
 
   replicas: 2
 
@@ -95,6 +95,8 @@ speeches:
 
   service:
     name: 'core-speaches'
+    sessionAffinity: ClientIP
+    sessionAffinityTimeoutSeconds: 10800
     clusterMesh:
       enabled: true
       shared: true
