@@ -1,0 +1,120 @@
+{{- if and .Values.gpustack.enabled .Values.gpustack.server.enabled .Values.gpustack.oidc.enabled }}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: {{ .Release.Name }}-gpustack-oidc
+spec:
+  providerConfigRef:
+    name: {{ .Values.gpustack.oidc.providerConfigRef | quote }}
+
+  writeConnectionSecretToRef:
+    namespace: {{ .Release.Namespace }}
+    name: {{ .Release.Name }}-gpustack-oidc
+
+  forProvider:
+    source: Inline
+    module: |
+      terraform {
+        required_providers {
+          authentik = {
+            source  = "goauthentik/authentik"
+            version = "2026.5.1"
+          }
+          random = {
+            source  = "hashicorp/random"
+            version = "3.9.0"
+          }
+        }
+      }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-explicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_certificate_key_pair" "signing_key" {
+        name = "tls"
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 128
+        lower   = true
+        numeric = true
+        upper   = true
+        special = true
+      }
+
+      resource "authentik_provider_oauth2" "gpustack" {
+        name          = "GPUStack {{ .Values.cluster.name }} {{ .Values.datacenter }} {{ .Values.region }}"
+        client_id     = "{{ .Values.gpustack.oidc.applicationSlug }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
+        client_secret = random_password.client_secret.result
+        client_type   = "confidential"
+        signing_key   = data.authentik_certificate_key_pair.signing_key.id
+
+        allowed_redirect_uris = [
+          {
+            matching_mode = "strict"
+            url           = "{{ trimSuffix "/" .Values.gpustack.server.externalUrl }}/auth/oidc/callback"
+          },
+        ]
+
+        property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "gpustack" {
+        name              = "GPUStack"
+        slug              = "{{ .Values.gpustack.oidc.applicationSlug }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
+        group             = "{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
+        protocol_provider = authentik_provider_oauth2.gpustack.id
+      }
+
+      resource "authentik_group" "gpustack_users" {
+        name         = "{{ .Values.gpustack.oidc.accessGroup }}"
+        is_superuser = false
+      }
+
+      resource "authentik_application_entitlement" "gpustack_access" {
+        name        = "${authentik_group.gpustack_users.id}-ent"
+        application = authentik_application.gpustack.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.gpustack_access.id
+        group  = authentik_group.gpustack_users.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.gpustack.uuid
+        group  = authentik_group.gpustack_users.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.gpustack.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }
+
+      output "OIDC_ISSUER" {
+        value     = "{{ trimSuffix "/" .Values.gpustack.oidc.issuerBaseUrl }}/application/o/{{ .Values.gpustack.oidc.applicationSlug }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}/"
+        sensitive = true
+      }
+{{- end }}

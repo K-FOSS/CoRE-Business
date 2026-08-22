@@ -114,6 +114,13 @@ externalSecrets:
 gpustack:
   enabled: true
 
+  oidc:
+    enabled: true
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'gpustack'
+    accessGroup: 'GPUStack Users'
+
   psql:
     enabled: true
 
@@ -126,6 +133,7 @@ gpustack:
 
   server:
     enabled: true
+    externalUrl: 'https://gpustack.mylogin.space'
 
     image: gpustack/gpustack
     tag: v2.2.3

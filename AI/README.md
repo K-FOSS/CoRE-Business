@@ -28,6 +28,20 @@ Do not assume the local defaults represent either deployment role.
 - OpenWebUI identity automation creates a CoRE `User` and an Authentik
   Terraform `Workspace`.
 - GPUStack v2 uses its unified, version-pinned image for the server and workers.
+  Its Authentik Terraform `Workspace` creates a confidential OIDC provider,
+  application, `GPUStack Users` access group and entitlement. The generated
+  client credentials are written to `<release>-gpustack-oidc`; the server uses
+  them with the exact `<external-url>/auth/oidc/callback` redirect URI required
+  by [GPUStack SSO](https://docs.gpustack.ai/2.0/user-guide/sso/). OIDC settings,
+  including the Authentik provider reference and issuer URL, are configured
+  under `gpustack.oidc`; the public URL is `gpustack.server.externalUrl`. The
+  inline module pins the
+  [Authentik Terraform provider](https://registry.terraform.io/providers/goauthentik/authentik/2026.5.1)
+  and [random provider](https://registry.terraform.io/providers/hashicorp/random/3.9.0).
+  The same HTTPS `externalUrl` is passed as GPUStack's
+  [`server-external-url`](https://docs.gpustack.ai/2.0/cli-reference/start/), so
+  generated worker-registration and other advertised URLs do not inherit the
+  chart's internal HTTP transport.
   A CoRE `User` provisions its PostgreSQL role and database on the site-local
   `psql-<datacenter>-<region>` cluster, writing credentials to
   `<release>-gpustack-user`. The server connects to
@@ -51,11 +65,13 @@ ApplicationSet. Validate Gateway API, Envoy Gateway extension APIs, External
 Secrets, Crossplane/Terraform provider configuration and GPU runtime support.
 After sync, test the web UI, OIDC login, model/backend discovery, MCP calls and
 speech endpoints rather than relying only on pod readiness. For GPUStack,
-follow the `User` and PostgreSQL Crossplane conditions, verify the generated
-connection Secret exists, and confirm the server completes its v2 database
-migrations before testing worker registration. Roll back the image and
-manifests together; deleting the `User` can delete the provisioned database
-according to the platform resource's deletion policy.
+follow both Terraform `Workspace` and `User` conditions, verify the generated
+OIDC and PostgreSQL connection Secrets exist, confirm a member of `GPUStack
+Users` can complete login, and confirm the server completes its v2 database
+migrations before testing worker registration. Removing the OIDC Workspace
+deletes its Authentik application, provider and access bindings. Roll back the
+image and manifests together; deleting the `User` can delete the provisioned
+database according to the platform resource's deletion policy.
 
 ## Upstream projects
 

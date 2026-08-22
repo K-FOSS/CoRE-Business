@@ -188,6 +188,9 @@ controllers:
           - name: LLAMACPP_GRPC_SERVERS
             value: 'localhost:50052'
 
+          - name: GPUSTACK_SERVER_EXTERNAL_URL
+            value: '{{ trimSuffix "/" $.Values.gpustack.server.externalUrl }}'
+
           {{- if $.Values.gpustack.psql.enabled }}
           - name: GPUSTACK_DATABASE_USERNAME
             valueFrom:
@@ -208,7 +211,30 @@ controllers:
                 key: username
 
           - name: GPUSTACK_DATABASE_URL
-            value: 'postgresql://$(GPUSTACK_DATABASE_USERNAME):$(GPUSTACK_DATABASE_PASSWORD)@{{ default (printf "psql.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $.Values.gpustack.psql.host }}:5432/$(GPUSTACK_DATABASE_NAME)'
+            value: 'postgresql://$(GPUSTACK_DATABASE_USERNAME):$(GPUSTACK_DATABASE_PASSWORD)@{{ default (printf "psql-local.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $.Values.gpustack.psql.host }}:5432/$(GPUSTACK_DATABASE_NAME)'
+          {{- end }}
+
+          {{- if $.Values.gpustack.oidc.enabled }}
+          - name: GPUSTACK_OIDC_ISSUER
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-gpustack-oidc
+                key: OIDC_ISSUER
+
+          - name: GPUSTACK_OIDC_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-gpustack-oidc
+                key: OIDC_CLIENT_ID
+
+          - name: GPUSTACK_OIDC_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-gpustack-oidc
+                key: OIDC_CLIENT_SECRET
+
+          - name: GPUSTACK_OIDC_REDIRECT_URI
+            value: '{{ trimSuffix "/" $.Values.gpustack.server.externalUrl }}/auth/oidc/callback'
           {{- end }}
 
         ports:
