@@ -67,22 +67,37 @@ wyoming:
   languages: 'en'
 
 speeches:
-  enabled: false
+  enabled: true
 
-  image: ghcr.io/speaches-ai/speaches
-  tag: 0.8.0-rc.3-cuda-12.4.1
+  image: 'ghcr.io/speaches-ai/speaches'
+  tag: '0.9.0-rc.3-cpu'
 
-  runtimeClassName: nvidia
+  replicas: 2
 
-  externalBackend:
-    - name: hpc3-windows
-      endpoint:
-        ip:
-          address: 172.31.192.12
-          port: 8001
+  model: 'Systran/faster-whisper-small'
 
-  nodeSelector:
-    gpu-node: 'true'
+  resources:
+    requests:
+      cpu: '4'
+    limits:
+      cpu: '4'
+
+  persistence:
+    size: '10Gi'
+    storageClass: 'speaches-longhorn-rwx'
+    accessMode: ReadWriteMany
+
+  storageClass:
+    create: true
+    name: 'speaches-longhorn-rwx'
+    numberOfReplicas: '2'
+    migratable: 'false'
+
+  nodes:
+    - 'srv2'
+    - 'srv3'
+
+  externalBackend: []
 
 
 tts:

@@ -54,7 +54,7 @@ notes:
 
 | Chart | Backplane owner | Deployment scope |
 | --- | --- | --- |
-| [AI](AI/README.md) | [AI](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml), [AINode2](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AINode2.yaml) | AI hub/MCP services, GPUStack with Authentik OIDC, and per-cluster LocalAI workers. |
+| [AI](AI/README.md) | [AI](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml), [AINode2](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AINode2.yaml) | AI hub/MCP services, GPUStack with Authentik OIDC, a replicated CPU Speaches backend, and per-cluster LocalAI workers. |
 | [Automation](Automation/README.md) | [Automation](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Automation.yaml) | n8n with external database, Redis and S3 credentials. |
 | [Ambient](Ambient/README.md) | [Ambient](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Ambient.yaml) | Moodist ambient-sound service on selected infrastructure clusters. |
 | [Browsers](Browsers/README.md) | [Browsers](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Browsers.yaml) | Selenium Grid browser automation. |

@@ -50,6 +50,14 @@ Do not assume the local defaults represent either deployment role.
 - MCP search credentials are read through External Secrets.
 - Backend and BackendTrafficPolicy resources configure external/upstream speech
   services.
+- The Speaches CPU backend runs as a two-replica StatefulSet with one pod on
+  each of `srv2` and `srv3`. Each replica receives four CPU cores and preloads
+  `Systran/faster-whisper-small` during startup. Both replicas share a 10 GiB
+  ReadWriteMany Hugging Face cache through the chart-managed
+  `speaches-longhorn-rwx` [Longhorn](https://longhorn.io/docs/) StorageClass.
+  The class uses two Longhorn replicas, sets `migratable` to `false`, and uses
+  a `Retain` reclaim policy so deleting the workload claim does not
+  automatically delete the model-cache volume.
 - GPU scheduling, runtime classes and node selectors are controlled by values;
   verify them against the selected cluster before enabling a backend.
 
@@ -72,12 +80,18 @@ migrations before testing worker registration. Removing the OIDC Workspace
 deletes its Authentik application, provider and access bindings. Roll back the
 image and manifests together; deleting the `User` can delete the provisioned
 database according to the platform resource's deletion policy.
+For Speaches, verify that its PVC is `Bound` as ReadWriteMany, the StatefulSet
+places exactly one pod on each requested host, both pods complete the model
+preload, and `/v1/audio/transcriptions` accepts
+`Systran/faster-whisper-small`. Removing the chart leaves the Longhorn PV for
+manual recovery or deletion because its reclaim policy is `Retain`.
 
 ## Upstream projects
 
 - [Open WebUI website](https://openwebui.com/) and [documentation](https://docs.openwebui.com/)
 - [LocalAI website](https://localai.io/) and [documentation](https://localai.io/docs/)
 - [GPUStack website](https://gpustack.ai/) and [documentation](https://docs.gpustack.ai/)
-- [Speaches source and documentation](https://github.com/speaches-ai/speaches)
+- [Speaches website and documentation](https://speaches.ai/) and
+  [source repository](https://github.com/speaches-ai/speaches)
 - [Model Context Protocol website](https://modelcontextprotocol.io/) and [specification](https://modelcontextprotocol.io/specification/)
 - [bjw-s common chart documentation](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)

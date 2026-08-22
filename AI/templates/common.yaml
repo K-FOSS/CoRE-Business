@@ -935,13 +935,35 @@ controllers:
     # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
 
-    pod:
-      {{- with $.Values.speeches.nodeSelector }}
-      nodeSelector:
-        {{ toYaml . | nindent 8 }}
-      {{- end }}
+    type: statefulset
 
+    replicas: {{ $.Values.speeches.replicas }}
+
+    statefulset:
+      serviceName:
+        identifier: speeches
+
+    pod:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      {{- toYaml $.Values.speeches.nodes | nindent 22 }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: speeches
+                  app.kubernetes.io/instance: {{ $.Release.Name }}
+              topologyKey: kubernetes.io/hostname
+
+      {{- with $.Values.speeches.runtimeClassName }}
       runtimeClassName: {{ $.Values.speeches.runtimeClassName }}
+      {{- end }}
 
       securityContext:
         fsGroup: 1000
@@ -953,7 +975,18 @@ controllers:
           tag: {{ default "latest" .Values.speeches.tag }}
           pullPolicy: IfNotPresent
 
-        #env:
+        env:
+          - name: PRELOAD_MODELS
+            value: {{ list $.Values.speeches.model | toJson | quote }}
+
+          - name: WHISPER__INFERENCE_DEVICE
+            value: 'cpu'
+
+          - name: WHISPER__CPU_THREADS
+            value: '4'
+
+        resources:
+          {{- toYaml $.Values.speeches.resources | nindent 10 }}
 
         ports:
           - name: http
@@ -1153,9 +1186,11 @@ persistence:
     enabled: true
     type: persistentVolumeClaim
 
-    size: 5Gi
+    size: {{ $.Values.speeches.persistence.size }}
 
-    accessMode: ReadWriteOnce
+    accessMode: {{ $.Values.speeches.persistence.accessMode }}
+
+    storageClass: {{ $.Values.speeches.persistence.storageClass }}
 
     advancedMounts:
       speeches:

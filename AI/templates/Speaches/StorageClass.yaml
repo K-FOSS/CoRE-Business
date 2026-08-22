@@ -1,0 +1,21 @@
+{{- if and .Values.speeches.enabled .Values.speeches.storageClass.create }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.speeches.storageClass.name | quote }}
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: {{ .Values.speeches.storageClass.numberOfReplicas | quote }}
+  staleReplicaTimeout: '30'
+  fsType: 'ext4'
+  fromBackup: ''
+  dataLocality: 'disabled'
+  unmapMarkSnapChainRemoved: 'ignored'
+  disableRevisionCounter: 'true'
+  dataEngine: 'v1'
+  migratable: {{ .Values.speeches.storageClass.migratable | quote }}
+  backupTargetName: 'default'
+{{- end }}
