@@ -5,17 +5,19 @@ metadata:
   name: {{ .Release.Name }}-openwebui
 
 spec:
-  name: OpenWebUI 
+  name: OpenWebUI {{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}
 
   groups:
     - LDAPService
 
+  {{- if .Values.owui.psql.enabled }}
   psql:
     enabled: true
 
     crossplane:
-      crossplaneProvider: psql-main
-      terraformProvider: psql
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.owui.psql.crossplaneProvider }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.owui.psql.terraformProvider }}
+  {{- end }}
 
   writeConnectionSecretToRef:
     name: {{ .Release.Name }}-openwebui-user

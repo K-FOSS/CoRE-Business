@@ -26,7 +26,17 @@ Do not assume the local defaults represent either deployment role.
   enabled.
 - Gateway API resources expose AI, speech-to-text and text-to-speech endpoints.
 - OpenWebUI identity automation creates a CoRE `User` and an Authentik
-  Terraform `Workspace`.
+  Terraform `Workspace`. Its `User` provisions the PostgreSQL role and database
+  on the site-local `psql-<datacenter>-<region>` cluster and writes the
+  connection Secret to `<release>-openwebui-user`. OpenWebUI connects to
+  `psql-local.<cluster>.<datacenter>.<region>.mylogin.space:5432`; the provider
+  names and hostname can be overridden under `owui.psql`.
+  OpenWebUI also uses the site-local, TLS-enabled
+  [Dragonfly](https://www.dragonflydb.io/docs/category/managing-dragonfly)
+  endpoint for its cache and websocket manager. An `ExternalSecret` copies the
+  generated platform password from `Storage/DragonFly/CoRE/Creds` into
+  `openwebui-dragonfly`; logical databases `150` and `151` are configured under
+  `owui.redis`, along with the endpoint and secret references.
 - GPUStack v2 uses its unified, version-pinned image for the server and workers.
   Its Authentik Terraform `Workspace` creates a confidential OIDC provider,
   application, `GPUStack Users` access group and entitlement. The generated
@@ -45,8 +55,8 @@ Do not assume the local defaults represent either deployment role.
   A CoRE `User` provisions its PostgreSQL role and database on the site-local
   `psql-<datacenter>-<region>` cluster, writing credentials to
   `<release>-gpustack-user`. The server connects to
-  `psql.<cluster>.<datacenter>.<region>.mylogin.space:5432`; both the providers
-  and hostname can be overridden under `gpustack.psql`.
+  `psql-local.<cluster>.<datacenter>.<region>.mylogin.space:5432`; both the
+  providers and hostname can be overridden under `gpustack.psql`.
 - MCP search credentials are read through External Secrets.
 - Backend and BackendTrafficPolicy resources configure external/upstream speech
   services.
@@ -63,6 +73,12 @@ Do not assume the local defaults represent either deployment role.
   healthy local endpoints are preferred and remote-cluster endpoints provide
   failover. Every participating cluster must deploy the Service with this
   exact name in `core-ai-prod` and have a working ClusterMesh connection.
+  Direct Service clients use Kubernetes `ClientIP` session affinity for three
+  hours. Gateway clients receive a secure `core-speaches-session` cookie used
+  by Envoy's consistent-hash load balancer, keeping subsequent requests on the
+  same healthy backend. The Speaches BackendTrafficPolicy disables request,
+  maximum-stream and stream-idle timeouts so long-running transcription streams
+  are not terminated by Envoy Gateway.
 - GPU scheduling, runtime classes and node selectors are controlled by values;
   verify them against the selected cluster before enabling a backend.
 
@@ -85,14 +101,24 @@ migrations before testing worker registration. Removing the OIDC Workspace
 deletes its Authentik application, provider and access bindings. Roll back the
 image and manifests together; deleting the `User` can delete the provisioned
 database according to the platform resource's deletion policy.
+For OpenWebUI, follow its `User` and `ExternalSecret` conditions, confirm the
+database host resolves to the selected site's local PostgreSQL service, and
+test both normal cache operations and websocket updates over TLS. Removing the
+chart removes the namespace-local connection Secrets and `User` claim but does
+not prove that its external PostgreSQL database or Dragonfly keys were deleted;
+verify the platform deletion policies and clear logical databases `150` and
+`151` deliberately when decommissioning the service.
 For Speaches, verify that its PVC is `Bound` as ReadWriteMany, the StatefulSet
 places exactly one pod on each requested host, both pods complete the model
 preload, and `/v1/audio/transcriptions` accepts
 `Systran/faster-whisper-small`. Verify `core-speaches` appears as a global,
 shared Cilium service and that local backends are preferred before testing
-remote failover. Removing the chart removes its local ClusterMesh backends but
-leaves the Longhorn PV for manual recovery or deletion because its reclaim
-policy is `Retain`.
+remote failover. Confirm the Gateway response sets
+`core-speaches-session`, repeat requests reach the same pod, and a streaming
+transcription remains connected for longer than the former five-minute idle
+window. Removing the chart removes its local ClusterMesh backends but leaves
+the Longhorn PV for manual recovery or deletion because its reclaim policy is
+`Retain`.
 
 ## Upstream projects
 

@@ -148,7 +148,7 @@ gpustack:
   psql:
     enabled: true
 
-    # Defaults to psql.<cluster.name>.<datacenter>.<region>.mylogin.space.
+    # Defaults to psql-local.<cluster.name>.<datacenter>.<region>.mylogin.space.
     host: ''
 
     # Both providers default to psql-<datacenter>-<region>.
@@ -258,7 +258,33 @@ owui:
   psql:
     enabled: true
 
-    host: psql.core-home1-talos-prod.home1.yvr.mylogin.space
+    # Defaults to psql-local.<cluster.name>.<datacenter>.<region>.mylogin.space.
+    host: ''
+
+    # Both providers default to psql-<datacenter>-<region>.
+    crossplaneProvider: ''
+    terraformProvider: ''
+
+  redis:
+    enabled: true
+
+    # Defaults to dragonfly.<cluster.name>.<datacenter>.<region>.mylogin.space.
+    host: ''
+    port: 6379
+    database: 150
+    websocketDatabase: 151
+
+    existingSecret:
+      name: 'openwebui-dragonfly'
+      passwordKey: 'password'
+
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: corevault-rootsecrets
+
+    remoteRef:
+      key: Storage/DragonFly/CoRE/Creds
+      property: Password
 
   mcpo:
     enabled: true

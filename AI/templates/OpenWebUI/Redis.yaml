@@ -1,0 +1,19 @@
+{{- if and .Values.owui.enabled .Values.owui.redis.enabled }}
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ .Values.owui.redis.existingSecret.name }}
+spec:
+  secretStoreRef:
+    kind: {{ .Values.owui.redis.secretStoreRef.kind }}
+    name: {{ .Values.owui.redis.secretStoreRef.name }}
+
+  target:
+    name: {{ .Values.owui.redis.existingSecret.name }}
+
+  data:
+    - secretKey: {{ .Values.owui.redis.existingSecret.passwordKey }}
+      remoteRef:
+        key: {{ .Values.owui.redis.remoteRef.key }}
+        property: {{ .Values.owui.redis.remoteRef.property }}
+{{- end }}

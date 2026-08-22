@@ -557,6 +557,11 @@ controllers:
 
     name: openwebui
 
+    {{- if $.Values.owui.redis.enabled }}
+    annotations:
+      secret.reloader.stakater.com/reload: '{{ $.Values.owui.redis.existingSecret.name }}'
+    {{- end }}
+
     containers:
       openwebui:
         image:
@@ -678,12 +683,19 @@ controllers:
           #
           # Redis
           #
+          {{- if $.Values.owui.redis.enabled }}
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $.Values.owui.redis.existingSecret.name }}'
+                key: '{{ $.Values.owui.redis.existingSecret.passwordKey }}'
 
           - name: REDIS_URL
-            value: 'redis://redis.home1.mylogin.space/150'
+            value: 'rediss://:$(REDIS_PASSWORD)@{{ default (printf "dragonfly.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $.Values.owui.redis.host }}:{{ $.Values.owui.redis.port }}/{{ $.Values.owui.redis.database }}'
 
           - name: WEBSOCKET_REDIS_URL
-            value: 'redis://redis.home1.mylogin.space/151'
+            value: 'rediss://:$(REDIS_PASSWORD)@{{ default (printf "dragonfly.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $.Values.owui.redis.host }}:{{ $.Values.owui.redis.port }}/{{ $.Values.owui.redis.websocketDatabase }}'
+          {{- end }}
 
           #
           # PSQL
@@ -693,7 +705,7 @@ controllers:
             value: 'postgresql'
 
           - name: DATABASE_HOST
-            value: '{{ $.Values.owui.psql.host }}'
+            value: '{{ default (printf "psql-local.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $.Values.owui.psql.host }}'
 
           - name: DATABASE_PORT
             value: '5432'
