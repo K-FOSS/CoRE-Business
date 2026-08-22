@@ -93,6 +93,13 @@ speeches:
     numberOfReplicas: '2'
     migratable: 'false'
 
+  service:
+    name: 'core-speaches'
+    clusterMesh:
+      enabled: true
+      shared: true
+      affinity: 'local'
+
   nodes:
     - 'srv2'
     - 'srv3'

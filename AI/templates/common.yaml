@@ -1848,6 +1848,8 @@ service:
     # -- Enables or disables the service
     enabled: true
 
+    forceRename: {{ $.Values.speeches.service.name }}
+
     # -- Configure which controller this service should target
     controller: speeches
 
@@ -1869,7 +1871,12 @@ service:
     ipFamilies: []
 
     # -- Provide additional annotations which may be required.
-    #annotations:
+    {{- if $.Values.speeches.service.clusterMesh.enabled }}
+    annotations:
+      service.cilium.io/global: 'true'
+      service.cilium.io/shared: {{ $.Values.speeches.service.clusterMesh.shared | quote }}
+      service.cilium.io/affinity: {{ $.Values.speeches.service.clusterMesh.affinity | quote }}
+    {{- end }}
 
     # -- Provide additional labels which may be required.
     labels: {}

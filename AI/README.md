@@ -57,7 +57,12 @@ Do not assume the local defaults represent either deployment role.
   `speaches-longhorn-rwx` [Longhorn](https://longhorn.io/docs/) StorageClass.
   The class uses two Longhorn replicas, sets `migratable` to `false`, and uses
   a `Retain` reclaim policy so deleting the workload claim does not
-  automatically delete the model-cache volume.
+  automatically delete the model-cache volume. Its `core-speaches` Service is
+  a shared [Cilium ClusterMesh global service](https://docs.cilium.io/en/stable/network/clustermesh/services/)
+  with [local service affinity](https://docs.cilium.io/en/stable/network/clustermesh/affinity/):
+  healthy local endpoints are preferred and remote-cluster endpoints provide
+  failover. Every participating cluster must deploy the Service with this
+  exact name in `core-ai-prod` and have a working ClusterMesh connection.
 - GPU scheduling, runtime classes and node selectors are controlled by values;
   verify them against the selected cluster before enabling a backend.
 
@@ -83,8 +88,11 @@ database according to the platform resource's deletion policy.
 For Speaches, verify that its PVC is `Bound` as ReadWriteMany, the StatefulSet
 places exactly one pod on each requested host, both pods complete the model
 preload, and `/v1/audio/transcriptions` accepts
-`Systran/faster-whisper-small`. Removing the chart leaves the Longhorn PV for
-manual recovery or deletion because its reclaim policy is `Retain`.
+`Systran/faster-whisper-small`. Verify `core-speaches` appears as a global,
+shared Cilium service and that local backends are preferred before testing
+remote failover. Removing the chart removes its local ClusterMesh backends but
+leaves the Longhorn PV for manual recovery or deletion because its reclaim
+policy is `Retain`.
 
 ## Upstream projects
 
