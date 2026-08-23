@@ -97,7 +97,7 @@ spec:
               value: redis.mylogin.space
 
             - name: OBJECTSTORE_S3_HOST
-              value: s3.mylogin.space
+              value: {{ .Values.nextcloudS3Credentials.endpoint | quote }}
 
             - name: OBJECTSTORE_S3_USEPATH_STYLE
               value: 'true'
@@ -114,20 +114,20 @@ spec:
             - name: OBJECTSTORE_S3_BUCKET
               valueFrom:
                 secretKeyRef:
-                  key: S3Bucket
-                  name: business-office-nextcloud-s3-prod
+                  key: username
+                  name: {{ .Values.nextcloudS3Credentials.userSecretName | quote }}
 
             - name: OBJECTSTORE_S3_KEY
               valueFrom:
                 secretKeyRef:
-                  key: S3AccessKey
-                  name: business-office-nextcloud-s3-prod
+                  key: AccessKey
+                  name: {{ .Values.nextcloudS3Credentials.credentialsSecretName | quote }}
 
             - name: OBJECTSTORE_S3_SECRET
               valueFrom:
                 secretKeyRef:
-                  key: S3SecretKey
-                  name: business-office-nextcloud-s3-prod
+                  key: SecretAccessKey
+                  name: {{ .Values.nextcloudS3Credentials.credentialsSecretName | quote }}
 
           volumeMounts:
             - mountPath: /var/www/

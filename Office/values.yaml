@@ -24,6 +24,16 @@ externalSecrets:
     kind: ClusterSecretStore
     name: mainvault-core
 
+nextcloudS3Credentials:
+  enabled: true
+  endpoint: s3.core-home1-talos-prod.home1.yvr.mylogin.space
+  providerConfigRef: office-nextcloud-s3-session
+  terraformProviderVersion: '3.40.1'
+  serviceAccountName: nextcloud
+  sessionSecretName: office-nextcloud-s3-session
+  credentialsSecretName: office-nextcloud-s3-creds
+  userSecretName: office-nextcloud-creds
+
 pdf:
   enabled: true
 

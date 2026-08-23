@@ -48,7 +48,13 @@ pdf.mylogin.space HTTPRoute
 - `business-office-nextcloud-keys-prod` supplies Nextcloud administrator/token
   material. The custom encryption ExternalSecret reads platform-managed
   encryption configuration from `mainvault-core`.
-- A CoRE `User` resource provisions the Nextcloud service identity.
+- A CoRE `User` resource provisions the Nextcloud service identity and emits
+  temporary S3 credentials into `office-nextcloud-s3-session`. A Crossplane
+  Terraform Workspace uses the access key, secret key and session token to
+  create a non-expiring MinIO service account for that identity. Its generated
+  `AccessKey` and `SecretAccessKey` outputs are written to
+  `office-nextcloud-s3-creds`, which is the Secret consumed by the main
+  Nextcloud deployment and its custom worker.
 - Gateway API HTTPRoutes expose Nextcloud and Collabora. An Envoy Gateway
   BackendTrafficPolicy adjusts the Nextcloud backend behavior.
 - Collabora is configured for TLS termination at the gateway and permits the
@@ -62,6 +68,11 @@ pdf.mylogin.space HTTPRoute
   `BackendTrafficPolicy`.
 - External Secrets with the `mainvault-core` ClusterSecretStore.
 - The CoRE Crossplane `User` API and its providers.
+- The Crossplane Terraform provider. This chart creates the credential-free
+  `office-nextcloud-s3-session` ProviderConfig, with
+  [`aminueza/minio` pinned to 3.40.1](https://registry.terraform.io/providers/aminueza/minio/3.40.1/docs),
+  because the shared site ProviderConfig's older provider does not support
+  authenticating with the `User` output's session token.
 - Shared PostgreSQL, Redis/Dragonfly, S3-compatible storage, DNS and TLS.
 - A working `ssd-storage` StorageClass and backup coverage for the Nextcloud
   PVC and external data services.
@@ -81,6 +92,11 @@ pdf.mylogin.space HTTPRoute
   behavior before changing replicas, zones, storage classes or claim identity.
 - Database, object storage and PVC backups have different consistency needs.
   Validate a restore, not only backup-job completion.
+- Deleting the credential Workspace or chart does not revoke the MinIO service
+  account because its Crossplane deletion policy is `Orphan`. Revoke it
+  explicitly during permanent decommissioning. Rotating the `User` session
+  credentials lets Terraform reconcile the existing service account; it does
+  not rotate Nextcloud's generated service-account secret by itself.
 
 ## Validation
 
@@ -104,10 +120,13 @@ After reconciliation, test:
 4. PDF conversion through the public route.
 5. Database, Redis and object-storage connectivity.
 6. Backup visibility and a representative restore procedure.
+7. The `nextcloud-s3-credentials` Workspace is ready and its connection Secret
+   contains the expected key names; never print or decode their values.
 
 ## Upstream projects
 
 - [Nextcloud website](https://nextcloud.com/), [administrator documentation](https://docs.nextcloud.com/server/latest/admin_manual/) and [Helm chart](https://github.com/nextcloud/helm/tree/main/charts/nextcloud)
+- [MinIO website](https://min.io/), [documentation](https://min.io/docs/minio/kubernetes/upstream/) and [`aminueza/minio` Terraform provider](https://registry.terraform.io/providers/aminueza/minio/3.40.1/docs)
 - [Collabora Online website](https://www.collaboraonline.com/), [SDK documentation](https://sdk.collaboraonline.com/docs/) and [Helm chart](https://github.com/CollaboraOnline/online/tree/main/kubernetes/helm/collabora-online)
 - [Stirling website](https://www.stirling.com/), [documentation](https://docs.stirlingpdf.com/) and [source](https://github.com/Stirling-Tools/Stirling-PDF)
 - [Vikunja website](https://vikunja.io/) and [documentation](https://vikunja.io/docs/)
