@@ -100,6 +100,8 @@ speeches:
       inferenceDevice: 'cuda'
       computeType: 'float16'
       runtimeClassName: 'nvidia'
+      tolerations:
+        - operator: Exists
 
       resources:
         requests:

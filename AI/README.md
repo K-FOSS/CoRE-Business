@@ -74,9 +74,12 @@ Do not assume the local defaults represent either deployment role.
   pinned `0.8.3-cpu` image and runs as a two-replica StatefulSet with one pod on
   each of `srv2` and `srv3`; each replica receives four CPU cores and uses
   `int8` inference. The CUDA backend uses the pinned
-  `0.8.3-cuda-12.6.3` image, requests one `nvidia.com/gpu`, selects nodes with
-  `gpu-node: 'true'`, uses the `nvidia` RuntimeClass and performs `float16`
-  inference. All replicas preload `Systran/faster-whisper-small` and share a
+  `0.8.3-cuda-12.6.3` image, requests one `nvidia.com/gpu.shared`, uses the
+  `nvidia` RuntimeClass and performs `float16` inference. Its blanket
+  `operator: Exists` toleration permits scheduling across every node taint
+  when the shared-GPU resource and other scheduling constraints match, so new
+  cluster taints must be reviewed with this exception in mind. All replicas
+  preload `Systran/faster-whisper-small` and share a
   10 GiB ReadWriteMany Hugging Face cache through the chart-managed
   `speaches-longhorn-rwx` [Longhorn](https://longhorn.io/docs/) StorageClass.
   The class uses two Longhorn replicas, sets `migratable` to `false`, and uses

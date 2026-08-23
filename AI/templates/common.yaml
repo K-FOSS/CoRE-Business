@@ -963,6 +963,11 @@ controllers:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
+      {{- with $backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
       {{- with $backend.nodes }}
       affinity:
         nodeAffinity:
