@@ -100,7 +100,7 @@ speeches:
       inferenceDevice: 'cuda'
       computeType: 'float16'
       runtimeClassName: 'nvidia'
-      
+
       resources:
         requests:
           nvidia.com/gpu.shared: '1'
@@ -108,7 +108,7 @@ speeches:
           nvidia.com/gpu.shared: '1'
       service:
         name: 'core-speaches-cuda'
-        weight: 1
+        weight: 99
 
   persistence:
     size: '10Gi'
