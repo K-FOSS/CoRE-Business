@@ -67,7 +67,7 @@ spec:
               type: ReplaceFullPath
               replaceFullPath: /nextcloud/index.php/.well-known/nodeinfo 
             statusCode: 301
-=
+
     - filters:
         - type: ResponseHeaderModifier
           responseHeaderModifier:
@@ -76,6 +76,6 @@ spec:
                 value: max-age=31536000
       backendRefs: *nextcloudbackend
       timeouts:
-        request: 120s
-        backendRequest: 100s
+        backendRequest: 1h
+        request: 0s
 {{- end }}

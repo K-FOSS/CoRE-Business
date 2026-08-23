@@ -29,6 +29,6 @@ spec:
           weight: 1
 
       timeouts:
-        request: 300s
-        backendRequest: 300s
+        backendRequest: 1h
+        request: 0s
 {{- end }}
