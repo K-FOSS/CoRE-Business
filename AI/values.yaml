@@ -46,12 +46,12 @@ wyoming:
     endpoint: https://gpustack.mylogin.space/v1
 
     models:
-      - tts-1-hd
+      - CoRE-AI-TTS
 
     streamingModels:
-      - tts-1-hd
+      - CoRE-AI-TTS
 
-    voices: 'af_bella'
+    voices: 'af_bella af_v0'
 
   stt:
     endpoint: https://stt.int.mylogin.space/v1
