@@ -1292,7 +1292,7 @@ service:
 
         # -- Specify the appProtocol value for the Service.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
-        appProtocol:  
+        appProtocol: kubernetes.io/ws
   {{- end }}
 
   {{- if $.Values.mcp.hub.enabled }}
@@ -1468,7 +1468,7 @@ service:
 
         # -- Specify the appProtocol value for the Service.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
-        appProtocol:  
+        appProtocol: kubernetes.io/ws
 
   {{- end }}
   {{- range $workerIndex, $worker := $.Values.gpustack.workers }}
@@ -1949,7 +1949,7 @@ service:
 
         # -- Specify the appProtocol value for the Service.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
-        appProtocol:
+        appProtocol: kubernetes.io/ws
   {{- end }}
   {{- end }}
   {{- end }}
