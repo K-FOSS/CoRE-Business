@@ -1152,7 +1152,7 @@ nextcloud:
       # Database
       #
       - name: POSTGRES_HOST
-        value: 'psql.core-home1-talos-prod.home1.yvr.mylogin.space:5432'
+        value: 'psql-local.core-home1-talos-prod.home1.yvr.mylogin.space:5432'
 
       - name: POSTGRES_DB
         valueFrom:
