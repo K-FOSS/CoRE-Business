@@ -68,14 +68,20 @@ spec:
               replaceFullPath: /nextcloud/index.php/.well-known/nodeinfo 
             statusCode: 301
 
+
     - filters:
         - type: ResponseHeaderModifier
           responseHeaderModifier:
             add:
               - name: strict-transport-security
                 value: max-age=31536000
-      backendRefs: *nextcloudbackend
+      backendRefs:
+        - group: ''
+          kind: Service
+          name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
+          port: 8080
+          weight: 1
       timeouts:
-        backendRequest: 1h
-        request: 0s
+        request: 120s
+        backendRequest: 100s
 {{- end }}
