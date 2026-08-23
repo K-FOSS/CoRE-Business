@@ -55,19 +55,12 @@ collabora-online:
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""
 
-  imagePullSecrets: []
-  nameOverride: ""
-  fullnameOverride: ""
   terminationGracePeriodSeconds: 60
 
   serviceAccount:
     # Specifies whether a service account should be created
     create: false
-    # Annotations to add to the service account
-    annotations: {}
-    # The name of the service account to use.
-    # If not set and create is true, a name is generated using the fullname template
-    name: ""
+
 
   collabora:
     # example to add aliasgroups
@@ -227,47 +220,6 @@ collabora-online:
 
   ingress:
     enabled: false
-    className: ""
-    annotations: {}
-    # # nginx
-    #  nginx.ingress.kubernetes.io/upstream-hash-by: "$arg_WOPISrc"
-    # # block admin urls from outside
-    #  nginx.ingress.kubernetes.io/server-snippet: |
-    #    location /cool/getMetrics { deny all; return 403; }
-    #    location /cool/adminws/ { deny all; return 403; }
-    #    location /browser/dist/admin/admin.html { deny all; return 403; }
-    #
-    # # HAProxy
-    #  haproxy.org/timeout-tunnel: "3600s"
-    #  haproxy.org/backend-config-snippet: |
-    #    mode http
-    #    balance leastconn
-    #    stick-table type string len 2048 size 1k store conn_cur
-    #    http-request set-var(txn.wopisrcconns) url_param(WOPISrc),table_conn_cur()
-    #    http-request track-sc1 url_param(WOPISrc)
-    #    stick match url_param(WOPISrc) if { var(txn.wopisrcconns) -m int gt 0 }
-    #    stick store-request url_param(WOPISrc)
-    #
-    # # HAProxy - Community: https://haproxy-ingress.github.io/
-    #  haproxy-ingress.github.io/timeout-tunnel: 3600s
-    #  haproxy-ingress.github.io/balance-algorithm: url_param WOPISrc check_post
-    #  haproxy-ingress.github.io/config-backend:
-    #    hash-type consistent
-    # # block admin urls from outside
-    #    acl admin_url path_beg /cool/getMetrics
-    #    acl admin_url path_beg /cool/adminws/
-    #    acl admin_url path_beg /browser/dist/admin/admin.html
-    #    http-request deny if admin_url
-    #
-    hosts:
-      - host: chart-example.local
-        paths:
-          - path: /
-            pathType: ImplementationSpecific
-    tls: []
-    #  - secretName: chart-example-tls
-    #    hosts:
-    #      - chart-example.local
 
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -447,84 +399,7 @@ collabora-online:
 
   affinity: {}
 
-
-collabora-code:
-  # Default values for collabora-code.
-  # This is a YAML-formatted file.
-  # Declare variables to be passed into your templates.
-
-  replicaCount: 1
-
-  image:
-    repository: collabora/code
-    tag: 23.05.8.4.1
-    pullPolicy: IfNotPresent
-
-  strategy: Recreate
-
-  nameOverride: ""
-  fullnameOverride: ""
-
-  service:
-    type: ClusterIP
-    port: 9980
-
-  ingress:
-    enabled: false
-    annotations: {}
-    paths: []
-    hosts: []
-    tls: []
-
-  collabora:
-    DONT_GEN_SSL_CERT: true
-    domain: office\\.mylogin\\.space
-    extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4 --o:net.post_allow.host[0]=.+ --o:storage.wopi.host[0]=.+
-    server_name: collabora\.mylogin\.space
-    password: examplepass
-    username: admin
-    dictionaries: de_DE en_GB en_US es_ES fr_FR it nl pt_BR pt_PT ru
-
-  securitycontext:
-    allowPrivilegeEscalation: true
-    capabilities:
-      add:
-      - MKNOD
-
-  resources: {}
-    # limits:
-    #  cpu: 100m
-    #  memory: 128Mi
-    # requests:
-    #  cpu: 100m
-    #  memory: 128Mi
-
-  nodeSelector: {}
-
-  tolerations: []
-
-  affinity: {}
-
-  livenessProbe:
-    enabled: true
-    initialDelaySeconds: 30
-    timeoutSeconds: 2
-    periodSeconds: 10
-    successThreshold: 1
-    failureThreshold: 3
-    scheme: HTTP
-    path: /
-
-  readinessProbe:
-    enabled: true
-    initialDelaySeconds: 30
-    timeoutSeconds: 2
-    periodSeconds: 10
-    successThreshold: 1
-    failureThreshold: 3
-    scheme: HTTP
-    path: /
-              
+          
 nextcloud:
 
   enabled: true
@@ -536,11 +411,6 @@ nextcloud:
     repository: nextcloud
     tag: fpm-alpine
     pullPolicy: Always
-    # pullSecrets:
-    #   - myRegistrKeySecretName
-
-  nameOverride: ""
-  fullnameOverride: ""
 
   deploymentAnnotations: {}
 
@@ -643,31 +513,17 @@ nextcloud:
         user = www-data
         group = www-data
 
-        ; The address on which to accept FastCGI requests.
-        ; Valid syntaxes are:
-        ;   'ip.add.re.ss:port'    - to listen on a TCP socket to a specific IPv4 address on
-        ;                            a specific port;
-        ;   '[ip:6:addr:ess]:port' - to listen on a TCP socket to a specific IPv6 address on
-        ;                            a specific port;
-        ;   'port'                 - to listen on a TCP socket to all addresses
-        ;                            (IPv6 and IPv4-mapped) on a specific port;
-        ;   '/path/to/unix/socket' - to listen on a unix socket.
-        ; Note: This value is mandatory.
-        listen = 127.0.0.1:9000
+        listen = /var/run/php-fpm/nextcloud.sock
 
         ; Set listen(2) backlog.
         ; Default Value: 511 (-1 on FreeBSD and OpenBSD)
         ;listen.backlog = 511
 
-        ; Set permissions for unix socket, if one is used. In Linux, read/write
-        ; permissions must be set in order to allow connections from a web server. Many
-        ; BSD-derived systems allow connections regardless of permissions. The owner
-        ; and group can be specified either by name or by their numeric IDs.
-        ; Default Values: user and group are set as the running user
-        ;                 mode is set to 0660
-        ;listen.owner = www-data
-        ;listen.group = www-data
-        ;listen.mode = 0660
+        listen.owner = www-data
+
+        listen.group = www-data
+
+        listen.mode = 0777
         ; When POSIX Access Control Lists are supported you can set them using
         ; these options, value is a comma separated list of user/group names.
         ; When set, listen.owner and listen.group are ignored
@@ -736,12 +592,12 @@ nextcloud:
         ; The number of child processes created on startup.
         ; Note: Used only when pm is set to 'dynamic'
         ; Default Value: (min_spare_servers + max_spare_servers) / 2
-        pm.start_servers = 64
+        pm.start_servers = 8
 
         ; The desired minimum number of idle server processes.
         ; Note: Used only when pm is set to 'dynamic'
         ; Note: Mandatory when pm is set to 'dynamic'
-        pm.min_spare_servers = 64
+        pm.min_spare_servers = 8
 
         ; The desired maximum number of idle server processes.
         ; Note: Used only when pm is set to 'dynamic'
@@ -757,7 +613,7 @@ nextcloud:
         ; This can be useful to work around memory leaks in 3rd party libraries. For
         ; endless request processing specify '0'. Equivalent to PHP_FCGI_MAX_REQUESTS.
         ; Default Value: 0
-        ;pm.max_requests = 500
+        pm.max_requests = 500
 
         ; The URI to view the FPM status page. If this value is not set, no URI will be
         ; recognized as a status page. It shows the following information:
@@ -1256,7 +1112,167 @@ nextcloud:
 
     config:
       # This generates the default nginx config as per the nextcloud documentation
-      default: true
+      default: false
+
+      custom: |-
+        upstream php-handler {
+            server unix:/var/run/php-fpm/nextcloud.sock;
+        }
+
+        map $arg_v $asset_immutable {
+            ""      "";
+            default ", immutable";
+        }
+
+        server {
+            # Default, IPv4 only
+            listen 80;
+            listen [::]:80;
+
+            server_tokens off;
+
+            # HSTS settings
+            # WARNING: Only add the preload option once you read about
+            # the consequences in https://hstspreload.org/. This option
+            # will add the domain to a hardcoded list that is shipped
+            # in all major browsers and getting removed from this list
+            # could take several months.
+            add_header Referrer-Policy "no-referrer" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header X-Download-Options "noopen" always;
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-Permitted-Cross-Domain-Policies "none" always;
+            add_header X-Robots-Tag "noindex, nofollow" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+
+            # set max upload size
+            client_max_body_size 10G;
+            client_body_timeout 300s;
+            client_body_buffer_size 512k;
+            fastcgi_buffers 16 16K;
+            fastcgi_busy_buffers_size 64K;
+            fastcgi_buffer_size 32K;
+
+            open_file_cache max=1000 inactive=20s;
+            open_file_cache_valid 30s;
+            open_file_cache_min_uses 2;
+            open_file_cache_errors on;
+
+            # Enable gzip but do not remove ETag headers
+            gzip off;
+            # Pagespeed is not supported by Nextcloud, so if your server is built
+            # with the `ngx_pagespeed` module, uncomment this line to disable it.
+            #pagespeed off;
+
+            # Remove X-Powered-By, which is an information leak
+            fastcgi_hide_header X-Powered-By;
+
+            # Add .mjs as a file extension for javascript
+            # Either include it in the default mime.types list
+            # or include you can include that list explicitly and add the file extension
+            # only for Nextcloud like below:
+            include mime.types;
+            types {
+                application/javascript js mjs;
+            }
+
+            # Path to the root of your installation
+            root /var/www/html;
+
+            # Specify how to handle directories -- specifying `/index.php$request_uri`
+            # here as the fallback means that Nginx always exhibits the desired behaviour
+            # when a client requests a path that corresponds to a directory that exists
+            # on the server. In particular, if that directory contains an index.php file,
+            # that file is correctly served; if it doesn't, then the request is passed to
+            # the front-end controller. This consistent behaviour means that we don't need
+            # to specify custom rules for certain paths (e.g. images and other assets,
+            # `/updater`, `/ocm-provider`, `/ocs-provider`), and thus
+            # `try_files $uri $uri/ /index.php$request_uri`
+            # always provides the desired behaviour.
+            index index.php index.html /index.php$request_uri;
+
+            # Rule borrowed from `.htaccess` to handle Microsoft DAV clients
+            location = / {
+                if ( $http_user_agent ~ ^DavClnt ) {
+                    return 302 /remote.php/webdav/$is_args$args;
+                }
+            }
+
+            location = /robots.txt {
+                allow all;
+                log_not_found off;
+                access_log off;
+            }
+
+            # Make a regex exception for `/.well-known` so that clients can still
+            # access it despite the existence of the regex rule
+            # `location ~ /(\.|autotest|...)` which would otherwise handle requests
+            # for `/.well-known`.
+            location ^~ /.well-known {
+                # The following 6 rules are borrowed from `.htaccess`
+
+                location = /.well-known/carddav     { return 301 /remote.php/dav/; }
+                location = /.well-known/caldav      { return 301 /remote.php/dav/; }
+                # Anything else is dynamically handled by Nextcloud
+                location ^~ /.well-known            { return 301 /index.php$uri; }
+
+                try_files $uri $uri/ =404;
+            }
+
+            # Rules borrowed from `.htaccess` to hide certain paths from clients
+            location ~ ^/(?:build|tests|config|lib|3rdparty|templates|data)(?:$|/)  { return 404; }
+            location ~ ^/(?:\.|autotest|occ|issue|indie|db_|console)              { return 404; }
+
+            # Ensure this block, which passes PHP files to the PHP process, is above the blocks
+            # which handle static assets (as seen below). If this block is not declared first,
+            # then Nginx will encounter an infinite rewriting loop when it prepends `/index.php`
+            # to the URI, resulting in a HTTP 500 error response.
+            location ~ \.php(?:$|/) {
+                # Required for legacy support
+                rewrite ^/(?!index|remote|public|cron|core\/ajax\/update|status|ocs\/v[12]|updater\/.+|oc[ms]-provider\/.+|.+\/richdocumentscode(_arm64)?\/proxy) /index.php$request_uri;
+
+                fastcgi_split_path_info ^(.+?\.php)(/.*)$;
+                set $path_info $fastcgi_path_info;
+                fastcgi_keep_conn on;
+
+                try_files $fastcgi_script_name =404;
+
+                include fastcgi_params;
+                fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+                fastcgi_param PATH_INFO $path_info;
+                #fastcgi_param HTTPS on;
+
+                fastcgi_param modHeadersAvailable true;         # Avoid sending the security headers twice
+                fastcgi_param front_controller_active true;     # Enable pretty urls
+                fastcgi_pass php-handler;
+
+                fastcgi_intercept_errors on;
+                fastcgi_request_buffering on;
+                fastcgi_max_temp_file_size 0;
+            }
+
+            location ~ \.(?:css|js|mjs|svg|gif|ico|jpg|png|webp|wasm|tflite|map|ogg|flac|mp4|webm)$ {
+                try_files $uri /index.php$request_uri;
+                add_header Cache-Control "public, max-age=15778463$asset_immutable";
+                add_header Referrer-Policy "no-referrer" always;
+                add_header X-Content-Type-Options "nosniff" always;
+                add_header X-Frame-Options "SAMEORIGIN" always;
+                add_header X-Permitted-Cross-Domain-Policies "none" always;
+                add_header X-Robots-Tag "noindex, nofollow" always;
+                etag off;
+                access_log off;
+            }
+
+            location ~ \.woff2?$ {
+                try_files $uri /index.php$request_uri;
+                expires 7d;         # Cache-Control policy borrowed from `.htaccess`
+                access_log off;     # Optional: Don't log access to assets
+            }
+
+            location / {
+                try_files $uri $uri/ /index.php$request_uri;
+            }
+        }
 
     resources: {}
 
