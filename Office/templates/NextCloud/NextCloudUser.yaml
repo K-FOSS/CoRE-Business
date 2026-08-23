@@ -19,9 +19,15 @@ spec:
 
     createCredentials: true
 
+    createServiceAccount: true
+
     crossplane:
       terraformProvider: s3-yvr-home1-core
       crossplaneProvider: s3-yvr-home1-core
+
+    writeServiceAccountCredentialsSecretRef:
+      name: {{ .Values.nextcloudS3Credentials.credentialsSecretName | quote }}
+      namespace: {{ .Release.Namespace }}    
 
     writeCredentialsSecretRef:
       name: {{ .Values.nextcloudS3Credentials.sessionSecretName | quote }}
