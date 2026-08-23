@@ -59,7 +59,8 @@ wyoming:
     models:
       - Systran/faster-whisper-small
 
-    streamingModels: []
+    streamingModels:
+      - Systran/faster-whisper-small
 
   logs:
     level: DEBUG
