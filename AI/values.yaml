@@ -100,13 +100,12 @@ speeches:
       inferenceDevice: 'cuda'
       computeType: 'float16'
       runtimeClassName: 'nvidia'
-      nodeSelector:
-        gpu-node: 'true'
+      
       resources:
         requests:
-          nvidia.com/gpu: '1'
+          nvidia.com/gpu.shared: '1'
         limits:
-          nvidia.com/gpu: '1'
+          nvidia.com/gpu.shared: '1'
       service:
         name: 'core-speaches-cuda'
         weight: 1
