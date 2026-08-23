@@ -1,0 +1,187 @@
+{{- if and .Values.gpustack.enabled .Values.gpustack.server.enabled .Values.gpustack.tokens.enabled }}
+{{- if not .Values.gpustack.tokens.items }}
+{{- fail "gpustack.tokens.items must contain at least one token when token provisioning is enabled" }}
+{{- end }}
+{{- range $token := .Values.gpustack.tokens.items }}
+{{- if not $token.name }}
+{{- fail "every gpustack.tokens.items entry requires name" }}
+{{- end }}
+{{- if or (not $token.secret) (not $token.secret.name) (not $token.secret.key) }}
+{{- fail (printf "gpustack token %s requires secret.name and secret.key" $token.name) }}
+{{- end }}
+---
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: {{ $.Release.Name }}-gpustack-token-{{ $token.name }}
+spec:
+  length: {{ $.Values.gpustack.tokens.generator.length }}
+  digits: {{ $.Values.gpustack.tokens.generator.digits }}
+  symbols: {{ $.Values.gpustack.tokens.generator.symbols }}
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $token.secret.name }}
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: {{ $token.secret.name }}
+    template:
+      data:
+        {{ $token.secret.key }}: '{{ "{{ .password }}" }}'
+
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: Password
+          name: {{ $.Release.Name }}-gpustack-token-{{ $token.name }}
+{{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-gpustack-token-provisioner
+data:
+  reconcile.py: |
+    import json
+    import os
+    import sys
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    server = os.environ['GPUSTACK_URL'].rstrip('/')
+    admin_key = os.environ['GPUSTACK_ADMIN_API_KEY']
+    specs = json.loads(os.environ['GPUSTACK_TOKEN_SPECS'])
+    headers = {
+        'Authorization': f'Bearer {admin_key}',
+        'Content-Type': 'application/json',
+    }
+
+    def request(method, path, payload=None):
+        data = None if payload is None else json.dumps(payload).encode()
+        req = urllib.request.Request(
+            f'{server}{path}', data=data, headers=headers, method=method
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                body = response.read()
+                return json.loads(body) if body else None
+        except urllib.error.HTTPError as error:
+            print(
+                f'GPUStack request {method} {path} failed with HTTP {error.code}',
+                file=sys.stderr,
+            )
+            raise
+
+    for spec in specs:
+        name = spec['name']
+        secret = spec['secret']
+        token_path = f"/tokens/{name}/{secret['key']}"
+        with open(token_path, encoding='utf-8') as token_file:
+            token = token_file.read().strip()
+        if not token:
+            raise RuntimeError(f'token Secret for {name} is empty')
+
+        result = request(
+            'GET',
+            '/v2/api-keys?perPage=100&search='
+            + urllib.parse.quote(name, safe=''),
+        )
+        existing = next(
+            (item for item in result.get('items', []) if item['name'] == name),
+            None,
+        )
+        desired = {
+            'description': spec.get('description'),
+            'scope': spec.get('scopes', ['inference']),
+            'allowed_model_names': spec.get('allowedModelNames', []),
+        }
+        if existing is None:
+            request('POST', '/v2/api-keys', {'name': name, 'custom': token, **desired})
+            print(f'created GPUStack API key {name}')
+        else:
+            current = {
+                'description': existing.get('description'),
+                'scope': existing.get('scope', []),
+                'allowed_model_names': existing.get('allowed_model_names', []),
+            }
+            if current != desired:
+                request('PUT', f"/v2/api-keys/{existing['id']}", desired)
+                print(f'updated GPUStack API key {name}')
+            else:
+                print(f'GPUStack API key {name} is current')
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-gpustack-token-provisioner
+spec:
+  schedule: {{ .Values.gpustack.tokens.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      template:
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            fsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: provisioner
+              image: '{{ .Values.gpustack.server.image }}:{{ .Values.gpustack.server.tag }}'
+              imagePullPolicy: IfNotPresent
+              command:
+                - python3
+                - /scripts/reconcile.py
+              env:
+                - name: GPUSTACK_URL
+                  value: 'http://{{ .Release.Name }}-gpustack'
+                - name: GPUSTACK_ADMIN_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.gpustack.tokens.auth.existingSecret }}
+                      key: {{ .Values.gpustack.tokens.auth.key }}
+                - name: GPUSTACK_TOKEN_SPECS
+                  value: {{ toJson .Values.gpustack.tokens.items | quote }}
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: tokens
+                  mountPath: /tokens
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: {{ .Release.Name }}-gpustack-token-provisioner
+            - name: tokens
+              projected:
+                defaultMode: 0440
+                sources:
+                  {{- range $token := .Values.gpustack.tokens.items }}
+                  - secret:
+                      name: {{ $token.secret.name }}
+                      items:
+                        - key: {{ $token.secret.key }}
+                          path: {{ $token.name }}/{{ $token.secret.key }}
+                  {{- end }}
+{{- end }}

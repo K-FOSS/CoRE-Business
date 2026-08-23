@@ -43,7 +43,7 @@ wyoming:
   tag: latest
 
   tts:
-    endpoint: https://tts.int.mylogin.space/v1
+    endpoint: https://gpustack.mylogin.space/v1
 
     models:
       - tts-1-hd
@@ -57,7 +57,7 @@ wyoming:
     endpoint: https://stt.int.mylogin.space/v1
 
     models:
-      - Systran/faster-distil-whisper-small.en
+      - Systran/faster-whisper-small
 
     streamingModels: []
 
@@ -137,6 +137,30 @@ externalSecrets:
 
 gpustack:
   enabled: true
+
+  tokens:
+    # Requires a management-scoped GPUStack API key in auth.existingSecret.
+    enabled: false
+    schedule: '*/5 * * * *'
+
+    auth:
+      existingSecret: 'gpustack-token-provisioner'
+      key: 'apiKey'
+
+    generator:
+      length: 64
+      digits: 10
+      symbols: 0
+
+    items: []
+      # - name: 'openwebui'
+      #   description: 'OpenWebUI inference access'
+      #   scopes:
+      #     - 'inference'
+      #   allowedModelNames: []
+      #   secret:
+      #     name: 'gpustack-token-openwebui'
+      #     key: 'apiKey'
 
   oidc:
     enabled: true

@@ -57,6 +57,16 @@ Do not assume the local defaults represent either deployment role.
   `<release>-gpustack-user`. The server connects to
   `psql-local.<cluster>.<datacenter>.<region>.mylogin.space:5432`; both the
   providers and hostname can be overridden under `gpustack.psql`.
+  Optional declarative API-key provisioning under `gpustack.tokens` uses
+  [GPUStack's API-key API](https://docs.gpustack.ai/2.0/user-guide/api-key-management/).
+  External Secrets generates each custom token once and retains it in the
+  configured Kubernetes Secret. A CronJob reconciles named keys and their
+  `management`/`inference` scopes and model allowlists through `/v2/api-keys`.
+  The reconciler requires a pre-existing management-scoped GPUStack API key in
+  `gpustack.tokens.auth.existingSecret`; deliver this bootstrap credential
+  through the platform secret workflow before enabling provisioning. Token
+  values are mounted from Secrets and never included in rendered manifests or
+  reconciliation logs.
 - MCP search credentials are read through External Secrets.
 - Backend and BackendTrafficPolicy resources configure external/upstream speech
   services.
@@ -97,8 +107,15 @@ speech endpoints rather than relying only on pod readiness. For GPUStack,
 follow both Terraform `Workspace` and `User` conditions, verify the generated
 OIDC and PostgreSQL connection Secrets exist, confirm a member of `GPUStack
 Users` can complete login, and confirm the server completes its v2 database
-migrations before testing worker registration. Removing the OIDC Workspace
-deletes its Authentik application, provider and access bindings. Roll back the
+migrations before testing worker registration. When token provisioning is
+enabled, confirm the Password generator and `ExternalSecret` are Ready, the
+provisioner CronJob completes, and the generated key can access only its
+configured scopes and model allowlist. The reconciler creates missing keys and
+updates metadata and permissions, but intentionally does not replace the value
+of an existing named key. Rotate a token by deleting the GPUStack key and its
+generated Kubernetes Secret, then allow External Secrets and the CronJob to
+recreate them; coordinate consumers to avoid an outage. Removing the OIDC
+Workspace deletes its Authentik application, provider and access bindings. Roll back the
 image and manifests together; deleting the `User` can delete the provisioned
 database according to the platform resource's deletion policy.
 For OpenWebUI, follow its `User` and `ExternalSecret` conditions, confirm the
