@@ -941,7 +941,9 @@ controllers:
   {{- end }}
 
   {{- if $.Values.speeches.enabled }}
-  speeches:
+  {{- range $backendName, $backend := $.Values.speeches.backends }}
+  {{- if $backend.enabled }}
+  speeches-{{ $backendName }}:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
     # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
     # DaemonSets/CronJobs ignore this.
@@ -949,13 +951,19 @@ controllers:
 
     type: statefulset
 
-    replicas: {{ $.Values.speeches.replicas }}
+    replicas: {{ $backend.replicas }}
 
     statefulset:
       serviceName:
-        identifier: speeches
+        identifier: speeches-{{ $backendName }}
 
     pod:
+      {{- with $backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with $backend.nodes }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -964,27 +972,28 @@ controllers:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      {{- toYaml $.Values.speeches.nodes | nindent 22 }}
+                      {{- toYaml . | nindent 22 }}
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchLabels:
-                  app.kubernetes.io/controller: speeches
+                  app.kubernetes.io/controller: speeches-{{ $backendName }}
                   app.kubernetes.io/instance: {{ $.Release.Name }}
               topologyKey: kubernetes.io/hostname
+      {{- end }}
 
-      {{- with $.Values.speeches.runtimeClassName }}
-      runtimeClassName: {{ $.Values.speeches.runtimeClassName }}
+      {{- with $backend.runtimeClassName }}
+      runtimeClassName: {{ . }}
       {{- end }}
 
       securityContext:
         fsGroup: 1000
 
     containers:
-      speeches:
+      speeches-{{ $backendName }}:
         image:
-          repository: {{ .Values.speeches.image }}
-          tag: {{ default "latest" .Values.speeches.tag }}
+          repository: {{ $.Values.speeches.image }}
+          tag: {{ $backend.tag }}
           pullPolicy: IfNotPresent
 
         env:
@@ -992,17 +1001,24 @@ controllers:
             value: {{ list $.Values.speeches.model | toJson | quote }}
 
           - name: WHISPER__INFERENCE_DEVICE
-            value: 'cpu'
+            value: {{ $backend.inferenceDevice | quote }}
 
+          - name: WHISPER__COMPUTE_TYPE
+            value: {{ $backend.computeType | quote }}
+
+          {{- with $backend.cpuThreads }}
           - name: WHISPER__CPU_THREADS
-            value: '4'
+            value: {{ . | quote }}
+          {{- end }}
 
         resources:
-          {{- toYaml $.Values.speeches.resources | nindent 10 }}
+          {{- toYaml $backend.resources | nindent 10 }}
 
         ports:
           - name: http
             containerPort: 8000
+  {{- end }}
+  {{- end }}
   {{- end }}
 
   {{- if $.Values.tts.enabled }}
@@ -1205,9 +1221,13 @@ persistence:
     storageClass: {{ $.Values.speeches.persistence.storageClass }}
 
     advancedMounts:
-      speeches:
-        speeches:
-          - path: /home/ubuntu/.cache/huggingface/hub 
+      {{- range $backendName, $backend := $.Values.speeches.backends }}
+      {{- if $backend.enabled }}
+      speeches-{{ $backendName }}:
+        speeches-{{ $backendName }}:
+          - path: /home/ubuntu/.cache/huggingface/hub
+      {{- end }}
+      {{- end }}
   {{- end }}
 
 
@@ -1856,14 +1876,16 @@ service:
   {{- end }}
 
   {{- if $.Values.speeches.enabled }}
-  speeches:
+  {{- range $backendName, $backend := $.Values.speeches.backends }}
+  {{- if $backend.enabled }}
+  speeches-{{ $backendName }}:
     # -- Enables or disables the service
     enabled: true
 
-    forceRename: {{ $.Values.speeches.service.name }}
+    forceRename: {{ $backend.service.name }}
 
     # -- Configure which controller this service should target
-    controller: speeches
+    controller: speeches-{{ $backendName }}
 
     # -- Make this the primary service for this controller (used in probes, notes, etc...).
     # If there is more than 1 service targeting the controller, make sure that only 1 service is
@@ -1923,6 +1945,8 @@ service:
         # -- Specify the appProtocol value for the Service.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
         appProtocol:
+  {{- end }}
+  {{- end }}
   {{- end }}
 
   {{- if $.Values.tts.enabled }}
@@ -2124,9 +2148,14 @@ route:
             port: {{ range $endpoint := $backend.endpoint }}{{ $endpoint.port }}{{ end }}
           {{- end }}
 
+          {{- range $backendName, $backend := $.Values.speeches.backends }}
+          {{- if $backend.enabled }}
           - kind: Service
             port: 80
-            identifier: speeches
+            identifier: speeches-{{ $backendName }}
+            weight: {{ $backend.service.weight }}
+          {{- end }}
+          {{- end }}
   {{- end }}
 
   {{- if .Values.tts.enabled }}

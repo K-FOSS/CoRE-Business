@@ -70,23 +70,30 @@ Do not assume the local defaults represent either deployment role.
 - MCP search credentials are read through External Secrets.
 - Backend and BackendTrafficPolicy resources configure external/upstream speech
   services.
-- The Speaches CPU backend runs as a two-replica StatefulSet with one pod on
-  each of `srv2` and `srv3`. Each replica receives four CPU cores and preloads
-  `Systran/faster-whisper-small` during startup. Both replicas share a 10 GiB
-  ReadWriteMany Hugging Face cache through the chart-managed
+- Speaches runs separate CPU and NVIDIA CUDA backends. The CPU backend uses the
+  pinned `0.8.3-cpu` image and runs as a two-replica StatefulSet with one pod on
+  each of `srv2` and `srv3`; each replica receives four CPU cores and uses
+  `int8` inference. The CUDA backend uses the pinned
+  `0.8.3-cuda-12.6.3` image, requests one `nvidia.com/gpu`, selects nodes with
+  `gpu-node: 'true'`, uses the `nvidia` RuntimeClass and performs `float16`
+  inference. All replicas preload `Systran/faster-whisper-small` and share a
+  10 GiB ReadWriteMany Hugging Face cache through the chart-managed
   `speaches-longhorn-rwx` [Longhorn](https://longhorn.io/docs/) StorageClass.
   The class uses two Longhorn replicas, sets `migratable` to `false`, and uses
   a `Retain` reclaim policy so deleting the workload claim does not
-  automatically delete the model-cache volume. Its `core-speaches` Service is
-  a shared [Cilium ClusterMesh global service](https://docs.cilium.io/en/stable/network/clustermesh/services/)
+  automatically delete the model-cache volume. The `core-speaches-cpu` and
+  `core-speaches-cuda` Services are shared
+  [Cilium ClusterMesh global services](https://docs.cilium.io/en/stable/network/clustermesh/services/)
   with [local service affinity](https://docs.cilium.io/en/stable/network/clustermesh/affinity/):
   healthy local endpoints are preferred and remote-cluster endpoints provide
-  failover. Every participating cluster must deploy the Service with this
-  exact name in `core-ai-prod` and have a working ClusterMesh connection.
+  failover. Every participating cluster must deploy the Services with these
+  exact names in `core-ai-prod` and have a working ClusterMesh connection.
   Direct Service clients use Kubernetes `ClientIP` session affinity for three
   hours. Gateway clients receive a secure `core-speaches-session` cookie used
   by Envoy's consistent-hash load balancer, keeping subsequent requests on the
-  same healthy backend. The Speaches BackendTrafficPolicy disables request,
+  same healthy backend. The Gateway route gives the CPU and CUDA Services equal
+  weight; adjust each backend's `service.weight` when a different traffic split
+  is required. The Speaches BackendTrafficPolicy disables request,
   maximum-stream and stream-idle timeouts so long-running transcription streams
   are not terminated by Envoy Gateway.
 - GPU scheduling, runtime classes and node selectors are controlled by values;
@@ -125,12 +132,14 @@ chart removes the namespace-local connection Secrets and `User` claim but does
 not prove that its external PostgreSQL database or Dragonfly keys were deleted;
 verify the platform deletion policies and clear logical databases `150` and
 `151` deliberately when decommissioning the service.
-For Speaches, verify that its PVC is `Bound` as ReadWriteMany, the StatefulSet
-places exactly one pod on each requested host, both pods complete the model
-preload, and `/v1/audio/transcriptions` accepts
-`Systran/faster-whisper-small`. Verify `core-speaches` appears as a global,
-shared Cilium service and that local backends are preferred before testing
-remote failover. Confirm the Gateway response sets
+For Speaches, verify that its PVC is `Bound` as ReadWriteMany, the CPU
+StatefulSet places exactly one pod on each requested host, and the CUDA pod is
+scheduled on a matching NVIDIA node with one GPU allocated. Confirm every pod
+completes model preload, CUDA logs report GPU inference, and
+`/v1/audio/transcriptions` accepts `Systran/faster-whisper-small`. Verify
+`core-speaches-cpu` and `core-speaches-cuda` appear as global, shared Cilium
+services and that local backends are preferred before testing remote failover.
+Confirm the Gateway response sets
 `core-speaches-session`, repeat requests reach the same pod, and a streaming
 transcription remains connected for longer than the former five-minute idle
 window. Removing the chart removes its local ClusterMesh backends but leaves

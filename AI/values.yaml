@@ -70,17 +70,46 @@ speeches:
   enabled: true
 
   image: 'ghcr.io/speaches-ai/speaches'
-  tag: 'latest-cpu'
-
-  replicas: 2
 
   model: 'Systran/faster-whisper-small'
 
-  resources:
-    requests:
-      cpu: '4'
-    limits:
-      cpu: '4'
+  backends:
+    cpu:
+      enabled: true
+      tag: '0.8.3-cpu'
+      replicas: 2
+      inferenceDevice: 'cpu'
+      computeType: 'int8'
+      cpuThreads: '4'
+      nodes:
+        - 'srv2'
+        - 'srv3'
+      resources:
+        requests:
+          cpu: '4'
+        limits:
+          cpu: '4'
+      service:
+        name: 'core-speaches-cpu'
+        weight: 1
+
+    cuda:
+      enabled: true
+      tag: '0.8.3-cuda-12.6.3'
+      replicas: 1
+      inferenceDevice: 'cuda'
+      computeType: 'float16'
+      runtimeClassName: 'nvidia'
+      nodeSelector:
+        gpu-node: 'true'
+      resources:
+        requests:
+          nvidia.com/gpu: '1'
+        limits:
+          nvidia.com/gpu: '1'
+      service:
+        name: 'core-speaches-cuda'
+        weight: 1
 
   persistence:
     size: '10Gi'
@@ -94,17 +123,12 @@ speeches:
     migratable: 'false'
 
   service:
-    name: 'core-speaches'
     sessionAffinity: ClientIP
     sessionAffinityTimeoutSeconds: 10800
     clusterMesh:
       enabled: true
       shared: true
       affinity: 'local'
-
-  nodes:
-    - 'srv2'
-    - 'srv3'
 
   externalBackend: []
 
