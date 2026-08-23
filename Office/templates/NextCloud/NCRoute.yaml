@@ -67,23 +67,7 @@ spec:
               type: ReplaceFullPath
               replaceFullPath: /nextcloud/index.php/.well-known/nodeinfo 
             statusCode: 301
-
-    - matches:
-        - path:
-            type: RegularExpression
-            value: .*\.(css|js|mjs|svg|gif|ico|jpg|png|webp|wasm|tflite|map|ogg|flac|mp4|webm)
-      filters:
-        - type: ResponseHeaderModifier
-          responseHeaderModifier:
-            add:
-              - name: Cache-Control
-                value: ',public'
-      backendRefs: &nextcloudbackend
-        - group: ''
-          kind: Service
-          name: {{ template "nextcloud.fullname" $.Subcharts.nextcloud }}
-          port: 8080
-          weight: 1
+=
     - filters:
         - type: ResponseHeaderModifier
           responseHeaderModifier:
