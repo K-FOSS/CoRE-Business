@@ -11,15 +11,5 @@ spec:
 
   timeout:
     http:
-      requestTimeout: 300s
-
-  healthCheck:
-    active:
-      interval: 5s
-      timeout: 2s
-      type: HTTP
-      http:
-        path: /health
-        expectedStatuses:
-          - 200
+      requestTimeout: 0s
 {{- end }}
