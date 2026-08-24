@@ -3,6 +3,6 @@ version: 1.0.0
 name: core-business-passwords
 
 dependencies:
-  - name: vaultwarden
-    version: 5.4.0
-    repository: https://geek-cookbook.github.io/charts/
+  - name: common
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

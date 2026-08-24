@@ -1,0 +1,169 @@
+---
+{{- include "bjw-s.common.loader.init" . }}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name }}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter }}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region }}
+{{- $_ := required "vaultwarden.psql.host must be the target cluster's site-local PGPool endpoint" .Values.vaultwarden.psql.host }}
+
+{{- define "vaultwarden.hardcodedValues" -}}
+global:
+  nameOverride: {{ default .Release.Name .Values.global.nameOverride | quote }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  labels:
+    logs: 'loki-myloginspace'
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+controllers:
+  vaultwarden:
+    strategy: {{ .Values.strategy.type }}
+    revisionHistoryLimit: 3
+    nameOverride: 'vaultwarden'
+    containers:
+      vaultwarden:
+        image:
+          repository: {{ .Values.vaultwarden.image.repository | quote }}
+          tag: {{ .Values.vaultwarden.image.tag | quote }}
+          pullPolicy: {{ .Values.vaultwarden.image.pullPolicy | quote }}
+        env:
+          DATA_FOLDER: '/data'
+          DOMAIN: {{ .Values.vaultwarden.domain | quote }}
+          ROCKET_PORT: '8080'
+          ENABLE_DB_WAL: 'false'
+          DATABASE_MAX_CONNS: '10'
+          DB_CONNECTION_RETRIES: '0'
+          SIGNUPS_ALLOWED: {{ .Values.vaultwarden.config.allowSignups | quote }}
+          SIGNUPS_VERIFY: {{ .Values.vaultwarden.config.verifySignup | quote }}
+          INVITATIONS_ALLOWED: {{ .Values.vaultwarden.config.allowInvitation | quote }}
+          SHOW_PASSWORD_HINT: {{ .Values.vaultwarden.config.showPasswordHint | quote }}
+          WEB_VAULT_ENABLED: {{ .Values.vaultwarden.config.enableWebVault | quote }}
+          ENABLE_WEBSOCKET: {{ .Values.vaultwarden.config.enableWebsockets | quote }}
+          ORG_CREATION_USERS: {{ .Values.vaultwarden.config.orgCreationUsers | quote }}
+          SMTP_FROM_NAME: 'Vaultwarden'
+          SMTP_SECURITY: 'off'
+          SMTP_TIMEOUT: '120'
+          SMTP_HOST:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
+                key: 'Hostname'
+          SMTP_FROM:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
+                key: 'Username'
+          SMTP_PORT:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
+                key: 'Port'
+          SMTP_USERNAME:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
+                key: 'Username'
+          SMTP_PASSWORD:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
+                key: 'Password'
+          DATABASE_USERNAME:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.user.connectionSecretName | quote }}
+                key: 'username'
+          DATABASE_PASSWORD:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.user.connectionSecretName | quote }}
+                key: 'password'
+          DATABASE_NAME:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.vaultwarden.user.connectionSecretName | quote }}
+                key: 'database'
+          DATABASE_URL:
+            value: {{ printf "postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@%s:5432/$(DATABASE_NAME)" .Values.vaultwarden.psql.host | quote }}
+            dependsOn:
+              - 'DATABASE_USERNAME'
+              - 'DATABASE_PASSWORD'
+              - 'DATABASE_NAME'
+        resources:
+          {{- toYaml .Values.vaultwarden.resources | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        probes:
+          liveness:
+            enabled: true
+          readiness:
+            enabled: true
+          startup:
+            enabled: true
+
+service:
+  vaultwarden:
+    enabled: true
+    controller: 'vaultwarden'
+    nameOverride: 'vaultwarden'
+    primary: true
+    type: ClusterIP
+    ports:
+      http:
+        enabled: true
+        primary: true
+        port: 80
+        targetPort: 8080
+        protocol: HTTP
+
+persistence:
+  data:
+    enabled: true
+    type: emptyDir
+    advancedMounts:
+      vaultwarden:
+        vaultwarden:
+          - path: '/data'
+
+route:
+  vaultwarden:
+    enabled: true
+    kind: HTTPRoute
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+      resolvemy.host/gw: {{ .Values.gateway.name | quote }}
+      resolvemy.host/gw-ns: {{ .Values.gateway.namespace | quote }}
+      resolvemy.host/security: 'public'
+      resolvemy.host/env: {{ .Values.env | quote }}
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        namespace: {{ .Values.gateway.namespace | quote }}
+        name: {{ .Values.gateway.name | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      - {{ .Values.gateway.domainName | quote }}
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: '/'
+        backendRefs:
+          - kind: Service
+            identifier: vaultwarden
+            port: 80
+            weight: 1
+        timeouts:
+          backendRequest: '120s'
+          request: '120s'
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "vaultwarden.hardcodedValues" . | fromYaml) -}}
+{{ include "bjw-s.common.loader.generate" . }}

@@ -104,6 +104,20 @@ S3-compatible object storage. Review database ownership, credentials, bucket
 policy, persistence, backup coverage and deletion semantics before changing a
 connection or resource identity.
 
+The legacy [Mail chart](../Mail/README.md), owned by the
+[Mail ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/Mail.yaml),
+uses the current
+[`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+to provision Maddy's PostgreSQL database and S3 service account. It connects
+Maddy, Postfix, Dovecot and Rspamd to the `dc1-k3s-node1` site-local services
+defined by the
+[PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
+[storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml),
+and
+[Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
+Dragonfly credentials remain platform-managed and are rendered into Rspamd's
+configuration by External Secrets rather than committed to this repository.
+
 The active [Office chart](../Office/README.md), owned by the
 [NextCloud ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml),
 uses the CoRE `User` resource's temporary S3 access key, secret key and session
@@ -111,6 +125,19 @@ token to authenticate a Crossplane Terraform Workspace. The Workspace creates
 a durable MinIO service account and publishes its generated key pair to the
 Secret consumed by Nextcloud. The Workspace uses an `Orphan` deletion policy,
 so permanent removal requires explicit service-account revocation.
+
+The active [Vaultwarden chart](../Passwords/VaultWarden/README.md), owned by the
+[VaultWarden ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml),
+runs the upstream Vaultwarden image through the BJW-S common library chart. A
+hub-only [`mylogin.space` User
+claim](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+provisions its stable PostgreSQL role and `bitwarden` database with the site's
+providers, while the workload connects through the target's site-local PGPool
+endpoint defined by the [PostgreSQL
+ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml).
+The owning ApplicationSet must inject cluster/site identity, the PGPool host
+and the hub-only User enablement; the chart verifies that the enabled claim is
+rendering on the configured hub cluster.
 
 The active AI chart provisions OpenWebUI's database identity on the site-local
 `psql-<datacenter>-<region>` providers and connects it to the corresponding

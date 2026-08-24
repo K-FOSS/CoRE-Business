@@ -1,21 +1,29 @@
-{{- $fullName := include "common.names.fullname" . -}}
+{{- if and .Values.vaultwarden.user.enabled (eq .Values.cluster.name .Values.vaultwarden.user.hubCluster) }}
 ---
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:
-  name: {{ $fullName }}
+  name: {{ .Values.vaultwarden.user.name | quote }}
 
 spec:
-  name: Vaultwarden
+  name: 'Vaultwarden'
+
+  username: {{ .Values.vaultwarden.user.username | quote }}
 
   psql:
-    uri: postgresql://
+    enabled: true
+    createUserDatabase: false
 
-  database:
-    name: bitwarden
+    databases:
+      - {{ .Values.vaultwarden.psql.database | quote }}
+
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.vaultwarden.psql.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.vaultwarden.psql.terraformProvider | quote }}
 
   groups:
-    - LDAPService
+    - 'LDAPService'
 
   writeConnectionSecretToRef:
-    name: {{ $fullName }}
+    name: {{ .Values.vaultwarden.user.connectionSecretName | quote }}
+{{- end }}
