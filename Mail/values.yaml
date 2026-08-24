@@ -2,6 +2,29 @@ URL: 'https://mail.mylogin.space'
 
 clusterDNS: 'k0s.resolvemy.host'
 
+site:
+  ldap:
+    hostname: 'ldap-dc1.mylogin.space'
+    port: '636'
+  psql:
+    hostname: 'psql-local.dc1-k3s-node1.dc1.yxl.mylogin.space'
+    port: '5432'
+    crossplaneProvider: 'psql-dc1-yxl'
+    terraformProvider: 'psql-dc1-yxl'
+  dragonfly:
+    hostname: 'dragonfly.dc1-k3s-node1.dc1.yxl.mylogin.space'
+    port: '6379'
+    database: '25'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    remoteRef:
+      key: 'Storage/DragonFly/CoRE/Creds'
+      passwordProperty: 'Password'
+  s3:
+    crossplaneProvider: 's3-yxl-dc1-core'
+    terraformProvider: 's3-yxl-dc1-core'
+
 email:
   domain: mail.mylogin.space
   support: k@mylogin.space

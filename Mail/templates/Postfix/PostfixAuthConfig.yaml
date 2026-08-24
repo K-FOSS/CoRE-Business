@@ -4,8 +4,8 @@ metadata:
   name: simplelogin-postfix-aaa-config-tpl
 data:
   ldap-auth.cf: |
+    server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
     {{`
-    server_host = ldaps://ldap-dc1.mylogin.space:636
     start_tls = no
     version = 3
 
@@ -19,7 +19,7 @@ data:
     `}}
 
   ldap.cf: |
-    server_host = ldaps://ldap-dc1.mylogin.space:636
+    server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
     start_tls = no
     version = 3
 
@@ -36,8 +36,8 @@ data:
     special_result_attribute = member
 
   ldap-in.cf: |
+    server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
     {{`
-    server_host = ldaps://ldap-dc1.mylogin.space:636
     start_tls = no
     version = 3
 

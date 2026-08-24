@@ -5,8 +5,8 @@ metadata:
 
 data:
   dovecot-ldap.conf.ext: |
+    ldap_uris = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
     {{`
-    ldap_uris = ldaps://ldap.mylogin.space
     ldap_auth_dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
     ldap_auth_dn_password = {{ .Password }}
     ldap_base = dc=ldap,dc=mylogin,dc=space

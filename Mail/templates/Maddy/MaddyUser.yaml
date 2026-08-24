@@ -4,13 +4,29 @@ metadata:
   name: {{ .Release.Name }}-maddy
 
 spec:
-  name: Maddy Email
+  name: 'Maddy Email'
 
-  buckets:
-    - mail-main
+  psql:
+    enabled: true
+    crossplane:
+      crossplaneProvider: {{ .Values.site.psql.crossplaneProvider | quote }}
+      terraformProvider: {{ .Values.site.psql.terraformProvider | quote }}
+
+  s3:
+    enabled: true
+    createBuckets: true
+    createServiceAccount: true
+    buckets:
+      - 'mail-main'
+    crossplane:
+      crossplaneProvider: {{ .Values.site.s3.crossplaneProvider | quote }}
+      terraformProvider: {{ .Values.site.s3.terraformProvider | quote }}
+    writeServiceAccountCredentialsSecretRef:
+      name: {{ printf "%s-maddy-s3-user" .Release.Name | quote }}
+      namespace: {{ .Release.Namespace | quote }}
 
   groups:
-    - LDAPService
+    - 'LDAPService'
 
   writeConnectionSecretToRef:
-    name: {{ .Release.Name }}-maddy-creds
+    name: {{ printf "%s-maddy-creds" .Release.Name | quote }}

@@ -4,13 +4,19 @@ metadata:
   name: mail-postfix
 
 spec:
-  name: Postfix
+  name: 'Postfix'
 
-  database:
-    name: simplelogin
+  psql:
+    enabled: true
+    createUserDatabase: false
+    databases:
+      - 'simplelogin'
+    crossplane:
+      crossplaneProvider: {{ .Values.site.psql.crossplaneProvider | quote }}
+      terraformProvider: {{ .Values.site.psql.terraformProvider | quote }}
 
   groups:
-    - LDAPService
+    - 'LDAPService'
 
   writeConnectionSecretToRef:
-    name: {{ .Release.Name }}-postfix
+    name: {{ printf "%s-postfix" .Release.Name | quote }}

@@ -15,12 +15,12 @@ spec:
       data:
         CONF_MYDOMAIN: '{{ .Values.email.domain }}'
 
-        POSTGRES_HOSTS: psql.mylogin.space
+        POSTGRES_HOSTS: {{ .Values.site.psql.hostname | quote }}
 
         POSTGRES_USER: '{{`{{ .Username }}`}}'
         POSTGRES_PASSWORD: '{{`{{ .Username }}`}}'
 
-        DB_URI: '{{`postgresql://{{ .Username }}:{{ .Password }}@psql.mylogin.space:5432/{{ .Database }}`}}'
+        DB_URI: '{{`postgresql://{{ .Username }}:{{ .Password }}@`}}{{ .Values.site.psql.hostname }}:{{ .Values.site.psql.port }}{{`/{{ .Database }}`}}'
 
         URL: '{{ .Values.URL }}'
   data:

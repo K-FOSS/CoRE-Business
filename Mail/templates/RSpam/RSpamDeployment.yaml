@@ -56,9 +56,6 @@ spec:
                 path: override.d/worker-controller.inc
 
 
-              - key: redis.conf
-                path: local.d/redis.conf
-
               - key: classifier-bayes.conf
                 path: local.d/classifier-bayes.conf
 
@@ -83,6 +80,13 @@ spec:
               - key: url_tags.conf
                 path: local.d/url_tags.conf
 
+        - name: rspamd-dragonfly
+          secret:
+            secretName: business-mail-rspamd-dragonfly
+            items:
+              - key: redis.conf
+                path: redis.conf
+
         - name: dkim-secrets
           secret:
             secretName: selector1-mail-myloginspace
@@ -100,6 +104,10 @@ spec:
             #
             - name: rspamd-config
               mountPath: /etc/rspamd
+
+            - name: rspamd-dragonfly
+              mountPath: /etc/rspamd/local.d/redis.conf
+              subPath: redis.conf
 
             - mountPath: /secret/dkim.key
               name: dkim-secrets

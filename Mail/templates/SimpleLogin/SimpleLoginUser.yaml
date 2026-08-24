@@ -5,14 +5,20 @@ metadata:
   name: {{ .Release.Name }}-simplelogin
 
 spec:
-  name: SimpleLogin
+  name: 'SimpleLogin'
 
-  database:
-    name: simplelogin
+  psql:
+    enabled: true
+    createUserDatabase: false
+    databases:
+      - 'simplelogin'
+    crossplane:
+      crossplaneProvider: {{ .Values.site.psql.crossplaneProvider | quote }}
+      terraformProvider: {{ .Values.site.psql.terraformProvider | quote }}
 
   groups:
-    - LDAPService
+    - 'LDAPService'
 
   writeConnectionSecretToRef:
-    name: {{ .Release.Name }}-simplelogin
+    name: {{ printf "%s-simplelogin" .Release.Name | quote }}
 {{- end }}

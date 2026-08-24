@@ -35,10 +35,6 @@ data:
     .include(try=true; priority=10) "$CONFDIR/override.d/worker-controller-password.inc"
     .include(try=true; priority=30) "$CONFDIR/override.d/worker-controller.custom.inc" 
 
-  redis.conf: |
-    # just specifying a server enables redis for all modules that can use it
-    servers = "redis.mylogin.space";
-
   classifier-bayes.conf: |
     autolearn = true;
     backend = "redis";
