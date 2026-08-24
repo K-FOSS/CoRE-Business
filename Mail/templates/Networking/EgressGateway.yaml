@@ -6,8 +6,7 @@ spec:
   selectors:
     - podSelector:
         matchLabels:
-          app.kubernetes.io/name: simplelogin
-          app.kubernetes.io/component: postfix
+          app.kubernetes.io/controller: 'postfix'
   destinationCIDRs:
     - 0.0.0.0/5
     - 8.0.0.0/7

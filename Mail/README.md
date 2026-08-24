@@ -34,6 +34,11 @@ Gateway API route. Mail-specific ConfigMaps remain direct templates because
 they contain application configuration consumed by External Secrets template
 rendering. External Secrets, CoRE `User`, DKIM, DNS and Cilium resources remain
 direct templates because they are application/operator-specific custom APIs.
+BJW-S Deployments use release-scoped names and its reserved selector labels;
+the stable `dovecot`, `maddy`, `postfix` and `rspamd` Service names remain the
+workload-facing endpoints. Spoke credential pulls reconcile in Argo CD sync
+wave `-1`, before the workloads that consume those Secrets; legacy Deployments
+are pruned only after the replacement resources become healthy.
 
 ```text
 Internet SMTP :25/:465/:587
@@ -60,9 +65,13 @@ Mail client IMAP :143/:993
   claim provisions the site-local PostgreSQL role/database and `mail-main` S3
   bucket plus a long-lived MinIO service account; the resulting connection
   Secrets are mounted directly by the Deployment.
-- `DKIMKey` drives dkim-manager for the `selector1` key. An optional
-  `DNSEndpoint` publishes mail DNS records when `dns.automagic.enabled` is true;
-  it is currently false.
+- A hub-only `DKIMKey` drives dkim-manager for the `selector1` private key and
+  its public DNS record. The generated private-key Secret is pushed to
+  `Mail/Clusters/<hubCluster>/DKIM/selector1`; spokes use an `ExternalSecret`
+  to recreate `selector1-mail-myloginspace` with the exact key filename used
+  by Postfix, Dovecot and Rspamd. The chart-level optional `DNSEndpoint`
+  publishes the mail MX records when `dns.automagic.enabled` is true; it is
+  currently false.
 - `CiliumEgressGatewayPolicy` controls mail egress identity. Changes can affect
   deliverability, SPF alignment and provider reputation.
 - SimpleLogin resources include API/mail-handler Deployments, PostgreSQL
@@ -98,8 +107,9 @@ delivery change. Validate inbound and outbound traffic before and after sync.
 - Pushes use `deletionPolicy: None`; spoke targets use `creationPolicy: Orphan`
   and `deletionPolicy: Retain`. Removing the chart therefore does not revoke
   the Vault records or the last spoke copy. Decommissioning requires deliberate
-  removal or rotation of both. LDAP bind, Dragonfly, TLS and DKIM secrets stay
-  in their existing platform-owned flows and are not copied by this mechanism.
+  removal or rotation of both. LDAP bind, Dragonfly and TLS secrets stay in
+  their existing platform-owned flows; the generated DKIM private key follows
+  this hub/spoke synchronization mechanism.
 - The [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
   defines the hub/standby topology and site-local endpoints used by all three
   Mail targets.
@@ -154,10 +164,10 @@ git diff --check -- Mail
 Inspect the render for credentials, public IPs, TLS Secret references, egress
 selectors, enabled optional resources and generated DNS/DKIM objects. Validate
 the installed CRDs for External Secrets, Cilium, external-dns, dkim-manager and
-the CoRE `User` API. The default hub render must contain three `PushSecret`
-resources and two `User` claims; a spoke must contain three
-`ExternalSecret` pull resources and no `User` claims. With SimpleLogin enabled,
-the Push/pull and User counts each increase by one. Confirm both renders use
+the CoRE `User` API. The default hub render must contain one `DKIMKey`, four
+`PushSecret` resources and two `User` claims; a spoke must contain four
+`ExternalSecret` pull resources, no `DKIMKey` and no `User` claims. With
+SimpleLogin enabled, the Push/pull and User counts each increase by one. Confirm both renders use
 the same `Mail/Clusters/<hubCluster>/...` remote keys, resolve to their own
 local Secret names, and contain no Secret data.
 

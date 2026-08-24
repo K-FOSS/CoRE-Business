@@ -11,8 +11,6 @@ defaultPodOptions:
 
 controllers:
   dovecot:
-    annotations: &controllerSyncWave
-      argocd.argoproj.io/sync-wave: '-1'
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -43,7 +41,6 @@ controllers:
             containerPort: 2525
 
   maddy:
-    annotations: *controllerSyncWave
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -98,7 +95,6 @@ controllers:
             containerPort: 143
 
   postfix:
-    annotations: *controllerSyncWave
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -146,7 +142,6 @@ controllers:
             containerPort: 10025
 
   rspamd:
-    annotations: *controllerSyncWave
     replicas: 1
     pod:
       labels:
@@ -180,7 +175,6 @@ controllers:
 
   {{- if .Values.simplelogin.enabled }}
   simplelogin-api:
-    annotations: *controllerSyncWave
     replicas: 0
     pod:
       labels:
@@ -218,7 +212,6 @@ controllers:
             containerPort: 7777
 
   simplelogin-mailhandler:
-    annotations: *controllerSyncWave
     replicas: 0
     pod:
       labels:
