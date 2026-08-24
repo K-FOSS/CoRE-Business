@@ -11,7 +11,8 @@ defaultPodOptions:
 
 controllers:
   dovecot:
-    forceRename: 'core-dovecot'
+    annotations: &controllerSyncWave
+      argocd.argoproj.io/sync-wave: '-1'
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -20,7 +21,6 @@ controllers:
     revisionHistoryLimit: 5
     pod:
       labels:
-        app.kubernetes.io/name: 'mail'
         app.kubernetes.io/component: 'dovecot'
     containers:
       dovecot:
@@ -43,7 +43,7 @@ controllers:
             containerPort: 2525
 
   maddy:
-    forceRename: 'core-maddy'
+    annotations: *controllerSyncWave
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -52,7 +52,6 @@ controllers:
     revisionHistoryLimit: 5
     pod:
       labels:
-        app.kubernetes.io/name: 'mail'
         app.kubernetes.io/component: 'maddy'
     containers:
       maddy:
@@ -99,7 +98,7 @@ controllers:
             containerPort: 143
 
   postfix:
-    forceRename: 'simplelogin-postfix'
+    annotations: *controllerSyncWave
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -108,7 +107,6 @@ controllers:
     revisionHistoryLimit: 5
     pod:
       labels:
-        app.kubernetes.io/name: 'simplelogin'
         app.kubernetes.io/component: 'postfix'
       affinity:
         podAntiAffinity:
@@ -148,11 +146,10 @@ controllers:
             containerPort: 10025
 
   rspamd:
-    forceRename: 'mail-rspamd'
+    annotations: *controllerSyncWave
     replicas: 1
     pod:
       labels:
-        app.kubernetes.io/name: 'mail'
         app.kubernetes.io/component: 'rspam'
         app.kubernetes.io/worker: 'proxy'
       affinity:
@@ -183,11 +180,10 @@ controllers:
 
   {{- if .Values.simplelogin.enabled }}
   simplelogin-api:
-    forceRename: 'simplelogin-api'
+    annotations: *controllerSyncWave
     replicas: 0
     pod:
       labels:
-        app.kubernetes.io/name: 'simplelogin'
         app.kubernetes.io/component: 'api'
     initContainers:
       initdb:
@@ -222,11 +218,10 @@ controllers:
             containerPort: 7777
 
   simplelogin-mailhandler:
-    forceRename: 'simplelogin-mailhandler'
+    annotations: *controllerSyncWave
     replicas: 0
     pod:
       labels:
-        app.kubernetes.io/name: 'simplelogin'
         app.kubernetes.io/component: 'mailhandler'
       affinity:
         podAffinity:
