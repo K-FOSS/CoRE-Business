@@ -1,6 +1,23 @@
 URL: 'https://mail.mylogin.space'
 
+global:
+  createDefaultServiceAccount: false
+
 clusterDNS: 'k0s.resolvemy.host'
+
+cluster:
+  # Lovely names releases <cluster>-business-mail. Set this explicitly if that
+  # convention changes.
+  name: ''
+
+credentialsSync:
+  enabled: true
+  refreshInterval: '1h'
+  hubCluster: 'dc1-k3s-node1'
+  remotePathPrefix: 'Mail/Clusters'
+  secretStoreRef:
+    kind: 'ClusterSecretStore'
+    name: 'mainvault-core'
 
 site:
   ldap:

@@ -1,4 +1,4 @@
-{{- if .Values.simplelogin.enabled }}
+{{- if and .Values.simplelogin.enabled (eq (include "mail.managesCredentials" .) "true") }}
 apiVersion: mylogin.space/v1alpha1
 kind: User
 metadata:

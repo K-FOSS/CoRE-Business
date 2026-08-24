@@ -3,6 +3,10 @@ version: 1.0.0
 name: mail
 
 dependencies:
+  - name: common
+    version: '5.1.0'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'
+
   #
   # DKIM
   #

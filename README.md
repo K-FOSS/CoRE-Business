@@ -60,19 +60,11 @@ notes:
 | [Browsers](Browsers/README.md) | [Browsers](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Browsers.yaml) | Selenium Grid browser automation. |
 | [Desktop](Desktop/README.md) | [Desktops](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Desktops.yaml) | GPU-backed LinuxServer Selkies desktops, including 120 FPS OrcaSlicer and separate NVIDIA/Intel Steam streams; NVIDIA Steam starts in Big Picture with H.264 locked, and all routes use Authentik proxy authentication. |
 | [Office](Office/README.md) | [NextCloud](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml) | Nextcloud, Collabora and supporting office services. |
+| [Mail](Mail/README.md) | [Mail](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml) | Multi-site Postfix, Dovecot, Rspamd and Maddy mail stack with DKIM/DNS and optional SimpleLogin. |
 | [Vaultwarden](Passwords/VaultWarden/README.md) | [VaultWarden](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml) | Password vault, database identity and secret synchronization. |
 | [Terminal](Terminal/README.md) | [Terminal](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Terminal.yaml) | Browser-accessible terminal workload. |
 | [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
 | [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
-
-### Legacy deployment references
-
-These charts still have Backplane ApplicationSets but live under its legacy
-substack and should not be treated as current architecture without review:
-
-| Chart | Backplane owner | Deployment scope |
-| --- | --- | --- |
-| [Mail](Mail/README.md) | [Mail](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/Mail.yaml) | Postfix, Dovecot, Rspamd, Maddy, DKIM/DNS and optional SimpleLogin. |
 
 See the [repository guide](docs/REPOSITORY.md) for ownership discovery,
 configuration layers and change validation.

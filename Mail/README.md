@@ -7,17 +7,33 @@ but disabled by default.
 
 ## Deployment status and ownership
 
-[The Mail ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/Mail.yaml)
-is currently stored under Backplane's `Apps/Business/Legacy/` substack. It uses
-a fixed list generator for `dc1-k3s-node1`, deploys this path to `core-prod`
-through Lovely, follows `HEAD`, and preserves resources when the generator
-entry is removed.
+[The Mail ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml)
+owns this active production stack. Mail is no longer classified as a legacy
+service: a merge generator deploys it through Lovely to three explicitly
+approved production clusters and into each target's `core-prod` namespace.
 
-The legacy location is an operational warning, not proof that the workload is
-offline. Confirm Argo CD state and live DNS/MX traffic before changing or
-removing any resource.
+| Argo CD cluster | Site | Role |
+| --- | --- | --- |
+| `dc1-k3s-node1` | `dc1/yxl` | Credential hub and compatibility deployment retained during the scale-out. |
+| `core-dc1-talos-prod` | `dc1/yxl` | Spoke production Talos deployment. |
+| `core-home1-talos-prod` | `home1/yvr` | Spoke production Talos deployment. |
+
+The ApplicationSet matches those entries to registered production clusters,
+derives the API server, environment, cluster DNS domain, region and datacentre
+from cluster metadata, and injects the target-specific LDAP endpoint,
+PostgreSQL and Dragonfly hostnames, credential path, and PostgreSQL/S3 provider
+names. It follows `HEAD` and preserves resources when a generator entry is
+removed, so removing a target does not decommission its mail resources or
+external data.
 
 ## Components and mail flow
+
+The chart uses the [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)
+to generate Deployments, Services, persistence and the optional SimpleLogin
+Gateway API route. Mail-specific ConfigMaps remain direct templates because
+they contain application configuration consumed by External Secrets template
+rendering. External Secrets, CoRE `User`, DKIM, DNS and Cilium resources remain
+direct templates because they are application/operator-specific custom APIs.
 
 ```text
 Internet SMTP :25/:465/:587
@@ -71,8 +87,22 @@ delivery change. Validate inbound and outbound traffic before and after sync.
 - CoRE `User` resources create the Postfix, Maddy and optional SimpleLogin
   identities. Maddy uses the current `psql` and `s3` fields from the
   [`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
+- `credentialsSync.hubCluster` selects the credential hub. Only that cluster
+  renders the Postfix, Maddy and optional SimpleLogin `User` claims. It pushes
+  their generated PostgreSQL and S3 connection fields through External Secrets
+  to `Mail/Clusters/<hubCluster>/...` in the configured
+  `ClusterSecretStore`. Every other cluster pulls from that selected hub path
+  and recreates the Secret names expected by its local workloads. Cluster
+  identity defaults to the `<cluster>-business-mail` release-name convention;
+  set `cluster.name` explicitly if the owning ApplicationSet changes it.
+- Pushes use `deletionPolicy: None`; spoke targets use `creationPolicy: Orphan`
+  and `deletionPolicy: Retain`. Removing the chart therefore does not revoke
+  the Vault records or the last spoke copy. Decommissioning requires deliberate
+  removal or rotation of both. LDAP bind, Dragonfly, TLS and DKIM secrets stay
+  in their existing platform-owned flows and are not copied by this mechanism.
 - The [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
-  defines the active `dc1-k3s-node1` site endpoint and providers used here.
+  defines the hub/standby topology and site-local endpoints used by all three
+  Mail targets.
   The [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml)
   supplies the corresponding TLS endpoint and platform-managed password. The
   [storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
@@ -86,9 +116,13 @@ delivery change. Validate inbound and outbound traffic before and after sync.
 
 ## Safety and current limitations
 
-- The ApplicationSet targets a fixed Kubernetes API URL and follows `HEAD`.
-  Confirm the target before reconciliation and avoid broad resyncs during mail
-  delivery incidents.
+- The ApplicationSet resolves each target's Kubernetes API URL from its Argo CD
+  cluster registration and follows `HEAD`. Confirm all selected targets before
+  reconciliation and avoid broad fleet resyncs during mail delivery incidents.
+- Public address, PureLB sharing, Cilium egress, DNS and mail identity settings
+  remain common chart inputs. Verify that their behavior is correct at every
+  site; scaling pods successfully does not establish correct inbound routing,
+  outbound identity or mail reputation.
 - Some images are mutable or locally maintained, including untagged Rspamd and
   `kristianfoss/postfix:core`. Pin reviewed digests before relying on
   reproducible rollback.
@@ -104,23 +138,36 @@ delivery change. Validate inbound and outbound traffic before and after sync.
 
 ```sh
 helm dependency build Mail
-helm lint Mail
-helm template core-business-mail Mail --values Mail/values.yaml >/tmp/core-business-mail.yaml
+helm lint Mail \
+  --set cluster.name=dc1-k3s-node1
+helm template dc1-k3s-node1-business-mail Mail \
+  --api-versions gateway.networking.k8s.io/v1/HTTPRoute \
+  --set cluster.name=dc1-k3s-node1 \
+  >/tmp/core-business-mail-hub.yaml
+helm template core-dc1-talos-prod-business-mail Mail \
+  --api-versions gateway.networking.k8s.io/v1/HTTPRoute \
+  --set cluster.name=core-dc1-talos-prod \
+  >/tmp/core-business-mail-spoke.yaml
 git diff --check -- Mail
 ```
 
 Inspect the render for credentials, public IPs, TLS Secret references, egress
 selectors, enabled optional resources and generated DNS/DKIM objects. Validate
 the installed CRDs for External Secrets, Cilium, external-dns, dkim-manager and
-the CoRE `User` API.
+the CoRE `User` API. The default hub render must contain three `PushSecret`
+resources and two `User` claims; a spoke must contain three
+`ExternalSecret` pull resources and no `User` claims. With SimpleLogin enabled,
+the Push/pull and User counts each increase by one. Confirm both renders use
+the same `Mail/Clusters/<hubCluster>/...` remote keys, resolve to their own
+local Secret names, and contain no Secret data.
 
-The default values represent `dc1-k3s-node1` in `dc1/yxl`. A move to another
-site must override `site.ldap`, `site.psql`, `site.dragonfly`, and the PSQL/S3
-provider names together. Keep Dragonfly logical database `25` reserved for
-Rspamd, and verify that no other workload at the site uses it before changing
-that allocation.
+The default values represent `dc1-k3s-node1` in `dc1/yxl`; they are not a
+representative fleet render. The owning ApplicationSet overrides `clusterDNS`,
+`site.ldap`, `site.psql`, `site.dragonfly` and `site.s3` for every target. Keep
+those values together when adding a site, render once per target, and keep
+Dragonfly logical database `25` reserved for Rspamd at each site.
 
-After reconciliation, verify:
+After reconciliation, verify at each site and then test cross-site behavior:
 
 1. SMTP banner, STARTTLS and certificate chain on ports 25/587.
 2. Authenticated submission and IMAP login through a non-privileged test user.
@@ -130,6 +177,8 @@ After reconciliation, verify:
 5. Rspamd filtering, Redis connectivity and queue health.
 6. Secret-controller, DKIM-controller and DNS-controller conditions.
 7. A restore of representative mailbox/object/database state.
+8. Site failover and duplicate-delivery behavior, including queue handling and
+   preservation of a single consistent public SMTP identity.
 
 ## Upstream projects
 
@@ -142,3 +191,4 @@ After reconciliation, verify:
 - [Cilium egress gateway documentation](https://docs.cilium.io/en/stable/network/egress-gateway/egress-gateway/)
 - [ExternalDNS documentation](https://kubernetes-sigs.github.io/external-dns/)
 - [External Secrets documentation](https://external-secrets.io/)
+- [BJW-S common library documentation](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)

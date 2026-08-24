@@ -1,0 +1,538 @@
+---
+{{- include "bjw-s.common.loader.init" . }}
+
+{{- define "mail.hardcodedValues" -}}
+global:
+  nameOverride: {{ .Release.Name | quote }}
+
+defaultPodOptions:
+  labels:
+    logs: 'loki-myloginspace'
+
+controllers:
+  dovecot:
+    forceRename: 'core-dovecot'
+    replicas: 2
+    strategy: RollingUpdate
+    rollingUpdate:
+      unavailable: 0
+      surge: 1
+    revisionHistoryLimit: 5
+    pod:
+      labels:
+        app.kubernetes.io/name: 'mail'
+        app.kubernetes.io/component: 'dovecot'
+    containers:
+      dovecot:
+        image:
+          repository: 'dovecot/dovecot'
+          tag: '2.4.4'
+          pullPolicy: IfNotPresent
+        ports:
+          - name: sasl
+            containerPort: 12345
+          - name: imap
+            containerPort: 31143
+          - name: imaps
+            containerPort: 31993
+          - name: pop3
+            containerPort: 31110
+          - name: pop3s
+            containerPort: 31995
+          - name: lmtp
+            containerPort: 2525
+
+  maddy:
+    forceRename: 'core-maddy'
+    replicas: 2
+    strategy: RollingUpdate
+    rollingUpdate:
+      unavailable: 0
+      surge: 1
+    revisionHistoryLimit: 5
+    pod:
+      labels:
+        app.kubernetes.io/name: 'mail'
+        app.kubernetes.io/component: 'maddy'
+    containers:
+      maddy:
+        image:
+          repository: 'foxcpp/maddy'
+          tag: '0.9.0'
+          pullPolicy: IfNotPresent
+        stdin: true
+        tty: true
+        env:
+          S3_ACCESS_KEY:
+            valueFrom:
+              secretKeyRef:
+                name: {{ printf "%s-maddy-s3-user" .Release.Name | quote }}
+                key: 'AccessKey'
+          S3_SECRET_KEY:
+            valueFrom:
+              secretKeyRef:
+                name: {{ printf "%s-maddy-s3-user" .Release.Name | quote }}
+                key: 'SecretAccessKey'
+          PSQL_HOSTNAME: {{ .Values.site.psql.hostname | quote }}
+          PSQL_PORT: {{ .Values.site.psql.port | quote }}
+          PSQL_DATABASE:
+            valueFrom:
+              secretKeyRef:
+                name: {{ printf "%s-maddy-creds" .Release.Name | quote }}
+                key: 'database'
+          USERNAME:
+            valueFrom:
+              secretKeyRef:
+                name: {{ printf "%s-maddy-creds" .Release.Name | quote }}
+                key: 'username'
+          PASSWORD:
+            valueFrom:
+              secretKeyRef:
+                name: {{ printf "%s-maddy-creds" .Release.Name | quote }}
+                key: 'password'
+        ports:
+          - name: lmtp
+            containerPort: 2525
+          - name: imaps
+            containerPort: 993
+          - name: imap
+            containerPort: 143
+
+  postfix:
+    forceRename: 'simplelogin-postfix'
+    replicas: 2
+    strategy: RollingUpdate
+    rollingUpdate:
+      unavailable: 0
+      surge: 1
+    revisionHistoryLimit: 5
+    pod:
+      labels:
+        app.kubernetes.io/name: 'simplelogin'
+        app.kubernetes.io/component: 'postfix'
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: 'kubernetes.io/hostname'
+                labelSelector:
+                  matchExpressions:
+                    - key: 'app.kubernetes.io/component'
+                      operator: In
+                      values:
+                        - 'postfix'
+    containers:
+      postfix:
+        image:
+          repository: 'kristianfoss/postfix'
+          tag: 'core'
+          pullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: '15m'
+            memory: '105M'
+          limits:
+            cpu: '15m'
+            memory: '105M'
+        envFrom:
+          - configMap: 'simplelogin-postfix-cfg'
+        ports:
+          - name: smtp
+            containerPort: 25
+          - name: smtp-tls
+            containerPort: 465
+          - name: smtp-starttls
+            containerPort: 587
+          - name: smtp-auth
+            containerPort: 10025
+
+  rspamd:
+    forceRename: 'mail-rspamd'
+    replicas: 1
+    pod:
+      labels:
+        app.kubernetes.io/name: 'mail'
+        app.kubernetes.io/component: 'rspam'
+        app.kubernetes.io/worker: 'proxy'
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: 'kubernetes.io/hostname'
+                labelSelector:
+                  matchExpressions:
+                    - key: 'app.kubernetes.io/worker'
+                      operator: In
+                      values:
+                        - 'normal'
+    containers:
+      rspamd:
+        image:
+          repository: 'rspamd/rspamd'
+          tag: 'latest'
+          pullPolicy: IfNotPresent
+        ports:
+          - name: proxy
+            containerPort: 11332
+          - name: normal
+            containerPort: 11333
+          - name: controller
+            containerPort: 11334
+
+  {{- if .Values.simplelogin.enabled }}
+  simplelogin-api:
+    forceRename: 'simplelogin-api'
+    replicas: 0
+    pod:
+      labels:
+        app.kubernetes.io/name: 'simplelogin'
+        app.kubernetes.io/component: 'api'
+    initContainers:
+      initdb:
+        image:
+          repository: 'simplelogin/app'
+          tag: '3.4.0'
+        command:
+          - 'flask'
+        args:
+          - 'db'
+          - 'upgrade'
+        envFrom: &simpleloginEnv
+          - secret: 'business-mail-simplelogin-db-prod'
+          - configMap: 'simplelogin-config'
+      initapp:
+        image:
+          repository: 'simplelogin/app'
+          tag: '3.4.0'
+        command:
+          - 'python'
+        args:
+          - 'init_app.py'
+        envFrom: *simpleloginEnv
+    containers:
+      api:
+        image:
+          repository: 'simplelogin/app'
+          tag: '3.4.0'
+        envFrom: *simpleloginEnv
+        ports:
+          - name: http
+            containerPort: 7777
+
+  simplelogin-mailhandler:
+    forceRename: 'simplelogin-mailhandler'
+    replicas: 0
+    pod:
+      labels:
+        app.kubernetes.io/name: 'simplelogin'
+        app.kubernetes.io/component: 'mailhandler'
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: 'kubernetes.io/hostname'
+              labelSelector:
+                matchExpressions:
+                  - key: 'app.kubernetes.io/name'
+                    operator: In
+                    values:
+                      - 'simplelogin'
+    containers:
+      mailhandler:
+        image:
+          repository: 'simplelogin/app'
+          tag: '3.4.0'
+        command:
+          - 'python'
+        args:
+          - 'email_handler.py'
+        envFrom: *simpleloginEnv
+        ports:
+          - name: smtp
+            containerPort: 20381
+  {{- end }}
+
+service:
+  dovecot:
+    controller: 'dovecot'
+    forceRename: 'dovecot'
+    type: LoadBalancer
+    allocateLoadBalancerNodePorts: false
+    annotations: &mailLoadBalancerAnnotations
+      purelb.io/allow-shared-ip: 'mail.mylogin.space'
+      purelb.io/service-group: 'anycast'
+      purelb.io/allow-local: 'true'
+      purelb.io/addresses: '66.165.222.125'
+    ports:
+      imap:
+        port: 143
+        targetPort: imap
+      imaps-default:
+        port: 993
+        targetPort: imaps
+      sasl:
+        port: 12345
+        targetPort: sasl
+      imap-transport:
+        port: 2525
+        targetPort: lmtp
+
+  maddy:
+    controller: 'maddy'
+    forceRename: 'maddy'
+    labels:
+      lan-mode: 'private'
+      wan-mode: 'public'
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: 'int-imap.mylogin.space'
+    ports:
+      imap-default:
+        port: 143
+        targetPort: imap
+        appProtocol: imap
+      imaps-default:
+        port: 993
+        targetPort: imaps
+        appProtocol: imaps
+
+  postfix:
+    controller: 'postfix'
+    forceRename: 'postfix'
+    type: LoadBalancer
+    allocateLoadBalancerNodePorts: false
+    annotations: *mailLoadBalancerAnnotations
+    ports:
+      smtp:
+        port: 25
+        targetPort: smtp
+        appProtocol: smtp
+      submissions:
+        port: 465
+        targetPort: smtp-tls
+        appProtocol: submissions
+      smtp-starttls:
+        port: 587
+        targetPort: smtp-starttls
+        appProtocol: submission
+      smtp-auth:
+        port: 10025
+        targetPort: smtp-auth
+
+  rspamd:
+    controller: 'rspamd'
+    forceRename: 'rspamd'
+    labels:
+      lan-mode: 'private'
+      wan-mode: 'public'
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: 'int-rspamd.mylogin.space'
+    ports:
+      proxy:
+        port: 11332
+        targetPort: proxy
+      normal:
+        port: 11333
+        targetPort: normal
+      controller:
+        port: 11334
+        targetPort: controller
+
+  {{- if .Values.simplelogin.enabled }}
+  simplelogin-api:
+    controller: 'simplelogin-api'
+    forceRename: 'simplelogin-api'
+    ports:
+      http:
+        port: 80
+        targetPort: http
+  simplelogin-mailhandler:
+    controller: 'simplelogin-mailhandler'
+    forceRename: 'simplelogin-mailhandler'
+    ports:
+      smtp:
+        port: 20381
+        targetPort: smtp
+  {{- end }}
+
+persistence:
+  dovecot-config:
+    type: configMap
+    name: 'business-mail-dovecot-config'
+    advancedMounts:
+      dovecot:
+        dovecot:
+          - path: '/etc/dovecot/dovecot.conf'
+            subPath: 'dovecot.conf'
+  dovecot-auth:
+    type: secret
+    name: 'business-mail-dovecot-auth-config'
+    advancedMounts:
+      dovecot:
+        dovecot:
+          - path: '/etc/dovecot/dovecot-ldap.conf'
+            subPath: 'dovecot-ldap.conf.ext'
+  dovecot-namespace:
+    type: configMap
+    name: 'business-mail-dovecot-namespaces'
+    advancedMounts:
+      dovecot:
+        dovecot:
+          - path: '/etc/dovecot/namespaces'
+  maddy-config:
+    type: configMap
+    name: 'business-mail-maddy-config'
+    advancedMounts:
+      maddy:
+        maddy:
+          - path: '/data/maddy.conf'
+            subPath: 'maddy.conf'
+          - path: '/data/checkScript.sh'
+            subPath: 'checkScript.sh'
+  postfix-misc:
+    type: configMap
+    name: 'simplelogin-postfix-misc-config'
+    advancedMounts:
+      postfix:
+        postfix:
+          - path: '/etc/postfix/master.cf'
+            subPath: 'master.cf'
+  postfix-ldap:
+    type: secret
+    name: 'business-mail-postfix-auth-config'
+    advancedMounts:
+      postfix:
+        postfix:
+          - path: '/etc/postfix/ldap.cf'
+            subPath: 'ldap.cf'
+          - path: '/etc/postfix/ldap-in.cf'
+            subPath: 'ldap-in.cf'
+          - path: '/etc/postfix/ldap-auth.cf'
+            subPath: 'ldap-auth.cf'
+  rspamd-config:
+    type: configMap
+    name: 'business-mail-rspamd'
+    advancedMounts:
+      rspamd:
+        rspamd:
+          - path: '/etc/rspamd'
+  rspamd-dragonfly:
+    type: secret
+    name: 'business-mail-rspamd-dragonfly'
+    advancedMounts:
+      rspamd:
+        rspamd:
+          - path: '/etc/rspamd/local.d/redis.conf'
+            subPath: 'redis.conf'
+  tls-certs:
+    type: secret
+    name: {{ .Values.email.tls.secretName | quote }}
+    advancedMounts:
+      dovecot:
+        dovecot:
+          - path: '/etc/tls/mail'
+      maddy:
+        maddy:
+          - path: '/etc/tls/mail'
+      postfix:
+        postfix:
+          - path: '/etc/tls/mail'
+  dkim-secrets:
+    type: secret
+    name: 'selector1-mail-myloginspace'
+    advancedMounts:
+      dovecot:
+        dovecot:
+          - path: '/secret/dkim.key'
+            subPath: 'mail.mylogin.space.selector1.key'
+      postfix:
+        postfix:
+          - path: '/secret/dkim.key'
+            subPath: 'mail.mylogin.space.selector1.key'
+      rspamd:
+        rspamd:
+          - path: '/secret/dkim.key'
+            subPath: 'mail.mylogin.space.selector1.key'
+      {{- if .Values.simplelogin.enabled }}
+      simplelogin-api:
+        initdb:
+          - path: '/secret/dkim.key'
+            subPath: 'mail.mylogin.space.selector1.key'
+        initapp:
+          - path: '/secret/dkim.key'
+            subPath: 'mail.mylogin.space.selector1.key'
+        api:
+          - path: '/secret/dkim.key'
+            subPath: 'mail.mylogin.space.selector1.key'
+      simplelogin-mailhandler:
+        mailhandler:
+          - path: '/secret/dkim.key'
+            subPath: 'mail.mylogin.space.selector1.key'
+      {{- end }}
+  simplelogin-data:
+    type: persistentVolumeClaim
+    forceRename: 'simplelogin-data'
+    accessMode: ReadWriteOnce
+    size: '300Mi'
+    {{- if .Values.simplelogin.enabled }}
+    advancedMounts:
+      simplelogin-api:
+        initdb:
+          - path: '/code/static/upload'
+        initapp:
+          - path: '/code/static/upload'
+        api:
+          - path: '/code/static/upload'
+      simplelogin-mailhandler:
+        mailhandler:
+          - path: '/code/static/upload'
+    {{- else }}
+    # A non-empty advancedMounts map prevents the dormant PVC from being
+    # mounted globally while SimpleLogin is disabled.
+    advancedMounts:
+      dovecot: {}
+    {{- end }}
+  {{- if .Values.simplelogin.enabled }}
+  simplelogin-env:
+    type: secret
+    name: 'business-mail-simplelogin-db-prod'
+    advancedMounts:
+      simplelogin-mailhandler:
+        mailhandler:
+          - path: '/code/.env'
+            subPath: 'SLENV'
+  simplelogin-dkim-public:
+    type: configMap
+    name: 'simplelogin-dkim-public-cert'
+    advancedMounts:
+      simplelogin-mailhandler:
+        mailhandler:
+          - path: '/secret/dkim.pub.key'
+            subPath: 'dkim.pub.key'
+  {{- end }}
+
+{{- if .Values.simplelogin.enabled }}
+route:
+  simplelogin:
+    enabled: true
+    kind: HTTPRoute
+    forceRename: {{ printf "%s-simplelogin" .Release.Name | quote }}
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        namespace: 'kuadrant-core-prod'
+        name: 'main-gw'
+    hostnames:
+      - 'simplelogin.mylogin.space'
+    rules:
+      - backendRefs:
+          - identifier: 'simplelogin-api'
+            port: 80
+{{- end }}
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "mail.hardcodedValues" . | fromYaml) -}}
+{{ include "bjw-s.common.loader.generate" . }}
