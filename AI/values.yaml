@@ -77,8 +77,9 @@ speeches:
   backends:
     cpu:
       enabled: true
-      tag: '0.8.3-cpu'
+      tag: 'latest-cpu'
       replicas: 2
+      debug: true
       inferenceDevice: 'cpu'
       computeType: 'int8'
       cpuThreads: '4'
@@ -96,7 +97,7 @@ speeches:
 
     cuda:
       enabled: true
-      tag: '0.8.3-cuda-12.6.3'
+      tag: '0.9.0-rc.3-cuda'
       replicas: 1
       inferenceDevice: 'cuda'
       computeType: 'float16'

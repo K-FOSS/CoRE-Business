@@ -1005,8 +1005,22 @@ controllers:
           - name: PRELOAD_MODELS
             value: {{ list $.Values.speeches.model | toJson | quote }}
 
+          - name: LOOPBACK_HOST_URL
+            value: http://127.0.0.1:8000
+
           - name: WHISPER__INFERENCE_DEVICE
             value: {{ $backend.inferenceDevice | quote }}
+
+          {{- if (default false $backend.debug) }}
+          - name: OMP_PROC_BIND
+            value: close
+          - name: OMP_PLACES
+            value: cores
+          - name: CT2_VERBOSE
+            value: '1'
+          - name: CT2_PACKED_GEMM
+            value: '1'
+          {{- end }}
 
           - name: WHISPER__COMPUTE_TYPE
             value: {{ $backend.computeType | quote }}
