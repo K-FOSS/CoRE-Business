@@ -60,6 +60,35 @@ workspaces, LDAP configuration and OIDC settings participate in the same
 identity flow. Review redirect URIs, group/entitlement bindings and service
 accounts together.
 
+The active [AI chart](../AI/README.md), owned by the
+[AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml)
+and
+[AINode2 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AINode2.yaml),
+creates GPUStack's Authentik OIDC provider and application through a Crossplane
+Terraform Workspace. Access is limited to the managed `GPUStack Users` group;
+the generated client credentials are delivered to the GPUStack server through
+a connection Secret rather than stored in Git. The chart can also reconcile
+named GPUStack API keys from Kubernetes-generated Secrets. This workflow
+requires a separately managed, management-scoped bootstrap API key and keeps
+consumer token values out of Git and controller logs.
+
+The active [Desktop chart](../Desktop/README.md), owned by the
+[Desktops ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Desktops.yaml),
+creates Authentik single-application proxy providers through a Crossplane
+Terraform Workspace. Provider attachment is deliberately manual so an identity
+operator can review the target outpost. Envoy Gateway SecurityPolicies use
+fail-closed external-authorization checks against the configured outpost to
+protect each desktop HTTPRoute; access is granted through the `Desktop Users`
+Authentik group after attachment. The OrcaSlicer and Steam workloads fix the
+Selkies stream target at 120 FPS; achieving a visible 120 Hz refresh also
+depends on client display and browser support and sufficient network and GPU
+capacity. The NVIDIA Steam instance uses a 250 GiB RWO game volume; the Intel
+instance uses a dedicated 300 GiB `desktop-rwx` RWX volume. Both use a
+container-scoped unconfined seccomp profile required by game sandboxing. The
+NVIDIA instance's blanket toleration accepts all node taints, subject to its
+AMD64, CUDA 13 and GPU scheduling constraints. It starts Steam in Big Picture
+mode and locks the Selkies stream to the H.264 encoder and streaming mode.
+
 ### Networking
 
 Newer paths generally expose HTTP services through Gateway API `HTTPRoute`
@@ -74,6 +103,36 @@ Applications commonly rely on shared PostgreSQL, Redis/Dragonfly and
 S3-compatible object storage. Review database ownership, credentials, bucket
 policy, persistence, backup coverage and deletion semantics before changing a
 connection or resource identity.
+
+The active [Office chart](../Office/README.md), owned by the
+[NextCloud ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml),
+uses the CoRE `User` resource's temporary S3 access key, secret key and session
+token to authenticate a Crossplane Terraform Workspace. The Workspace creates
+a durable MinIO service account and publishes its generated key pair to the
+Secret consumed by Nextcloud. The Workspace uses an `Orphan` deletion policy,
+so permanent removal requires explicit service-account revocation.
+
+The active AI chart provisions OpenWebUI's database identity on the site-local
+`psql-<datacenter>-<region>` providers and connects it to the corresponding
+`psql-local.<cluster>.<datacenter>.<region>.mylogin.space` endpoint. OpenWebUI
+uses the same site's TLS-enabled Dragonfly service for its cache and websocket
+manager, with namespace-local credentials synchronized through External
+Secrets and explicit logical database allocations `150` and `151`.
+
+The AI chart's separate CPU and NVIDIA CUDA Speaches backends share their
+downloaded model cache using a chart-managed Longhorn ReadWriteMany
+StorageClass. The StorageClass disables Longhorn volume migration and retains
+the underlying PV after claim deletion; operators must deliberately recover or
+delete that retained data when removing the backends. The `core-speaches-cpu` and
+`core-speaches-cuda` Services are exported as Cilium ClusterMesh global
+services from each target cluster and prefer healthy local backends, falling
+back to shared remote backends only when local endpoints are unavailable.
+The Gateway distributes traffic evenly between CPU and CUDA by default.
+Kubernetes `ClientIP` affinity pins direct clients, while the Gateway policy
+uses a generated secure cookie for per-session consistent hashing and disables
+HTTP stream timeouts. The CUDA backend has a blanket `operator: Exists`
+toleration and can therefore tolerate every node taint when its shared-GPU
+resource and remaining scheduling constraints match.
 
 ## Repository status
 

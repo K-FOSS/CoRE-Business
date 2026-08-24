@@ -10,6 +10,15 @@ rules for its subtree but must not weaken these repository-wide requirements.
 - Deployment ownership lives in `K-FOSS/CoRE-Backplane`. Before changing a
   chart, find the owning ApplicationSet under `Apps/Business/`, then inspect its
   path, cluster selector, destination namespace, injected values and renderer.
+- Fetch the current site-local configuration from the CoRE-Backplane
+  [storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
+  and [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
+  before changing persistence or database behavior; do not infer site
+  configuration from this repository's defaults.
+- Fetch the current SSO `User` resource definition from the CoRE-Backplane
+  [`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+  before changing identity, access or entitlement behavior, and review it
+  together with the application configuration.
 - An implementation directory may combine Helm, Kustomize, raw YAML, remote
   resources and ApplicationSet-injected values. Inspect the complete rendering
   unit; do not infer deployed resources from `templates/` alone.
