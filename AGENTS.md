@@ -80,6 +80,12 @@ rules for its subtree but must not weaken these repository-wide requirements.
 
 - Preserve unrelated worktree changes. Do not reformat, revert, stage or
   include another author's edits.
+- Prefer the [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)
+  for supported Kubernetes workloads and supporting resources, including
+  controllers, Services, routes, persistence, ConfigMaps and Secrets. Before
+  writing a Kubernetes resource template directly, verify whether the pinned
+  BJW-S version can express it. Keep direct templates or `rawResources` for
+  unsupported APIs or behavior, and document why the exception is necessary.
 - Follow the local style in existing files. For new or touched YAML, prefer
   single quotes for string scalars; leave Kubernetes `apiVersion` and `kind`
   unquoted. Quote numeric-looking identifiers so they remain strings.
