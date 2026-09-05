@@ -1891,7 +1891,7 @@ service:
 
         # -- Specify the appProtocol value for the Service.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
-        appProtocol:
+        appProtocol: 'kubernetes.io/ws'
   {{- end }}
 
   {{- if $.Values.speeches.enabled }}
@@ -2071,6 +2071,10 @@ route:
           - kind: Service
             port: 80
             identifier: gpustack
+
+        timeouts:
+          backendRequest: 300s
+          request: 300s
   {{- end }}
 
   {{- if .Values.owui.enabled }}
@@ -2113,6 +2117,10 @@ route:
             port: 80
             identifier: openwebui
             weight: 1
+
+        timeouts:
+          backendRequest: 1h
+          request: 0s
   {{- end }}
 
   {{- if .Values.speeches.enabled }}
@@ -2157,6 +2165,10 @@ route:
 
           - path:
               value: /v1/audio/speech
+
+        timeouts:
+          backendRequest: 30m
+          request: 0s
 
         backendRefs:
           {{- range $backendIndex, $backend := $.Values.speeches.externalBackend }}
