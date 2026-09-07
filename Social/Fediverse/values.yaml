@@ -80,6 +80,7 @@ redis:
     kind: 'ClusterSecretStore'
     name: 'corevault-rootsecrets'
   remoteRef:
+    # Empty key derives the site-local path published by the Backplane Dragonfly chart.
     key: ''
     property: 'Password'
 

@@ -55,7 +55,7 @@ controllers:
             containerPort: 3000
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities:
             drop: ['ALL']
         resources:
@@ -100,7 +100,7 @@ controllers:
             containerPort: 4000
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities:
             drop: ['ALL']
         resources:
@@ -128,7 +128,7 @@ controllers:
           {{- include "mastodon.runtimeEnv" . | nindent 10 }}
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities:
             drop: ['ALL']
         resources:
@@ -152,7 +152,7 @@ controllers:
           {{- include "mastodon.runtimeEnv" . | nindent 10 }}
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities:
             drop: ['ALL']
         resources:
@@ -228,7 +228,7 @@ controllers:
           RAILS_ENV: 'production'
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities:
             drop: ['ALL']
         resources:

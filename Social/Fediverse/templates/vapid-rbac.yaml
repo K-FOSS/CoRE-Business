@@ -17,4 +17,4 @@ roleRef:
   name: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
+    name: {{ printf "%s-%s" .Release.Name .Values.secretManagement.vapid.serviceAccountName | quote }}
