@@ -24,6 +24,8 @@ mastodon:
     s3CredentialsSecretName: 'mastodon-s3-user'
   psql:
     database: 'mastodon_production'
+    host: ''
+    port: 5432
     crossplaneProvider: ''
     terraformProvider: ''
   s3:
@@ -69,8 +71,10 @@ mastodon:
         memory: '2Gi'
 
 redis:
-  # The runtime Secret must contain REDIS_URL, normally a site-local Dragonfly URL.
-  secretKey: 'REDIS_URL'
+  # Empty host derives from dragonfly.<cluster>.<datacenter>.<region>.mylogin.space.
+  host: ''
+  port: 6379
+  passwordSecretKey: 'REDIS_PASSWORD'
 
 controllers:
   migrate:

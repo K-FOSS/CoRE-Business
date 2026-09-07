@@ -166,10 +166,18 @@ NODE_ENV: 'production'
 RAILS_LOG_TO_STDOUT: 'true'
 PORT: '3000'
 PREPARED_STATEMENTS: 'false'
-DATABASE_URL:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "psqlURI") | nindent 2 }}
-REDIS_URL:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" .Values.redis.secretKey) | nindent 2 }}
+DB_HOST: {{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.mastodon.psql.host | quote }}
+DB_PORT: {{ .Values.mastodon.psql.port | quote }}
+DB_USER:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "username") | nindent 2 }}
+DB_PASS:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "password") | nindent 2 }}
+DB_NAME:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "database") | nindent 2 }}
+REDIS_HOST: {{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host | quote }}
+REDIS_PORT: {{ .Values.redis.port | quote }}
+REDIS_PASSWORD:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" .Values.redis.passwordSecretKey) | nindent 2 }}
 SECRET_KEY_BASE:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SECRET_KEY_BASE") | nindent 2 }}
 VAPID_PUBLIC_KEY:
