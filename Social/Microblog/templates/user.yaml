@@ -1,0 +1,28 @@
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ .Values.pds.user.name | quote }}
+  annotations:
+    # Preserve the S3 identity and bucket when the application is removed.
+    argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+spec:
+  name: 'Microblog PDS'
+  username: {{ .Values.pds.user.username | quote }}
+  serviceAccount: true
+  s3:
+    enabled: true
+    createBuckets: true
+    createServiceAccount: true
+    region: {{ .Values.pds.s3.region | quote }}
+    buckets:
+      - {{ .Values.pds.s3.bucket | quote }}
+    crossplane:
+      crossplaneProvider: {{ default (printf "s3-%s-%s-core" .Values.region .Values.datacenter) .Values.pds.s3.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "s3-%s-%s-core" .Values.region .Values.datacenter) .Values.pds.s3.terraformProvider | quote }}
+    writeServiceAccountCredentialsSecretRef:
+      name: {{ .Values.pds.user.s3CredentialsSecretName | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+  groups:
+    - 'LDAPService'
+  writeConnectionSecretToRef:
+    name: {{ .Values.pds.user.connectionSecretName | quote }}

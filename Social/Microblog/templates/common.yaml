@@ -5,6 +5,9 @@
 {{- end -}}
 {{- $_ := required "pds.existingSecret is required" .Values.pds.existingSecret -}}
 {{- $_ := required "pds.emailFromAddress is required" .Values.pds.emailFromAddress -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
 {{- $_ := required "gateway.name is required" .Values.gateway.name -}}
 {{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
 {{- $_ := required "gateway.sectionName is required (TLS must cover hostname and *.hostname)" .Values.gateway.sectionName -}}
