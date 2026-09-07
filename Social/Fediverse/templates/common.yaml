@@ -45,6 +45,10 @@ controllers:
   web:
     annotations:
       argocd.argoproj.io/sync-wave: '20'
+    strategy: 'RollingUpdate'
+    rollingUpdate:
+      unavailable: '0'
+      surge: 1
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
@@ -91,6 +95,10 @@ controllers:
   streaming:
     annotations:
       argocd.argoproj.io/sync-wave: '20'
+    strategy: 'RollingUpdate'
+    rollingUpdate:
+      unavailable: '0'
+      surge: 1
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
@@ -117,14 +125,36 @@ controllers:
             type: 'HTTP'
             path: '/api/v1/streaming/health'
             port: 4000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 6
           liveness:
             enabled: true
             type: 'HTTP'
             path: '/api/v1/streaming/health'
             port: 4000
+            spec:
+              initialDelaySeconds: 30
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/streaming/health'
+            port: 4000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 60
   sidekiq:
     annotations:
       argocd.argoproj.io/sync-wave: '20'
+    strategy: 'RollingUpdate'
+    rollingUpdate:
+      unavailable: '0'
+      surge: 1
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
@@ -139,6 +169,34 @@ controllers:
           readOnlyRootFilesystem: false
           capabilities:
             drop: ['ALL']
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command: ['sh', '-c', "ps aux | grep -q '[s]idekiq'"]
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 60
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command: ['sh', '-c', "ps aux | grep -q '[s]idekiq'"]
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command: ['sh', '-c', "ps aux | grep -q '[s]idekiq'"]
+              initialDelaySeconds: 30
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
         resources:
           {{- toYaml .Values.mastodon.resources.sidekiq | nindent 10 }}
   migrate:
