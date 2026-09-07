@@ -118,6 +118,24 @@ Envoy Gateway preserves websocket upgrades.
 Sidekiq uses a process-existence startup/readiness/liveness check modeled on
 Mastodon’s container deployment guidance.
 
+## Monitoring
+
+Monitoring is enabled by default. Mastodon streaming exposes its native
+Prometheus endpoint at `/metrics` on port `4000`; web and Sidekiq use Mastodon’s
+bundled Ruby exporter on port `9394` with in-process collection. The chart emits
+standard Prometheus Operator `ServiceMonitor` resources for web and streaming
+and a `PodMonitor` for Sidekiq through the pinned
+[BJW-S Common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
+The Prometheus Operator must be installed by the platform and its selector must
+include these monitors in `core-prod`.
+
+Detailed web-request and Sidekiq-job metrics are disabled by default to limit
+cardinality; enable `monitoring.webDetailedMetrics` or
+`monitoring.sidekiqDetailedMetrics` only after checking scrape volume. The web
+exporter is in-process, so do not configure multiple Puma worker processes
+without first moving web metrics to a separate exporter design; Mastodon does
+not support multiple in-process exporters binding the same port.
+
 The Authentik [Terraform provider](https://registry.terraform.io/providers/goauthentik/authentik/latest/docs)
 is reconciled by a Crossplane `tf.upbound.io/v1beta1` `Workspace`. It creates a
 confidential OIDC provider, application, `Mastodon Users` group, entitlement and
@@ -187,7 +205,8 @@ Inspect the complete render for the destination namespace, gateway listener,
 Secret references, public route, provider names and absence of literal Secret
 data. After Argo CD applies the active ApplicationSet, verify the User claim,
 PostgreSQL Role/Database, S3 bucket/service account, Authentik Workspace,
-HTTPRoute `Accepted`/`ResolvedRefs`, migration Job and all workload probes.
+HTTPRoute `Accepted`/`ResolvedRefs`, migration Job, all workload probes and the
+web, streaming and Sidekiq Prometheus targets.
 Then verify trusted TLS, OIDC login, email confirmation, media upload, and
 remote ActivityPub federation from an unrelated account.
 

@@ -110,12 +110,47 @@ controllers:
   migrate:
     enabled: true
 
+monitoring:
+  enabled: true
+  host: '0.0.0.0'
+  port: 9394
+  webDetailedMetrics: false
+  sidekiqDetailedMetrics: false
+
+serviceMonitor:
+  web:
+    enabled: true
+    service:
+      identifier: 'web'
+    endpoints:
+      - port: 'metrics'
+        path: '/metrics'
+  streaming:
+    enabled: true
+    service:
+      identifier: 'streaming'
+    endpoints:
+      - port: 'http'
+        path: '/metrics'
+
+podMonitor:
+  sidekiq:
+    enabled: true
+    controller:
+      identifier: 'sidekiq'
+    podMetricsEndpoints:
+      - port: 'metrics'
+        path: '/metrics'
+
 service:
   web:
     controller: 'web'
     ports:
       http:
         port: 3000
+        protocol: 'HTTP'
+      metrics:
+        port: 9394
         protocol: 'HTTP'
   streaming:
     controller: 'streaming'
