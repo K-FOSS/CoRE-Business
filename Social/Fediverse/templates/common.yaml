@@ -292,8 +292,12 @@ REDIS_PASSWORD:
   {{- include "mastodon.secretRef" (dict "name" .Values.redis.secretName "key" .Values.redis.passwordSecretKey) | nindent 2 }}
 REDIS_DRIVER: 'ruby'
 REDIS_URL: {{ printf "rediss://:$(REDIS_PASSWORD)@%s:%s" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host) (toString .Values.redis.port) | quote }}
-CACHE_REDIS_URL: '$(REDIS_URL)'
-SIDEKIQ_REDIS_URL: '$(REDIS_URL)'
+CACHE_REDIS_PASSWORD:
+  {{- include "mastodon.secretRef" (dict "name" .Values.redis.secretName "key" .Values.redis.passwordSecretKey) | nindent 2 }}
+CACHE_REDIS_URL: {{ printf "rediss://:$(CACHE_REDIS_PASSWORD)@%s:%s" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host) (toString .Values.redis.port) | quote }}
+SIDEKIQ_REDIS_PASSWORD:
+  {{- include "mastodon.secretRef" (dict "name" .Values.redis.secretName "key" .Values.redis.passwordSecretKey) | nindent 2 }}
+SIDEKIQ_REDIS_URL: {{ printf "rediss://:$(SIDEKIQ_REDIS_PASSWORD)@%s:%s" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host) (toString .Values.redis.port) | quote }}
 SECRET_KEY_BASE:
   {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.random.secretName "key" "SECRET_KEY_BASE") | nindent 2 }}
 OTP_SECRET:
