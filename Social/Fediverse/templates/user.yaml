@@ -20,6 +20,7 @@ spec:
   s3:
     enabled: true
     createBuckets: true
+    createCredentials: true
     createServiceAccount: true
     region: {{ .Values.mastodon.s3.region | quote }}
     buckets:
@@ -29,6 +30,9 @@ spec:
       terraformProvider: {{ .Values.mastodon.s3.terraformProvider | quote }}
     writeServiceAccountCredentialsSecretRef:
       name: {{ .Values.mastodon.user.s3CredentialsSecretName | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+    writeCredentialsSecretRef:
+      name: {{ .Values.mastodon.user.s3GeneratedCredentialsSecretName | quote }}
       namespace: {{ .Release.Namespace | quote }}
   groups:
     - 'LDAPService'

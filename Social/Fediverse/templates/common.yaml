@@ -8,6 +8,7 @@
 {{- end -}}
 {{- $_ := required "mastodon.user.connectionSecretName is required" .Values.mastodon.user.connectionSecretName -}}
 {{- $_ := required "mastodon.user.s3CredentialsSecretName is required" .Values.mastodon.user.s3CredentialsSecretName -}}
+{{- $_ := required "mastodon.user.s3GeneratedCredentialsSecretName is required" .Values.mastodon.user.s3GeneratedCredentialsSecretName -}}
 {{- $_ := required "mastodon.s3.crossplaneProvider is required" .Values.mastodon.s3.crossplaneProvider -}}
 {{- $_ := required "mastodon.s3.terraformProvider is required" .Values.mastodon.s3.terraformProvider -}}
 {{- $_ := required "gateway.name is required" .Values.gateway.name -}}

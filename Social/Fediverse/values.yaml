@@ -24,6 +24,7 @@ mastodon:
     username: 'mastodon'
     connectionSecretName: 'mastodon-user'
     s3CredentialsSecretName: 'mastodon-s3-user'
+    s3GeneratedCredentialsSecretName: 'mastodon-s3-user-generated'
   psql:
     database: 'mastodon_production'
     host: ''
@@ -48,6 +49,7 @@ mastodon:
     fromAddress: 'noreply@mylogin.space'
     server: 'mail.mylogin.space'
     port: 465
+
   resources:
     web:
       requests:
