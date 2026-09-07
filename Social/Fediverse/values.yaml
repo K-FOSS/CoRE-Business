@@ -95,8 +95,10 @@ secretManagement:
     bootstrapSecretName: 'mastodon-random-bootstrap'
   vapid:
     secretName: 'mastodon-vapid'
-    bootstrapSecretName: 'mastodon-vapid-bootstrap'
+    bootstrapSecretName: 'mastodon-key-bootstrap'
     serviceAccountName: 'mastodon-vapid-generator'
+  encryption:
+    secretName: 'mastodon-encryption'
 
 controllers:
   migrate:
