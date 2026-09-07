@@ -20,6 +20,10 @@ defaultPodOptions:
 controllers:
   snapotter:
     nameOverride: 'snapotter'
+    {{- if .Values.snapotter.redis.enabled }}
+    annotations:
+      secret.reloader.stakater.com/reload: {{ .Values.snapotter.redis.secretName | quote }}
+    {{- end }}
     # One writer for the RWO data volume; upgrades have a short outage.
     replicas: 1
     strategy: 'Recreate'
@@ -44,7 +48,7 @@ controllers:
             value: {{ printf "https://%s" .Values.snapotter.domain | quote }}
           - name: EXTERNAL_URL
             value: {{ printf "https://%s" .Values.snapotter.domain | quote }}
-          {{- range $key := list "DEFAULT_PASSWORD" "COOKIE_SECRET" "REDIS_URL" }}
+          {{- range $key := list "DEFAULT_PASSWORD" "COOKIE_SECRET" }}
           - name: {{ $key }}
             valueFrom:
               secretKeyRef:
@@ -52,6 +56,19 @@ controllers:
                 key: {{ $key | quote }}
                 optional: false
           {{- end }}
+          - name: REDIS_URL
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.snapotter.redis.enabled }}
+                name: {{ .Values.snapotter.redis.secretName | quote }}
+                {{- else }}
+                name: {{ $secret | quote }}
+                {{- end }}
+                key: 'REDIS_URL'
+                optional: false
+          # Keep every pool (including cross-pool flows) on one Dragonfly shard.
+          - name: BULLMQ_PREFIX
+            value: '{snapotter}'
           {{- if .Values.snapotter.psql.enabled }}
           {{- range $field := list (dict "env" "SNAPOTTER_DATABASE_USERNAME" "key" "username") (dict "env" "SNAPOTTER_DATABASE_PASSWORD" "key" "password") (dict "env" "SNAPOTTER_DATABASE_NAME" "key" "username") }}
           - name: {{ $field.env }}

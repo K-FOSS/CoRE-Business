@@ -1,0 +1,28 @@
+{{- if .Values.snapotter.redis.enabled }}
+{{- $redis := .Values.snapotter.redis }}
+{{- $host := default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) $redis.host }}
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $redis.secretName | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  refreshInterval: {{ $redis.refreshInterval | quote }}
+  secretStoreRef:
+    kind: {{ $redis.secretStoreRef.kind }}
+    name: {{ $redis.secretStoreRef.name | quote }}
+  target:
+    name: {{ $redis.secretName | quote }}
+    creationPolicy: 'Owner'
+    deletionPolicy: 'Retain'
+    template:
+      engineVersion: 'v2'
+      # Build the URL inside ESO; Helm sees only references and template text.
+      data:
+        REDIS_URL: {{ printf "rediss://:{{ .password | urlquery | replace \"+\" \"%%20\" }}@%s:%v/%v" $host $redis.port $redis.database | quote }}
+  data:
+    - secretKey: 'password'
+      remoteRef:
+        key: {{ default (printf "Storage/DragonFly/CoRE/%s/%s/%s/Creds" .Values.region .Values.datacenter .Values.cluster.name) $redis.remoteRef.key | quote }}
+        property: {{ $redis.remoteRef.property | quote }}
+{{- end }}

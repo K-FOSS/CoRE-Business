@@ -1,7 +1,18 @@
-{{- if or .Values.snapotter.oidc.enabled .Values.snapotter.psql.enabled -}}
+{{- if or .Values.snapotter.oidc.enabled .Values.snapotter.psql.enabled .Values.snapotter.redis.enabled -}}
 {{- $_ := required "cluster.name must be injected for SnapOtter identity/database automation" .Values.cluster.name -}}
 {{- $_ := required "datacenter must be injected for SnapOtter identity/database automation" .Values.datacenter -}}
 {{- $_ := required "region must be injected for SnapOtter identity/database automation" .Values.region -}}
+{{- end -}}
+{{- if .Values.snapotter.redis.enabled -}}
+{{- $_ := required "snapotter.redis.secretName is required" .Values.snapotter.redis.secretName -}}
+{{- $_ := required "snapotter.redis.secretStoreRef.name is required" .Values.snapotter.redis.secretStoreRef.name -}}
+{{- $_ := required "snapotter.redis.remoteRef.property is required" .Values.snapotter.redis.remoteRef.property -}}
+{{- if not (has .Values.snapotter.redis.secretStoreRef.kind (list "SecretStore" "ClusterSecretStore")) -}}
+{{- fail "snapotter.redis.secretStoreRef.kind must be SecretStore or ClusterSecretStore" -}}
+{{- end -}}
+{{- if or (not (regexMatch "^[0-9]+$" (toString .Values.snapotter.redis.database))) (gt (int .Values.snapotter.redis.database) 255) -}}
+{{- fail "snapotter.redis.database must be an integer from 0 to 255" -}}
+{{- end -}}
 {{- end -}}
 {{- if .Values.snapotter.oidc.enabled -}}
 {{- $_ := required "snapotter.oidc.providerConfigRef is required" .Values.snapotter.oidc.providerConfigRef -}}

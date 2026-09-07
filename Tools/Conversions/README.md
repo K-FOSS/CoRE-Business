@@ -17,7 +17,7 @@ is the structural reference: native Helm, `core-prod`, no injected values,
 and tenant `core.mylogin.space` bare-metal infrastructure clusters. SnapOtter
 has local persistent state, so its new Backplane owner must select **one**
 intended cluster, set `source.path: Tools/Conversions`, and supply any site
-overrides. `cluster.name`, `datacenter` and `region` are required when either
+overrides. `cluster.name`, `datacenter` and `region` are required when any
 automation is enabled; they intentionally have no deployable default. Mirror
 the identity value layer injected by the
 [AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml)
@@ -36,7 +36,7 @@ hostname would have different files and sessions.
 
 The complete rendering unit is `Chart.yaml`, `values.yaml` and
 `templates/`; there are no Kustomize or Lovely layers. Standard Kubernetes
-resources use BJW-S Common. The `User` and Terraform `Workspace` use direct
+resources use BJW-S Common. The `User`, Terraform `Workspace` and `ExternalSecret` use direct
 templates because they are operator-specific APIs without Common resource
 classes. Kubernetes 1.31+ and Helm 3.18+ are required by the pinned common
 library. Provision:
@@ -93,16 +93,39 @@ library. Provision:
   See [Authentik](https://goauthentik.io/), its
   [OAuth2/OIDC documentation](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/),
   and [Terraform provider source](https://github.com/goauthentik/terraform-provider-authentik).
-- A dedicated persistent [Redis](https://redis.io/) 8 queue service with
-  authentication and `noeviction`, following
-  [Redis persistence documentation](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/).
-  Shared Dragonfly compatibility is not assumed. Redis provisioning remains
-  outside this application chart.
+- Site-local [Dragonfly](https://www.dragonflydb.io/), provisioned by the
+  [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
+  With `snapotter.redis.enabled: true` (default), the chart reads the
+  `Password` property at
+  `Storage/DragonFly/CoRE/<region>/<datacenter>/<cluster.name>/Creds` through
+  the `corevault-rootsecrets` ClusterSecretStore. This matches Backplane's
+  site-specific PushSecret, rather than the Home1-only legacy shared alias.
+  An `external-secrets.io/v1` ExternalSecret refreshes hourly and builds
+  `REDIS_URL` in `snapotter-dragonfly`, URL-encoding the password with ESO's
+  [v2 template engine](https://external-secrets.io/latest/guides/templating/).
+  No credentials are resolved by Helm or stored in values. Store, Vault path,
+  property, target Secret, refresh interval, host, port and database are
+  configurable under `snapotter.redis`.
+  The URL uses TLS (`rediss`) to
+  `dragonfly.<cluster.name>.<datacenter>.<region>.mylogin.space:6379/152`.
+  Database 152 is allocated here to SnapOtter, separate from OpenWebUI's
+  150/151, within Backplane's 256 databases. Logical databases are not an
+  authorization boundary: this is the shared platform password. Keep one
+  SnapOtter instance per selected database/site and do not flush the shared
+  service during recovery. See
+  [Dragonfly documentation](https://www.dragonflydb.io/docs).
+- Backplane's [Reloader](https://github.com/stakater/Reloader)
+  ([documentation](https://docs.stakater.com/reloader/)) watches the generated
+  Secret via a workload annotation and restarts SnapOtter after credential
+  refresh. Rotation follows the Dragonfly PushSecret and this ExternalSecret's
+  refresh intervals; verify both controllers during rotation.
 - The namespace-local Secret named by `snapotter.existingSecret`, defaulting
   to `snapotter-runtime`. Deliver it through platform secret automation such
   as [External Secrets](https://external-secrets.io/) using its
   [ExternalSecret API](https://external-secrets.io/latest/api/externalsecret/).
-  Required keys are `REDIS_URL`, `DEFAULT_PASSWORD`, and `COOKIE_SECRET`.
+  Required keys are `DEFAULT_PASSWORD` and `COOKIE_SECRET`.
+  With `snapotter.redis.enabled: false`, `REDIS_URL` is also required and
+  no Dragonfly ExternalSecret is rendered.
   With `snapotter.psql.enabled: false`, `DATABASE_URL` is also required and
   no User claim is rendered. URLs must include provisioned service credentials;
   use a strong bootstrap password and stable random cookie secret. Never
@@ -113,7 +136,7 @@ library. Provision:
 
 BJW-S generates one Deployment, ServiceAccount, ClusterIP Service, PVC and
 HTTPRoute. Separate templates generate the User claim and OIDC Workspace
-when enabled. The Service forwards port 80 to 1349. The route carries
+and Dragonfly ExternalSecret when enabled. The Service forwards port 80 to 1349. The route carries
 CyberChef's
 `wan-mode: public` and `lan-mode: private` labels and a 600-second timeout;
 these labels do not provide authentication. The Workspace writes
@@ -144,7 +167,13 @@ embedded mode is not used. Startup allows ten minutes for initialization,
 and HTTP health probes check `/api/v1/health`. Telemetry is disabled through
 `SNAPOTTER_TELEMETRY=0`. Egress is needed for databases, Redis and optional AI
 bundle downloads; CyberChef's deny-all egress policy is not suitable here.
-No GPU is requested. Resource limits allow CPU conversion and optional AI
+`BULLMQ_PREFIX={snapotter}` gives all processing pools a common hashtag,
+including cross-pool flows, for Backplane's existing `--lock_on_hashtags`.
+See [Dragonfly's BullMQ integration guidance](https://www.dragonflydb.io/blog/running-bullmq-with-dragonfly-part-3-cloud)
+and [SnapOtter's queue naming implementation](https://github.com/snapotter-hq/SnapOtter/blob/v2.2.0/apps/api/src/jobs/types.ts).
+No shared Dragonfly server settings are changed. Verify startup's Redis-version
+preflight and actual queue/flow processing against the installed Dragonfly;
+rendering alone does not prove queue compatibility. No GPU is requested. Resource limits allow CPU conversion and optional AI
 workloads; tune them against real files and concurrent usage.
 
 `/data` holds user files and AI bundles on the persistent volume.
@@ -179,19 +208,26 @@ Do not force-add generated `Chart.lock` or `charts/` files.
 
 After Argo reconciliation, follow the User/XUser, generated PostgreSQL
 Role/Database and OIDC Workspace until their Ready/Synced conditions are
-healthy and both generated Secrets exist (check key names only). Missing
+healthy. Check the Dragonfly ExternalSecret is Ready and all generated
+Secrets exist (check key names only). Missing
 connection Secrets keep the application from starting. Check the PVC is
 bound, the pod is ready, and the HTTPRoute reports `Accepted` and
 `ResolvedRefs`. Verify HTTPS, local login/password
 change, SSO login with an allowed member, rejection of a non-member,
 ordinary-user role assignment, an image conversion, a longer conversion,
-download and persistence after a pod restart. Check database and queue health as well as Argo status.
+download and persistence after a pod restart. Check TLS connectivity, queue progress/events, a
+cross-pool flow and worker recovery after restart, as well as Argo status.
 No cluster reconciliation or live workflow verification has been performed
 as part of adding this chart.
 
 One replica and `Recreate` avoid concurrent writers on the RWO claim; upgrades
 interrupt service and may interrupt active jobs. Back up PostgreSQL and
-`/data` together before upgrades, and retain Redis queue data as appropriate.
+`/data` together before upgrades. Backplane snapshots shared Dragonfly to
+site-local S3 every five minutes; this is not per-job synchronous durability.
+Drain active work before changing Redis endpoints, logical databases or the
+BullMQ prefix: moving from the old default `snapotter` prefix to `{snapotter}`
+changes queue keys and does not migrate pending jobs. Keep the previous queue
+available until it is drained, or explicitly recover pending work.
 Roll back via Git/Argo only after checking database migration compatibility;
 an image rollback alone may not reverse schema changes. The PVC carries
 `helm.sh/resource-policy: keep` and Argo `Prune=false,Delete=false` annotations
@@ -205,5 +241,8 @@ the same database or perform an explicit data migration. OIDC Workspace
 removal destroys its managed Authentik application/provider/group and client
 credentials; do not delete it before confirming local recovery access. Site
 identity, release-name or application-slug changes can rename or replace
-managed resources; treat them as migrations. Redis and the residual runtime
-Secret remain separately owned.
+managed resources; treat them as migrations. Removing the ExternalSecret
+also removes its owned local Secret, but does not delete Vault records,
+Dragonfly or queue data. `deletionPolicy: Retain` preserves the last local
+Secret if the upstream Vault property disappears; inspect refresh failures.
+The remaining bootstrap/cookie Secret stays separately owned.

@@ -37,6 +37,22 @@ snapotter:
     crossplaneProvider: ''
     terraformProvider: ''
 
+  redis:
+    enabled: true
+    # Defaults to dragonfly.<cluster.name>.<datacenter>.<region>.mylogin.space.
+    host: ''
+    port: 6379
+    database: 152
+    secretName: 'snapotter-dragonfly'
+    refreshInterval: '1h'
+    secretStoreRef:
+      kind: ClusterSecretStore
+      name: 'corevault-rootsecrets'
+    remoteRef:
+      # Defaults to Storage/DragonFly/CoRE/<region>/<datacenter>/<cluster.name>/Creds.
+      key: ''
+      property: 'Password'
+
   adminUsername: 'admin'
   maxUploadSizeMB: 100
   requestTimeout: '600s'
