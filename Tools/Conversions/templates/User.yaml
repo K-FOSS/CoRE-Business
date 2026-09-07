@@ -1,0 +1,23 @@
+{{- if .Values.snapotter.psql.enabled }}
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ .Release.Name }}-snapotter
+  namespace: {{ .Release.Namespace | quote }}
+  annotations:
+    # Removing the app must not implicitly destroy its database identity/data.
+    argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+spec:
+  name: {{ printf "SnapOtter %s-%s-%s" .Values.region .Values.datacenter .Values.cluster.name | quote }}
+  serviceAccount: true
+  psql:
+    enabled: true
+    createUserDatabase: true
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.snapotter.psql.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.snapotter.psql.terraformProvider | quote }}
+  groups:
+    - 'LDAPService'
+  writeConnectionSecretToRef:
+    name: {{ .Release.Name }}-snapotter-user
+{{- end }}

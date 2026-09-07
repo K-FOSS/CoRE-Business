@@ -1,0 +1,13 @@
+{{- if or .Values.snapotter.oidc.enabled .Values.snapotter.psql.enabled -}}
+{{- $_ := required "cluster.name must be injected for SnapOtter identity/database automation" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected for SnapOtter identity/database automation" .Values.datacenter -}}
+{{- $_ := required "region must be injected for SnapOtter identity/database automation" .Values.region -}}
+{{- end -}}
+{{- if .Values.snapotter.oidc.enabled -}}
+{{- $_ := required "snapotter.oidc.providerConfigRef is required" .Values.snapotter.oidc.providerConfigRef -}}
+{{- $_ := required "snapotter.oidc.accessGroup is required" .Values.snapotter.oidc.accessGroup -}}
+{{- $_ := required "snapotter.oidc.applicationSlug is required" .Values.snapotter.oidc.applicationSlug -}}
+{{- if not (hasPrefix "https://" .Values.snapotter.oidc.issuerBaseUrl) -}}
+{{- fail "snapotter.oidc.issuerBaseUrl must use HTTPS" -}}
+{{- end -}}
+{{- end -}}

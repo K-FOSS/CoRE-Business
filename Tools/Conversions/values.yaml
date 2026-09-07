@@ -1,0 +1,57 @@
+global:
+  createDefaultServiceAccount: true
+
+# Required deployment identity, injected by the owning Backplane ApplicationSet.
+cluster:
+  name: ''
+datacenter: ''
+region: ''
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+snapotter:
+  domain: 'conotter.mylogin.space'
+  image:
+    repository: 'ghcr.io/snapotter-hq/snapotter'
+    tag: '2.2.0'
+    pullPolicy: 'IfNotPresent'
+
+  # Required namespace-local Secret; see README for keys and provisioning.
+  existingSecret: 'snapotter-runtime'
+  oidc:
+    enabled: true
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'snapotter'
+    accessGroup: 'SnapOtter Users'
+
+  psql:
+    enabled: true
+    # Defaults to psql-local.<cluster.name>.<datacenter>.<region>.mylogin.space.
+    host: ''
+    port: 5432
+    # Both providers default to psql-<datacenter>-<region>.
+    crossplaneProvider: ''
+    terraformProvider: ''
+
+  adminUsername: 'admin'
+  maxUploadSizeMB: 100
+  requestTimeout: '600s'
+
+  persistence:
+    storageClass: 'longhorn'
+    size: '50Gi'
+    workspaceSize: '10Gi'
+
+  resources:
+    requests:
+      cpu: '500m'
+      memory: '2Gi'
+      ephemeral-storage: '1Gi'
+    limits:
+      cpu: '4'
+      memory: '8Gi'
+      ephemeral-storage: '12Gi'

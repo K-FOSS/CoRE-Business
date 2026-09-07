@@ -1,0 +1,12 @@
+apiVersion: v2
+name: 'core-business-tools-conversions'
+description: 'SnapOtter file conversions through the BJW-S common library'
+type: 'application'
+version: '1.0.0'
+appVersion: '2.2.0'
+kubeVersion: '>=1.31.0-0'
+
+dependencies:
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

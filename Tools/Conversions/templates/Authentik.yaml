@@ -1,0 +1,123 @@
+{{- if .Values.snapotter.oidc.enabled }}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: {{ .Release.Name }}-snapotter-oidc
+spec:
+  providerConfigRef:
+    name: {{ .Values.snapotter.oidc.providerConfigRef | quote }}
+
+  writeConnectionSecretToRef:
+    namespace: {{ .Release.Namespace }}
+    name: {{ .Release.Name }}-snapotter-oidc
+
+  forProvider:
+    source: 'Inline'
+    varmap:
+      cluster_name: {{ .Values.cluster.name | quote }}
+      datacenter: {{ .Values.datacenter | quote }}
+      region: {{ .Values.region | quote }}
+      application_slug: {{ .Values.snapotter.oidc.applicationSlug | quote }}
+      access_group: {{ .Values.snapotter.oidc.accessGroup | quote }}
+      issuer_base_url: {{ trimSuffix "/" .Values.snapotter.oidc.issuerBaseUrl | quote }}
+      external_url: {{ printf "https://%s" .Values.snapotter.domain | quote }}
+    module: |
+      variable "cluster_name" { type = string }
+      variable "datacenter" { type = string }
+      variable "region" { type = string }
+      variable "application_slug" { type = string }
+      variable "access_group" { type = string }
+      variable "issuer_base_url" { type = string }
+      variable "external_url" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-explicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_certificate_key_pair" "signing_key" {
+        name = "tls"
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 128
+        lower   = true
+        numeric = true
+        upper   = true
+        special = true
+      }
+
+      resource "authentik_provider_oauth2" "snapotter" {
+        name          = "SnapOtter ${var.cluster_name} ${var.datacenter} ${var.region}"
+        client_id     = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        client_secret = random_password.client_secret.result
+        client_type   = "confidential"
+        signing_key   = data.authentik_certificate_key_pair.signing_key.id
+
+        allowed_redirect_uris = [
+          {
+            matching_mode = "strict"
+            url           = "${var.external_url}/api/auth/oidc/callback"
+          },
+        ]
+
+        property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "snapotter" {
+        name              = "SnapOtter"
+        slug              = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group             = "${var.datacenter}-${var.cluster_name}"
+        protocol_provider = authentik_provider_oauth2.snapotter.id
+      }
+
+      resource "authentik_group" "snapotter_users" {
+        name         = var.access_group
+        is_superuser = false
+      }
+
+      resource "authentik_application_entitlement" "snapotter_access" {
+        name        = "${authentik_group.snapotter_users.id}-ent"
+        application = authentik_application.snapotter.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.snapotter_access.id
+        group  = authentik_group.snapotter_users.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.snapotter.uuid
+        group  = authentik_group.snapotter_users.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.snapotter.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }
+
+      output "OIDC_ISSUER_URL" {
+        value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/"
+        sensitive = true
+      }
+{{- end }}

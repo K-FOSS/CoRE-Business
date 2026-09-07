@@ -1,0 +1,197 @@
+{{- include "bjw-s.common.loader.init" . }}
+{{- define "app-template.hardcodedValues" -}}
+{{- $secret := required "snapotter.existingSecret must name a provisioned runtime Secret" .Values.snapotter.existingSecret }}
+global:
+{{ if not .Values.global.nameOverride }}
+  nameOverride: {{ .Release.Name | quote }}
+{{ end }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    fsGroupChangePolicy: 'OnRootMismatch'
+    seccompProfile:
+      type: 'RuntimeDefault'
+
+controllers:
+  snapotter:
+    nameOverride: 'snapotter'
+    # One writer for the RWO data volume; upgrades have a short outage.
+    replicas: 1
+    strategy: 'Recreate'
+    revisionHistoryLimit: 3
+    containers:
+      snapotter:
+        image:
+          {{- toYaml .Values.snapotter.image | nindent 10 }}
+        # Ordered list: Kubernetes expands DATABASE_URL only after its inputs.
+        env:
+          - name: AUTH_ENABLED
+            value: 'true'
+          - name: DEFAULT_USERNAME
+            value: {{ .Values.snapotter.adminUsername | quote }}
+          - name: MAX_UPLOAD_SIZE_MB
+            value: {{ .Values.snapotter.maxUploadSizeMB | quote }}
+          - name: SNAPOTTER_TELEMETRY
+            value: '0'
+          - name: HOME
+            value: '/data/.home'
+          - name: CORS_ORIGIN
+            value: {{ printf "https://%s" .Values.snapotter.domain | quote }}
+          - name: EXTERNAL_URL
+            value: {{ printf "https://%s" .Values.snapotter.domain | quote }}
+          {{- range $key := list "DEFAULT_PASSWORD" "COOKIE_SECRET" "REDIS_URL" }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $secret | quote }}
+                key: {{ $key | quote }}
+                optional: false
+          {{- end }}
+          {{- if .Values.snapotter.psql.enabled }}
+          {{- range $field := list (dict "env" "SNAPOTTER_DATABASE_USERNAME" "key" "username") (dict "env" "SNAPOTTER_DATABASE_PASSWORD" "key" "password") (dict "env" "SNAPOTTER_DATABASE_NAME" "key" "username") }}
+          - name: {{ $field.env }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-snapotter-user
+                key: {{ $field.key | quote }}
+                optional: false
+          {{- end }}
+          - name: DATABASE_URL
+            value: 'postgresql://$(SNAPOTTER_DATABASE_USERNAME):$(SNAPOTTER_DATABASE_PASSWORD)@{{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.snapotter.psql.host }}:{{ .Values.snapotter.psql.port }}/$(SNAPOTTER_DATABASE_NAME)'
+          {{- else }}
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: {{ $secret | quote }}
+                key: 'DATABASE_URL'
+                optional: false
+          {{- end }}
+          - name: OIDC_ENABLED
+            value: {{ .Values.snapotter.oidc.enabled | quote }}
+          {{- if .Values.snapotter.oidc.enabled }}
+          {{- range $key := list "OIDC_ISSUER_URL" "OIDC_CLIENT_ID" "OIDC_CLIENT_SECRET" }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Release.Name }}-snapotter-oidc
+                key: {{ $key | quote }}
+                optional: false
+          {{- end }}
+          - name: OIDC_PROVIDER_NAME
+            value: 'Authentik'
+          - name: OIDC_SCOPES
+            value: 'openid profile email'
+          - name: OIDC_AUTO_CREATE_USERS
+            value: 'true'
+          - name: OIDC_DEFAULT_ROLE
+            value: 'user'
+          - name: OIDC_AUTO_LINK_USERS
+            value: 'false'
+          {{- end }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - 'ALL'
+        resources:
+          {{- toYaml .Values.snapotter.resources | nindent 10 }}
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/health'
+            port: 1349
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 60
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/health'
+            port: 1349
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 3
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/health'
+            port: 1349
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
+service:
+  snapotter:
+    controller: 'snapotter'
+    nameOverride: 'snapotter'
+    primary: true
+    type: 'ClusterIP'
+    ports:
+      http:
+        primary: true
+        port: 80
+        targetPort: 1349
+        protocol: 'HTTP'
+
+persistence:
+  data:
+    type: 'persistentVolumeClaim'
+    storageClass: {{ .Values.snapotter.persistence.storageClass | quote }}
+    accessMode: 'ReadWriteOnce'
+    size: {{ .Values.snapotter.persistence.size | quote }}
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    globalMounts:
+      - path: '/data'
+  workspace:
+    type: 'emptyDir'
+    sizeLimit: {{ .Values.snapotter.persistence.workspaceSize | quote }}
+    globalMounts:
+      - path: '/tmp/workspace'
+  shm:
+    type: 'emptyDir'
+    medium: 'Memory'
+    sizeLimit: '2Gi'
+    globalMounts:
+      - path: '/dev/shm'
+
+route:
+  snapotter:
+    kind: HTTPRoute
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    parentRefs:
+      - group: 'gateway.networking.k8s.io'
+        kind: Gateway
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      - {{ .Values.snapotter.domain | quote }}
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        timeouts:
+          request: {{ .Values.snapotter.requestTimeout | quote }}
+          backendRequest: {{ .Values.snapotter.requestTimeout | quote }}
+        backendRefs:
+          - kind: Service
+            identifier: 'snapotter'
+            port: 80
+            weight: 1
+{{- end -}}
+{{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
+{{ include "bjw-s.common.loader.generate" . }}
