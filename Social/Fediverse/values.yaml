@@ -92,6 +92,7 @@ secretManagement:
   random:
     generatorName: 'mastodon-random'
     secretName: 'mastodon-random'
+    bootstrapSecretName: 'mastodon-random-bootstrap'
   vapid:
     secretName: 'mastodon-vapid'
     bootstrapSecretName: 'mastodon-vapid-bootstrap'
