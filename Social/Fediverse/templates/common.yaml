@@ -38,9 +38,13 @@ serviceAccount:
     enabled: true
   {{ .Values.secretManagement.vapid.serviceAccountName }}:
     enabled: true
+    annotations:
+      argocd.argoproj.io/sync-wave: '-10'
 
 controllers:
   web:
+    annotations:
+      argocd.argoproj.io/sync-wave: '20'
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
@@ -85,12 +89,14 @@ controllers:
               timeoutSeconds: 5
               failureThreshold: 5
   streaming:
+    annotations:
+      argocd.argoproj.io/sync-wave: '20'
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
       streaming:
         image:
-          {{- toYaml .Values.mastodon.image | nindent 10 }}
+          {{- toYaml .Values.mastodon.streamingImage | nindent 10 }}
         args: ['node', './streaming/index.js']
         env:
           {{- include "mastodon.runtimeEnv" . | nindent 10 }}
@@ -117,6 +123,8 @@ controllers:
             path: '/api/v1/streaming/health'
             port: 4000
   sidekiq:
+    annotations:
+      argocd.argoproj.io/sync-wave: '20'
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
@@ -139,8 +147,9 @@ controllers:
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     annotations:
-      argocd.argoproj.io/hook: 'PreSync'
+      argocd.argoproj.io/hook: 'Sync'
       argocd.argoproj.io/hook-delete-policy: 'BeforeHookCreation,HookSucceeded'
+      argocd.argoproj.io/sync-wave: '10'
     pod:
       restartPolicy: 'OnFailure'
     containers:
@@ -164,6 +173,9 @@ controllers:
       identifier: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
     annotations:
       argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+      argocd.argoproj.io/hook: 'Sync'
+      argocd.argoproj.io/hook-delete-policy: 'BeforeHookCreation,HookSucceeded'
+      argocd.argoproj.io/sync-wave: '-5'
     pod:
       automountServiceAccountToken: true
       restartPolicy: 'OnFailure'
@@ -278,6 +290,10 @@ REDIS_HOST: {{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluste
 REDIS_PORT: {{ .Values.redis.port | quote }}
 REDIS_PASSWORD:
   {{- include "mastodon.secretRef" (dict "name" .Values.redis.secretName "key" .Values.redis.passwordSecretKey) | nindent 2 }}
+REDIS_DRIVER: 'ruby'
+REDIS_URL: {{ printf "rediss://:$(REDIS_PASSWORD)@%s:%s" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host) (toString .Values.redis.port) | quote }}
+CACHE_REDIS_URL: '$(REDIS_URL)'
+SIDEKIQ_REDIS_URL: '$(REDIS_URL)'
 SECRET_KEY_BASE:
   {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.random.secretName "key" "SECRET_KEY_BASE") | nindent 2 }}
 OTP_SECRET:
