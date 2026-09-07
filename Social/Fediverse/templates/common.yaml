@@ -188,7 +188,7 @@ controllers:
             namespace = File.read('/var/run/secrets/kubernetes.io/serviceaccount/namespace').strip
             token = File.read('/var/run/secrets/kubernetes.io/serviceaccount/token').strip
             ca_file = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-            secret_name = '{{ .Values.secretManagement.vapid.secretName }}'
+            secret_name = '{{ .Values.secretManagement.vapid.bootstrapSecretName }}'
             uri = URI("https://kubernetes.default.svc/api/v1/namespaces/#{namespace}/secrets/#{secret_name}")
             body = {
               apiVersion: 'v1',

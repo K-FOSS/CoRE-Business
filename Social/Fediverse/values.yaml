@@ -94,6 +94,7 @@ secretManagement:
     secretName: 'mastodon-random'
   vapid:
     secretName: 'mastodon-vapid'
+    bootstrapSecretName: 'mastodon-vapid-bootstrap'
     serviceAccountName: 'mastodon-vapid-generator'
 
 controllers:
