@@ -1,0 +1,222 @@
+{{- include "bjw-s.common.loader.init" . -}}
+{{- $_ := required "cluster.name is required" .Values.cluster.name -}}
+{{- $_ := required "datacenter is required" .Values.datacenter -}}
+{{- $_ := required "region is required" .Values.region -}}
+{{- $_ := required "mastodon.domain is required" .Values.mastodon.domain -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.mastodon.domain) -}}
+{{- fail "mastodon.domain must be a public DNS hostname without scheme, port or wildcard" -}}
+{{- end -}}
+{{- $_ := required "mastodon.existingSecret must name a provisioned runtime Secret" .Values.mastodon.existingSecret -}}
+{{- $_ := required "mastodon.user.connectionSecretName is required" .Values.mastodon.user.connectionSecretName -}}
+{{- $_ := required "mastodon.user.s3CredentialsSecretName is required" .Values.mastodon.user.s3CredentialsSecretName -}}
+{{- $_ := required "mastodon.s3.crossplaneProvider is required" .Values.mastodon.s3.crossplaneProvider -}}
+{{- $_ := required "mastodon.s3.terraformProvider is required" .Values.mastodon.s3.terraformProvider -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- if .Values.mastodon.oidc.enabled }}
+{{- $_ := required "mastodon.oidc.providerConfigRef is required" .Values.mastodon.oidc.providerConfigRef -}}
+{{- end }}
+{{- $_ := set .Values.route.mastodon "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- define "app-template.hardcodedValues" -}}
+global:
+  nameOverride: {{ .Release.Name | quote }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 991
+    runAsGroup: 991
+    fsGroup: 991
+    fsGroupChangePolicy: 'OnRootMismatch'
+    seccompProfile:
+      type: 'RuntimeDefault'
+
+controllers:
+  web:
+    containers:
+      web:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        args: ['bundle', 'exec', 'rails', 'server', '-p', '3000']
+        env:
+          {{- include "mastodon.runtimeEnv" . | nindent 10 }}
+        ports:
+          - name: http
+            containerPort: 3000
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+        resources:
+          {{- toYaml .Values.mastodon.resources.web | nindent 10 }}
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 3000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 60
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 3000
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 3000
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+  streaming:
+    containers:
+      streaming:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        args: ['node', './streaming/index.js']
+        env:
+          {{- include "mastodon.runtimeEnv" . | nindent 10 }}
+          PORT: '4000'
+        ports:
+          - name: http
+            containerPort: 4000
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+        resources:
+          {{- toYaml .Values.mastodon.resources.streaming | nindent 10 }}
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/streaming/health'
+            port: 4000
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/streaming/health'
+            port: 4000
+  sidekiq:
+    containers:
+      sidekiq:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        args: ['bundle', 'exec', 'sidekiq']
+        env:
+          {{- include "mastodon.runtimeEnv" . | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+        resources:
+          {{- toYaml .Values.mastodon.resources.sidekiq | nindent 10 }}
+  migrate:
+    enabled: {{ .Values.controllers.migrate.enabled }}
+    type: 'job'
+    annotations:
+      argocd.argoproj.io/hook: 'PreSync'
+      argocd.argoproj.io/hook-delete-policy: 'BeforeHookCreation,HookSucceeded'
+    pod:
+      restartPolicy: 'OnFailure'
+    containers:
+      migrate:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        args: ['bundle', 'exec', 'rails', 'db:migrate']
+        env:
+          {{- include "mastodon.runtimeEnv" . | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+        resources:
+          {{- toYaml .Values.mastodon.resources.migrate | nindent 10 }}
+
+persistence:
+  tmp:
+    globalMounts:
+      - path: '/tmp'
+{{- end }}
+
+{{- define "mastodon.secretRef" -}}
+valueFrom:
+  secretKeyRef:
+    name: {{ .name | quote }}
+    key: {{ .key | quote }}
+    optional: false
+{{- end }}
+
+{{- define "mastodon.runtimeEnv" -}}
+LOCAL_DOMAIN: {{ .Values.mastodon.domain | quote }}
+WEB_DOMAIN: {{ .Values.mastodon.domain | quote }}
+RAILS_ENV: 'production'
+NODE_ENV: 'production'
+RAILS_LOG_TO_STDOUT: 'true'
+PORT: '3000'
+PREPARED_STATEMENTS: 'false'
+DATABASE_URL:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "psqlURI") | nindent 2 }}
+REDIS_URL:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" .Values.redis.secretKey) | nindent 2 }}
+SECRET_KEY_BASE:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SECRET_KEY_BASE") | nindent 2 }}
+VAPID_PUBLIC_KEY:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "VAPID_PUBLIC_KEY") | nindent 2 }}
+VAPID_PRIVATE_KEY:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "VAPID_PRIVATE_KEY") | nindent 2 }}
+SMTP_SERVER:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_SERVER") | nindent 2 }}
+SMTP_PORT:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_PORT") | nindent 2 }}
+SMTP_LOGIN:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_LOGIN") | nindent 2 }}
+SMTP_PASSWORD:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_PASSWORD") | nindent 2 }}
+SMTP_FROM_ADDRESS: {{ .Values.mastodon.smtp.fromAddress | quote }}
+S3_ENABLED: 'true'
+S3_REGION: {{ .Values.mastodon.s3.region | quote }}
+S3_BUCKET: {{ .Values.mastodon.s3.bucket | quote }}
+S3_PROTOCOL: 'https'
+S3_SIGNATURE_VERSION: 'v4'
+S3_OVERRIDE_PATH_STYLE: 'true'
+S3_HOSTNAME:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "S3Hostname") | nindent 2 }}
+S3_ENDPOINT:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "S3URI") | nindent 2 }}
+AWS_ACCESS_KEY_ID:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.s3CredentialsSecretName "key" "AccessKey") | nindent 2 }}
+AWS_SECRET_ACCESS_KEY:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.s3CredentialsSecretName "key" "SecretAccessKey") | nindent 2 }}
+OIDC_ENABLED: {{ .Values.mastodon.oidc.enabled | quote }}
+{{- if .Values.mastodon.oidc.enabled }}
+OIDC_DISPLAY_NAME: {{ .Values.mastodon.oidc.displayName | quote }}
+OIDC_ISSUER:
+  {{- include "mastodon.secretRef" (dict "name" (printf "%s-oidc" .Release.Name) "key" "OIDC_ISSUER_URL") | nindent 2 }}
+OIDC_DISCOVERY: 'true'
+OIDC_SCOPE: 'openid,profile,email'
+OIDC_UID_FIELD: 'preferred_username'
+OIDC_CLIENT_ID:
+  {{- include "mastodon.secretRef" (dict "name" (printf "%s-oidc" .Release.Name) "key" "OIDC_CLIENT_ID") | nindent 2 }}
+OIDC_CLIENT_SECRET:
+  {{- include "mastodon.secretRef" (dict "name" (printf "%s-oidc" .Release.Name) "key" "OIDC_CLIENT_SECRET") | nindent 2 }}
+OIDC_REDIRECT_URI: {{ printf "https://%s/auth/auth/openid_connect/callback" .Values.mastodon.domain | quote }}
+OIDC_SECURITY_ASSUME_EMAIL_IS_VERIFIED: {{ .Values.mastodon.oidc.assumeEmailIsVerified | quote }}
+OMNIAUTH_ONLY: {{ .Values.mastodon.oidc.only | quote }}
+ONE_CLICK_SSO_LOGIN: 'true'
+{{- end }}
+{{- end }}
+{{- $hardcodedValues := include "app-template.hardcodedValues" . | fromYaml -}}
+{{- $_ := mustMergeOverwrite .Values $hardcodedValues -}}
+{{- include "bjw-s.common.loader.generate" . -}}

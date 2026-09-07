@@ -1,0 +1,127 @@
+# Required site inputs are injected by the owning Backplane ApplicationSet.
+cluster:
+  name: ''
+datacenter: ''
+region: ''
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+mastodon:
+  domain: ''
+  image:
+    repository: 'ghcr.io/mastodon/mastodon'
+    tag: 'v4.7.0@sha256:207fbb6199e7bc6edb59dad30e55f398f9a4b165c7d757e3f781a15cd85093c4'
+    pullPolicy: 'IfNotPresent'
+  # A namespace-local Secret provisioned outside Git. Required keys are documented in README.md.
+  existingSecret: ''
+  user:
+    name: 'mastodon'
+    username: 'mastodon'
+    connectionSecretName: 'mastodon-user'
+    s3CredentialsSecretName: 'mastodon-s3-user'
+  psql:
+    database: 'mastodon_production'
+    crossplaneProvider: ''
+    terraformProvider: ''
+  s3:
+    bucket: 'mastodon-media'
+    region: 'us-east-1'
+    crossplaneProvider: ''
+    terraformProvider: ''
+  oidc:
+    enabled: true
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'mastodon'
+    accessGroup: 'Mastodon Users'
+    displayName: 'mylogin.space'
+    only: true
+    assumeEmailIsVerified: false
+  smtp:
+    fromAddress: 'noreply@mylogin.space'
+  resources:
+    web:
+      requests:
+        cpu: '500m'
+        memory: '1Gi'
+      limits:
+        memory: '2Gi'
+    streaming:
+      requests:
+        cpu: '100m'
+        memory: '256Mi'
+      limits:
+        memory: '512Mi'
+    sidekiq:
+      requests:
+        cpu: '500m'
+        memory: '1Gi'
+      limits:
+        memory: '2Gi'
+    migrate:
+      requests:
+        cpu: '500m'
+        memory: '1Gi'
+      limits:
+        memory: '2Gi'
+
+redis:
+  # The runtime Secret must contain REDIS_URL, normally a site-local Dragonfly URL.
+  secretKey: 'REDIS_URL'
+
+controllers:
+  migrate:
+    enabled: true
+
+service:
+  web:
+    controller: 'web'
+    ports:
+      http:
+        port: 3000
+        protocol: 'HTTP'
+  streaming:
+    controller: 'streaming'
+    ports:
+      http:
+        port: 4000
+        protocol: 'HTTP'
+
+persistence:
+  tmp:
+    type: 'emptyDir'
+    globalMounts:
+      - path: '/tmp'
+
+route:
+  mastodon:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames:
+      - '{{ .Values.mastodon.domain }}'
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/api/v1/streaming'
+        timeouts:
+          request: '0s'
+          backendRequest: '0s'
+        backendRefs:
+          - identifier: 'streaming'
+            port: 4000
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        timeouts:
+          request: '0s'
+          backendRequest: '0s'
+        backendRefs:
+          - identifier: 'web'
+            port: 3000

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: 'core-business-social-fediverse'
+description: 'Mastodon fediverse instance using BJW-S Common, Crossplane and mylogin.space User resources'
+type: 'application'
+version: '1.0.0'
+appVersion: '4.7.0'
+kubeVersion: '>=1.31.0-0'
+home: 'https://joinmastodon.org/'
+sources:
+  - 'https://github.com/mastodon/mastodon'
+  - 'https://docs.joinmastodon.org/'
+dependencies:
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

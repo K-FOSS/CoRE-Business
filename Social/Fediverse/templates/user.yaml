@@ -1,0 +1,36 @@
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ .Values.mastodon.user.name | quote }}
+  annotations:
+    # Preserve the PostgreSQL role/database and S3 identity when the application is removed.
+    argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+spec:
+  name: 'Mastodon'
+  username: {{ .Values.mastodon.user.username | quote }}
+  serviceAccount: true
+  psql:
+    enabled: true
+    createUserDatabase: false
+    databases:
+      - {{ .Values.mastodon.psql.database | quote }}
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.mastodon.psql.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.mastodon.psql.terraformProvider | quote }}
+  s3:
+    enabled: true
+    createBuckets: true
+    createServiceAccount: true
+    region: {{ .Values.mastodon.s3.region | quote }}
+    buckets:
+      - {{ .Values.mastodon.s3.bucket | quote }}
+    crossplane:
+      crossplaneProvider: {{ .Values.mastodon.s3.crossplaneProvider | quote }}
+      terraformProvider: {{ .Values.mastodon.s3.terraformProvider | quote }}
+    writeServiceAccountCredentialsSecretRef:
+      name: {{ .Values.mastodon.user.s3CredentialsSecretName | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+  groups:
+    - 'LDAPService'
+  writeConnectionSecretToRef:
+    name: {{ .Values.mastodon.user.connectionSecretName | quote }}
