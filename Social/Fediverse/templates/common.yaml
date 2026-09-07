@@ -387,7 +387,8 @@ S3_REGION: {{ .Values.mastodon.s3.region | quote }}
 S3_BUCKET: {{ .Values.mastodon.s3.bucket | quote }}
 S3_PROTOCOL: 'https'
 S3_SIGNATURE_VERSION: 'v4'
-S3_OVERRIDE_PATH_STYLE: 'true'
+# Mastodon inverts this variable when passing force_path_style to aws-sdk-s3.
+S3_OVERRIDE_PATH_STYLE: 'false'
 S3_HOSTNAME: {{ printf "s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
 S3_ENDPOINT: {{ printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
 AWS_ACCESS_KEY_ID:
