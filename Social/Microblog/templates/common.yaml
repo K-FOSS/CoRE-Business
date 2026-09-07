@@ -1,0 +1,15 @@
+{{- include "bjw-s.common.loader.init" . -}}
+{{- $_ := required "pds.hostname is required" .Values.pds.hostname -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.pds.hostname) -}}
+{{- fail "pds.hostname must be a public DNS hostname without scheme, port or wildcard" -}}
+{{- end -}}
+{{- $_ := required "pds.existingSecret is required" .Values.pds.existingSecret -}}
+{{- $_ := required "pds.emailFromAddress is required" .Values.pds.emailFromAddress -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required (TLS must cover hostname and *.hostname)" .Values.gateway.sectionName -}}
+{{- if or (ne (int .Values.controllers.pds.replicas) 1) (ne .Values.controllers.pds.strategy "Recreate") (ne .Values.controllers.pds.type "deployment") -}}
+{{- fail "PDS SQLite requires one Deployment replica with Recreate strategy" -}}
+{{- end -}}
+{{- $_ := set .Values.route.pds "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- include "bjw-s.common.loader.generate" . -}}

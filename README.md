@@ -66,6 +66,20 @@ notes:
 | [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
 | [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
 
+[SnapOtter conversions](Tools/Conversions/README.md) is prepared at
+`Tools/Conversions` for `conotter.mylogin.space` using BJW-S Common. It has no
+active Backplane owner yet. It automates Authentik OIDC and site-local
+PostgreSQL provisioning using GPUStack's Crossplane patterns, and requires
+a single-cluster site value layer, bootstrap/cookie credentials and persistent
+storage before activation. Site-local Dragonfly credentials are synchronized
+from Vault automatically, with TLS connections on logical database 152.
+
+[Bluesky PDS](Social/Microblog/README.md) is prepared at `Social/Microblog`
+using BJW-S Common, with a pinned official image, a single SQLite-backed replica,
+retained Longhorn storage and public federation routes. It has no Backplane owner
+yet and requires a single-cluster owner, site hostname, wildcard DNS/TLS and a
+namespace-local runtime Secret before activation.
+
 See the [repository guide](docs/REPOSITORY.md) for ownership discovery,
 configuration layers and change validation.
 

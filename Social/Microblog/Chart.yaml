@@ -1,0 +1,15 @@
+apiVersion: v2
+name: 'core-business-social-microblog'
+description: 'Bluesky Personal Data Server using BJW-S Common'
+type: 'application'
+version: '1.0.0'
+appVersion: '0.4.5027'
+kubeVersion: '>=1.31.0-0'
+home: 'https://bsky.social/'
+sources:
+  - 'https://github.com/bluesky-social/pds'
+  - 'https://atproto.com/specs/atp'
+dependencies:
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'
