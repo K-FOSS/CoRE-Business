@@ -44,6 +44,8 @@ mastodon:
     assumeEmailIsVerified: false
   smtp:
     fromAddress: 'noreply@mylogin.space'
+    server: 'mail.mylogin.space'
+    port: 465
   resources:
     web:
       requests:

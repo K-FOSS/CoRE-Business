@@ -184,25 +184,26 @@ VAPID_PUBLIC_KEY:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "VAPID_PUBLIC_KEY") | nindent 2 }}
 VAPID_PRIVATE_KEY:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "VAPID_PRIVATE_KEY") | nindent 2 }}
-SMTP_SERVER:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_SERVER") | nindent 2 }}
-SMTP_PORT:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_PORT") | nindent 2 }}
+SMTP_SERVER: {{ .Values.mastodon.smtp.server | quote }}
+SMTP_PORT: {{ .Values.mastodon.smtp.port | quote }}
 SMTP_LOGIN:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_LOGIN") | nindent 2 }}
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "username") | nindent 2 }}
 SMTP_PASSWORD:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SMTP_PASSWORD") | nindent 2 }}
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "password") | nindent 2 }}
 SMTP_FROM_ADDRESS: {{ .Values.mastodon.smtp.fromAddress | quote }}
+SMTP_AUTH_METHOD: 'plain'
+SMTP_ENABLE_STARTTLS: 'never'
+SMTP_OPENSSL_VERIFY_MODE: 'peer'
+SMTP_SSL: 'true'
+SMTP_TLS: 'false'
 S3_ENABLED: 'true'
 S3_REGION: {{ .Values.mastodon.s3.region | quote }}
 S3_BUCKET: {{ .Values.mastodon.s3.bucket | quote }}
 S3_PROTOCOL: 'https'
 S3_SIGNATURE_VERSION: 'v4'
 S3_OVERRIDE_PATH_STYLE: 'true'
-S3_HOSTNAME:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "S3Hostname") | nindent 2 }}
-S3_ENDPOINT:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "S3URI") | nindent 2 }}
+S3_HOSTNAME: {{ printf "s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
+S3_ENDPOINT: {{ printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
 AWS_ACCESS_KEY_ID:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.s3CredentialsSecretName "key" "AccessKey") | nindent 2 }}
 AWS_SECRET_ACCESS_KEY:
