@@ -172,8 +172,7 @@ DB_USER:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "username") | nindent 2 }}
 DB_PASS:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "password") | nindent 2 }}
-DB_NAME:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "database") | nindent 2 }}
+DB_NAME: {{ .Values.mastodon.psql.database | quote }}
 REDIS_HOST: {{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host | quote }}
 REDIS_PORT: {{ .Values.redis.port | quote }}
 REDIS_PASSWORD:
