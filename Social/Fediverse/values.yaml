@@ -43,7 +43,7 @@ mastodon:
     accessGroup: 'Mastodon Users'
     displayName: 'mylogin.space'
     only: true
-    assumeEmailIsVerified: false
+    assumeEmailIsVerified: true
   smtp:
     fromAddress: 'noreply@mylogin.space'
     server: 'mail.mylogin.space'

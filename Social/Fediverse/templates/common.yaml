@@ -401,7 +401,7 @@ OIDC_ISSUER:
   {{- include "mastodon.secretRef" (dict "name" (printf "%s-oidc" .Release.Name) "key" "OIDC_ISSUER_URL") | nindent 2 }}
 OIDC_DISCOVERY: 'true'
 OIDC_SCOPE: 'openid,profile,email'
-OIDC_UID_FIELD: 'preferred_username'
+OIDC_UID_FIELD: 'sub'
 OIDC_CLIENT_ID:
   {{- include "mastodon.secretRef" (dict "name" (printf "%s-oidc" .Release.Name) "key" "OIDC_CLIENT_ID") | nindent 2 }}
 OIDC_CLIENT_SECRET:
