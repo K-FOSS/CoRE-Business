@@ -15,8 +15,6 @@ mastodon:
     repository: 'ghcr.io/mastodon/mastodon'
     tag: 'v4.7.0@sha256:207fbb6199e7bc6edb59dad30e55f398f9a4b165c7d757e3f781a15cd85093c4'
     pullPolicy: 'IfNotPresent'
-  # A namespace-local Secret provisioned outside Git. Required keys are documented in README.md.
-  existingSecret: ''
   user:
     name: 'mastodon'
     username: 'mastodon'
@@ -77,6 +75,25 @@ redis:
   host: ''
   port: 6379
   passwordSecretKey: 'REDIS_PASSWORD'
+  secretName: 'mastodon-redis'
+  secretStoreRef:
+    kind: 'ClusterSecretStore'
+    name: 'corevault-rootsecrets'
+  remoteRef:
+    key: ''
+    property: 'Password'
+
+secretManagement:
+  secretStoreRef:
+    kind: 'ClusterSecretStore'
+    name: 'mainvault-core'
+  remoteKey: ''
+  random:
+    generatorName: 'mastodon-random'
+    secretName: 'mastodon-random'
+  vapid:
+    secretName: 'mastodon-vapid'
+    serviceAccountName: 'mastodon-vapid-generator'
 
 controllers:
   migrate:

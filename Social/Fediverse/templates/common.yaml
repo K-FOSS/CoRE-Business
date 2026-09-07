@@ -6,7 +6,6 @@
 {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.mastodon.domain) -}}
 {{- fail "mastodon.domain must be a public DNS hostname without scheme, port or wildcard" -}}
 {{- end -}}
-{{- $_ := required "mastodon.existingSecret must name a provisioned runtime Secret" .Values.mastodon.existingSecret -}}
 {{- $_ := required "mastodon.user.connectionSecretName is required" .Values.mastodon.user.connectionSecretName -}}
 {{- $_ := required "mastodon.user.s3CredentialsSecretName is required" .Values.mastodon.user.s3CredentialsSecretName -}}
 {{- $_ := required "mastodon.s3.crossplaneProvider is required" .Values.mastodon.s3.crossplaneProvider -}}
@@ -33,8 +32,17 @@ defaultPodOptions:
     seccompProfile:
       type: 'RuntimeDefault'
 
+serviceAccount:
+  {{ .Release.Name }}:
+    forceRename: {{ .Release.Name | quote }}
+    enabled: true
+  {{ .Values.secretManagement.vapid.serviceAccountName }}:
+    enabled: true
+
 controllers:
   web:
+    serviceAccount:
+      identifier: {{ .Release.Name | quote }}
     containers:
       web:
         image:
@@ -77,6 +85,8 @@ controllers:
               timeoutSeconds: 5
               failureThreshold: 5
   streaming:
+    serviceAccount:
+      identifier: {{ .Release.Name | quote }}
     containers:
       streaming:
         image:
@@ -107,6 +117,8 @@ controllers:
             path: '/api/v1/streaming/health'
             port: 4000
   sidekiq:
+    serviceAccount:
+      identifier: {{ .Release.Name | quote }}
     containers:
       sidekiq:
         image:
@@ -124,6 +136,8 @@ controllers:
   migrate:
     enabled: {{ .Values.controllers.migrate.enabled }}
     type: 'job'
+    serviceAccount:
+      identifier: {{ .Release.Name | quote }}
     annotations:
       argocd.argoproj.io/hook: 'PreSync'
       argocd.argoproj.io/hook-delete-policy: 'BeforeHookCreation,HookSucceeded'
@@ -143,6 +157,86 @@ controllers:
             drop: ['ALL']
         resources:
           {{- toYaml .Values.mastodon.resources.migrate | nindent 10 }}
+  vapid:
+    enabled: true
+    type: 'job'
+    serviceAccount:
+      identifier: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    pod:
+      automountServiceAccountToken: true
+      restartPolicy: 'OnFailure'
+    containers:
+      vapid:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        command: ['ruby']
+        args:
+          - '-e'
+          - |
+            require 'json'
+            require 'net/http'
+            require 'openssl'
+            require 'uri'
+
+            output = IO.popen(['bundle', 'exec', 'rake', 'mastodon:webpush:generate_vapid_key'], &:read)
+            private_key = output[/VAPID_PRIVATE_KEY[=:]\s*(\S+)/, 1] || output[/Private\s*->\s*(\S+)/, 1]
+            public_key = output[/VAPID_PUBLIC_KEY[=:]\s*(\S+)/, 1] || output[/Public\s*->\s*(\S+)/, 1]
+            abort 'Mastodon VAPID generator returned no key pair' unless private_key && public_key
+
+            namespace = File.read('/var/run/secrets/kubernetes.io/serviceaccount/namespace').strip
+            token = File.read('/var/run/secrets/kubernetes.io/serviceaccount/token').strip
+            ca_file = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+            secret_name = '{{ .Values.secretManagement.vapid.secretName }}'
+            uri = URI("https://kubernetes.default.svc/api/v1/namespaces/#{namespace}/secrets/#{secret_name}")
+            body = {
+              apiVersion: 'v1',
+              kind: 'Secret',
+              metadata: {
+                name: secret_name,
+                annotations: {
+                  'argocd.argoproj.io/sync-options' => 'Prune=false,Delete=false'
+                }
+              },
+              type: 'Opaque',
+              stringData: {
+                'VAPID_PRIVATE_KEY' => private_key,
+                'VAPID_PUBLIC_KEY' => public_key
+              }
+            }.to_json
+
+            request = Net::HTTP::Get.new(uri)
+            request['Authorization'] = "Bearer #{token}"
+            http = Net::HTTP.new(uri.host, uri.port)
+            http.use_ssl = true
+            http.ca_file = ca_file
+            existing = http.request(request)
+            exit 0 if existing.is_a?(Net::HTTPSuccess)
+            if existing.code == '404'
+              create_uri = URI("https://kubernetes.default.svc/api/v1/namespaces/#{namespace}/secrets")
+              request = Net::HTTP::Post.new(create_uri)
+              request['Authorization'] = "Bearer #{token}"
+              request['Content-Type'] = 'application/json'
+              request.body = body
+              response = http.request(request)
+            else
+              abort "Unable to inspect VAPID Secret: #{existing.code}"
+            end
+            abort "Unable to persist VAPID Secret: #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+        env:
+          RAILS_ENV: 'production'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+        resources:
+          requests:
+            cpu: '50m'
+            memory: '256Mi'
+          limits:
+            memory: '512Mi'
 
 persistence:
   tmp:
@@ -176,13 +270,15 @@ DB_NAME: {{ .Values.mastodon.psql.database | quote }}
 REDIS_HOST: {{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host | quote }}
 REDIS_PORT: {{ .Values.redis.port | quote }}
 REDIS_PASSWORD:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" .Values.redis.passwordSecretKey) | nindent 2 }}
+  {{- include "mastodon.secretRef" (dict "name" .Values.redis.secretName "key" .Values.redis.passwordSecretKey) | nindent 2 }}
 SECRET_KEY_BASE:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "SECRET_KEY_BASE") | nindent 2 }}
+  {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.random.secretName "key" "SECRET_KEY_BASE") | nindent 2 }}
+OTP_SECRET:
+  {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.random.secretName "key" "OTP_SECRET") | nindent 2 }}
 VAPID_PUBLIC_KEY:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "VAPID_PUBLIC_KEY") | nindent 2 }}
+  {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.vapid.secretName "key" "VAPID_PUBLIC_KEY") | nindent 2 }}
 VAPID_PRIVATE_KEY:
-  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.existingSecret "key" "VAPID_PRIVATE_KEY") | nindent 2 }}
+  {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.vapid.secretName "key" "VAPID_PRIVATE_KEY") | nindent 2 }}
 SMTP_SERVER: {{ .Values.mastodon.smtp.server | quote }}
 SMTP_PORT: {{ .Values.mastodon.smtp.port | quote }}
 SMTP_LOGIN:

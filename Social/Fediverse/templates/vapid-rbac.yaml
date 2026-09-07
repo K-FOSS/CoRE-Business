@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
+rules:
+  - apiGroups: ['']
+    resources: ['secrets']
+    verbs: ['get', 'create', 'update']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.secretManagement.vapid.serviceAccountName | quote }}
