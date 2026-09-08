@@ -72,7 +72,8 @@ The `User` claim writes PostgreSQL `username` and `password` to
 `mastodon.psql.database` value. Its service-account S3 credentials are
 written to `mastodon.user.s3CredentialsSecretName` as `AccessKey` and
 `SecretAccessKey`. Do not copy those values into Git or logs.
-Mastodon uses Authentik's OIDC `preferred_username` claim as the external
+Mastodon derives `SMTP_FROM_ADDRESS` as `<mastodon.user.username>@mail.mylogin.space`.
+It uses Authentik's OIDC `preferred_username` claim as the external
 identity key, while email and profile data come from the `email` and `profile`
 scopes. It reuses the User claim's LDAP username and password for SMTP
 authentication against `mail.mylogin.space` on implicit-TLS port 465; the

@@ -392,7 +392,7 @@ SMTP_LOGIN:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "username") | nindent 2 }}
 SMTP_PASSWORD:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "password") | nindent 2 }}
-SMTP_FROM_ADDRESS: {{ .Values.mastodon.smtp.fromAddress | quote }}
+SMTP_FROM_ADDRESS: {{ printf "%s@mail.mylogin.space" .Values.mastodon.user.username | quote }}
 SMTP_AUTH_METHOD: 'plain'
 SMTP_ENABLE_STARTTLS: 'never'
 SMTP_OPENSSL_VERIFY_MODE: 'peer'
