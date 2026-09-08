@@ -48,6 +48,13 @@ mastodon:
   smtp:
     server: 'mail.mylogin.space'
     port: 465
+  replicas:
+    web: 3
+    streaming: 3
+    sidekiq: 3
+  scheduling:
+    topologyKey: 'kubernetes.io/hostname'
+    whenUnsatisfiable: 'DoNotSchedule'
 
   resources:
     web:

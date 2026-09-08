@@ -46,10 +46,30 @@ controllers:
   web:
     annotations:
       argocd.argoproj.io/sync-wave: '20'
+    replicas: {{ .Values.mastodon.replicas.web }}
     strategy: 'RollingUpdate'
     rollingUpdate:
       unavailable: '0'
       surge: 1
+    pod:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: 'web'
+                  app.kubernetes.io/instance: {{ .Release.Name | quote }}
+                  app.kubernetes.io/name: {{ .Release.Name | quote }}
+              topologyKey: {{ .Values.mastodon.scheduling.topologyKey | quote }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.mastodon.scheduling.topologyKey | quote }}
+          whenUnsatisfiable: {{ .Values.mastodon.scheduling.whenUnsatisfiable | quote }}
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: 'web'
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+              app.kubernetes.io/name: {{ .Release.Name | quote }}
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
@@ -103,10 +123,30 @@ controllers:
   streaming:
     annotations:
       argocd.argoproj.io/sync-wave: '20'
+    replicas: {{ .Values.mastodon.replicas.streaming }}
     strategy: 'RollingUpdate'
     rollingUpdate:
       unavailable: '0'
       surge: 1
+    pod:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: 'streaming'
+                  app.kubernetes.io/instance: {{ .Release.Name | quote }}
+                  app.kubernetes.io/name: {{ .Release.Name | quote }}
+              topologyKey: {{ .Values.mastodon.scheduling.topologyKey | quote }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.mastodon.scheduling.topologyKey | quote }}
+          whenUnsatisfiable: {{ .Values.mastodon.scheduling.whenUnsatisfiable | quote }}
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: 'streaming'
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+              app.kubernetes.io/name: {{ .Release.Name | quote }}
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:
@@ -159,10 +199,30 @@ controllers:
   sidekiq:
     annotations:
       argocd.argoproj.io/sync-wave: '20'
+    replicas: {{ .Values.mastodon.replicas.sidekiq }}
     strategy: 'RollingUpdate'
     rollingUpdate:
       unavailable: '0'
       surge: 1
+    pod:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: 'sidekiq'
+                  app.kubernetes.io/instance: {{ .Release.Name | quote }}
+                  app.kubernetes.io/name: {{ .Release.Name | quote }}
+              topologyKey: {{ .Values.mastodon.scheduling.topologyKey | quote }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: {{ .Values.mastodon.scheduling.topologyKey | quote }}
+          whenUnsatisfiable: {{ .Values.mastodon.scheduling.whenUnsatisfiable | quote }}
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: 'sidekiq'
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+              app.kubernetes.io/name: {{ .Release.Name | quote }}
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
     containers:

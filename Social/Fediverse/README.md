@@ -113,7 +113,13 @@ waves `0` and `5`, runs database initialization at `10`, and starts the web,
 streaming and Sidekiq Deployments at `20`. This ensures the init Job consumes
 the generated runtime Secrets.
 Web, streaming and Sidekiq use `RollingUpdate` with `maxUnavailable: 0` and
-`maxSurge: 1`. Web and streaming expose HTTP startup/readiness/liveness checks;
+`maxSurge: 1`, with three replicas per workload by default. Their required
+[Kubernetes pod anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity)
+and [topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)
+keep replicas on separate worker nodes and prevent new replicas from increasing
+placement skew. Reduce the replica counts or change `mastodon.scheduling` only
+when the available fleet cannot satisfy those constraints. Web and streaming
+expose HTTP startup/readiness/liveness checks;
 the streaming Service port advertises `appProtocol: kubernetes.io/ws` so the
 Envoy Gateway preserves websocket upgrades.
 Sidekiq uses a process-existence startup/readiness/liveness check modeled on
