@@ -1,5 +1,9 @@
 env: 'prod'
 
+landingHttpRoute:
+  enabled: true
+  backendPort: 80
+
 forecastle:
   nameOverride: 'landing'
 
@@ -55,7 +59,3 @@ forecastle:
             - path:
                 type: 'PathPrefix'
                 value: '/'
-          backendRefs:
-            - name: 'landing'
-              port: 80
-              weight: 1
