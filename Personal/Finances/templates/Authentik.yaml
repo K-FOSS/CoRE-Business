@@ -1,0 +1,76 @@
+{{- $_ := required "authentik.providerConfigRef is required" .Values.authentik.providerConfigRef -}}
+{{- $_ := required "authentik.application.displayName is required" .Values.authentik.application.displayName -}}
+{{- $_ := required "authentik.application.group is required" .Values.authentik.application.group -}}
+{{- $_ := required "authentik.outpost.name is required" .Values.authentik.outpost.name -}}
+{{- $_ := required "authentik.outpost.namespace is required" .Values.authentik.outpost.namespace -}}
+{{- $_ := required "authentik.outpost.port is required" .Values.authentik.outpost.port -}}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ .Release.Name }}-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ .Release.Name }}'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-*'
+        - 'authorization'
+        - 'Content-Type'
+        - 'Location'
+      backendSettings:
+        loadBalancer:
+          type: 'ConsistentHash'
+          consistentHash:
+            type: 'SourceIP'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ .Values.authentik.outpost.namespace }}'
+          name: '{{ .Values.authentik.outpost.name }}'
+          port: {{ .Values.authentik.outpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+---
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ .Release.Name }}-authentik'
+spec:
+  providerConfigRef:
+    name: '{{ .Values.authentik.providerConfigRef }}'
+  forProvider:
+    source: 'Inline'
+    module: | # hcl
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      resource "authentik_provider_proxy" "app" {
+        name               = "{{ .Release.Name }}"
+        mode               = "forward_single"
+        external_host      = "https://{{ required "firefly.hostname is required" .Values.firefly.hostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "app" {
+        name              = "{{ required "authentik.application.displayName is required" .Values.authentik.application.displayName }}"
+        slug              = "{{ .Release.Name }}"
+        group             = "{{ required "authentik.application.group is required" .Values.authentik.application.group }}"
+        protocol_provider = authentik_provider_proxy.app.id
+      }

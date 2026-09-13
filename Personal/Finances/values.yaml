@@ -1,0 +1,46 @@
+# Required site inputs are injected by the future owning Backplane ApplicationSet.
+cluster:
+  name: ''
+
+datacenter: ''
+region: ''
+
+global:
+  createDefaultServiceAccount: true
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+authentik:
+  providerConfigRef: 'authentik'
+  application:
+    displayName: 'Firefly III'
+    group: 'Personal'
+  outpost:
+    name: 'aaa-myloginspace-proxy'
+    namespace: 'core-prod'
+    port: 80
+
+firefly:
+  hostname: 'firefly.mylogin.space'
+  imageTag: 'version-6.6.6'
+  appKeySecret: ''
+  database:
+    # These match the current Backplane PostgreSQL service advertised by the User composition.
+    host: 'psql-int.mylogin.space'
+    port: '5432'
+    userSecret: 'firefly-database'
+    passwordKey: 'password'
+    usernameKey: 'username'
+    crossplane:
+      crossplaneProvider: ''
+      terraformProvider: ''
+  resources:
+    requests:
+      cpu: '50m'
+      memory: '256Mi'
+    limits:
+      cpu: '1000m'
+      memory: '1Gi'

@@ -1,0 +1,156 @@
+{{- include "bjw-s.common.loader.init" . -}}
+
+{{- define "app-template.hardcodedValues" -}}
+controllers:
+  app:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      firefly:
+        image:
+          repository: 'docker.io/fireflyiii/core'
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 8080
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 8080
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 8080
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+  scheduler:
+    type: 'cronjob'
+    cronjob:
+      schedule: '* * * * *'
+      concurrencyPolicy: 'Forbid'
+      successfulJobsHistory: 1
+      failedJobsHistory: 3
+    pod:
+      automountServiceAccountToken: false
+      restartPolicy: 'OnFailure'
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      scheduler:
+        image:
+          repository: 'docker.io/fireflyiii/core'
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        command: ['/usr/local/bin/php', 'artisan', 'schedule:run']
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+
+service:
+  app:
+    controller: 'app'
+    ports:
+      http:
+        port: 8080
+
+persistence:
+  upload:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    globalMounts:
+      - path: '/var/www/html/storage/upload'
+
+route:
+  app:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'app'
+            port: 8080
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
+{{- $_ := required "firefly.hostname is required" .Values.firefly.hostname -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.firefly.hostname) -}}
+{{- fail "firefly.hostname must be a public DNS hostname without scheme, port or wildcard" -}}
+{{- end -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- $_ := required "firefly.appKeySecret must reference an externally managed Secret containing APP_KEY" .Values.firefly.appKeySecret -}}
+{{- $_ := required "firefly.database.userSecret is required" .Values.firefly.database.userSecret -}}
+{{- $_ := required "firefly.database.crossplane.crossplaneProvider must be injected by the owning ApplicationSet" .Values.firefly.database.crossplane.crossplaneProvider -}}
+{{- $_ := required "firefly.database.crossplane.terraformProvider must be injected by the owning ApplicationSet" .Values.firefly.database.crossplane.terraformProvider -}}
+{{- $_ := set .Values.controllers.app.containers.firefly.image "tag" .Values.firefly.imageTag -}}
+{{- $_ := set .Values.controllers.scheduler.containers.scheduler.image "tag" .Values.firefly.imageTag -}}
+{{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.database.userSecret "key" .Values.firefly.database.passwordKey)) -}}
+{{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.database.userSecret "key" .Values.firefly.database.usernameKey)) -}}
+{{- $appKeySecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.appKeySecret "key" "APP_KEY")) -}}
+{{- $env := dict
+  "DB_CONNECTION" "pgsql"
+  "DB_HOST" .Values.firefly.database.host
+  "DB_PORT" .Values.firefly.database.port
+  "DB_DATABASE" $dbUsername
+  "DB_USERNAME" $dbUsername
+  "DB_PASSWORD" $dbPassword
+  "APP_KEY" $appKeySecret
+  "APP_URL" (printf "https://%s" .Values.firefly.hostname)
+  "TRUSTED_PROXIES" "**"
+  "DEFAULT_LANGUAGE" "en_US"
+  "DEFAULT_LOCALE" "equal"
+  "TZ" "UTC"
+}}
+{{- $_ := set .Values.controllers.app.containers.firefly "env" $env -}}
+{{- $_ := set .Values.controllers.scheduler.containers.scheduler "env" $env -}}
+{{- $_ := set .Values.controllers.app.containers.firefly "resources" .Values.firefly.resources -}}
+{{- $_ := set .Values.controllers.scheduler.containers.scheduler "resources" .Values.firefly.resources -}}
+{{- $_ := set .Values.route.app "hostnames" (list .Values.firefly.hostname) -}}
+{{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- include "bjw-s.common.loader.generate" . -}}

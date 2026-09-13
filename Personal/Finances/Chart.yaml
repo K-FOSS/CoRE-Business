@@ -1,0 +1,15 @@
+apiVersion: v2
+name: 'core-business-firefly'
+description: 'Firefly III personal finance manager using BJW-S Common'
+type: 'application'
+version: '1.0.0'
+appVersion: '6.6.6'
+kubeVersion: '>=1.31.0-0'
+home: 'https://www.firefly-iii.org/'
+sources:
+  - 'https://github.com/firefly-iii/firefly-iii'
+  - 'https://github.com/firefly-iii/kubernetes'
+dependencies:
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

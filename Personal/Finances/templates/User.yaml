@@ -1,0 +1,14 @@
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: 'firefly-database-user'
+spec:
+  name: 'Firefly III database'
+  psql:
+    enabled: true
+    createUserDatabase: true
+    crossplane:
+      crossplaneProvider: '{{ .Values.firefly.database.crossplane.crossplaneProvider }}'
+      terraformProvider: '{{ .Values.firefly.database.crossplane.terraformProvider }}'
+  writeConnectionSecretToRef:
+    name: '{{ .Values.firefly.database.userSecret }}'
