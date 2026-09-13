@@ -1,0 +1,22 @@
+{{- include "bjw-s.common.loader.init" . -}}
+{{- $_ := required "opengym.hostname is required" .Values.opengym.hostname -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.opengym.hostname) -}}
+{{- fail "opengym.hostname must be a public DNS hostname without scheme, port or wildcard" -}}
+{{- end -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- $_ := set .Values.controllers.api.containers.api.image "tag" .Values.opengym.imageTag -}}
+{{- $_ := set .Values.controllers.web.containers.web.image "tag" .Values.opengym.imageTag -}}
+{{- $_ := set .Values.controllers.web.initContainers.media.image "repository" .Values.opengym.mediaImage.repository -}}
+{{- $_ := set .Values.controllers.web.initContainers.media.image "tag" .Values.opengym.mediaImage.tag -}}
+{{- $_ := set .Values.controllers.api.containers.api.env "RP_ID" .Values.opengym.hostname -}}
+{{- $_ := set .Values.controllers.api.containers.api.env "ORIGIN" (printf "https://%s" .Values.opengym.hostname) -}}
+{{- $_ := set .Values.controllers.api.containers.api "resources" .Values.opengym.resources.api -}}
+{{- $_ := set .Values.controllers.web.containers.web "resources" .Values.opengym.resources.web -}}
+{{- $_ := set .Values.route.web "hostnames" (list .Values.opengym.hostname) -}}
+{{- $_ := set .Values.route.web "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- include "bjw-s.common.loader.generate" . -}}
