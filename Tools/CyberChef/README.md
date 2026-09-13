@@ -2,7 +2,8 @@
 
 This chart deploys CyberChef through the bjw-s common library. It runs two
 replicas behind a ClusterIP Service and exposes `cyberchef.mylogin.space` with
-a Gateway API HTTPRoute carrying public and private network-policy labels.
+a Gateway API HTTPRoute carrying public and private network-policy labels. The
+route is annotated for discovery by the `core` Forecastle instance.
 
 [The Cyberchef ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) selects YVR bare-metal
 infrastructure clusters and deploys to `core-prod` without Lovely-injected

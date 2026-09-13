@@ -145,6 +145,8 @@ route:
     annotations:
       forecastle.stakater.com/expose: 'true'
       forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/group: 'Security'
+      forecastle.stakater.com/appName: 'Vaultwarden'
     parentRefs:
       - group: gateway.networking.k8s.io
         kind: Gateway

@@ -7,6 +7,9 @@ chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/). The activ
 renders the chart with Lovely into `core-prod` on the selected bare-metal
 clusters.
 
+The public HTTPRoute is annotated for discovery by the `core` Forecastle
+instance.
+
 ## Identity and PostgreSQL
 
 Vaultwarden uses the current [`mylogin.space/v1alpha1` User

@@ -117,6 +117,9 @@ route:
       lan-mode: 'private'
     annotations:
       forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/group: 'Tools'
+      forecastle.stakater.com/appName: 'Cyberchef'
 
     parentRefs:
       - group: gateway.networking.k8s.io
