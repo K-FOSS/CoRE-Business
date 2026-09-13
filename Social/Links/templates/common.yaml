@@ -1,0 +1,29 @@
+{{- include "bjw-s.common.loader.init" . -}}
+{{- $_ := required "linkstack.hostname is required" .Values.linkstack.hostname -}}
+{{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.linkstack.hostname) -}}
+{{- fail "linkstack.hostname must be a public DNS hostname without scheme, port or wildcard" -}}
+{{- end -}}
+{{- $_ := required "linkstack.serverAdmin is required" .Values.linkstack.serverAdmin -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- if or (ne (int .Values.controllers.linkstack.replicas) 1) (ne .Values.controllers.linkstack.strategy "Recreate") -}}
+{{- fail "LinkStack SQLite storage requires one Deployment replica with Recreate strategy" -}}
+{{- end -}}
+{{- $_ := set .Values.controllers.linkstack.containers.linkstack.image "repository" .Values.linkstack.image.repository -}}
+{{- $_ := set .Values.controllers.linkstack.containers.linkstack.image "tag" .Values.linkstack.image.tag -}}
+{{- $_ := set .Values.controllers.linkstack.containers.linkstack.image "pullPolicy" .Values.linkstack.image.pullPolicy -}}
+{{- $env := .Values.controllers.linkstack.containers.linkstack.env -}}
+{{- $_ := set $env "SERVER_ADMIN" .Values.linkstack.serverAdmin -}}
+{{- $_ := set $env "HTTP_SERVER_NAME" .Values.linkstack.hostname -}}
+{{- $_ := set $env "HTTPS_SERVER_NAME" .Values.linkstack.hostname -}}
+{{- $_ := set $env "LOG_LEVEL" .Values.linkstack.logLevel -}}
+{{- $_ := set $env "TZ" .Values.linkstack.timezone -}}
+{{- $_ := set $env "PHP_MEMORY_LIMIT" .Values.linkstack.phpMemoryLimit -}}
+{{- $_ := set $env "UPLOAD_MAX_FILESIZE" .Values.linkstack.uploadMaxFilesize -}}
+{{- $_ := set .Values.route.linkstack "hostnames" (list .Values.linkstack.hostname) -}}
+{{- $_ := set .Values.route.linkstack "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- include "bjw-s.common.loader.generate" . -}}

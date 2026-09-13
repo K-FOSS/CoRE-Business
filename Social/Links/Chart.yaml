@@ -1,0 +1,15 @@
+apiVersion: v2
+name: 'core-business-social-links'
+description: 'LinkStack link-sharing service using BJW-S Common'
+type: 'application'
+version: '1.0.0'
+appVersion: '4.8.6'
+kubeVersion: '>=1.31.0-0'
+home: 'https://linkstack.org/'
+sources:
+  - 'https://github.com/LinkStackOrg/LinkStack'
+  - 'https://github.com/LinkStackOrg/linkstack-docker'
+dependencies:
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

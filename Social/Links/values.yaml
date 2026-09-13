@@ -1,0 +1,134 @@
+# Required site inputs are injected by the future owning Backplane ApplicationSet.
+cluster:
+  name: ''
+
+datacenter: ''
+region: ''
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: ''
+
+linkstack:
+  hostname: ''
+  image:
+    repository: 'docker.io/linkstackorg/linkstack'
+    # Official multi-architecture manifest digest for the pinned 4.8.6 image.
+    tag: 'latest@sha256:1c8b05399ee459ac601bac3eede7fbe765d1b6b7be725663b57f3220610958bf'
+    pullPolicy: 'IfNotPresent'
+  serverAdmin: ''
+  timezone: 'UTC'
+  logLevel: 'info'
+  phpMemoryLimit: '256M'
+  uploadMaxFilesize: '8M'
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '256Mi'
+    limits:
+      memory: '512Mi'
+
+controllers:
+  linkstack:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 82
+        runAsGroup: 82
+        fsGroup: 82
+        fsGroupChangePolicy: 'OnRootMismatch'
+    containers:
+      linkstack:
+        image:
+          repository: ''
+          tag: ''
+          pullPolicy: ''
+        env:
+          SERVER_ADMIN: ''
+          HTTP_SERVER_NAME: ''
+          HTTPS_SERVER_NAME: ''
+          LOG_LEVEL: ''
+          TZ: ''
+          PHP_MEMORY_LIMIT: ''
+          UPLOAD_MAX_FILESIZE: ''
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+          seccompProfile:
+            type: 'RuntimeDefault'
+        resources:
+          requests:
+            cpu: '100m'
+            memory: '256Mi'
+          limits:
+            memory: '512Mi'
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 80
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 80
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 80
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
+service:
+  linkstack:
+    controller: 'linkstack'
+    ports:
+      http:
+        port: 80
+        protocol: 'HTTP'
+
+persistence:
+  data:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    globalMounts:
+      - path: '/htdocs'
+
+route:
+  linkstack:
+    kind: HTTPRoute
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames:
+      - ''
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'linkstack'
+            port: 80

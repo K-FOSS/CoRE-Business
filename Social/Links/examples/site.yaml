@@ -1,0 +1,14 @@
+# Render fixture / Backplane merge values. No credentials belong in this file.
+cluster:
+  name: 'core-home1-talos-prod'
+datacenter: 'home1'
+region: 'yvr'
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+linkstack:
+  hostname: 'links.mylogin.space'
+  serverAdmin: 'noreply@mylogin.space'
