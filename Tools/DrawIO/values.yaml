@@ -96,7 +96,11 @@ route:
     kind: HTTPRoute
 
     # -- Provide additional annotations which may be required.
-    annotations: {}
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/group: 'Tools'
+      forecastle.stakater.com/appName: 'DrawIO'
 
     # -- Provide additional labels which may be required.
     labels:

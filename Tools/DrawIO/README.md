@@ -2,7 +2,8 @@
 
 This chart deploys Draw.io through the bjw-s common library. It exposes
 `draw.mylogin.space` through a ClusterIP Service and Gateway API HTTPRoute with
-public and private network-policy labels.
+public and private network-policy labels. The route is exposed in the `Tools`
+group of the `core` Forecastle instance under the friendly name `DrawIO`.
 
 [The DrawIO ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/DrawIO.yaml) selects tenant bare-metal
 infrastructure clusters across sites and deploys to `core-prod` without
