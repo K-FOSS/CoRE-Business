@@ -140,3 +140,9 @@ rules for its subtree but must not weaken these repository-wide requirements.
 - After Argo CD reconciliation, follow downstream operator/Crossplane
   conditions and test the user-facing workflow. `Synced` or pod readiness alone
   does not prove the application is healthy.
+
+## Dashboard exposure
+
+- Forecastle is reserved for public services. Private-only services must not
+  include `forecastle.stakater.com/*` annotations or be exposed in the
+  Forecastle dashboard.
