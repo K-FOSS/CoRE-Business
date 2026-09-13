@@ -29,6 +29,29 @@ rules for its subtree but must not weaken these repository-wide requirements.
   incident actions and must be represented in Git or deliberately removed
   after recovery.
 
+### Lovely rendering capabilities
+
+- The [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin)
+  is a config-management pipeline, not a Helm-only renderer. A Lovely-owned
+  directory may combine a Helm chart, local or remote Kustomize resources,
+  Kustomize patches, raw manifests and additional pipeline steps in one Argo
+  CD Application.
+- The deployed `lovely-vault-plugin` image includes Helm, Kustomize, Helmfile,
+  Bash, Git and `yq`; it also resolves Vault-backed placeholders. Treat those
+  tools and the plugin image as deployment inputs: inspect the owning
+  ApplicationSet and the installed plugin configuration before relying on a
+  feature, and do not execute arbitrary scripts or fetch mutable remote input.
+- ApplicationSets can pass environment-specific Helm values and Kustomize
+  overlays through `LOVELY_HELM_MERGE` and `LOVELY_KUSTOMIZE_MERGE`. These
+  layers may change names, namespaces, labels, patches, enabled components and
+  generated resources, so inspect them alongside the local chart and preserve
+  the configured composition order.
+- Lovely does not discover applications automatically. The owning Application
+  must explicitly select the configured Lovely plugin, and a path with a
+  `kustomization.yaml` must be rendered through Lovely to reproduce Argo CD's
+  result; standalone `helm template` or `kustomize build` output is only a
+  partial check.
+
 ## Documentation
 
 - Keep `README.md`, `docs/REPOSITORY.md`, and the nearest component README in
