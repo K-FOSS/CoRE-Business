@@ -1,0 +1,13 @@
+apiVersion: v2
+name: 'core-business-landing'
+description: 'Forecastle application landing page for the CoRE platform'
+icon: 'https://github.com/stakater/Forecastle/raw/master/assets/web/forecastle-round-100px.png'
+type: 'application'
+version: '1.0.0'
+appVersion: 'v2.0.2'
+kubeVersion: '>=1.31.0-0'
+
+dependencies:
+  - name: 'forecastle'
+    version: '2.1.1'
+    repository: 'https://stakater.github.io/stakater-charts/'

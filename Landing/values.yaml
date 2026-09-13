@@ -1,0 +1,57 @@
+env: 'prod'
+
+forecastle:
+  nameOverride: 'landing'
+
+  forecastle:
+    image:
+      name: 'stakater/forecastle'
+      tag: 'v2.0.2'
+
+    deployment:
+      replicas: 1
+      revisionHistoryLimit: 2
+      podSecurityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - 'ALL'
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+      resources:
+        requests:
+          cpu: '25m'
+          memory: '64Mi'
+        limits:
+          cpu: '250m'
+          memory: '256Mi'
+
+    config:
+      namespaceSelector:
+        matchNames:
+          - 'core-prod'
+      title: 'CoRE applications'
+      instanceName: 'core'
+      crdEnabled: true
+
+    service:
+      expose: 'false'
+
+    httpRoute:
+      enabled: true
+      parentRefs:
+        - group: 'gateway.networking.k8s.io'
+          kind: 'Gateway'
+          name: 'main-gw'
+          namespace: 'core-prod'
+          sectionName: 'https-myloginspace'
+      hostnames:
+        - 'mylogin.space'
+      rules:
+        - matches:
+            - path:
+                type: 'PathPrefix'
+                value: '/'
