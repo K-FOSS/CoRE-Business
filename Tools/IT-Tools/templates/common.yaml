@@ -1,0 +1,142 @@
+---
+{{- include "bjw-s.common.loader.init" . }}
+
+{{- define "app-template.hardcodedValues" -}}
+global:
+{{ if not .Values.global.nameOverride }}
+  nameOverride: {{ .Release.Name | quote }}
+{{ end }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    seccompProfile:
+      type: 'RuntimeDefault'
+
+controllers:
+  it-tools:
+    strategy: 'RollingUpdate'
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    revisionHistoryLimit: 3
+    nameOverride: 'it-tools'
+    replicas: {{ .Values.itTools.replicas }}
+
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: 'kubernetes.io/hostname'
+          whenUnsatisfiable: 'ScheduleAnyway'
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: 'it-tools'
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+
+    podDisruptionBudget:
+      minAvailable: 1
+
+    containers:
+      it-tools:
+        image:
+          repository: {{ .Values.itTools.image.repository | quote }}
+          tag: {{ .Values.itTools.image.tag | quote }}
+          digest: {{ .Values.itTools.image.digest | quote }}
+          pullPolicy: {{ .Values.itTools.image.pullPolicy | quote }}
+
+        resources:
+          {{- toYaml .Values.itTools.resources | nindent 10 }}
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - 'ALL'
+
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 80
+            spec:
+              periodSeconds: 5
+              timeoutSeconds: 5
+              failureThreshold: 12
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 80
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 3
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 80
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
+service:
+  it-tools:
+    enabled: true
+    controller: 'it-tools'
+    nameOverride: 'it-tools'
+    primary: true
+    type: 'ClusterIP'
+    ports:
+      http:
+        enabled: true
+        primary: true
+        port: 80
+        targetPort: 80
+        protocol: 'HTTP'
+
+networkpolicies:
+  it-tools:
+    enabled: true
+    controller: 'it-tools'
+    policyTypes:
+      - 'Egress'
+    rules:
+      egress: []
+
+route:
+  it-tools:
+    enabled: true
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/group: 'Tools'
+      forecastle.stakater.com/appName: 'IT-Tools'
+    parentRefs:
+      - group: 'gateway.networking.k8s.io'
+        kind: 'Gateway'
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      - {{ .Values.itTools.domain | quote }}
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - kind: 'Service'
+            identifier: 'it-tools'
+            port: 80
+            weight: 1
+{{- end -}}
+{{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
+
+{{ include "bjw-s.common.loader.generate" . }}
