@@ -1,6 +1,6 @@
 apiVersion: v2
 name: 'core-business-social-fediverse'
-description: 'Mastodon fediverse instance using BJW-S Common, Crossplane and mylogin.space User resources'
+description: 'Mastodon and optional Bluesky PDS instances using BJW-S Common, Crossplane and mylogin.space User resources'
 type: 'application'
 version: '1.0.0'
 appVersion: '4.7.0'
@@ -9,6 +9,8 @@ home: 'https://joinmastodon.org/'
 sources:
   - 'https://github.com/mastodon/mastodon'
   - 'https://docs.joinmastodon.org/'
+  - 'https://github.com/bluesky-social/pds'
+  - 'https://atproto.com/specs/atp'
 dependencies:
   - name: 'common'
     version: '5.0.1'

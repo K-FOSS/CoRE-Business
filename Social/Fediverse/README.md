@@ -11,6 +11,23 @@ an immutable GHCR manifest digest. Streaming uses Mastodon’s separate
 `mastodon-streaming` 4.7.0 image, also pinned to its immutable digest; the
 official container documentation uses that image for the streaming process.
 
+When `bluesky.enabled` is true, this chart also deploys the official
+[Bluesky Personal Data Server](https://github.com/bluesky-social/pds), using
+[AT Protocol](https://atproto.com/) defaults and its pinned image digest. Its
+PDS Deployment, Service, retained Longhorn PVC and public HTTPRoute are kept
+under the separate `bluesky` values subtree. The PDS uses SQLite and site-local
+S3; runtime credentials must be supplied by the existing Secret named by
+`bluesky.existingSecret`. It does not use Mastodon’s PostgreSQL, Redis,
+Authentik, generated-secret or migration configuration; those remain scoped to
+the Mastodon path in this combined chart.
+
+The BJW-S Common resource maps are generated in `templates/common.yaml`.
+`values.yaml` contains site inputs, application tunables and secret references,
+while controllers, Services, persistence, routes and monitors remain close to
+the templates that consume them. Bluesky is disabled by default so the existing
+Mastodon-only ApplicationSet remains safe until its value layer explicitly
+enables and configures the PDS.
+
 ## Ownership and activation
 
 The active owner is the [Fediverse ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml)
@@ -112,7 +129,7 @@ VAPID bootstrap Sync hook at `-5`, publishes and pulls generated Secrets at
 waves `0` and `5`, runs database initialization at `10`, and starts the web,
 streaming and Sidekiq Deployments at `20`. This ensures the init Job consumes
 the generated runtime Secrets.
-Web, streaming and Sidekiq use `RollingUpdate` with `maxUnavailable: 0` and
+Web, streaming and Sidekiq use `RollingUpdate` with `maxUnavailable: 1` and
 `maxSurge: 1`, with three replicas per workload by default. Their required
 [Kubernetes pod anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity)
 and [topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)
@@ -205,6 +222,13 @@ helm dependency build .
 helm lint . -f examples/site.yaml
 helm template mastodon . --namespace core-prod -f examples/site.yaml \
   --api-versions gateway.networking.k8s.io/v1/HTTPRoute >/tmp/mastodon-rendered.yaml
+helm template bluesky . --namespace core-prod -f examples/site.yaml \
+  --set bluesky.enabled=true --set bluesky.hostname=pds.example.com \
+  --set bluesky.existingSecret=bluesky-pds-runtime \
+  --set bluesky.emailFromAddress='PDS <noreply@example.com>' \
+  --set bluesky.s3.crossplaneProvider=s3-yvr-home1-core \
+  --set bluesky.s3.terraformProvider=s3-yvr-home1-core \
+  --api-versions gateway.networking.k8s.io/v1/HTTPRoute >/tmp/bluesky-rendered.yaml
 git diff --check
 ```
 
