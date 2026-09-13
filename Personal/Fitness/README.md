@@ -19,7 +19,9 @@ There is currently no active Fitness owner in the
 so this is prepared desired state and will not deploy until an ApplicationSet
 explicitly references `Personal/Fitness`. Its future owner must inject
 `cluster.name`, `datacenter` and `region`, select the target namespace and
-renderer, and confirm the `main-gw` / `https-myloginspace` listener. The chart
+renderer, and confirm the `main-gw` / `https-myloginspace` listener. Resources
+use the stable `fitness` fullname so site-qualified release names cannot create
+invalid Service names. The chart
 does not use PostgreSQL, External Secrets or the Backplane `User` resource.
 
 openGym passkeys are bound to the exact `gym.mylogin.space` RP ID. Do not

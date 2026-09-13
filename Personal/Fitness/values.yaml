@@ -7,6 +7,9 @@ region: ''
 
 global:
   createDefaultServiceAccount: true
+  # Keep BJW-S-generated names within Kubernetes' 63-character limit even
+  # when the owning ApplicationSet uses a site-qualified release name.
+  fullnameOverride: 'fitness'
 
 gateway:
   name: 'main-gw'
