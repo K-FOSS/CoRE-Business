@@ -10,7 +10,9 @@ It runs two stateless replicas behind a ClusterIP Service and exposes
 The official image is pinned to release `2024.10.22-7ca5933` and its published
 GHCR digest. The workload does not need persistent storage, runtime secrets or
 egress; the egress NetworkPolicy therefore denies outbound traffic. Service
-account token mounting is disabled, and the container drops Linux capabilities.
+account token mounting is disabled, and the container drops all capabilities
+except `CHOWN`, `SETGID`, and `SETUID`, which the bundled nginx entrypoint uses
+to prepare its cache and run workers as the nginx user.
 
 The active owner is the
 [CoRE-Backplane IT-Tools ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/IT-Tools.yaml).
