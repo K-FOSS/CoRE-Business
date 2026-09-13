@@ -41,7 +41,7 @@ forecastle:
       expose: 'false'
 
     httpRoute:
-      enabled: true
+      enabled: false
       parentRefs:
         - group: 'gateway.networking.k8s.io'
           kind: 'Gateway'
