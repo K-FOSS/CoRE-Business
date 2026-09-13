@@ -21,14 +21,21 @@ explicitly references `Personal/Fitness`. Its future owner must inject
 `cluster.name`, `datacenter` and `region`, select the target namespace and
 renderer, and confirm the `main-gw` / `https-myloginspace` listener. Resources
 use the stable `fitness` fullname so site-qualified release names cannot create
-invalid Service names. The chart
-does not use PostgreSQL, External Secrets or the Backplane `User` resource.
+invalid Service names. The web route is protected by the site Authentik
+forward-auth outpost through an Envoy Gateway
+[`SecurityPolicy`](https://gateway.envoyproxy.io/latest/api/gateway_api/v1alpha1/securitypolicy/);
+the policy fails closed and forwards Authentik session and identity headers to
+openGym. The future owner must ensure the Backplane Authentik proxy Service is
+available as `aaa-myloginspace-proxy` in `core-prod`. The chart's
+`<release-name>-authentik` Terraform Workspace creates the forward-auth
+provider and application through the Backplane `authentik` ProviderConfig. The
+chart does not use PostgreSQL, External Secrets or the Backplane `User` resource.
 
 openGym passkeys are bound to the exact `gym.mylogin.space` RP ID. Do not
 change the hostname after profiles are created without re-registering their
 passkeys. The current route is labeled public/private for the site gateway and
-is discoverable as `openGym` in the `core` Forecastle instance; review the
-gateway's inherited access policy before activation.
+is not exposed through Forecastle; review the gateway's inherited access policy
+before activation.
 
 ```sh
 helm dependency build Personal/Fitness
@@ -40,7 +47,9 @@ helm template core-business-fitness Personal/Fitness --namespace core-prod \
 
 Review the upstream [openGym source repository](https://github.com/alexpcosta/opengym),
 [self-hosting guide](https://github.com/alexpcosta/opengym/blob/main/docs/SELF_HOSTING.md),
+[Authentik forward-auth documentation](https://docs.goauthentik.io/add-secure-apps/providers/proxy/forward_auth/),
 [BJW-S Common](https://github.com/bjw-s-labs/helm-charts/tree/main/charts/library/common),
+[Envoy Gateway SecurityPolicy documentation](https://gateway.envoyproxy.io/latest/api/gateway_api/v1alpha1/securitypolicy/),
 and [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) documentation.
 After activation, verify the route, `/api/health`, profile creation, passkey
 sign-in from a second device, media loading and restore of both PVCs.

@@ -1,3 +1,83 @@
+{{- define "fitness.config" -}}
+controllers:
+  api:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod: {automountServiceAccountToken: false, securityContext: {seccompProfile: {type: 'RuntimeDefault'}}}
+    containers:
+      api:
+        image: {repository: 'ghcr.io/duartesantos8/opengym-api', tag: '', pullPolicy: 'IfNotPresent'}
+        env: {PORT: '3000', DATA_DIR: '/data', RP_ID: '', ORIGIN: '', RP_NAME: 'openGym', COACH_DISABLED: '1'}
+        securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: ['ALL']}}
+        resources: {}
+        probes:
+          readiness: {enabled: true, type: 'HTTP', path: '/api/health', port: 3000, spec: {periodSeconds: 10, timeoutSeconds: 5}}
+          liveness: {enabled: true, type: 'HTTP', path: '/api/health', port: 3000, spec: {periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 5}}
+  web:
+    type: 'deployment'
+    replicas: 1
+    pod: {automountServiceAccountToken: false, securityContext: {seccompProfile: {type: 'RuntimeDefault'}}}
+    initContainers:
+      media:
+        image: {repository: '', tag: '', pullPolicy: 'IfNotPresent'}
+        command: ['/bin/sh', '-c']
+        args:
+          - >-
+            set -eu; mkdir -p /media/img /media/gif;
+            if [ -z "$(find /media/img -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            git clone --depth 1 https://github.com/hasaneyldrm/exercises-dataset.git /tmp/dataset;
+            git -C /tmp/dataset fetch --depth 1 origin 7455efae41b330c265e7cd4b78dfa848e7ce5ebd;
+            git -C /tmp/dataset checkout --detach 7455efae41b330c265e7cd4b78dfa848e7ce5ebd;
+            cp /tmp/dataset/images/*.jpg /media/img/; cp /tmp/dataset/videos/*.gif /media/gif/; fi
+        securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: ['ALL']}, runAsNonRoot: false, runAsUser: 0}
+        resources: {requests: {cpu: '10m', memory: '32Mi'}, limits: {cpu: '200m', memory: '256Mi'}}
+    containers:
+      web:
+        image: {repository: 'ghcr.io/duartesantos8/opengym-web', tag: '', pullPolicy: 'IfNotPresent'}
+        securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: ['ALL']}}
+        resources: {}
+        probes:
+          startup: {enabled: true, type: 'HTTP', path: '/', port: 80, spec: {periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 30}}
+          readiness: {enabled: true, type: 'HTTP', path: '/api/health', port: 80, spec: {periodSeconds: 10, timeoutSeconds: 5}}
+          liveness: {enabled: true, type: 'HTTP', path: '/api/health', port: 80, spec: {periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 5}}
+service:
+  api: {controller: 'api', forceRename: 'api', ports: {http: {port: 3000}}}
+  web: {controller: 'web', ports: {http: {port: 80}}}
+persistence:
+  data:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+    advancedMounts: {api: {api: [{path: '/data'}]}}
+  media:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '2Gi'
+    retain: true
+    annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+    advancedMounts:
+      web:
+        media: [{path: '/media'}]
+        web:
+          - {path: '/usr/share/nginx/html/img', subPath: 'img', readOnly: true}
+          - {path: '/usr/share/nginx/html/gif', subPath: 'gif', readOnly: true}
+route:
+  web:
+    kind: 'HTTPRoute'
+    labels: {wan-mode: 'public', lan-mode: 'private'}
+    hostnames: []
+    rules: [{matches: [{path: {type: 'PathPrefix', value: '/'}}], backendRefs: [{identifier: 'web', port: 80}]}]
+{{- end }}
+{{- $config := include "fitness.config" . | fromYaml -}}
+{{- $_ := set .Values "controllers" $config.controllers -}}
+{{- $_ := set .Values "service" $config.service -}}
+{{- $_ := set .Values "persistence" $config.persistence -}}
+{{- $_ := set .Values "route" $config.route -}}
 {{- include "bjw-s.common.loader.init" . -}}
 {{- $_ := required "opengym.hostname is required" .Values.opengym.hostname -}}
 {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.opengym.hostname) -}}
