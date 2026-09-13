@@ -58,6 +58,7 @@ notes:
 | [Automation](Automation/README.md) | [Automation](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Automation.yaml) | n8n with external database, Redis and S3 credentials. |
 | [Ambient](Ambient/README.md) | [Ambient](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Ambient.yaml) | Moodist ambient-sound service on selected infrastructure clusters. |
 | [Browsers](Browsers/README.md) | [Browsers](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Browsers.yaml) | Selenium Grid browser automation. |
+| [Landing](Landing/README.md) | [Landing](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Landing.yaml) | Forecastle application launchpad at `mylogin.space`, discovering exposed applications from selected namespaces. |
 | [Desktop](Desktop/README.md) | [Desktops](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Desktops.yaml) | GPU-backed LinuxServer Selkies desktops, including 120 FPS OrcaSlicer and separate NVIDIA/Intel Steam streams; NVIDIA Steam starts in Big Picture with H.264 locked, and all routes use Authentik proxy authentication. |
 | [Office](Office/README.md) | [NextCloud](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml) | Nextcloud, Collabora and supporting office services. |
 | [Mail](Mail/README.md) | [Mail](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml) | Multi-site Postfix, Dovecot, Rspamd and Maddy mail stack with DKIM/DNS and optional SimpleLogin. |
@@ -79,6 +80,22 @@ using BJW-S Common, with a pinned official image, a single SQLite-backed replica
 retained Longhorn storage and public federation routes. It has no Backplane owner
 yet and requires a single-cluster owner, site hostname, wildcard DNS/TLS and a
 namespace-local runtime Secret before activation.
+
+[Mastodon / Fediverse](Social/Fediverse/README.md) is owned by the
+[Fediverse ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml)
+and targets `core-home1-talos-prod` in `core-prod`. It uses BJW-S Common,
+Crossplane Terraform Authentik OIDC and the site-local `mylogin.space` User
+resource for PostgreSQL and S3. The current ApplicationSet injects only site
+identity; hostname, gateway listener and S3 provider values
+remain required before successful reconciliation.
+
+## Work in progress
+
+[LinkStack](Social/Links/README.md) is prepared at `Social/Links` using BJW-S
+Common, an official digest-pinned LinkStack image, a single SQLite-backed
+replica, retained Longhorn storage and a public Gateway API route. It has no
+active Backplane owner yet and requires a future single-cluster owner to inject
+site identity, hostname, notification address and TLS listener values.
 
 See the [repository guide](docs/REPOSITORY.md) for ownership discovery,
 configuration layers and change validation.
