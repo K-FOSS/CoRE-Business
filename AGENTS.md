@@ -91,6 +91,17 @@ rules for its subtree but must not weaken these repository-wide requirements.
   unquoted. Quote numeric-looking identifiers so they remain strings.
 - Prefer values-driven templates for cluster, environment, hostname, gateway,
   namespace and secret-store differences.
+- For every `Landing`/Forecastle-exposed service, add a
+  `forecastle.stakater.com/appName` annotation with a friendly display name;
+  do not rely on the generated resource name in the dashboard.
+- Forecastle’s deployed instance name is `core`. To expose a service through
+  Forecastle, add these annotations to the exposed `HTTPRoute` (or `Ingress`):
+  `forecastle.stakater.com/expose: 'true'`,
+  `forecastle.stakater.com/instance: 'core'`, and a friendly
+  `forecastle.stakater.com/appName`. Add
+  `forecastle.stakater.com/group` when the service belongs in a dashboard
+  group such as `Tools` or `Security`; keep the route hostname and Gateway
+  attachment valid as well.
 - Validate every parser boundary touched by a change: Helm, Kustomize, YAML,
   embedded Terraform, shell/config fragments and Kubernetes custom resources.
 - For Helm/Lovely changes, resolve dependencies locally, run `helm lint`,
