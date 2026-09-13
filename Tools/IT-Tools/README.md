@@ -12,13 +12,19 @@ GHCR digest. The workload does not need persistent storage, runtime secrets or
 egress; the egress NetworkPolicy therefore denies outbound traffic. Service
 account token mounting is disabled, and the container drops Linux capabilities.
 
-There is currently no active IT-Tools owner in the
-[CoRE-Backplane Business Tools ApplicationSets](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business/Tools).
-Add an ApplicationSet targeting `Tools/IT-Tools` before expecting Argo CD to
-deploy this chart. The intended deployment values are the `core-prod`
-namespace, the tenant bare-metal infrastructure cluster selector used by the
-[CyberChef ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml),
-and the gateway values in `values.yaml`.
+The active owner is the
+[CoRE-Backplane IT-Tools ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/IT-Tools.yaml).
+It renders this chart from the `HEAD` revision of `CoRE-Business` on clusters
+matching `mylogin.space/tenant: core.mylogin.space`,
+`resolvemy.host/computetype: baremetal`,
+`resolvemy.host/nodetype: infra`, and
+`topology.kubernetes.io/region: yvr`. The generator injects the selected
+cluster name and `prod` environment; the destination namespace is therefore
+`core-prod`. Argo CD creates the namespace and uses server-side apply.
+
+The ApplicationSet preserves resources when the generated Application is
+deleted. Removing IT-Tools therefore requires an explicit cleanup decision;
+do not assume ApplicationSet deletion removes the workload.
 
 ```sh
 helm dependency build Tools/IT-Tools
