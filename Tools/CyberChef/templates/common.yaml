@@ -119,7 +119,7 @@ route:
       forecastle.stakater.com/expose: 'true'
       forecastle.stakater.com/instance: 'core'
       forecastle.stakater.com/group: 'Tools'
-      forecastle.stakater.com/appName: 'Cyberchef'
+      forecastle.stakater.com/appName: 'CyberChef'
 
     parentRefs:
       - group: gateway.networking.k8s.io
