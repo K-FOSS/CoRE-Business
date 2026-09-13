@@ -55,3 +55,7 @@ forecastle:
             - path:
                 type: 'PathPrefix'
                 value: '/'
+          backendRefs:
+            - name: 'landing'
+              port: 80
+              weight: 1

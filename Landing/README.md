@@ -7,13 +7,13 @@ optional `ForecastleApp` custom resource.
 
 ## Deployment ownership
 
-No active CoRE-Backplane ApplicationSet currently references this new `Landing`
-path. Before enabling it, add or update the owning ApplicationSet in
-[CoRE-Backplane](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business)
-to select the intended clusters, destination namespace and Lovely values. The
-current sibling application pattern uses the `core-prod` namespace and the
-`main-gw` Gateway in the `https-myloginspace` section; those are defaults here,
-not proof of deployment.
+The [Landing ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Landing.yaml)
+selects the `core.mylogin.space` tenant's bare-metal infrastructure cluster in
+the `yvr` region and deploys to `core-prod`. It renders this chart directly
+with Helm at `targetRevision: HEAD`, creates the namespace with server-side
+apply, and preserves chart resources when the Argo CD Application is deleted.
+The ApplicationSet supplies cluster identity and `prod` as generator values;
+the chart's site-specific route and namespace values remain in this chart.
 
 The overlay must provide the environment, cluster and site-specific Gateway
 values under `forecastle.forecastle.httpRoute`. Extend
@@ -32,8 +32,9 @@ Forecastle displays, not the RBAC verbs granted by the upstream chart.
 - Authentication is not bundled. Coordinate any OIDC or gateway policy with
   the owning Backplane ApplicationSet before exposing the dashboard publicly.
 - No application data or persistent volume is created. Removing the release
-  removes the Deployment, Service, route, RBAC and chart-managed CRD resources;
-  discovered applications remain owned by their source resources.
+  normally removes the Deployment, Service, route, RBAC and chart-managed CRD
+  resources; the owning ApplicationSet preserves resources on application
+  deletion, and discovered applications remain owned by their source resources.
 
 ## Prerequisites
 
