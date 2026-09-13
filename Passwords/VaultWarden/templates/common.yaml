@@ -144,6 +144,7 @@ route:
       resolvemy.host/env: {{ .Values.env | quote }}
     annotations:
       forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
     parentRefs:
       - group: gateway.networking.k8s.io
         kind: Gateway
