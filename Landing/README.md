@@ -22,6 +22,11 @@ new application namespaces should appear. The chart's upstream ClusterRole can r
 Ingresses, HTTPRoutes and ForecastleApps cluster-wide; the selector limits what
 Forecastle displays, not the RBAC verbs granted by the upstream chart.
 
+The [argocd-lovely-plugin](https://github.com/crumbhole/argocd-lovely-plugin)
+Kustomize phase applies `deployment-healthcheck-patch.yaml` to the rendered
+Forecastle Deployment. This keeps the upstream [Forecastle Helm chart](https://github.com/stakater/Forecastle/tree/master/deployments/kubernetes/chart/forecastle)
+unmodified while configuring its documented `/healthz` and `/readyz` endpoints.
+
 ## Configuration and access
 
 - Public endpoint: `https://mylogin.space/` through the configured Gateway API
@@ -42,6 +47,7 @@ Forecastle displays, not the RBAC verbs granted by the upstream chart.
 ## Prerequisites
 
 - Argo CD with the Lovely renderer and Helm support.
+- The Lovely renderer's Kustomize phase enabled for this directory.
 - Gateway API CRDs and a Gateway that accepts the configured parent reference.
 - Forecastle's CRD support is enabled by this chart; the CRD must be permitted
   by the cluster's deployment policy.
@@ -55,11 +61,12 @@ helm template core-business-landing Landing --values Landing/values.yaml >/tmp/c
 git diff --check -- Landing
 ```
 
-Render again with the exact Backplane-injected values before enabling the
-ApplicationSet. Inspect the complete output for route parent references,
-namespace scope, RBAC, image tag and public access policy. After reconciliation,
-verify the Gateway route, `/healthz`, discovery of one annotated application,
-and the `ForecastleApp` CRD path if it is used.
+Render the complete Lovely output with the exact Backplane-injected values
+before enabling the ApplicationSet. Inspect the output for route parent
+references, namespace scope, RBAC, image tag, public access policy and both
+healthchecks. After reconciliation, verify the Gateway route, `/healthz`,
+`/readyz`, discovery of one annotated application, and the `ForecastleApp` CRD
+path if it is used.
 
 ## Upstream projects
 

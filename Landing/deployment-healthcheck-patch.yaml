@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: landing
+spec:
+  template:
+    spec:
+      containers:
+        - name: landing
+          livenessProbe:
+            httpGet:
+              path: '/healthz'
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: '/readyz'
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
