@@ -4,6 +4,8 @@ kind: HTTPRoute
 metadata:
   name: {{ .Values.forecastle.nameOverride | default "landing" | quote }}
   namespace: {{ .Release.Namespace | quote }}
+  labels:
+    wan-mode: 'public'
 spec:
   parentRefs:
 {{ toYaml .Values.forecastle.forecastle.httpRoute.parentRefs | nindent 4 }}

@@ -31,6 +31,9 @@ Forecastle displays, not the RBAC verbs granted by the upstream chart.
   namespaces.
 - Authentication is not bundled. Coordinate any OIDC or gateway policy with
   the owning Backplane ApplicationSet before exposing the dashboard publicly.
+- Forecastle runs as non-root UID/GID `10002`, with privilege escalation
+  disabled, all Linux capabilities dropped, a read-only root filesystem, and
+  the `RuntimeDefault` seccomp profile.
 - No application data or persistent volume is created. Removing the release
   normally removes the Deployment, Service, route, RBAC and chart-managed CRD
   resources; the owning ApplicationSet preserves resources on application

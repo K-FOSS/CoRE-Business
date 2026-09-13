@@ -16,6 +16,9 @@ forecastle:
       replicas: 1
       revisionHistoryLimit: 2
       podSecurityContext:
+        runAsUser: 10002
+        runAsGroup: 10002
+        runAsNonRoot: true
         seccompProfile:
           type: 'RuntimeDefault'
       securityContext:
@@ -24,6 +27,8 @@ forecastle:
           drop:
             - 'ALL'
         readOnlyRootFilesystem: true
+        runAsUser: 10002
+        runAsGroup: 10002
         runAsNonRoot: true
       resources:
         requests:

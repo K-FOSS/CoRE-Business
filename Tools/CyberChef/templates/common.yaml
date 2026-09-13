@@ -115,6 +115,8 @@ route:
     labels:
       wan-mode: 'public'
       lan-mode: 'private'
+    annotations:
+      forecastle.stakater.com/expose: 'true'
 
     parentRefs:
       - group: gateway.networking.k8s.io

@@ -142,6 +142,8 @@ route:
       resolvemy.host/gw-ns: {{ .Values.gateway.namespace | quote }}
       resolvemy.host/security: 'public'
       resolvemy.host/env: {{ .Values.env | quote }}
+    annotations:
+      forecastle.stakater.com/expose: 'true'
     parentRefs:
       - group: gateway.networking.k8s.io
         kind: Gateway
