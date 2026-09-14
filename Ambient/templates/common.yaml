@@ -102,6 +102,13 @@ route:
     hostnames:
       - sounds.mylogin.space
 
+    # -- Provide additional annotations which may be required.
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/group: 'Tools'
+      forecastle.stakater.com/appName: 'Moodist'
+
     # -- Configure the resource the route attaches to.
     parentRefs:
       - # Group of the referent resource.
