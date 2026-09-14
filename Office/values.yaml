@@ -50,17 +50,17 @@ collabora-online:
   domain: collabora.mylogin.space
 
   image:
-    repository: collabora/code
+    repository: docker.io/collabora/code
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: '26.04.3.1.1'
 
   terminationGracePeriodSeconds: 60
 
   serviceAccount:
     # Specifies whether a service account should be created
     create: false
-
+    name: 'collabora-runtime'
 
   collabora:
     # example to add aliasgroups
@@ -70,7 +70,7 @@ collabora-online:
         - host: "https://collabora.mylogin.space:443"
         - host: "https://office.mylogin.space:443"
 
-    extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4 --o:net.post_allow.host[0]=.+ --o:storage.wopi.host[0]=.+
+    extra_params: --o:ssl.termination=true --o:ssl.enable=false --o:net.proto=IPv4 --o:net.post_allow.host[0]=office\.mylogin\.space --o:storage.wopi.host[0]=office\.mylogin\.space
 
     # External hostname:port of the server running coolwsd.
     # If empty, it's derived from the request (please set it if this doesn't work).
@@ -167,23 +167,27 @@ collabora-online:
 
   podLabels: {}
 
-  podSecurityContext: {}
-  #  fsGroup: 2000
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: 'RuntimeDefault'
 
-  securityContext: {}
-  #  readOnlyRootFilesystem: false
-  #  privileged: true
-  #  capabilities:
-  #    drop:
-  #    - ALL
-  #  readOnlyRootFilesystem: true
-  #  runAsNonRoot: true
-  #  runAsUser: 1000
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - 'ALL'
+    runAsNonRoot: true
+    seccompProfile:
+      type: 'RuntimeDefault'
 
   service:
     type: ClusterIP
     port: 9980
-    annotations: {}
+    annotations:
+      external-dns.kubernetes.io/hostname: 'collabora.mylogin.space'
+      # TODO: Remove the legacy ExternalDNS annotation after all controllers use v0.22.0+.
+      external-dns.alpha.kubernetes.io/hostname: 'collabora.mylogin.space'
 
   deployment:
     # Use StatefulSet or Deployment
@@ -249,30 +253,49 @@ collabora-online:
   #   matchLabels:
   #     kubernetes.io/metadata.name: your-ingress-controller-namespace
   networkPolicy:
-    enabled: false
-    # ingress:
-    #   - ipBlock:
-    #       cidr: 172.17.0.0/16
-    #       except:
-    #       - 172.17.1.0/24
-    #   - namespaceSelector:
-    #       matchLabels:
-    #         project: myproject
-    #   - podSelector:
-    #       matchLabels:
-    #         role: mypodSelector
-    #   - ports:
-    #     - protocol: TCP
-    #       port: 8080
-    #     - protocol: TCP
-    #       port: 8000
-    #
-    # egress:
-    #   - ipBlock:
-    #       cidr: 10.0.0.0/24
-    #   - ports:
-    #     - protocol: TCP
-    #       port: 5978
+    enabled: true
+    ingress:
+      # The external LoadBalancer may preserve client source addresses, so
+      # the service must accept editor and WebSocket traffic from its
+      # advertised clients. Restrict this to private CIDRs if the
+      # LoadBalancer is private.
+      - ipBlock:
+          cidr: 0.0.0.0/0
+        ports:
+          - protocol: TCP
+            port: 9980
+      - ipBlock:
+          cidr: '::/0'
+        ports:
+          - protocol: TCP
+            port: 9980
+    egress:
+      # Nextcloud WOPI callbacks and other required HTTPS endpoints.
+      - ipBlock:
+          cidr: 0.0.0.0/0
+        ports:
+          - protocol: TCP
+            port: 443
+      - ipBlock:
+          cidr: '::/0'
+        ports:
+          - protocol: TCP
+            port: 443
+      # Cluster DNS; both protocols are needed by common DNS deployments.
+      - ipBlock:
+          cidr: 0.0.0.0/0
+        ports:
+          - protocol: UDP
+            port: 53
+          - protocol: TCP
+            port: 53
+      - ipBlock:
+          cidr: '::/0'
+        ports:
+          - protocol: UDP
+            port: 53
+          - protocol: TCP
+            port: 53
 
   podDisruptionBudget:
     enabled: false

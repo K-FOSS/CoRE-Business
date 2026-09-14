@@ -30,7 +30,7 @@ office.mylogin.space HTTPRoute
   -> Nextcloud FPM application and worker
   -> external PostgreSQL + platform Redis/S3
 
-collabora.mylogin.space HTTPRoute
+collabora.mylogin.space ClusterIP Service
   -> Collabora Online
   -> WOPI requests to Nextcloud
 
@@ -55,10 +55,14 @@ pdf.mylogin.space HTTPRoute
   `AccessKey` and `SecretAccessKey` outputs are written to
   `office-nextcloud-s3-creds`, which is the Secret consumed by the main
   Nextcloud deployment and its custom worker.
-- Gateway API HTTPRoutes expose Nextcloud and Collabora. An Envoy Gateway
-  BackendTrafficPolicy adjusts the Nextcloud backend behavior.
-- Collabora is configured for TLS termination at the gateway and permits the
-  Nextcloud and Collabora hosts as WOPI aliases.
+- Gateway API exposes Nextcloud, while ExternalDNS publishes the Collabora
+  ClusterIP Service. An Envoy Gateway BackendTrafficPolicy adjusts the
+  Nextcloud backend behavior.
+- Collabora uses chart `1.3.1` and CODE image `26.04.3.1.1`. It is configured
+  for TLS termination before the container and permits the Nextcloud and
+  Collabora hosts as WOPI aliases; WOPI and post requests are restricted to
+  the Nextcloud host. Its Service is a `ClusterIP` with ExternalDNS
+  annotations for `collabora.mylogin.space`.
 - The PDF workload uses the `frooodle/s-pdf` image and a mutable `latest` tag.
 
 ## Prerequisites
@@ -66,6 +70,8 @@ pdf.mylogin.space HTTPRoute
 - Argo CD with the Lovely plugin and Helm/Kustomize support.
 - Gateway API and the Envoy Gateway extension CRDs used by
   `BackendTrafficPolicy`.
+- ExternalDNS configured to publish `collabora.mylogin.space` to the internal
+  ClusterIP, with client routing that can reach the cluster Service CIDR.
 - External Secrets with the `mainvault-core` ClusterSecretStore.
 - The CoRE Crossplane `User` API and its providers.
 - The Crossplane Terraform provider. This chart creates the credential-free
@@ -83,8 +89,8 @@ pdf.mylogin.space HTTPRoute
   while `existingSecret` is disabled. They must not be considered production
   credentials; migrate administrator authentication to a Secret before relying
   on that interface.
-- Collabora currently permits broad WOPI/post-allow host patterns. Review the
-  rendered restrictions whenever hostnames or gateway topology change.
+- Keep the rendered WOPI/post-allow restrictions aligned with the Nextcloud
+  hostname whenever hostnames or gateway topology change.
 - The Nextcloud image uses the mutable `fpm-alpine` tag with `Always` pull
   policy, and the PDF image uses `latest`. A restart can therefore change
   software without a repository commit.
@@ -122,6 +128,15 @@ After reconciliation, test:
 6. Backup visibility and a representative restore procedure.
 7. The `nextcloud-s3-credentials` Workspace is ready and its connection Secret
    contains the expected key names; never print or decode their values.
+
+Collabora does not need to be reachable from the public internet. It does need
+to be reachable over HTTPS by every user's browser during editing, and the
+Collabora pods need to reach Nextcloud for WOPI requests. A ClusterIP and
+private DNS are suitable only when users' networks can route to the cluster
+Service CIDR (for example through a VPN). A ClusterIP reachable only by
+Nextcloud is insufficient because the browser also opens the Collabora editor
+and WebSocket connection. ExternalDNS only publishes the name; it does not
+provide routing, proxying, or TLS termination.
 
 ## Upstream projects
 
