@@ -273,6 +273,8 @@ service:
       lan-mode: 'private'
       wan-mode: 'public'
     annotations:
+      external-dns.kubernetes.io/hostname: 'int-imap.mylogin.space'
+      # TODO: Remove the legacy ExternalDNS annotation after all controllers use v0.22.0+.
       external-dns.alpha.kubernetes.io/hostname: 'int-imap.mylogin.space'
     ports:
       imap-default:
@@ -314,6 +316,8 @@ service:
       lan-mode: 'private'
       wan-mode: 'public'
     annotations:
+      external-dns.kubernetes.io/hostname: 'int-rspamd.mylogin.space'
+      # TODO: Remove the legacy ExternalDNS annotation after all controllers use v0.22.0+.
       external-dns.alpha.kubernetes.io/hostname: 'int-rspamd.mylogin.space'
     ports:
       proxy:
