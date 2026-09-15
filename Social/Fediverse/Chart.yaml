@@ -3,7 +3,7 @@ name: 'core-business-social-fediverse'
 description: 'Mastodon and optional Bluesky PDS instances using BJW-S Common, Crossplane and mylogin.space User resources'
 type: 'application'
 version: '1.0.0'
-appVersion: '4.7.0'
+appVersion: '4.7.2'
 kubeVersion: '>=1.31.0-0'
 home: 'https://joinmastodon.org/'
 sources:
