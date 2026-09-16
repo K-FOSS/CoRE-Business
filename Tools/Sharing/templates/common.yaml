@@ -124,6 +124,19 @@ route:
 {{- $_ := set .Values.controllers.kutt.containers.app.image "pullPolicy" .Values.sharing.kutt.image.pullPolicy -}}
 {{- $_ := set .Values.controllers.kutt.containers.app "env" $env -}}
 {{- $_ := set .Values.controllers.kutt.containers.app "resources" .Values.sharing.kutt.resources -}}
+{{- if and .Values.sharing.kutt.redis.enabled .Values.sharing.kutt.redis.tlsProxy.enabled }}
+{{- $_ := set .Values.controllers.kutt.containers "redis-tls-proxy" (dict
+  "image" (dict
+    "repository" .Values.sharing.kutt.redis.tlsProxy.image.repository
+    "tag" .Values.sharing.kutt.redis.tlsProxy.image.tag
+    "pullPolicy" .Values.sharing.kutt.redis.tlsProxy.image.pullPolicy
+  )
+  "command" (list "socat" (printf "TCP-LISTEN:%s,fork,reuseaddr,bind=127.0.0.1" .Values.sharing.kutt.redis.tlsProxy.port) (printf "OPENSSL:%s:%s,verify=0" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.kutt.redis.host) .Values.sharing.kutt.redis.port))
+  "securityContext" (dict "allowPrivilegeEscalation" false "capabilities" (dict "drop" (list "ALL")))
+) -}}
+{{- $_ := set $env "REDIS_HOST" "127.0.0.1" -}}
+{{- $_ := set $env "REDIS_PORT" .Values.sharing.kutt.redis.tlsProxy.port -}}
+{{- end }}
 {{- $_ := set .Values.route.app "hostnames" (list .Values.sharing.kutt.hostname) -}}
 {{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
 {{- end }}

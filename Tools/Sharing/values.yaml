@@ -37,6 +37,13 @@ sharing:
         terraformProvider: 'psql-home1-yvr'
     redis:
       enabled: true
+      tlsProxy:
+        enabled: true
+        image:
+          repository: 'docker.io/alpine/socat'
+          tag: '1.8.0.3'
+          pullPolicy: 'IfNotPresent'
+        port: '6380'
       host: ''
       port: '6379'
       database: '2'

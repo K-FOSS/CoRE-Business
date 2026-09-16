@@ -21,7 +21,12 @@ Dragonfly credentials are read from the platform Vault path used by the
 
 The JWT is generated once by the External Secrets [Password generator](https://external-secrets.io/latest/api/generator/password/)
 and retained in the generated Secret. No passwords or JWT material belong in
-values. The Authentik Workspace generates
+values. Because the site-local Dragonfly listener is TLS-only and Kutt's
+ioredis configuration has no TLS setting, the chart adds a small `socat` TLS
+bridge sidecar; Kutt talks to localhost and the sidecar encrypts the Dragonfly
+connection. The bridge disables peer certificate verification (`verify=0`), so
+the connection is encrypted but does not authenticate the Dragonfly certificate.
+The Authentik Workspace generates
 OIDC client credentials into a connection Secret consumed by Kutt. Kutt
 documents Redis configuration but does not document a Redis TLS environment
 variable; verify the deployed Dragonfly listener/client compatibility before
@@ -35,5 +40,5 @@ User, ExternalSecret, database and Dragonfly conditions, then test login and
 link creation.
 
 Upstream references: [Kutt documentation](https://docs.kutt.to/), [Kutt
-source](https://github.com/thedevs-network/kutt), [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/),
+source](https://github.com/thedevs-network/kutt), [socat](https://www.dest-unreach.org/socat/), [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/),
 [Gateway API](https://gateway-api.sigs.k8s.io/), and [External Secrets](https://external-secrets.io/).
