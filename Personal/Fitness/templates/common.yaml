@@ -35,8 +35,8 @@ controllers:
     containers:
       web:
         image: {repository: 'ghcr.io/duartesantos8/opengym-web', tag: '', pullPolicy: 'IfNotPresent'}
-        # The nginx:alpine entrypoint chowns its cache directory to UID 101 at startup.
-        securityContext: {allowPrivilegeEscalation: false, capabilities: {add: ['CHOWN'], drop: ['ALL']}}
+        # The nginx:alpine image initializes cache ownership and drops workers to UID/GID 101.
+        securityContext: {allowPrivilegeEscalation: false, capabilities: {add: ['CHOWN', 'SETGID', 'SETUID'], drop: ['ALL']}}
         resources: {}
         probes:
           startup: {enabled: true, type: 'HTTP', path: '/', port: 80, spec: {periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 30}}
