@@ -14,6 +14,12 @@ profiles, passkeys, workout history, session state and generated notification
 keys are retained on a 10Gi Longhorn PVC at `/data`; the media PVC is retained
 separately. Back up both claims before removal or migration.
 
+The web container drops all Linux capabilities except `CHOWN`. This narrow
+exception is required because the upstream
+[Nginx web image](https://github.com/DuarteSantos8/openGym/blob/main/web/Dockerfile)
+changes ownership of `/var/cache/nginx/client_temp` to its worker UID during
+startup.
+
 There is currently no active Fitness owner in the
 [CoRE-Backplane Apps/Business tree](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business),
 so this is prepared desired state and will not deploy until an ApplicationSet
