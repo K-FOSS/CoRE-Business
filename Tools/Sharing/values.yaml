@@ -29,7 +29,6 @@ sharing:
       userSecret: 'sharing-database'
       usernameKey: 'username'
       passwordKey: 'password'
-      databaseKey: 'database'
       ssl: 'true'
       crossplane:
         # Nextcloud provisions the identity through the hub's site-local PSQL
