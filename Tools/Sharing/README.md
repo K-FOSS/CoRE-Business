@@ -13,13 +13,15 @@ checkout, so it is not independently deployable yet.
 
 The `mylogin.space/v1alpha1` [User resource](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
 creates Kutt's PostgreSQL role/database and writes its connection Secret.
-PostgreSQL is reached through the site-local endpoint from the [PostgreSQL
+PostgreSQL is reached through the automatically formed site-local endpoint
+`psql-local.<cluster>.<datacenter>.<region>.mylogin.space:5432` from the [PostgreSQL
 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml).
 Dragonfly credentials are read from the platform Vault path used by the
 [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
 
-`sharing.kutt.jwtSecret.name` must reference an externally managed Secret. No
-passwords or JWT material belong in values. The Authentik Workspace generates
+The JWT is generated once by the External Secrets [Password generator](https://external-secrets.io/latest/api/generator/password/)
+and retained in the generated Secret. No passwords or JWT material belong in
+values. The Authentik Workspace generates
 OIDC client credentials into a connection Secret consumed by Kutt. Kutt
 documents Redis configuration but does not document a Redis TLS environment
 variable; verify the deployed Dragonfly listener/client compatibility before

@@ -81,13 +81,13 @@ route:
 {{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
 {{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
 {{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
-{{- $_ := required "sharing.kutt.jwtSecret.name must reference an externally managed Secret" .Values.sharing.kutt.jwtSecret.name -}}
+{{- $_ := required "sharing.kutt.jwtSecret.secretName is required" .Values.sharing.kutt.jwtSecret.secretName -}}
 {{- $_ := required "sharing.kutt.database.crossplane.crossplaneProvider must be injected or configured" .Values.sharing.kutt.database.crossplane.crossplaneProvider -}}
 {{- $_ := required "sharing.kutt.database.crossplane.terraformProvider must be injected or configured" .Values.sharing.kutt.database.crossplane.terraformProvider -}}
 {{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.passwordKey)) -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.usernameKey)) -}}
 {{- $dbName := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.databaseKey)) -}}
-{{- $jwt := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.jwtSecret.name "key" .Values.sharing.kutt.jwtSecret.key)) -}}
+{{- $jwt := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.jwtSecret.secretName "key" .Values.sharing.kutt.jwtSecret.key)) -}}
 {{- $env := dict
   "NODE_ENV" "production"
   "PORT" "3000"
@@ -95,7 +95,7 @@ route:
   "DEFAULT_DOMAIN" .Values.sharing.kutt.hostname
   "JWT_SECRET" $jwt
   "DB_CLIENT" "pg"
-  "DB_HOST" .Values.sharing.kutt.database.host
+  "DB_HOST" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.kutt.database.host)
   "DB_PORT" .Values.sharing.kutt.database.port
   "DB_NAME" $dbName
   "DB_USER" $dbUsername

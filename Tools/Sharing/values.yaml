@@ -23,7 +23,8 @@ sharing:
       tag: 'v3.2.6'
       pullPolicy: 'IfNotPresent'
     database:
-      host: 'psql-int.mylogin.space'
+      # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
+      host: ''
       port: '5432'
       userSecret: 'sharing-database'
       usernameKey: 'username'
@@ -46,8 +47,9 @@ sharing:
       secretName: 'sharing-dragonfly'
       passwordKey: 'redis-password'
     jwtSecret:
-      # Existing externally managed Secret; never put the JWT in values or Git.
-      name: ''
+      # Generated once by External Secrets; never put the JWT in values or Git.
+      generatorName: 'sharing-kutt-jwt'
+      secretName: 'sharing-kutt-jwt'
       key: 'JWT_SECRET'
     oidc:
       enabled: true
