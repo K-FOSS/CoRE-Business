@@ -37,6 +37,7 @@ controllers:
         image: {repository: 'ghcr.io/duartesantos8/opengym-web', tag: '', pullPolicy: 'IfNotPresent'}
         # The nginx:alpine image initializes cache ownership and drops workers to UID/GID 101.
         securityContext: {allowPrivilegeEscalation: false, capabilities: {add: ['CHOWN', 'SETGID', 'SETUID'], drop: ['ALL']}}
+        env: {RESOLVER: ''}
         resources: {}
         probes:
           startup: {enabled: true, type: 'HTTP', path: '/', port: 80, spec: {periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 30}}
@@ -87,6 +88,7 @@ route:
 {{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
 {{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
 {{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "clusterDNS must be injected by the owning ApplicationSet" .Values.clusterDNS -}}
 {{- $_ := required "gateway.name is required" .Values.gateway.name -}}
 {{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
 {{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
@@ -98,6 +100,7 @@ route:
 {{- $_ := set .Values.controllers.api.containers.api.env "ORIGIN" (printf "https://%s" .Values.opengym.hostname) -}}
 {{- $_ := set .Values.controllers.api.containers.api "resources" .Values.opengym.resources.api -}}
 {{- $_ := set .Values.controllers.web.containers.web "resources" .Values.opengym.resources.web -}}
+{{- $_ := set .Values.controllers.web.containers.web.env "RESOLVER" .Values.clusterDNS -}}
 {{- $_ := set .Values.route.web "hostnames" (list .Values.opengym.hostname) -}}
 {{- $_ := set .Values.route.web "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
 {{- include "bjw-s.common.loader.generate" . -}}

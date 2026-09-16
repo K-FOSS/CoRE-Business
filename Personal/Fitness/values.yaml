@@ -4,6 +4,7 @@ cluster:
 
 datacenter: ''
 region: ''
+clusterDNS: 'kube-dns.kube-system.svc.cluster.local'
 
 global:
   createDefaultServiceAccount: true

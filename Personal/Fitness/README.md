@@ -20,6 +20,11 @@ The web container drops all Linux capabilities except `CHOWN`, `SETGID` and
 changes ownership of `/var/cache/nginx/client_temp` and drops workers to UID/GID
 101 during startup.
 
+The chart overrides the image's Docker-only `127.0.0.11` resolver with the
+Kubernetes `kube-dns` service (`kube-dns.kube-system.svc.cluster.local`). The
+owning ApplicationSet must override `clusterDNS` when targeting a cluster with
+a different CoreDNS/kube-dns Service name.
+
 There is currently no active Fitness owner in the
 [CoRE-Backplane Apps/Business tree](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business),
 so this is prepared desired state and will not deploy until an ApplicationSet
