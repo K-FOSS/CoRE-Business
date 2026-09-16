@@ -111,9 +111,10 @@ route:
   "TRUST_PROXY" "true"
 }}
 {{- if .Values.sharing.kutt.oidc.enabled }}
-{{- range $key := list "OIDC_ISSUER_URL" "OIDC_CLIENT_ID" "OIDC_CLIENT_SECRET" }}
+{{- range $key := list "OIDC_CLIENT_ID" "OIDC_CLIENT_SECRET" }}
 {{- $_ := set $env $key (dict "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-kutt-oidc" $.Release.Name) "key" $key))) -}}
 {{- end }}
+{{- $_ := set $env "OIDC_ISSUER" (dict "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-kutt-oidc" $.Release.Name) "key" "OIDC_ISSUER_URL"))) -}}
 {{- $_ := set $env "OIDC_ENABLED" "true" -}}
 {{- $_ := set $env "OIDC_SCOPE" "openid profile email" -}}
 {{- $_ := set $env "OIDC_EMAIL_CLAIM" "email" -}}
