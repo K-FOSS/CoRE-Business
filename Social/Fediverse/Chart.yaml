@@ -8,6 +8,7 @@ kubeVersion: '>=1.31.0-0'
 home: 'https://joinmastodon.org/'
 sources:
   - 'https://github.com/mastodon/mastodon'
+  - 'https://github.com/glitch-soc/mastodon'
   - 'https://docs.joinmastodon.org/'
   - 'https://github.com/bluesky-social/pds'
   - 'https://atproto.com/specs/atp'

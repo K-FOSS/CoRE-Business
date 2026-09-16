@@ -6,8 +6,9 @@ chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/) 5.0.1.
 Mastodon web, streaming, Sidekiq and database migrations are rendered through
 Common. The public [Gateway API](https://gateway-api.sigs.k8s.io/) route sends
 `/api/v1/streaming` to Mastodon’s streaming process and all other paths to web.
-The web, Sidekiq and migration workloads use the Mastodon 4.7.0 image pinned to
-an immutable GHCR manifest digest. Streaming uses Mastodon’s separate
+The web, Sidekiq and migration workloads use the
+[Glitch-soc Mastodon](https://github.com/glitch-soc/mastodon) 4.7.2 image pinned
+to an immutable GHCR manifest digest. Streaming uses Mastodon’s separate
 `mastodon-streaming` 4.7.0 image, also pinned to its immutable digest; the
 official container documentation uses that image for the streaming process.
 
