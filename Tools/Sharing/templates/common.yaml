@@ -1,0 +1,130 @@
+{{- include "bjw-s.common.loader.init" . -}}
+
+{{- define "app-template.hardcodedValues" -}}
+controllers:
+  kutt:
+    type: 'deployment'
+    replicas: 1
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      app:
+        image:
+          repository: 'docker.io/kutt/kutt'
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            type: 'TCP'
+            port: 3000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            type: 'TCP'
+            port: 3000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'TCP'
+            port: 3000
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
+service:
+  app:
+    controller: 'kutt'
+    ports:
+      http:
+        port: 3000
+
+route:
+  app:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/appName: 'Sharing'
+      forecastle.stakater.com/group: 'Tools'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'app'
+            port: 3000
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
+{{- if .Values.sharing.kutt.enabled }}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "sharing.kutt.jwtSecret.name must reference an externally managed Secret" .Values.sharing.kutt.jwtSecret.name -}}
+{{- $_ := required "sharing.kutt.database.crossplane.crossplaneProvider must be injected or configured" .Values.sharing.kutt.database.crossplane.crossplaneProvider -}}
+{{- $_ := required "sharing.kutt.database.crossplane.terraformProvider must be injected or configured" .Values.sharing.kutt.database.crossplane.terraformProvider -}}
+{{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.passwordKey)) -}}
+{{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.usernameKey)) -}}
+{{- $dbName := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.databaseKey)) -}}
+{{- $jwt := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.jwtSecret.name "key" .Values.sharing.kutt.jwtSecret.key)) -}}
+{{- $env := dict
+  "NODE_ENV" "production"
+  "PORT" "3000"
+  "SITE_NAME" .Values.sharing.kutt.siteName
+  "DEFAULT_DOMAIN" .Values.sharing.kutt.hostname
+  "JWT_SECRET" $jwt
+  "DB_CLIENT" "pg"
+  "DB_HOST" .Values.sharing.kutt.database.host
+  "DB_PORT" .Values.sharing.kutt.database.port
+  "DB_NAME" $dbName
+  "DB_USER" $dbUsername
+  "DB_PASSWORD" $dbPassword
+  "DB_SSL" .Values.sharing.kutt.database.ssl
+  "REDIS_ENABLED" (ternary "true" "false" .Values.sharing.kutt.redis.enabled)
+  "REDIS_HOST" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.kutt.redis.host)
+  "REDIS_PORT" .Values.sharing.kutt.redis.port
+  "REDIS_DB" .Values.sharing.kutt.redis.database
+  "REDIS_PASSWORD" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.redis.secretName "key" .Values.sharing.kutt.redis.passwordKey)))
+  "DISALLOW_REGISTRATION" .Values.sharing.kutt.disallowRegistration
+  "DISALLOW_ANONYMOUS_LINKS" .Values.sharing.kutt.disallowAnonymousLinks
+  "TRUST_PROXY" "true"
+}}
+{{- if .Values.sharing.kutt.oidc.enabled }}
+{{- range $key := list "OIDC_ISSUER_URL" "OIDC_CLIENT_ID" "OIDC_CLIENT_SECRET" }}
+{{- $_ := set $env $key (dict "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-kutt-oidc" $.Release.Name) "key" $key))) -}}
+{{- end }}
+{{- $_ := set $env "OIDC_ENABLED" "true" -}}
+{{- $_ := set $env "OIDC_SCOPE" "openid profile email" -}}
+{{- $_ := set $env "OIDC_EMAIL_CLAIM" "email" -}}
+{{- $_ := set $env "OIDC_BUTTON_TEXT" "Log in with CoRE SSO" -}}
+{{- end }}
+{{- $_ := set .Values.controllers.kutt.containers.app.image "tag" .Values.sharing.kutt.image.tag -}}
+{{- $_ := set .Values.controllers.kutt.containers.app.image "repository" .Values.sharing.kutt.image.repository -}}
+{{- $_ := set .Values.controllers.kutt.containers.app.image "pullPolicy" .Values.sharing.kutt.image.pullPolicy -}}
+{{- $_ := set .Values.controllers.kutt.containers.app "env" $env -}}
+{{- $_ := set .Values.controllers.kutt.containers.app "resources" .Values.sharing.kutt.resources -}}
+{{- $_ := set .Values.route.app "hostnames" (list .Values.sharing.kutt.hostname) -}}
+{{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- end }}
+{{- include "bjw-s.common.loader.generate" . -}}

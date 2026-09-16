@@ -1,0 +1,67 @@
+# Site-specific values are injected by the owning Backplane ApplicationSet.
+cluster:
+  name: ''
+datacenter: ''
+region: ''
+
+global:
+  createDefaultServiceAccount: true
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+sharing:
+  # The stack is intentionally named for the sharing capability. Kutt is the
+  # first workload and additional sharing applications can be added here.
+  kutt:
+    enabled: true
+    hostname: 'snd.fyi'
+    image:
+      repository: 'docker.io/kutt/kutt'
+      tag: 'v3.2.6'
+      pullPolicy: 'IfNotPresent'
+    database:
+      host: 'psql-int.mylogin.space'
+      port: '5432'
+      userSecret: 'sharing-database'
+      usernameKey: 'username'
+      passwordKey: 'password'
+      databaseKey: 'database'
+      ssl: 'true'
+      crossplane:
+        # Nextcloud provisions the identity through the hub's site-local PSQL
+        # providers. Override these when the ApplicationSet selects another site.
+        crossplaneProvider: 'psql-home1-yvr'
+        terraformProvider: 'psql-home1-yvr'
+    redis:
+      enabled: true
+      host: ''
+      port: '6379'
+      database: '2'
+      secretStoreRef:
+        kind: 'ClusterSecretStore'
+        name: 'corevault-rootsecrets'
+      secretName: 'sharing-dragonfly'
+      passwordKey: 'redis-password'
+    jwtSecret:
+      # Existing externally managed Secret; never put the JWT in values or Git.
+      name: ''
+      key: 'JWT_SECRET'
+    oidc:
+      enabled: true
+      providerConfigRef: 'authentik'
+      issuerBaseUrl: 'https://idp.mylogin.space'
+      applicationSlug: 'sharing-kutt'
+      accessGroup: 'Sharing Users'
+    siteName: 'Sharing'
+    disallowRegistration: 'true'
+    disallowAnonymousLinks: 'true'
+    resources:
+      requests:
+        cpu: '50m'
+        memory: '128Mi'
+      limits:
+        cpu: '500m'
+        memory: '512Mi'

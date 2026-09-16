@@ -1,0 +1,18 @@
+{{- if .Values.sharing.kutt.enabled }}
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: 'sharing-kutt-database'
+spec:
+  name: 'Sharing Kutt database {{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}'
+  psql:
+    enabled: true
+    createUserDatabase: true
+    crossplane:
+      crossplaneProvider: '{{ .Values.sharing.kutt.database.crossplane.crossplaneProvider }}'
+      terraformProvider: '{{ .Values.sharing.kutt.database.crossplane.terraformProvider }}'
+  groups:
+    - LDAPService
+  writeConnectionSecretToRef:
+    name: '{{ .Values.sharing.kutt.database.userSecret }}'
+{{- end }}
