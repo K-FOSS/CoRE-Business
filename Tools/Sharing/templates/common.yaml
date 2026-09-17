@@ -243,8 +243,12 @@ route:
 {{- $_ := required "sharing.zipline.oidc.accessGroup is required" .Values.sharing.zipline.oidc.accessGroup -}}
 {{- end }}
 {{- $ziplineS3Endpoint := default (printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.zipline.s3.endpoint -}}
+{{- $ziplineDatabaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.zipline.database.host -}}
 {{- $ziplineEnv := dict
-  "DATABASE_URL" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.database.userSecret "key" "psqlURI")))
+  "A_DATABASE_NAME" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.database.userSecret "key" "database")))
+  "A_DATABASE_PASSWORD" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.database.userSecret "key" "password")))
+  "A_DATABASE_USERNAME" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.database.userSecret "key" "username")))
+  "DATABASE_URL" (printf "postgresql://$(A_DATABASE_USERNAME):$(A_DATABASE_PASSWORD)@%s:5432/$(A_DATABASE_NAME)" $ziplineDatabaseHost)
   "CORE_HOSTNAME" "0.0.0.0"
   "CORE_PORT" "3000"
   "CORE_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.coreSecret.secretName "key" .Values.sharing.zipline.coreSecret.key)))
