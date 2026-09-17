@@ -2,13 +2,13 @@
 apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
 metadata:
-  name: {{ .Release.Name }}-tranquil-oidc
+  name: {{ .Values.tranquil.oidc.workspaceName | quote }}
 spec:
   providerConfigRef:
     name: {{ .Values.tranquil.oidc.providerConfigRef | quote }}
   writeConnectionSecretToRef:
     namespace: {{ .Release.Namespace | quote }}
-    name: {{ .Release.Name }}-tranquil-oidc
+    name: {{ .Values.tranquil.oidc.workspaceName | quote }}
   forProvider:
     source: 'Inline'
     varmap:

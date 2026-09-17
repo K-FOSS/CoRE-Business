@@ -688,12 +688,12 @@ controllers:
           SSO_OIDC_CLIENT_ID:
             valueFrom:
               secretKeyRef:
-                name: {{ printf "%s-tranquil-oidc" .Release.Name | quote }}
+                name: {{ .Values.tranquil.oidc.workspaceName | quote }}
                 key: 'OIDC_CLIENT_ID'
           SSO_OIDC_CLIENT_SECRET:
             valueFrom:
               secretKeyRef:
-                name: {{ printf "%s-tranquil-oidc" .Release.Name | quote }}
+                name: {{ .Values.tranquil.oidc.workspaceName | quote }}
                 key: 'OIDC_CLIENT_SECRET'
           SSO_OIDC_ISSUER: {{ .Values.tranquil.oidc.issuer | quote }}
           SSO_OIDC_NAME: {{ .Values.tranquil.oidc.displayName | quote }}

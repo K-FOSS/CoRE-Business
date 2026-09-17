@@ -189,6 +189,9 @@ tranquil:
     terraformProvider: ''
   oidc:
     enabled: true
+    # Keep this identifier short: the Terraform provider includes it in a
+    # Kubernetes lease label, which has a 63-byte limit.
+    workspaceName: 'tranquil-pds-oidc'
     providerConfigRef: 'authentik'
     issuer: 'https://idp.mylogin.space'
     applicationSlug: 'tranquil-pds'
