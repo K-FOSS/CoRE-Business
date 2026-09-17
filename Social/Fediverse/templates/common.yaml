@@ -481,6 +481,16 @@ controllers:
                   key: 'PDS_EMAIL_SMTP_URL'
               {{- else }}
               value: {{ .Values.bluesky.emailSmtpUrl | quote }}
+            A_PDS_EMAIL_SMTP_PASSWORD:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bluesky.user.connectionSecretName | quote }}
+                  key: 'password'
+            A_PDS_EMAIL_SMTP_USERNAME:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bluesky.user.connectionSecretName | quote }}
+                  key: 'username'
               {{- end }}
           securityContext:
             allowPrivilegeEscalation: false

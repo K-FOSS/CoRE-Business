@@ -121,7 +121,7 @@ bluesky:
   # comes from user.connectionSecretName.
   existingSecret: ''
   emailFromAddress: 'CoRE PDS <microblog-pds@mail.mylogin.space>'
-  emailSmtpUrl: 'smtps://mail.mylogin.space:465'
+  emailSmtpUrl: 'smtps://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@mail.mylogin.space'
   secretManagement:
     secretStoreRef:
       kind: 'ClusterSecretStore'
