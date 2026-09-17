@@ -115,7 +115,7 @@ mastodon:
 
 bluesky:
   enabled: true
-  hostname: ''
+  hostname: 'pds.mylogin.space'
   existingSecret: ''
   emailFromAddress: ''
   user:
