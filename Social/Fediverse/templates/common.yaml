@@ -527,14 +527,17 @@ service:
 persistence:
   bluesky-data:
     type: 'persistentVolumeClaim'
+    forceRename: 'bsky-core'
     storageClass: 'longhorn'
     accessMode: 'ReadWriteOnce'
     size: '20Gi'
     retain: true
     annotations:
       argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
-    globalMounts:
-      - path: '/pds'
+    advancedMounts:
+      bluesky:
+        bluesky:
+          - path: '/pds'
 
 route:
   bluesky:
