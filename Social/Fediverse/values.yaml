@@ -145,7 +145,7 @@ bluesky:
     terraformProvider: ''
   image:
     repository: 'ghcr.io/bluesky-social/pds'
-    tag: '0.4.5027@sha256:d95725b24dbe53af9d91dc69750556931ebed6c396f2cfa42b221434db642f12'
+    tag: '0.4.5034@sha256:05e164855fa1a3cf251c002210c46f8c86e7ae27bddc7a96045da25483840826'
     pullPolicy: 'IfNotPresent'
   replicas: 1
   # PDS uses SQLite on the single RWO data volume. Roll the existing pod out
