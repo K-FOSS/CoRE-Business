@@ -4,6 +4,10 @@ cluster:
 datacenter: ''
 region: ''
 
+tenant:
+  domain: 'mylogin.space'
+  mail: 'mail.mylogin.space'
+
 gateway:
   name: 'main-gw'
   namespace: 'core-prod'
@@ -120,8 +124,6 @@ bluesky:
   # secrets are read from secretManagement.secretName and the admin password
   # comes from user.connectionSecretName.
   existingSecret: ''
-  emailFromAddress: 'CoRE PDS <microblog-pds@mail.mylogin.space>'
-  emailSmtpUrl: 'smtps://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@mail.mylogin.space'
   secretManagement:
     secretStoreRef:
       kind: 'ClusterSecretStore'

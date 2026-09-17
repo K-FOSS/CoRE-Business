@@ -235,8 +235,6 @@ helm template mastodon . --namespace core-prod -f examples/site.yaml \
   --api-versions gateway.networking.k8s.io/v1/HTTPRoute >/tmp/mastodon-rendered.yaml
 helm template bluesky . --namespace core-prod -f examples/site.yaml \
   --set bluesky.enabled=true --set bluesky.hostname=pds.example.com \
-  --set bluesky.emailSmtpUrl='smtps://mail.example.com:465' \
-  --set bluesky.emailFromAddress='PDS <noreply@example.com>' \
   --set bluesky.s3.crossplaneProvider=s3-yvr-home1-core \
   --set bluesky.s3.terraformProvider=s3-yvr-home1-core \
   --api-versions gateway.networking.k8s.io/v1/HTTPRoute >/tmp/bluesky-rendered.yaml

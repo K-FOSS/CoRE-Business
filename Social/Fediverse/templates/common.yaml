@@ -5,6 +5,8 @@
 {{- $_ := required "cluster.name is required" .Values.cluster.name -}}
 {{- $_ := required "datacenter is required" .Values.datacenter -}}
 {{- $_ := required "region is required" .Values.region -}}
+{{- $_ := required "tenant.domain is required" .Values.tenant.domain -}}
+{{- $_ := required "tenant.mail is required" .Values.tenant.mail -}}
 {{- $_ := required "mastodon.domain is required" .Values.mastodon.domain -}}
 {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.mastodon.domain) -}}
 {{- fail "mastodon.domain must be a public DNS hostname without scheme, port or wildcard" -}}
@@ -22,9 +24,7 @@
 {{- end }}
 {{- if .Values.bluesky.enabled }}
 {{- $_ := required "bluesky.hostname is required when Bluesky is enabled" .Values.bluesky.hostname -}}
-{{- $_ := required "bluesky.emailFromAddress is required when Bluesky is enabled" .Values.bluesky.emailFromAddress -}}
 {{- if not .Values.bluesky.existingSecret }}
-{{- $_ := required "bluesky.emailSmtpUrl is required when bluesky.existingSecret is not set" .Values.bluesky.emailSmtpUrl -}}
 {{- end }}
 {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.bluesky.hostname) }}
 {{- fail "bluesky.hostname must be a public DNS hostname without scheme, port or wildcard" -}}
@@ -457,7 +457,12 @@ controllers:
             PDS_INVITE_REQUIRED: 'true'
             PDS_RATE_LIMITS_ENABLED: 'true'
             LOG_ENABLED: 'true'
-            PDS_EMAIL_FROM_ADDRESS: {{ .Values.bluesky.emailFromAddress | quote }}
+            A_PDS_EMAIL_FROM_USERNAME:
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bluesky.user.connectionSecretName | quote }}
+                  key: 'username'
+            PDS_EMAIL_FROM_ADDRESS: {{ printf "$(A_PDS_EMAIL_FROM_USERNAME)@%s" .Values.tenant.mail | quote }}
             PDS_JWT_SECRET:
               valueFrom:
                 secretKeyRef:
@@ -480,7 +485,7 @@ controllers:
                   name: {{ .Values.bluesky.existingSecret | quote }}
                   key: 'PDS_EMAIL_SMTP_URL'
               {{- else }}
-              value: {{ .Values.bluesky.emailSmtpUrl | quote }}
+              value: {{ printf "smtps://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s" .Values.tenant.mail | quote }}
             A_PDS_EMAIL_SMTP_PASSWORD:
               valueFrom:
                 secretKeyRef:
