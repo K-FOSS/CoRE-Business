@@ -5,6 +5,7 @@ controllers:
   kutt:
     type: 'deployment'
     replicas: 1
+    strategy: 'RollingUpdate'
     pod:
       automountServiceAccountToken: false
       securityContext:
