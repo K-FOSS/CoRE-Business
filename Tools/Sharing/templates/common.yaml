@@ -115,6 +115,15 @@ route:
   "DISALLOW_ANONYMOUS_LINKS" .Values.sharing.kutt.disallowAnonymousLinks
   "TRUST_PROXY" "true"
 }}
+{{- $_ := mergeOverwrite $env .Values.sharing.kutt.config -}}
+{{- $_ := set $env "DB_HOST" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) (get .Values.sharing.kutt.config "DB_HOST")) -}}
+{{- $_ := set $env "DB_NAME" $dbUsername -}}
+{{- $_ := set $env "DB_USER" $dbUsername -}}
+{{- $_ := set $env "DB_PASSWORD" $dbPassword -}}
+{{- $_ := set $env "JWT_SECRET" $jwt -}}
+{{- $_ := set $env "REDIS_ENABLED" (ternary "true" "false" .Values.sharing.kutt.redis.enabled) -}}
+{{- $_ := set $env "REDIS_HOST" (default $redisHost (get .Values.sharing.kutt.config "REDIS_HOST")) -}}
+{{- $_ := set $env "REDIS_PASSWORD" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.redis.secretName "key" .Values.sharing.kutt.redis.passwordKey))) -}}
 {{- if .Values.sharing.kutt.oidc.enabled }}
 {{- range $key := list "OIDC_CLIENT_ID" "OIDC_CLIENT_SECRET" }}
 {{- $_ := set $env $key (dict "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-kutt-oidc" $.Release.Name) "key" $key))) -}}

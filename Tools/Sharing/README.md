@@ -8,10 +8,13 @@ site-local [Dragonfly](https://www.dragonflydb.io/) service. It is exposed at
 The chart now creates a dedicated two-replica Dragonfly instance for this
 stack, rather than sharing the platform cache.
 
-The chart is intended to be owned by a Backplane ApplicationSet. Its injected
-cluster, datacenter, region, gateway and PostgreSQL provider values are part of
-the deployment contract; this directory has no active owner in the current
-checkout, so it is not independently deployable yet.
+The active [Sharing ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Sharing.yaml)
+owns this chart. It selects bare-metal infrastructure clusters in the YVR
+region, renders `Tools/Sharing` through the
+[Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin), and
+deploys to `core-prod` with `CreateNamespace=true` and server-side apply. Lovely
+injects `env`, `datacenter`, `region`, and cluster name/domain; these values are
+part of the deployment contract.
 
 The `mylogin.space/v1alpha1` [User resource](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
 creates Kutt's PostgreSQL role/database and writes its connection Secret.
@@ -36,12 +39,19 @@ documents Redis configuration but does not document a Redis TLS environment
 variable; verify the deployed Dragonfly listener/client compatibility before
 enabling this in production.
 
+All upstream Kutt environment variables from the official `.env` example can
+be configured directly under `sharing.kutt.config` in `values.yaml`. Database,
+JWT, Redis and OIDC integration keys are generated or supplied by the stack and
+override matching config entries. The chart reserves Redis host and port for
+its local TLS bridge when that bridge is enabled.
+
 Kutt is exposed through a Gateway API HTTPRoute and the public Forecastle
-dashboard. Before deployment, add an active Backplane owner, inject site-local
-values, resolve the common-library dependency, run `helm lint`, and render the
-Lovely composition with those injected values. After reconciliation, check the
-User, ExternalSecret, database and Dragonfly conditions, then test login and
-link creation.
+dashboard. Before changing deployment behavior, review the linked ApplicationSet
+and render the Lovely composition with its injected values. After reconciliation,
+check the User, ExternalSecret, database and dedicated Dragonfly conditions, then
+test login and link creation. Application deletion preserves resources, so
+database, generated secrets and Dragonfly decommissioning require explicit
+operator action.
 
 Upstream references: [Kutt documentation](https://docs.kutt.to/), [Kutt
 source](https://github.com/thedevs-network/kutt), [socat](https://www.dest-unreach.org/socat/), [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/),
