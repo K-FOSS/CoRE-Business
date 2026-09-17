@@ -523,6 +523,7 @@ service:
       http:
         port: 3000
         protocol: 'HTTP'
+        appProtocol: 'kubernetes.io/ws'
 
 persistence:
   bluesky-data:
