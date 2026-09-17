@@ -5,6 +5,7 @@ metadata:
 data:
   ldap-auth.cf: |
     server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
+    domain = {{ .Values.email.domain }}
     {{`
     start_tls = no
     version = 3
@@ -15,7 +16,9 @@ data:
 
     search_base = ou=users,dc=ldap,dc=mylogin,dc=space
     query_filter = (&(objectClass=user)(ak-active=TRUE)(|(cn=%u)(mail=%s)))
-    result_attribute = mail
+    # Return the normal mail identity when present and the LDAP CN fallback
+    # for users whose entry does not have a mail attribute.
+    result_attribute = mail, cn
     `}}
 
   ldap.cf: |
