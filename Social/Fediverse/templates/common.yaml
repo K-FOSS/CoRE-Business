@@ -669,11 +669,6 @@ controllers:
               secretKeyRef:
                 name: {{ .Values.tranquil.secretManagement.secretName | quote }}
                 key: 'PDS_JWT_SECRET'
-          PLC_ROTATION_KEY:
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.tranquil.secretManagement.secretName | quote }}
-                key: 'PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX'
           DPOP_SECRET:
             valueFrom:
               secretKeyRef:
