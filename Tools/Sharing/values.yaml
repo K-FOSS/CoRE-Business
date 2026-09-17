@@ -6,6 +6,7 @@ region: ''
 
 global:
   createDefaultServiceAccount: true
+  fullnameOverride: 'sharing'
 
 gateway:
   name: 'main-gw'
