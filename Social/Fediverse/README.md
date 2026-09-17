@@ -33,9 +33,11 @@ Tranquil stores repository state in PostgreSQL and blobs in S3, so this
 chart does not create an application
 PVC for it. It does not share the existing PDS’s SQLite volume or signing
 secrets.
-Its cache backend is the site-local Dragonfly-compatible Valkey endpoint over
-TLS, using the existing `mastodon-redis` Secret. Tranquil remains at one
-two replicas because PostgreSQL stores repository state, S3 stores blobs, and
+Its cache backend is the site-local Dragonfly-compatible Valkey endpoint using
+the existing `mastodon-redis` Secret. Because the Tranquil image currently
+lacks Redis TLS support, it connects to a pod-local `redis://` socket and the
+`socat` sidecar bridges that socket to the Dragonfly TLS endpoint.
+Tranquil runs with two replicas because PostgreSQL stores repository state, S3 stores blobs, and
 Valkey shares cache/rate-limit state. The experimental local `tranquil-store`
 backend remains unused.
 Tranquil’s native generic OIDC SSO is enabled through Authentik, with the

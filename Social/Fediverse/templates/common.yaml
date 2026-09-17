@@ -643,7 +643,7 @@ controllers:
               secretKeyRef:
                 name: {{ .Values.tranquil.cache.secretName | quote }}
                 key: {{ .Values.tranquil.cache.passwordSecretKey | quote }}
-          VALKEY_URL: {{ printf "rediss://:$(A_TRANQUIL_CACHE_PASSWORD)@%s:%s" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.tranquil.cache.host) (toString .Values.tranquil.cache.port) | quote }}
+          VALKEY_URL: {{ printf "redis://:$(A_TRANQUIL_CACHE_PASSWORD)@127.0.0.1:%s" (toString .Values.tranquil.cache.tlsProxy.port) | quote }}
           BLOB_STORAGE_BACKEND: 's3'
           AWS_REGION: {{ .Values.tranquil.s3.region | quote }}
           S3_BUCKET:
@@ -756,6 +756,21 @@ controllers:
               periodSeconds: 30
               timeoutSeconds: 5
               failureThreshold: 5
+{{- if .Values.tranquil.cache.tlsProxy.enabled }}
+      dragonfly-tls-proxy:
+        image:
+          repository: {{ .Values.tranquil.cache.tlsProxy.image.repository | quote }}
+          tag: {{ .Values.tranquil.cache.tlsProxy.image.tag | quote }}
+          pullPolicy: {{ .Values.tranquil.cache.tlsProxy.image.pullPolicy | quote }}
+        command:
+          - 'socat'
+          - {{ printf "TCP-LISTEN:%s,fork,reuseaddr,bind=127.0.0.1" (toString .Values.tranquil.cache.tlsProxy.port) | quote }}
+          - {{ printf "OPENSSL:%s:%s,verify=0" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.tranquil.cache.host) (toString .Values.tranquil.cache.port) | quote }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+{{- end }}
 service:
   tranquil:
     controller: 'tranquil'

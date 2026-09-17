@@ -193,6 +193,13 @@ tranquil:
     port: 6379
     secretName: 'mastodon-redis'
     passwordSecretKey: 'REDIS_PASSWORD'
+    tlsProxy:
+      enabled: true
+      image:
+        repository: 'docker.io/alpine/socat'
+        tag: '1.8.0.3'
+        pullPolicy: 'IfNotPresent'
+      port: 6380
   oidc:
     enabled: true
     # Keep this identifier short: the Terraform provider includes it in a
