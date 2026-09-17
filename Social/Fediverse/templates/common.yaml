@@ -26,8 +26,6 @@
 {{- if not .Values.bluesky.existingSecret }}
 {{- $_ := required "bluesky.emailSmtpUrl is required when bluesky.existingSecret is not set" .Values.bluesky.emailSmtpUrl -}}
 {{- end }}
-{{- $_ := required "bluesky.s3.crossplaneProvider is required when Bluesky is enabled" .Values.bluesky.s3.crossplaneProvider -}}
-{{- $_ := required "bluesky.s3.terraformProvider is required when Bluesky is enabled" .Values.bluesky.s3.terraformProvider -}}
 {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.bluesky.hostname) }}
 {{- fail "bluesky.hostname must be a public DNS hostname without scheme, port or wildcard" -}}
 {{- end }}
