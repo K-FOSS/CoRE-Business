@@ -682,6 +682,19 @@ controllers:
               secretKeyRef:
                 name: {{ .Values.tranquil.secretManagement.secretName | quote }}
                 key: 'MASTER_KEY'
+          SSO_OIDC_ENABLED: {{ .Values.tranquil.oidc.enabled | quote }}
+          SSO_OIDC_CLIENT_ID:
+            valueFrom:
+              secretKeyRef:
+                name: {{ printf "%s-tranquil-oidc" .Release.Name | quote }}
+                key: 'OIDC_CLIENT_ID'
+          SSO_OIDC_CLIENT_SECRET:
+            valueFrom:
+              secretKeyRef:
+                name: {{ printf "%s-tranquil-oidc" .Release.Name | quote }}
+                key: 'OIDC_CLIENT_SECRET'
+          SSO_OIDC_ISSUER: {{ .Values.tranquil.oidc.issuer | quote }}
+          SSO_OIDC_NAME: {{ .Values.tranquil.oidc.displayName | quote }}
           A_PDS_EMAIL_FROM_USERNAME:
             valueFrom:
               secretKeyRef:

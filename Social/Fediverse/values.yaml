@@ -187,6 +187,13 @@ tranquil:
     port: 5432
     crossplaneProvider: ''
     terraformProvider: ''
+  oidc:
+    enabled: true
+    providerConfigRef: 'authentik'
+    issuer: 'https://idp.mylogin.space'
+    applicationSlug: 'tranquil-pds'
+    accessGroup: 'Tranquil Users'
+    displayName: 'mylogin.space'
   s3:
     region: 'us-east-1'
     crossplaneProvider: ''
