@@ -138,6 +138,7 @@ bluesky:
     username: 'microblog-pds'
     connectionSecretName: 'microblog-pds-user'
     s3CredentialsSecretName: 'microblog-pds-s3'
+    s3GeneratedCredentialsSecretName: 'microblog-pds-s3-generated'
   s3:
     bucket: 'microblog-blobs'
     region: 'us-east-1'
