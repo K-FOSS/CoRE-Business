@@ -120,8 +120,8 @@ bluesky:
   # secrets are read from secretManagement.secretName and the admin password
   # comes from user.connectionSecretName.
   existingSecret: ''
-  emailFromAddress: ''
-  emailSmtpUrl: ''
+  emailFromAddress: 'CoRE PDS <microblog-pds@mail.mylogin.space>'
+  emailSmtpUrl: 'smtps://mail.mylogin.space:465'
   secretManagement:
     secretStoreRef:
       kind: 'ClusterSecretStore'
