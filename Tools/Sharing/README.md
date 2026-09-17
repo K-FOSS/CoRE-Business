@@ -1,10 +1,12 @@
 # K-FOSS/CoRE-Business Tools/Sharing Stack
 
-This chart is a generic home for public sharing applications. Kutt is the
-first enabled workload: a self-hosted URL shortener using the official
+This chart is a generic home for public sharing applications. It provides Kutt,
+a self-hosted URL shortener, and [Zipline](https://zipline.diced.sh/), a
+self-hosted file and URL sharing service using the official
 [Kutt image](https://hub.docker.com/r/kutt/kutt), backed by PostgreSQL and the
 site-local [Dragonfly](https://www.dragonflydb.io/) service. It is exposed at
-`snd.fyi` and has Authentik OIDC configured for the `Sharing Users` group.
+`snd.fyi` and `zipline.mylogin.space`; Kutt has Authentik OIDC configured for
+the `Sharing Users` group, while Zipline uses its own account setup.
 The chart now creates a dedicated two-replica Dragonfly instance for this
 stack, rather than sharing the platform cache.
 
@@ -17,7 +19,10 @@ injects `env`, `datacenter`, `region`, and cluster name/domain; these values are
 part of the deployment contract.
 
 The `mylogin.space/v1alpha1` [User resource](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
-creates Kutt's PostgreSQL role/database and writes its connection Secret.
+creates separate PostgreSQL roles/databases for Kutt and Zipline and writes
+their connection Secrets. Zipline's claim also creates the `sharing-zipline`
+bucket and a long-lived S3 service account, with credentials written to
+`sharing-zipline-s3`.
 PostgreSQL is reached through the automatically formed site-local endpoint
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space:5432` from the [PostgreSQL
 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml).
@@ -45,8 +50,10 @@ JWT, Redis and OIDC integration keys are generated or supplied by the stack and
 override matching config entries. The chart reserves Redis host and port for
 its local TLS bridge when that bridge is enabled.
 
-Kutt is exposed through a Gateway API HTTPRoute and the public Forecastle
-dashboard. Before changing deployment behavior, review the linked ApplicationSet
+Kutt and Zipline are exposed through Gateway API HTTPRoutes and the public
+Forecastle dashboard. Zipline stores uploaded objects in the site-local
+S3-compatible service using path-style requests; PostgreSQL stores metadata.
+Before changing deployment behavior, review the linked ApplicationSet
 and render the Lovely composition with its injected values. After reconciliation,
 check the User, ExternalSecret, database and dedicated Dragonfly conditions, then
 test login and link creation. Application deletion preserves resources, so
@@ -54,5 +61,5 @@ database, generated secrets and Dragonfly decommissioning require explicit
 operator action.
 
 Upstream references: [Kutt documentation](https://docs.kutt.to/), [Kutt
-source](https://github.com/thedevs-network/kutt), [socat](https://www.dest-unreach.org/socat/), [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/),
+source](https://github.com/thedevs-network/kutt), [Zipline configuration](https://zipline.diced.sh/docs/config), [Zipline source](https://github.com/diced/zipline), [socat](https://www.dest-unreach.org/socat/), [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/),
 [Gateway API](https://gateway-api.sigs.k8s.io/), and [External Secrets](https://external-secrets.io/).

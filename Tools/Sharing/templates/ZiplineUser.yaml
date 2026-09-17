@@ -1,0 +1,43 @@
+{{- if .Values.sharing.zipline.enabled }}
+{{- $_ := required "sharing.zipline.database.crossplane.crossplaneProvider is required" .Values.sharing.zipline.database.crossplane.crossplaneProvider -}}
+{{- $_ := required "sharing.zipline.database.crossplane.terraformProvider is required" .Values.sharing.zipline.database.crossplane.terraformProvider -}}
+{{- $_ := required "sharing.zipline.s3.crossplaneProvider is required" .Values.sharing.zipline.s3.crossplaneProvider -}}
+{{- $_ := required "sharing.zipline.s3.terraformProvider is required" .Values.sharing.zipline.s3.terraformProvider -}}
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: 'sharing-zipline'
+  annotations:
+    # Preserve the database role, bucket and S3 identity when the app is removed.
+    argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+spec:
+  name: 'Sharing Zipline database and storage {{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}'
+  serviceAccount: true
+  psql:
+    enabled: true
+    createUserDatabase: true
+    crossplane:
+      crossplaneProvider: '{{ .Values.sharing.zipline.database.crossplane.crossplaneProvider }}'
+      terraformProvider: '{{ .Values.sharing.zipline.database.crossplane.terraformProvider }}'
+  s3:
+    enabled: true
+    createBuckets: true
+    createCredentials: true
+    createServiceAccount: true
+    region: '{{ .Values.sharing.zipline.s3.region }}'
+    buckets:
+      - '{{ .Values.sharing.zipline.s3.bucket }}'
+    crossplane:
+      crossplaneProvider: '{{ .Values.sharing.zipline.s3.crossplaneProvider }}'
+      terraformProvider: '{{ .Values.sharing.zipline.s3.terraformProvider }}'
+    writeServiceAccountCredentialsSecretRef:
+      name: '{{ .Values.sharing.zipline.s3.credentialsSecretName }}'
+      namespace: '{{ .Release.Namespace }}'
+    writeCredentialsSecretRef:
+      name: '{{ .Values.sharing.zipline.s3.generatedCredentialsSecretName }}'
+      namespace: '{{ .Release.Namespace }}'
+  groups:
+    - 'LDAPService'
+  writeConnectionSecretToRef:
+    name: '{{ .Values.sharing.zipline.database.userSecret }}'
+{{- end }}

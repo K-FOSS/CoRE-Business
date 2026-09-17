@@ -13,8 +13,7 @@ gateway:
   sectionName: 'https-myloginspace'
 
 sharing:
-  # The stack is intentionally named for the sharing capability. Kutt is the
-  # first workload and additional sharing applications can be added here.
+  # The stack is intentionally named for the sharing capability.
   kutt:
     enabled: true
     hostname: 'snd.fyi'
@@ -110,3 +109,38 @@ sharing:
       limits:
         cpu: '500m'
         memory: '512Mi'
+
+  zipline:
+    enabled: true
+    hostname: 'zipline.mylogin.space'
+    image:
+      repository: 'ghcr.io/diced/zipline'
+      tag: '4.7.0'
+      pullPolicy: 'IfNotPresent'
+    database:
+      userSecret: 'sharing-zipline-database'
+      crossplane:
+        crossplaneProvider: 'psql-home1-yvr'
+        terraformProvider: 'psql-home1-yvr'
+    s3:
+      bucket: 'sharing-zipline'
+      region: 'us-east-1'
+      endpoint: ''
+      forcePathStyle: 'true'
+      crossplaneProvider: 's3-yvr-home1-core'
+      terraformProvider: 's3-yvr-home1-core'
+      credentialsSecretName: 'sharing-zipline-s3'
+      generatedCredentialsSecretName: 'sharing-zipline-s3-generated'
+      accessKey: 'AccessKey'
+      secretKey: 'SecretAccessKey'
+    coreSecret:
+      generatorName: 'sharing-zipline-core'
+      secretName: 'sharing-zipline-core'
+      key: 'CORE_SECRET'
+    resources:
+      requests:
+        cpu: '100m'
+        memory: '256Mi'
+      limits:
+        cpu: '1'
+        memory: '1Gi'

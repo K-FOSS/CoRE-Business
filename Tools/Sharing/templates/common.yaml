@@ -51,9 +51,63 @@ controllers:
               timeoutSeconds: 5
               failureThreshold: 5
 
+  zipline:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'RollingUpdate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      app:
+        image:
+          repository: 'ghcr.io/diced/zipline'
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/healthcheck'
+            port: 3000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/healthcheck'
+            port: 3000
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/healthcheck'
+            port: 3000
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
 service:
   app:
     controller: 'kutt'
+    ports:
+      http:
+        port: 3000
+  zipline:
+    controller: 'zipline'
     ports:
       http:
         port: 3000
@@ -77,6 +131,25 @@ route:
               value: '/'
         backendRefs:
           - identifier: 'app'
+            port: 3000
+  zipline:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/appName: 'Zipline'
+      forecastle.stakater.com/group: 'Tools'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'zipline'
             port: 3000
 {{- end -}}
 
@@ -157,5 +230,33 @@ route:
 {{- end }}
 {{- $_ := set .Values.route.app "hostnames" (list .Values.sharing.kutt.hostname) -}}
 {{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- end }}
+{{- if .Values.sharing.zipline.enabled }}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "sharing.zipline.coreSecret.secretName is required" .Values.sharing.zipline.coreSecret.secretName -}}
+{{- $ziplineS3Endpoint := default (printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.zipline.s3.endpoint -}}
+{{- $ziplineEnv := dict
+  "DATABASE_URL" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.database.userSecret "key" "psqlURI")))
+  "CORE_HOSTNAME" "0.0.0.0"
+  "CORE_PORT" "3000"
+  "CORE_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.coreSecret.secretName "key" .Values.sharing.zipline.coreSecret.key)))
+  "CORE_RETURN_HTTPS_URLS" "true"
+  "DATASOURCE_TYPE" "s3"
+  "DATASOURCE_S3_ACCESS_KEY_ID" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.s3.credentialsSecretName "key" .Values.sharing.zipline.s3.accessKey)))
+  "DATASOURCE_S3_SECRET_ACCESS_KEY" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.s3.credentialsSecretName "key" .Values.sharing.zipline.s3.secretKey)))
+  "DATASOURCE_S3_BUCKET" .Values.sharing.zipline.s3.bucket
+  "DATASOURCE_S3_REGION" .Values.sharing.zipline.s3.region
+  "DATASOURCE_S3_ENDPOINT" $ziplineS3Endpoint
+  "DATASOURCE_S3_FORCE_PATH_STYLE" .Values.sharing.zipline.s3.forcePathStyle
+}}
+{{- $_ := set .Values.controllers.zipline.containers.app.image "tag" .Values.sharing.zipline.image.tag -}}
+{{- $_ := set .Values.controllers.zipline.containers.app.image "repository" .Values.sharing.zipline.image.repository -}}
+{{- $_ := set .Values.controllers.zipline.containers.app.image "pullPolicy" .Values.sharing.zipline.image.pullPolicy -}}
+{{- $_ := set .Values.controllers.zipline.containers.app "env" $ziplineEnv -}}
+{{- $_ := set .Values.controllers.zipline.containers.app "resources" .Values.sharing.zipline.resources -}}
+{{- $_ := set .Values.route.zipline "hostnames" (list .Values.sharing.zipline.hostname) -}}
+{{- $_ := set .Values.route.zipline "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
 {{- end }}
 {{- include "bjw-s.common.loader.generate" . -}}
