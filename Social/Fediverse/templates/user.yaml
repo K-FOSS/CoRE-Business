@@ -54,6 +54,7 @@ spec:
   s3:
     enabled: true
     createBuckets: true
+    createCredentials: true
     createServiceAccount: true
     region: {{ .Values.bluesky.s3.region | quote }}
     buckets:
@@ -63,6 +64,9 @@ spec:
       terraformProvider: {{ default (printf "s3-%s-%s-core" .Values.region .Values.datacenter) .Values.bluesky.s3.terraformProvider | quote }}
     writeServiceAccountCredentialsSecretRef:
       name: {{ .Values.bluesky.user.s3CredentialsSecretName | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+    writeCredentialsSecretRef:
+      name: {{ .Values.bluesky.user.s3GeneratedCredentialsSecretName | quote }}
       namespace: {{ .Release.Namespace | quote }}
   groups:
     - 'LDAPService'
