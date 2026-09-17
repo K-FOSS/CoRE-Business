@@ -236,6 +236,12 @@ route:
 {{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
 {{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
 {{- $_ := required "sharing.zipline.coreSecret.secretName is required" .Values.sharing.zipline.coreSecret.secretName -}}
+{{- if .Values.sharing.zipline.oidc.enabled }}
+{{- $_ := required "sharing.zipline.oidc.providerConfigRef is required" .Values.sharing.zipline.oidc.providerConfigRef -}}
+{{- $_ := required "sharing.zipline.oidc.issuerBaseUrl is required" .Values.sharing.zipline.oidc.issuerBaseUrl -}}
+{{- $_ := required "sharing.zipline.oidc.applicationSlug is required" .Values.sharing.zipline.oidc.applicationSlug -}}
+{{- $_ := required "sharing.zipline.oidc.accessGroup is required" .Values.sharing.zipline.oidc.accessGroup -}}
+{{- end }}
 {{- $ziplineS3Endpoint := default (printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.zipline.s3.endpoint -}}
 {{- $ziplineEnv := dict
   "DATABASE_URL" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.zipline.database.userSecret "key" "psqlURI")))
@@ -251,6 +257,16 @@ route:
   "DATASOURCE_S3_ENDPOINT" $ziplineS3Endpoint
   "DATASOURCE_S3_FORCE_PATH_STYLE" .Values.sharing.zipline.s3.forcePathStyle
 }}
+{{- if .Values.sharing.zipline.oidc.enabled }}
+{{- range $key := list "OIDC_CLIENT_ID" "OIDC_CLIENT_SECRET" }}
+{{- $_ := set $ziplineEnv (printf "OAUTH_%s" $key) (dict "valueFrom" (dict "secretKeyRef" (dict "name" (printf "%s-kutt-oidc" $.Release.Name) "key" (printf "ZIPLINE_%s" $key)))) -}}
+{{- end }}
+{{- $_ := set $ziplineEnv "OAUTH_OIDC_AUTHORIZE_URL" (printf "%s/application/o/authorize/" (trimSuffix "/" .Values.sharing.zipline.oidc.issuerBaseUrl)) -}}
+{{- $_ := set $ziplineEnv "OAUTH_OIDC_TOKEN_URL" (printf "%s/application/o/token/" (trimSuffix "/" .Values.sharing.zipline.oidc.issuerBaseUrl)) -}}
+{{- $_ := set $ziplineEnv "OAUTH_OIDC_USERINFO_URL" (printf "%s/application/o/userinfo/" (trimSuffix "/" .Values.sharing.zipline.oidc.issuerBaseUrl)) -}}
+{{- $_ := set $ziplineEnv "OAUTH_OIDC_REDIRECT_URI" (printf "https://%s/api/auth/oauth/oidc" .Values.sharing.zipline.hostname) -}}
+{{- $_ := set $ziplineEnv "FEATURES_OAUTH_REGISTRATION" "true" -}}
+{{- end }}
 {{- $_ := set .Values.controllers.zipline.containers.app.image "tag" .Values.sharing.zipline.image.tag -}}
 {{- $_ := set .Values.controllers.zipline.containers.app.image "repository" .Values.sharing.zipline.image.repository -}}
 {{- $_ := set .Values.controllers.zipline.containers.app.image "pullPolicy" .Values.sharing.zipline.image.pullPolicy -}}

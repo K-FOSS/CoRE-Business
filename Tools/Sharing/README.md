@@ -5,8 +5,8 @@ a self-hosted URL shortener, and [Zipline](https://zipline.diced.sh/), a
 self-hosted file and URL sharing service using the official
 [Kutt image](https://hub.docker.com/r/kutt/kutt), backed by PostgreSQL and the
 site-local [Dragonfly](https://www.dragonflydb.io/) service. It is exposed at
-`snd.fyi` and `zipline.mylogin.space`; Kutt has Authentik OIDC configured for
-the `Sharing Users` group, while Zipline uses its own account setup.
+`snd.fyi` and `zipline.mylogin.space`; both Kutt and Zipline have Authentik OIDC
+configured for the `Sharing Users` group.
 The chart now creates a dedicated two-replica Dragonfly instance for this
 stack, rather than sharing the platform cache.
 
@@ -38,8 +38,8 @@ ioredis configuration has no TLS setting, the chart adds a small `socat` TLS
 bridge sidecar; Kutt talks to localhost and the sidecar encrypts the Dragonfly
 connection. The bridge disables peer certificate verification (`verify=0`), so
 the connection is encrypted but does not authenticate the Dragonfly certificate.
-The Authentik Workspace generates
-OIDC client credentials into a connection Secret consumed by Kutt. Kutt
+The Authentik Workspace generates separate OIDC client credentials for Kutt and
+Zipline into a connection Secret consumed by both applications. Kutt
 documents Redis configuration but does not document a Redis TLS environment
 variable; verify the deployed Dragonfly listener/client compatibility before
 enabling this in production.

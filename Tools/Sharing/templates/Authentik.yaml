@@ -23,6 +23,8 @@ spec:
       access_group: '{{ .Values.sharing.kutt.oidc.accessGroup }}'
       issuer_base_url: '{{ trimSuffix "/" .Values.sharing.kutt.oidc.issuerBaseUrl }}'
       external_url: 'https://{{ .Values.sharing.kutt.hostname }}'
+      zipline_application_slug: '{{ .Values.sharing.zipline.oidc.applicationSlug }}'
+      zipline_external_url: 'https://{{ .Values.sharing.zipline.hostname }}'
     module: |
       variable "cluster_name" { type = string }
       variable "datacenter" { type = string }
@@ -31,6 +33,8 @@ spec:
       variable "access_group" { type = string }
       variable "issuer_base_url" { type = string }
       variable "external_url" { type = string }
+      variable "zipline_application_slug" { type = string }
+      variable "zipline_external_url" { type = string }
 
       data "authentik_flow" "authorization" {
         slug = "default-provider-authorization-explicit-consent"
@@ -45,6 +49,7 @@ spec:
           "goauthentik.io/providers/oauth2/scope-email",
           "goauthentik.io/providers/oauth2/scope-openid",
           "goauthentik.io/providers/oauth2/scope-profile",
+          "goauthentik.io/providers/oauth2/scope-offline_access",
         ]
       }
 
@@ -82,6 +87,36 @@ spec:
         protocol_provider = authentik_provider_oauth2.kutt.id
       }
 
+      resource "random_password" "zipline_client_secret" {
+        length  = 128
+        lower   = true
+        numeric = true
+        upper   = true
+        special = true
+      }
+
+      resource "authentik_provider_oauth2" "zipline" {
+        name          = "Sharing Zipline ${var.cluster_name} ${var.datacenter} ${var.region}"
+        client_id     = "${var.zipline_application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        client_secret = random_password.zipline_client_secret.result
+        client_type   = "confidential"
+        signing_key   = data.authentik_certificate_key_pair.signing_key.id
+        allowed_redirect_uris = [{
+          matching_mode = "strict"
+          url           = "${var.zipline_external_url}/api/auth/oauth/oidc"
+        }]
+        property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "zipline" {
+        name              = "Sharing Zipline"
+        slug              = "${var.zipline_application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group             = "${var.datacenter}-${var.cluster_name}"
+        protocol_provider = authentik_provider_oauth2.zipline.id
+      }
+
       resource "authentik_group" "sharing_users" {
         name         = var.access_group
         is_superuser = false
@@ -104,6 +139,23 @@ spec:
         order  = 0
       }
 
+      resource "authentik_application_entitlement" "zipline_access" {
+        name        = "${authentik_group.sharing_users.id}-zipline-ent"
+        application = authentik_application.zipline.uuid
+      }
+
+      resource "authentik_policy_binding" "zipline_entitlement_access" {
+        target = authentik_application_entitlement.zipline_access.id
+        group  = authentik_group.sharing_users.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "zipline_application_access" {
+        target = authentik_application.zipline.uuid
+        group  = authentik_group.sharing_users.id
+        order  = 0
+      }
+
       output "OIDC_CLIENT_ID" {
         value     = authentik_provider_oauth2.kutt.client_id
         sensitive = true
@@ -116,6 +168,16 @@ spec:
 
       output "OIDC_ISSUER_URL" {
         value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/"
+        sensitive = true
+      }
+
+      output "ZIPLINE_OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.zipline.client_id
+        sensitive = true
+      }
+
+      output "ZIPLINE_OIDC_CLIENT_SECRET" {
+        value     = random_password.zipline_client_secret.result
         sensitive = true
       }
 {{- end }}

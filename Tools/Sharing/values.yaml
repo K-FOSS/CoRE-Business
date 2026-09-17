@@ -114,6 +114,12 @@ sharing:
   zipline:
     enabled: true
     hostname: 'zipline.mylogin.space'
+    oidc:
+      enabled: true
+      providerConfigRef: 'authentik'
+      issuerBaseUrl: 'https://idp.mylogin.space'
+      applicationSlug: 'sharing-zipline'
+      accessGroup: 'Sharing Users'
     image:
       repository: 'ghcr.io/diced/zipline'
       tag: '4.7.0'
