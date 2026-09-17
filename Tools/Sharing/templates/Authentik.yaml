@@ -68,7 +68,7 @@ spec:
         signing_key   = data.authentik_certificate_key_pair.signing_key.id
         allowed_redirect_uris = [{
           matching_mode = "strict"
-          url           = "${var.external_url}/api/auth/oidc/callback"
+          url           = "${var.external_url}/login/oidc"
         }]
         property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
         authorization_flow = data.authentik_flow.authorization.id
