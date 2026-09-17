@@ -636,6 +636,14 @@ controllers:
           SERVER_PORT: '3000'
           PDS_HOSTNAME: {{ .Values.tranquil.hostname | quote }}
           DATABASE_URL: {{ printf "postgres://$(A_TRANQUIL_DB_USERNAME):$(A_TRANQUIL_DB_PASSWORD)@%s:%s/$(A_TRANQUIL_DB_USERNAME)" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.tranquil.psql.host) (toString .Values.tranquil.psql.port) | quote }}
+          CACHE_BACKEND: {{ .Values.tranquil.cache.backend | quote }}
+          REPO_BACKEND: 'postgres'
+          A_TRANQUIL_CACHE_PASSWORD:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.tranquil.cache.secretName | quote }}
+                key: {{ .Values.tranquil.cache.passwordSecretKey | quote }}
+          VALKEY_URL: {{ printf "rediss://:$(A_TRANQUIL_CACHE_PASSWORD)@%s:%s" (default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.tranquil.cache.host) (toString .Values.tranquil.cache.port) | quote }}
           BLOB_STORAGE_BACKEND: 's3'
           AWS_REGION: {{ .Values.tranquil.s3.region | quote }}
           S3_BUCKET:

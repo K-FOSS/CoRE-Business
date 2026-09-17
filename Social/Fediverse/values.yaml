@@ -187,6 +187,12 @@ tranquil:
     port: 5432
     crossplaneProvider: ''
     terraformProvider: ''
+  cache:
+    backend: 'valkey'
+    host: ''
+    port: 6379
+    secretName: 'mastodon-redis'
+    passwordSecretKey: 'REDIS_PASSWORD'
   oidc:
     enabled: true
     # Keep this identifier short: the Terraform provider includes it in a
@@ -215,7 +221,9 @@ tranquil:
         name: 'mainvault-core'
       remoteKey: 'Social/Fediverse/Bluesky'
       passwordProperty: 'AppPassword'
-  replicas: 1
+  # PostgreSQL stores repository state, S3 stores blobs, and Valkey shares
+  # cache/rate-limit state across replicas.
+  replicas: 2
   strategy: 'RollingUpdate'
   rollingUpdate:
     unavailable: 1
