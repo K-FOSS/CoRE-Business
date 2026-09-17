@@ -167,7 +167,7 @@ bluesky:
 
 tranquil:
   enabled: true
-  hostname: 'tranquil.mylogin.space'
+  hostname: 'tranquil-pds.mylogin.space'
   secretManagement:
     secretStoreRef:
       kind: 'ClusterSecretStore'
@@ -182,14 +182,19 @@ tranquil:
     connectionSecretName: 'tranquil-pds-user'
     s3CredentialsSecretName: 'tranquil-pds-s3'
     s3GeneratedCredentialsSecretName: 'tranquil-pds-s3-generated'
+  psql:
+    host: ''
+    port: 5432
+    crossplaneProvider: ''
+    terraformProvider: ''
   s3:
-    bucket: 'tranquil-blobs'
     region: 'us-east-1'
     crossplaneProvider: ''
     terraformProvider: ''
   image:
-    repository: 'ghcr.io/bluesky-social/pds'
-    tag: '0.4.5027@sha256:d95725b24dbe53af9d91dc69750556931ebed6c396f2cfa42b221434db642f12'
+    repository: 'atcr.io/tranquil.farm/tranquil-pds'
+    # Upstream currently publishes the production container as `latest`.
+    tag: 'latest'
     pullPolicy: 'IfNotPresent'
   replicas: 1
   strategy: 'RollingUpdate'

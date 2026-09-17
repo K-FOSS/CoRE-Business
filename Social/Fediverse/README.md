@@ -24,10 +24,15 @@ connection Secret. Set `bluesky.existingSecret` to retain the legacy complete
 Secret override. It does not use Mastodon’s PostgreSQL, Redis, Authentik or
 migration configuration; those remain scoped to the Mastodon path.
 
-When `tranquil.enabled` is true, a second independent PDS is deployed at
-`tranquil.mylogin.space` with its own `Tranquil PDS` User, S3 bucket, retained
-Longhorn PVC, Vault-backed runtime Secret and HTTPRoute. It does not share the
-existing PDS’s SQLite volume or signing secrets.
+When `tranquil.enabled` is true, the [Tranquil PDS](https://tangled.org/tranquil.farm/tranquil-pds)
+is deployed at `tranquil-pds.mylogin.space` with its own User, User-managed
+PostgreSQL database, username-derived S3 bucket, Vault-backed runtime Secret and
+HTTPRoute. The User XRD creates the PostgreSQL database and username bucket from
+the account username, which is also used directly in Tranquil’s `DATABASE_URL`.
+Tranquil stores repository state in PostgreSQL and blobs in S3, so this
+chart does not create an application
+PVC for it. It does not share the existing PDS’s SQLite volume or signing
+secrets.
 
 The BJW-S Common resource maps are generated in `templates/common.yaml`.
 `values.yaml` contains site inputs, application tunables and secret references,
@@ -206,15 +211,16 @@ semantics so removing the application does not implicitly delete identity or
 data. Deliberately decommission the database, bucket and credentials only after
 an explicit backup and retention review.
 
-The PDS remains a single replica because its SQLite database is mounted from a
-ReadWriteOnce Longhorn volume; running concurrent PDS writers during a rollout
-would risk database corruption. BlueSky upgrades therefore use a controlled
-single-replica `RollingUpdate` with no surge: Kubernetes removes the old pod
-before attaching the retained volume to its replacement. The pod waits 20
+The reference BlueSky PDS remains a single replica because its SQLite database
+is mounted from a ReadWriteOnce Longhorn volume; running concurrent PDS writers
+during a rollout would risk database corruption. BlueSky upgrades therefore use
+`Recreate`. The pod waits 20
 seconds in a `preStop` hook for Service/Gateway endpoint propagation, then the
 PDS receives `SIGTERM` and has a 60-second termination grace period to finish
 active HTTP/WebSocket work. This provides a graceful handoff between instances
-without claiming zero-downtime multi-writer operation. The PDS implements the
+without claiming zero-downtime multi-writer operation. Tranquil uses the same
+graceful termination settings, but its PostgreSQL-backed repository state and
+S3 blob storage allow the application PVC to be omitted. The reference PDS implements the
 signal shutdown path in its [upstream server
 code](https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/index.ts),
 and Kubernetes documents the [pod termination

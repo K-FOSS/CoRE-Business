@@ -630,58 +630,65 @@ controllers:
             exec:
               command: ['sh', '-c', 'sleep {{ .Values.tranquil.terminationDrainSeconds }}']
         env:
+          SERVER_HOST: '0.0.0.0'
+          SERVER_PORT: '3000'
           PDS_HOSTNAME: {{ .Values.tranquil.hostname | quote }}
-          PDS_PORT: '3000'
-          PDS_DATA_DIRECTORY: '/pds'
-          PDS_BLOBSTORE_S3_BUCKET:
+          DATABASE_URL: {{ printf "postgres://$(A_TRANQUIL_DB_USERNAME):$(A_TRANQUIL_DB_PASSWORD)@%s:%s/$(A_TRANQUIL_DB_USERNAME)" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.tranquil.psql.host) (toString .Values.tranquil.psql.port) | quote }}
+          BLOB_STORAGE_BACKEND: 's3'
+          AWS_REGION: {{ .Values.tranquil.s3.region | quote }}
+          S3_BUCKET:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.connectionSecretName | quote }}
                 key: 'username'
-          PDS_BLOBSTORE_S3_REGION: {{ .Values.tranquil.s3.region | quote }}
-          PDS_BLOBSTORE_S3_ENDPOINT: {{ printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
-          PDS_BLOBSTORE_S3_FORCE_PATH_STYLE: 'true'
-          PDS_BLOBSTORE_S3_ACCESS_KEY_ID:
+          S3_ENDPOINT: {{ printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
+          AWS_ACCESS_KEY_ID:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.s3CredentialsSecretName | quote }}
                 key: 'AccessKey'
-          PDS_BLOBSTORE_S3_SECRET_ACCESS_KEY:
+          AWS_SECRET_ACCESS_KEY:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.s3CredentialsSecretName | quote }}
                 key: 'SecretAccessKey'
-          PDS_DID_PLC_URL: 'https://plc.directory'
-          PDS_BSKY_APP_VIEW_URL: 'https://api.bsky.app'
-          PDS_BSKY_APP_VIEW_DID: 'did:web:api.bsky.app'
-          PDS_REPORT_SERVICE_URL: 'https://mod.bsky.app'
-          PDS_REPORT_SERVICE_DID: 'did:plc:ar7c4by46qjdydhdevvrndac'
-          PDS_CRAWLERS: 'https://bsky.network'
-          PDS_INVITE_REQUIRED: 'true'
-          PDS_RATE_LIMITS_ENABLED: 'true'
-          LOG_ENABLED: 'true'
-          PDS_JWT_SECRET:
+          A_TRANQUIL_DB_USERNAME:
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.tranquil.secretManagement.secretName | quote }}
-                key: 'PDS_JWT_SECRET'
-          PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX:
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.tranquil.secretManagement.secretName | quote }}
-                key: 'PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX'
-          PDS_ADMIN_PASSWORD:
+                name: {{ .Values.tranquil.user.connectionSecretName | quote }}
+                key: 'username'
+          A_TRANQUIL_DB_PASSWORD:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.connectionSecretName | quote }}
                 key: 'password'
+          JWT_SECRET:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.tranquil.secretManagement.secretName | quote }}
+                key: 'PDS_JWT_SECRET'
+          PLC_ROTATION_KEY:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.tranquil.secretManagement.secretName | quote }}
+                key: 'PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX'
+          DPOP_SECRET:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.tranquil.secretManagement.secretName | quote }}
+                key: 'DPOP_SECRET'
+          MASTER_KEY:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.tranquil.secretManagement.secretName | quote }}
+                key: 'MASTER_KEY'
           A_PDS_EMAIL_FROM_USERNAME:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.connectionSecretName | quote }}
                 key: 'username'
-          PDS_EMAIL_FROM_ADDRESS: {{ printf "$(A_PDS_EMAIL_FROM_USERNAME)@%s" .Values.tenant.mail | quote }}
-          PDS_EMAIL_SMTP_URL: {{ printf "%s://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s:%s" (ternary "smtps" "smtp" .Values.mail.tls) .Values.mail.server (toString .Values.mail.port) | quote }}
+          EMAIL_FROM: {{ printf "$(A_PDS_EMAIL_FROM_USERNAME)@%s" .Values.tenant.mail | quote }}
+          SMTP_URL: {{ printf "%s://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s:%s" (ternary "smtps" "smtp" .Values.mail.tls) .Values.mail.server (toString .Values.mail.port) | quote }}
           A_PDS_EMAIL_SMTP_PASSWORD:
             valueFrom:
               secretKeyRef:
@@ -733,20 +740,6 @@ service:
         port: 3000
         protocol: 'HTTP'
         appProtocol: 'kubernetes.io/ws'
-persistence:
-  tranquil-data:
-    type: 'persistentVolumeClaim'
-    forceRename: 'tranquil-pds'
-    storageClass: 'longhorn'
-    accessMode: 'ReadWriteOnce'
-    size: '20Gi'
-    retain: true
-    annotations:
-      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
-    advancedMounts:
-      tranquil:
-        tranquil:
-          - path: '/pds'
 route:
   tranquil:
     kind: 'HTTPRoute'
@@ -972,7 +965,6 @@ ONE_CLICK_SSO_LOGIN: 'true'
 {{- $tranquilValues := include "tranquil.hardcodedValues" . | fromYaml -}}
 {{- $_ := set .Values.controllers "tranquil" (index $tranquilValues.controllers "tranquil") -}}
 {{- $_ := set .Values.service "tranquil" (index $tranquilValues.service "tranquil") -}}
-{{- $_ := set .Values.persistence "tranquil-data" (index $tranquilValues.persistence "tranquil-data") -}}
 {{- $_ := set .Values.route "tranquil" (index $tranquilValues.route "tranquil") -}}
 {{- end }}
 {{- include "bjw-s.common.loader.generate" . -}}
