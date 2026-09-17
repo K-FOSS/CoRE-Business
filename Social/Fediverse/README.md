@@ -110,8 +110,10 @@ Mastodon derives `SMTP_FROM_ADDRESS` as `<mastodon.user.username>@mail.mylogin.s
 It uses Authentik's OIDC `preferred_username` claim as the external
 identity key, while email and profile data come from the `email` and `profile`
 scopes. It reuses the User claim's LDAP username and password for SMTP
-authentication against `mail.mylogin.space` on implicit-TLS port 465; the
-runtime Secret does not contain separate mail credentials.
+authentication using the shared `mail.server`, `mail.port`, and `mail.tls`
+settings (implicit TLS on `mail.mylogin.space:465` by default); the runtime
+Secret does not contain separate mail credentials. The same shared settings
+are used by both PDS instances.
 `PREPARED_STATEMENTS=false` is set because the site PostgreSQL connection may
 pass through transaction pooling; Mastodon documents that prepared statements
 are incompatible with that mode.

@@ -7,6 +7,8 @@
 {{- $_ := required "region is required" .Values.region -}}
 {{- $_ := required "tenant.domain is required" .Values.tenant.domain -}}
 {{- $_ := required "tenant.mail is required" .Values.tenant.mail -}}
+{{- $_ := required "mail.server is required" .Values.mail.server -}}
+{{- $_ := required "mail.port is required" .Values.mail.port -}}
 {{- $_ := required "mastodon.domain is required" .Values.mastodon.domain -}}
 {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.mastodon.domain) -}}
 {{- fail "mastodon.domain must be a public DNS hostname without scheme, port or wildcard" -}}
@@ -501,7 +503,7 @@ controllers:
                   name: {{ .Values.bluesky.existingSecret | quote }}
                   key: 'PDS_EMAIL_SMTP_URL'
               {{- else }}
-              value: {{ printf "smtps://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s" .Values.tenant.mail | quote }}
+              value: {{ printf "%s://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s:%s/" (ternary "smtps" "smtp" .Values.mail.tls) .Values.mail.server (toString .Values.mail.port) | quote }}
             A_PDS_EMAIL_SMTP_PASSWORD:
               valueFrom:
                 secretKeyRef:
@@ -679,7 +681,7 @@ controllers:
                 name: {{ .Values.tranquil.user.connectionSecretName | quote }}
                 key: 'username'
           PDS_EMAIL_FROM_ADDRESS: {{ printf "$(A_PDS_EMAIL_FROM_USERNAME)@%s" .Values.tenant.mail | quote }}
-          PDS_EMAIL_SMTP_URL: {{ printf "smtps://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s" .Values.tenant.mail | quote }}
+          PDS_EMAIL_SMTP_URL: {{ printf "%s://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s:%s" (ternary "smtps" "smtp" .Values.mail.tls) .Values.mail.server (toString .Values.mail.port) | quote }}
           A_PDS_EMAIL_SMTP_PASSWORD:
             valueFrom:
               secretKeyRef:
@@ -904,17 +906,17 @@ ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT:
   {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.encryption.secretName "key" "ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT") | nindent 2 }}
 ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY:
   {{- include "mastodon.secretRef" (dict "name" .Values.secretManagement.encryption.secretName "key" "ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY") | nindent 2 }}
-SMTP_SERVER: {{ .Values.mastodon.smtp.server | quote }}
-SMTP_PORT: {{ .Values.mastodon.smtp.port | quote }}
+SMTP_SERVER: {{ .Values.mail.server | quote }}
+SMTP_PORT: {{ .Values.mail.port | quote }}
 SMTP_LOGIN:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "username") | nindent 2 }}
 SMTP_PASSWORD:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "password") | nindent 2 }}
 SMTP_FROM_ADDRESS: {{ printf "%s@mail.mylogin.space" .Values.mastodon.user.username | quote }}
 SMTP_AUTH_METHOD: 'plain'
-SMTP_ENABLE_STARTTLS: 'never'
+SMTP_ENABLE_STARTTLS: {{ if .Values.mail.tls }}'never'{{ else }}'auto'{{ end }}
 SMTP_OPENSSL_VERIFY_MODE: 'peer'
-SMTP_SSL: 'true'
+SMTP_SSL: {{ .Values.mail.tls | quote }}
 SMTP_TLS: 'false'
 S3_ENABLED: 'true'
 S3_REGION: {{ .Values.mastodon.s3.region | quote }}

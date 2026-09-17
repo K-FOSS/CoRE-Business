@@ -8,6 +8,11 @@ tenant:
   domain: 'mylogin.space'
   mail: 'mail.mylogin.space'
 
+mail:
+  server: 'mail.mylogin.space'
+  tls: true
+  port: 465
+
 gateway:
   name: 'main-gw'
   namespace: 'core-prod'
@@ -49,9 +54,6 @@ mastodon:
     displayName: 'mylogin.space'
     only: true
     assumeEmailIsVerified: true
-  smtp:
-    server: 'mail.mylogin.space'
-    port: 465
   replicas:
     web: 3
     streaming: 3
