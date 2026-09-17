@@ -37,6 +37,15 @@ sharing:
         terraformProvider: 'psql-home1-yvr'
     redis:
       enabled: true
+      ownDragonfly:
+        enabled: true
+        name: 'sharing-dragonfly'
+        replicas: 2
+        passwordGeneratorName: 'sharing-dragonfly-password'
+        passwordSecretName: 'sharing-dragonfly-password'
+        tlsSecretRef:
+          name: 'myloginspace-default-certificates'
+          namespace: 'core-prod'
       tlsProxy:
         enabled: true
         image:
@@ -50,8 +59,8 @@ sharing:
       secretStoreRef:
         kind: 'ClusterSecretStore'
         name: 'corevault-rootsecrets'
-      secretName: 'sharing-dragonfly'
-      passwordKey: 'redis-password'
+      secretName: 'sharing-dragonfly-password'
+      passwordKey: 'password'
     jwtSecret:
       # Generated once by External Secrets; never put the JWT in values or Git.
       generatorName: 'sharing-kutt-jwt'

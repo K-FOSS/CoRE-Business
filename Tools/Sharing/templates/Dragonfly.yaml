@@ -1,0 +1,22 @@
+{{- if and .Values.sharing.kutt.enabled .Values.sharing.kutt.redis.enabled .Values.sharing.kutt.redis.ownDragonfly.enabled }}
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: '{{ .Values.sharing.kutt.redis.ownDragonfly.name }}'
+spec:
+  replicas: {{ .Values.sharing.kutt.redis.ownDragonfly.replicas }}
+  authentication:
+    passwordFromSecret:
+      key: 'password'
+      name: '{{ .Values.sharing.kutt.redis.ownDragonfly.passwordSecretName }}'
+  tlsSecretRef:
+    name: '{{ .Values.sharing.kutt.redis.ownDragonfly.tlsSecretRef.name }}'
+    namespace: '{{ .Values.sharing.kutt.redis.ownDragonfly.tlsSecretRef.namespace }}'
+  serviceSpec:
+    labels:
+      wan-mode: 'private'
+  args:
+    - '--proactor_threads=2'
+    - '--default_lua_flags=allow-undeclared-keys'
+    - '--dbnum=16'
+{{- end }}
