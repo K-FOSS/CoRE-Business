@@ -690,21 +690,27 @@ controllers:
               secretKeyRef:
                 name: {{ .Values.tranquil.oidc.workspaceName | quote }}
                 key: 'OIDC_CLIENT_SECRET'
-          SSO_OIDC_ISSUER: {{ .Values.tranquil.oidc.issuer | quote }}
+          SSO_OIDC_ISSUER:
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.tranquil.oidc.workspaceName | quote }}
+                key: 'OIDC_ISSUER_URL'
           SSO_OIDC_NAME: {{ .Values.tranquil.oidc.displayName | quote }}
           A_PDS_EMAIL_FROM_USERNAME:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.connectionSecretName | quote }}
                 key: 'username'
-          EMAIL_FROM: {{ printf "$(A_PDS_EMAIL_FROM_USERNAME)@%s" .Values.tenant.mail | quote }}
-          SMTP_URL: {{ printf "%s://$(A_PDS_EMAIL_SMTP_USERNAME):$(A_PDS_EMAIL_SMTP_PASSWORD)@%s:%s" (ternary "smtps" "smtp" .Values.mail.tls) .Values.mail.server (toString .Values.mail.port) | quote }}
-          A_PDS_EMAIL_SMTP_PASSWORD:
+          MAIL_FROM_ADDRESS: {{ printf "$(A_PDS_EMAIL_FROM_USERNAME)@%s" .Values.tenant.mail | quote }}
+          MAIL_SMARTHOST_HOST: {{ .Values.mail.server | quote }}
+          MAIL_SMARTHOST_PORT: {{ .Values.mail.port | quote }}
+          MAIL_SMARTHOST_TLS: {{ ternary "implicit" "starttls" .Values.mail.tls | quote }}
+          MAIL_SMARTHOST_PASSWORD:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.connectionSecretName | quote }}
                 key: 'password'
-          A_PDS_EMAIL_SMTP_USERNAME:
+          MAIL_SMARTHOST_USERNAME:
             valueFrom:
               secretKeyRef:
                 name: {{ .Values.tranquil.user.connectionSecretName | quote }}

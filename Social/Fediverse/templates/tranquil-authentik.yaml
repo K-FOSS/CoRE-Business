@@ -115,4 +115,9 @@ spec:
         value     = random_password.client_secret.result
         sensitive = true
       }
+
+      output "OIDC_ISSUER_URL" {
+        value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/"
+        sensitive = true
+      }
 {{- end }}
