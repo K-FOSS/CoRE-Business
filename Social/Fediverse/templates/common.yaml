@@ -433,7 +433,7 @@ controllers:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.bluesky.user.connectionSecretName | quote }}
-                  key: 'bucket'
+                  key: 'username'
             PDS_BLOBSTORE_S3_REGION: {{ .Values.bluesky.s3.region | quote }}
             PDS_BLOBSTORE_S3_ENDPOINT: {{ printf "https://s3.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
             PDS_BLOBSTORE_S3_FORCE_PATH_STYLE: 'true'
@@ -441,12 +441,12 @@ controllers:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.bluesky.user.s3CredentialsSecretName | quote }}
-                  key: 'S3AccessKey'
+                  key: 'AccessKey'
             PDS_BLOBSTORE_S3_SECRET_ACCESS_KEY:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.bluesky.user.s3CredentialsSecretName | quote }}
-                  key: 'S3SecretKey'
+                  key: 'SecretAccessKey'
             PDS_BLOB_UPLOAD_LIMIT: '314572800'
             PDS_DID_PLC_URL: 'https://plc.directory'
             PDS_BSKY_APP_VIEW_URL: 'https://api.bsky.app'
