@@ -17,10 +17,12 @@ When `bluesky.enabled` is true, this chart also deploys the official
 [AT Protocol](https://atproto.com/) defaults and its pinned image digest. Its
 PDS Deployment, Service, retained Longhorn PVC and public HTTPRoute are kept
 under the separate `bluesky` values subtree. The PDS uses SQLite and site-local
-S3; runtime credentials must be supplied by the existing Secret named by
-`bluesky.existingSecret`. It does not use Mastodon’s PostgreSQL, Redis,
-Authentik, generated-secret or migration configuration; those remain scoped to
-the Mastodon path in this combined chart.
+S3. By default, its JWT and PLC rotation secrets are generated once, pushed to
+Vault and pulled back into the runtime Secret; its admin password comes from the
+generated `password` in the Bluesky [mylogin.space User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+connection Secret. Set `bluesky.existingSecret` to retain the legacy complete
+Secret override. It does not use Mastodon’s PostgreSQL, Redis, Authentik or
+migration configuration; those remain scoped to the Mastodon path.
 
 The BJW-S Common resource maps are generated in `templates/common.yaml`.
 `values.yaml` contains site inputs, application tunables and secret references,
@@ -84,6 +86,14 @@ The Dragonfly password is pulled from the site-local path published by the
 [CoRE Dragonfly chart](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Storage/Dragonfly/CoRE):
 `Storage/DragonFly/CoRE/<region>/<datacenter>/<cluster>/Creds`. No runtime
 Secret values belong in Git.
+
+When Bluesky is enabled without `bluesky.existingSecret`, the default Vault path
+is `Social/Fediverse/<region>/<datacenter>/<cluster>/Bluesky` and stores
+`PDS_JWT_SECRET` plus `PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX`. The SMTP URL
+must be supplied through `bluesky.emailSmtpUrl` because it is connection
+configuration, not safely randomizable data; `existingSecret` can supply it as
+`PDS_EMAIL_SMTP_URL` instead. Preserve the Vault record and User connection
+Secret together when recovering the PDS.
 
 The `User` claim writes PostgreSQL `username` and `password` to
 `mastodon.user.connectionSecretName`; the database name is the explicit
@@ -225,7 +235,7 @@ helm template mastodon . --namespace core-prod -f examples/site.yaml \
   --api-versions gateway.networking.k8s.io/v1/HTTPRoute >/tmp/mastodon-rendered.yaml
 helm template bluesky . --namespace core-prod -f examples/site.yaml \
   --set bluesky.enabled=true --set bluesky.hostname=pds.example.com \
-  --set bluesky.existingSecret=bluesky-pds-runtime \
+  --set bluesky.emailSmtpUrl='smtps://mail.example.com:465' \
   --set bluesky.emailFromAddress='PDS <noreply@example.com>' \
   --set bluesky.s3.crossplaneProvider=s3-yvr-home1-core \
   --set bluesky.s3.terraformProvider=s3-yvr-home1-core \

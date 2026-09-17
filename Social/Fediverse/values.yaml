@@ -116,8 +116,23 @@ mastodon:
 bluesky:
   enabled: true
   hostname: 'pds.mylogin.space'
+  # Optional complete legacy Secret override. When empty, generated PDS
+  # secrets are read from secretManagement.secretName and the admin password
+  # comes from user.connectionSecretName.
   existingSecret: ''
   emailFromAddress: ''
+  emailSmtpUrl: ''
+  secretManagement:
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'mainvault-core'
+    remoteKey: ''
+    jwt:
+      generatorName: 'bluesky-jwt'
+    plc:
+      generatorName: 'bluesky-plc'
+    secretName: 'bluesky-pds-runtime'
+    bootstrapSecretName: 'bluesky-pds-runtime-bootstrap'
   user:
     name: 'microblog-pds'
     username: 'microblog-pds'
