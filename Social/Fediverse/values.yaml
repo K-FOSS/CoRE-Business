@@ -114,7 +114,7 @@ mastodon:
     sidekiqDetailedMetrics: false
 
 bluesky:
-  enabled: false
+  enabled: true
   hostname: ''
   existingSecret: ''
   emailFromAddress: ''
