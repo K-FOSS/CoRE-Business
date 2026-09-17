@@ -148,7 +148,54 @@ bluesky:
     tag: '0.4.5027@sha256:d95725b24dbe53af9d91dc69750556931ebed6c396f2cfa42b221434db642f12'
     pullPolicy: 'IfNotPresent'
   replicas: 1
+  # PDS uses SQLite on the single RWO data volume. Roll the existing pod out
+  # before starting its replacement so two PDS writers never overlap.
   strategy: 'Recreate'
+  rollingUpdate:
+    unavailable: 1
+    surge: '0%'
+  terminationGracePeriodSeconds: 60
+  terminationDrainSeconds: 20
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '256Mi'
+    limits:
+      memory: '1Gi'
+
+tranquil:
+  enabled: true
+  hostname: 'tranquil.mylogin.space'
+  secretManagement:
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'mainvault-core'
+    remoteKey: ''
+    generatorName: 'tranquil-pds-secrets'
+    secretName: 'tranquil-pds-runtime'
+    bootstrapSecretName: 'tranquil-pds-runtime-bootstrap'
+  user:
+    name: 'tranquil-pds'
+    username: 'tranquil-pds'
+    connectionSecretName: 'tranquil-pds-user'
+    s3CredentialsSecretName: 'tranquil-pds-s3'
+    s3GeneratedCredentialsSecretName: 'tranquil-pds-s3-generated'
+  s3:
+    bucket: 'tranquil-blobs'
+    region: 'us-east-1'
+    crossplaneProvider: ''
+    terraformProvider: ''
+  image:
+    repository: 'ghcr.io/bluesky-social/pds'
+    tag: '0.4.5027@sha256:d95725b24dbe53af9d91dc69750556931ebed6c396f2cfa42b221434db642f12'
+    pullPolicy: 'IfNotPresent'
+  replicas: 1
+  strategy: 'RollingUpdate'
+  rollingUpdate:
+    unavailable: 1
+    surge: '0%'
+  terminationGracePeriodSeconds: 60
+  terminationDrainSeconds: 20
   resources:
     requests:
       cpu: '100m'

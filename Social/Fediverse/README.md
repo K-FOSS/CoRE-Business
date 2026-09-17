@@ -24,6 +24,11 @@ connection Secret. Set `bluesky.existingSecret` to retain the legacy complete
 Secret override. It does not use Mastodon’s PostgreSQL, Redis, Authentik or
 migration configuration; those remain scoped to the Mastodon path.
 
+When `tranquil.enabled` is true, a second independent PDS is deployed at
+`tranquil.mylogin.space` with its own `Tranquil PDS` User, S3 bucket, retained
+Longhorn PVC, Vault-backed runtime Secret and HTTPRoute. It does not share the
+existing PDS’s SQLite volume or signing secrets.
+
 The BJW-S Common resource maps are generated in `templates/common.yaml`.
 `values.yaml` contains site inputs, application tunables and secret references,
 while controllers, Services, persistence, routes and monitors remain close to
@@ -55,7 +60,8 @@ namespace-local Secrets.
 
 The chart renders the following application resources in `core-prod`: web,
 streaming and Sidekiq Deployments; a migration Job and one-shot VAPID/encryption
-bootstrap Job; the web and streaming Services; an `HTTPRoute`; the
+bootstrap Job; the web and streaming Services; public `HTTPRoute` resources;
+the
 `mylogin.space/v1alpha1` `User`; an Authentik Crossplane `Workspace`; External
 Secrets, PushSecrets and a Password generator; and the VAPID ServiceAccount,
 Role and RoleBinding. The checked-in chart is the complete rendering unit, so
@@ -197,6 +203,20 @@ The User claim and S3 credential Secret have Argo `Prune=false,Delete=false`
 semantics so removing the application does not implicitly delete identity or
 data. Deliberately decommission the database, bucket and credentials only after
 an explicit backup and retention review.
+
+The PDS remains a single replica because its SQLite database is mounted from a
+ReadWriteOnce Longhorn volume; running concurrent PDS writers during a rollout
+would risk database corruption. BlueSky upgrades therefore use a controlled
+single-replica `RollingUpdate` with no surge: Kubernetes removes the old pod
+before attaching the retained volume to its replacement. The pod waits 20
+seconds in a `preStop` hook for Service/Gateway endpoint propagation, then the
+PDS receives `SIGTERM` and has a 60-second termination grace period to finish
+active HTTP/WebSocket work. This provides a graceful handoff between instances
+without claiming zero-downtime multi-writer operation. The PDS implements the
+signal shutdown path in its [upstream server
+code](https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/index.ts),
+and Kubernetes documents the [pod termination
+lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination).
 
 The `mastodon` User also enables the XRD's separate S3 credential-generation
 path and writes its result to `mastodon-s3-user-generated`. That Secret is a
