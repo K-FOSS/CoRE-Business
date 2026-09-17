@@ -26,7 +26,8 @@ controllers:
         probes:
           startup:
             enabled: true
-            type: 'TCP'
+            type: 'HTTP'
+            path: '/api/v2/health'
             port: 3000
             spec:
               periodSeconds: 10
@@ -34,14 +35,16 @@ controllers:
               failureThreshold: 30
           readiness:
             enabled: true
-            type: 'TCP'
+            type: 'HTTP'
+            path: '/api/v2/health'
             port: 3000
             spec:
               periodSeconds: 10
               timeoutSeconds: 5
           liveness:
             enabled: true
-            type: 'TCP'
+            type: 'HTTP'
+            path: '/api/v2/health'
             port: 3000
             spec:
               periodSeconds: 30
