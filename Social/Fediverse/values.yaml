@@ -127,12 +127,9 @@ bluesky:
       kind: 'ClusterSecretStore'
       name: 'mainvault-core'
     remoteKey: ''
-    jwt:
-      generatorName: 'bluesky-jwt'
-    plc:
-      generatorName: 'bluesky-plc'
+    generatorName: 'bluesky-secrets'
     secretName: 'bluesky-pds-runtime'
-    bootstrapSecretName: 'bluesky-pds-runtime-bootstrap'
+    bootstrapSecretName: 'bluesky-pds-runtime-bootstrap-v2'
   user:
     name: 'microblog-pds'
     username: 'microblog-pds'
