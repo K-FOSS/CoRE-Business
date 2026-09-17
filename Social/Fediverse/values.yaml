@@ -203,6 +203,15 @@ tranquil:
     # Upstream currently publishes the production container as `latest`.
     tag: 'latest'
     pullPolicy: 'IfNotPresent'
+  imagePullSecret:
+    name: 'tranquil-pds-registry'
+    username: 'kjones.pds.mylogin.space'
+    secretManagement:
+      secretStoreRef:
+        kind: 'ClusterSecretStore'
+        name: 'mainvault-core'
+      remoteKey: 'Social/Fediverse/Bluesky'
+      passwordProperty: 'AppPassword'
   replicas: 1
   strategy: 'RollingUpdate'
   rollingUpdate:

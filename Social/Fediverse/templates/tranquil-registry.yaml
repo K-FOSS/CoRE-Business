@@ -1,0 +1,27 @@
+{{- if .Values.tranquil.enabled }}
+{{- $pullSecret := .Values.tranquil.imagePullSecret }}
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ $pullSecret.name | quote }}
+  annotations:
+    argocd.argoproj.io/sync-wave: '-10'
+spec:
+  refreshInterval: '1h'
+  secretStoreRef:
+    {{- toYaml $pullSecret.secretManagement.secretStoreRef | nindent 4 }}
+  target:
+    name: {{ $pullSecret.name | quote }}
+    creationPolicy: 'Orphan'
+    deletionPolicy: 'Retain'
+    template:
+      type: 'kubernetes.io/dockerconfigjson'
+      engineVersion: 'v2'
+      data:
+        .dockerconfigjson: '{{`{"auths":{"atcr.io":{"username":"`}}{{ $pullSecret.username }}{{`","password":"{{ .AppPassword }}"}}}`}}'
+  data:
+    - secretKey: 'AppPassword'
+      remoteRef:
+        key: {{ $pullSecret.secretManagement.remoteKey | quote }}
+        property: {{ $pullSecret.secretManagement.passwordProperty | quote }}
+{{- end }}

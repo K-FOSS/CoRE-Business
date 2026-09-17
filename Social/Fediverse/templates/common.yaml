@@ -613,6 +613,8 @@ controllers:
     pod:
       terminationGracePeriodSeconds: {{ .Values.tranquil.terminationGracePeriodSeconds }}
       automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: {{ .Values.tranquil.imagePullSecret.name | quote }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
