@@ -1,23 +1,60 @@
-openproject:
-  replicaCount: 1
-  hostNetwork: false
+global:
+  createDefaultServiceAccount: true
 
+cluster:
+  # The owning ApplicationSet currently selects this single production site.
+  name: 'core-home1-talos-prod'
+
+datacenter: 'home1'
+region: 'yvr'
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https'
+  hostname: 'projects.mylogin.space'
+
+secretSuffix: 'prod'
+
+openproject:
   image:
-    repository: openproject/community
-    pullPolicy: IfNotPresent
+    repository: 'openproject/community'
+    pullPolicy: 'IfNotPresent'
     tag: '12'
 
-  service:
-    type: ClusterIP
-    port: 8080
+  database:
+    name: 'Gmdfb5HXbk'
+    host: ''
+    port: 5432
+    userSecretName: ''
 
-  ingress:
-    enabled: false
-
-  storage:
-    storageClassName: 'local-path'
-    capacity: 5G
-    persistenentVolume:
-      create: false
+  s3:
+    credentialsSecretName: ''
 
   resources: {}
+
+  persistence:
+    storageClassName: 'local-path'
+    capacity: '5Gi'
+
+  runtime:
+    usePuma: 'true'
+    railsMinThreads: '4'
+    railsMaxThreads: '16'
+
+  # OpenProject's container listens on 8080 behind the Gateway.
+  service:
+    port: 8080
+
+  # The S3 User claim emits temporary credentials with a session token.
+  s3Endpoint: 'https://s3.mylogin.space'
+
+  # The current User composition publishes this claim secret key.
+  fogPathStyle: 'true'
+
+  # Retain the existing application storage contract.
+  storageMountPath: '/var/openproject/assets'
+
+  # The current image is retained during this chart migration.
+  # Upgrade it separately after validating its database migration path.
+  hostNetwork: false

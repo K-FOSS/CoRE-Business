@@ -1,8 +1,12 @@
 apiVersion: v2
-version: 1.0.0
-name: core-business-projects
+name: 'core-business-projects'
+description: 'OpenProject using the BJW-S common library'
+type: 'application'
+version: '1.0.0'
+appVersion: '12'
+kubeVersion: '>=1.31.0-0'
 
 dependencies:
-  - name: openproject
-    version: 0.5.0
-    repository: https://homeenterpriseinc.github.io/helm-charts/
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

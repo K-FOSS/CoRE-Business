@@ -1,0 +1,158 @@
+{{- include "bjw-s.common.loader.init" . -}}
+{{- $_ := required "cluster.name must identify the selected production cluster" .Values.cluster.name -}}
+{{- $_ := required "datacenter must identify the selected site" .Values.datacenter -}}
+{{- $_ := required "region must identify the selected site region" .Values.region -}}
+{{- $_ := required "gateway.hostname must be configured" .Values.gateway.hostname -}}
+
+{{- define "projects.hardcodedValues" -}}
+global:
+  nameOverride: {{ .Release.Name | quote }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    seccompProfile:
+      type: 'RuntimeDefault'
+
+controllers:
+  openproject:
+    strategy: 'Recreate'
+    replicas: 1
+    revisionHistoryLimit: 3
+    nameOverride: 'openproject'
+    annotations:
+      secret.reloader.stakater.com/reload: {{ printf "%s,%s" (default .Release.Name .Values.openproject.database.userSecretName) (default (printf "business-projects-openproject-s3-%s" .Values.secretSuffix) .Values.openproject.s3.credentialsSecretName) | quote }}
+    containers:
+      openproject:
+        image:
+          repository: {{ .Values.openproject.image.repository | quote }}
+          tag: {{ .Values.openproject.image.tag | quote }}
+          pullPolicy: {{ .Values.openproject.image.pullPolicy | quote }}
+        env:
+          - name: USE_PUMA
+            value: {{ .Values.openproject.runtime.usePuma | quote }}
+          - name: RAILS_MIN_THREADS
+            value: {{ .Values.openproject.runtime.railsMinThreads | quote }}
+          - name: RAILS_MAX_THREADS
+            value: {{ .Values.openproject.runtime.railsMaxThreads | quote }}
+          - name: DATABASE_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{ default .Release.Name .Values.openproject.database.userSecretName | quote }}
+                key: 'username'
+                optional: false
+          - name: DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ default .Release.Name .Values.openproject.database.userSecretName | quote }}
+                key: 'password'
+                optional: false
+          - name: DATABASE_URL
+            value: {{ printf "postgresql://$(DATABASE_USERNAME):$(DATABASE_PASSWORD)@%s:%v/%s" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.openproject.database.host) .Values.openproject.database.port .Values.openproject.database.name | quote }}
+            dependsOn:
+              - 'DATABASE_USERNAME'
+              - 'DATABASE_PASSWORD'
+          - name: OPENPROJECT_ATTACHMENTS__STORAGE
+            value: 'fog'
+          - name: OPENPROJECT_FOG_CREDENTIALS_PROVIDER
+            value: 'aws'
+          - name: OPENPROJECT_FOG_CREDENTIALS_PATH__STYLE
+            value: {{ .Values.openproject.fogPathStyle | quote }}
+          - name: OPENPROJECT_FOG_CREDENTIALS_ENDPOINT
+            value: {{ .Values.openproject.s3Endpoint | quote }}
+          - name: OPENPROJECT_FOG_DIRECTORY
+            valueFrom:
+              secretKeyRef:
+                name: {{ default .Release.Name .Values.openproject.database.userSecretName | quote }}
+                key: 'username'
+                optional: false
+          - name: OPENPROJECT_FOG_CREDENTIALS_AWS__ACCESS__KEY__ID
+            valueFrom:
+              secretKeyRef:
+                name: {{ default (printf "business-projects-openproject-s3-%s" .Values.secretSuffix) .Values.openproject.s3.credentialsSecretName | quote }}
+                key: 'AccessKey'
+                optional: false
+          - name: OPENPROJECT_FOG_CREDENTIALS_AWS__SECRET__ACCESS__KEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ default (printf "business-projects-openproject-s3-%s" .Values.secretSuffix) .Values.openproject.s3.credentialsSecretName | quote }}
+                key: 'SecretAccessKey'
+                optional: false
+          - name: OPENPROJECT_FOG_CREDENTIALS_AWS__SESSION__TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ default (printf "business-projects-openproject-s3-%s" .Values.secretSuffix) .Values.openproject.s3.credentialsSecretName | quote }}
+                key: 'SessionToken'
+                optional: false
+          - name: OPENPROJECT_RAILS__RELATIVE__URL__ROOT
+            value: ''
+          - name: SERVER_NAME
+            value: {{ .Values.gateway.hostname | quote }}
+          - name: IMAP_ENABLED
+            value: 'false'
+        resources:
+          {{- toYaml .Values.openproject.resources | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - 'ALL'
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 8080
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 8080
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 8080
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+
+service:
+  openproject:
+    controller: 'openproject'
+    nameOverride: 'openproject'
+    forceRename: 'openproject'
+    primary: true
+    type: 'ClusterIP'
+    ports:
+      http:
+        enabled: true
+        primary: true
+        port: 80
+        targetPort: 8080
+        protocol: 'HTTP'
+
+persistence:
+  assets:
+    enabled: true
+    type: 'persistentVolumeClaim'
+    storageClass: {{ .Values.openproject.persistence.storageClassName | quote }}
+    accessMode: 'ReadWriteOnce'
+    size: {{ .Values.openproject.persistence.capacity | quote }}
+    globalMounts:
+      - path: {{ .Values.openproject.storageMountPath | quote }}
+
+route:
+  openproject:
+    enabled: false
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "projects.hardcodedValues" . | fromYaml) -}}
+{{ include "bjw-s.common.loader.generate" . }}

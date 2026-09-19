@@ -8,11 +8,21 @@ spec:
   groups:
     - LDAPService
 
-  database:
-    name: Gmdfb5HXbk
+  psql:
+    enabled: true
+    createUserDatabase: false
+    databases:
+      - 'Gmdfb5HXbk'
 
-  buckets:
-    - ba8f4fed-33ed-6b22-9d0a-3a7b064db6dc-6g7ka2
+  s3:
+    enabled: true
+    createBuckets: true
+    createCredentials: true
+    buckets:
+      - 'ba8f4fed-33ed-6b22-9d0a-3a7b064db6dc-6g7ka2'
+    writeCredentialsSecretRef:
+      name: 'business-projects-openproject-s3-{{ .Values.secretSuffix }}'
+      namespace: {{ .Release.Namespace | quote }}
 
   writeConnectionSecretToRef:
     name: {{ .Release.Name }}
