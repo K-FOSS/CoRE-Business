@@ -513,13 +513,6 @@ nextcloud:
     # PHP Configuration files
     # Will be injected in /usr/local/etc/php/conf.d for apache image and in /usr/local/etc/php-fpm.d when nginx.enabled: true
     phpConfigs:
-      redis-session.ini: |-
-        session.save_handler = redis
-        session.save_path = "tls://dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space:6379"
-        redis.session.locking_enabled = 1
-        redis.session.lock_retries = -1
-        redis.session.lock_wait_time = 10000
-
       docker-php-ext-pdo_pgsql.ini: |-
         extension=pdo_pgsql
 
@@ -567,6 +560,12 @@ nextcloud:
         listen.group = www-data
 
         listen.mode = 0777
+
+        php_admin_value[session.save_handler] = redis
+        php_admin_value[session.save_path] = "tls://dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space:6379"
+        php_admin_value[redis.session.locking_enabled] = 1
+        php_admin_value[redis.session.lock_retries] = -1
+        php_admin_value[redis.session.lock_wait_time] = 10000
         ; When POSIX Access Control Lists are supported you can set them using
         ; these options, value is a comma separated list of user/group names.
         ; When set, listen.owner and listen.group are ignored
