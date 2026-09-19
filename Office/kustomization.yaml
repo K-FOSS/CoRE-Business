@@ -11,4 +11,4 @@ patches:
       group: apps
       version: v1
       kind: Deployment
-      name: core-business-office-nextcloud
+      labelSelector: app.kubernetes.io/name=nextcloud

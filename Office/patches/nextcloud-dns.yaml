@@ -1,7 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: core-business-office-nextcloud
+  name: nextcloud
+  labels:
+    app.kubernetes.io/name: nextcloud
 spec:
   template:
     spec:
