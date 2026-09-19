@@ -513,6 +513,13 @@ nextcloud:
     # PHP Configuration files
     # Will be injected in /usr/local/etc/php/conf.d for apache image and in /usr/local/etc/php-fpm.d when nginx.enabled: true
     phpConfigs:
+      redis-session.ini: |-
+        session.save_handler = redis
+        session.save_path = "tls://dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space:6379"
+        redis.session.locking_enabled = 1
+        redis.session.lock_retries = -1
+        redis.session.lock_wait_time = 10000
+
       docker-php-ext-pdo_pgsql.ini: |-
         extension=pdo_pgsql
 
