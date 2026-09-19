@@ -28,7 +28,7 @@ that differs from the deployed application.
 office.mylogin.space HTTPRoute
   -> Nextcloud nginx service
   -> Nextcloud FPM application and worker
-  -> external PostgreSQL + platform Redis/S3
+  -> external PostgreSQL + site-local Dragonfly/S3
 
 collabora.mylogin.space ClusterIP Service
   -> Collabora Online
@@ -55,6 +55,10 @@ pdf.mylogin.space HTTPRoute
   `AccessKey` and `SecretAccessKey` outputs are written to
   `office-nextcloud-s3-creds`, which is the Secret consumed by the main
   Nextcloud deployment and its custom worker.
+- Nextcloud cache, distributed locks and file locking use the site-local
+  [Dragonfly](https://www.dragonflydb.io/) service over TLS. Its password is
+  copied by an [External Secrets](https://external-secrets.io/) resource from
+  the Backplane-published `Storage/DragonFly/CoRE/.../Creds` path.
 - Gateway API exposes Nextcloud, while ExternalDNS publishes the Collabora
   ClusterIP Service. An Envoy Gateway BackendTrafficPolicy adjusts the
   Nextcloud backend behavior.
@@ -79,7 +83,9 @@ pdf.mylogin.space HTTPRoute
   [`aminueza/minio` pinned to 3.40.1](https://registry.terraform.io/providers/aminueza/minio/3.40.1/docs),
   because the shared site ProviderConfig's older provider does not support
   authenticating with the `User` output's session token.
-- Shared PostgreSQL, Redis/Dragonfly, S3-compatible storage, DNS and TLS.
+- Shared PostgreSQL, site-local [Dragonfly](https://www.dragonflydb.io/) with
+  [TLS](https://www.dragonflydb.io/docs/managing-dragonfly/tls), S3-compatible
+  storage, DNS and TLS.
 - A working `ssd-storage` StorageClass and backup coverage for the Nextcloud
   PVC and external data services.
 
@@ -124,7 +130,8 @@ After reconciliation, test:
 2. File upload, download, sharing and background jobs.
 3. Collabora document open, edit and save through WOPI.
 4. PDF conversion through the public route.
-5. Database, Redis and object-storage connectivity.
+5. Database, Dragonfly cache/lock operations over TLS, and object-storage
+   connectivity.
 6. Backup visibility and a representative restore procedure.
 7. The `nextcloud-s3-credentials` Workspace is ready and its connection Secret
    contains the expected key names; never print or decode their values.

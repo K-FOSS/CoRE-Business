@@ -94,7 +94,16 @@ spec:
               value: /var/www/html/data
 
             - name: REDIS_HOST
-              value: redis.mylogin.space
+              value: {{ .Values.nextcloudRedis.host | quote }}
+
+            - name: REDIS_HOST_PORT
+              value: {{ .Values.nextcloudRedis.port | quote }}
+
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.nextcloudRedis.secretName | quote }}
+                  key: password
 
             - name: OBJECTSTORE_S3_HOST
               value: {{ .Values.nextcloudS3Credentials.endpoint | quote }}

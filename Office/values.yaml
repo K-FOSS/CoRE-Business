@@ -31,6 +31,19 @@ nextcloudS3Credentials:
   credentialsSecretName: office-nextcloud-s3-creds
   userSecretName: office-nextcloud-creds
 
+nextcloudRedis:
+  enabled: true
+  host: 'dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space'
+  port: 6379
+  secretName: 'office-nextcloud-dragonfly'
+  refreshInterval: '1h'
+  secretStoreRef:
+    kind: 'ClusterSecretStore'
+    name: 'corevault-rootsecrets'
+  remoteRef:
+    key: ''
+    property: 'Password'
+
 pdf:
   enabled: true
 
@@ -997,9 +1010,14 @@ nextcloud:
           'memcache.locking' => '\\OC\\Memcache\\Redis',
           'filelocking.enabled' => true,
           'redis' => array(
-            'host' => getenv('REDIS_HOST'),
+            'host' => 'tls://' . getenv('REDIS_HOST'),
             'port' => getenv('REDIS_HOST_PORT') ?: 6379,
-            'dbindex' => 50
+            'password' => getenv('REDIS_PASSWORD'),
+            'dbindex' => 50,
+            'ssl_context' => array(
+              'verify_peer' => true,
+              'verify_peer_name' => true
+            )
           )
         );
 
@@ -1073,7 +1091,16 @@ nextcloud:
       # Redis
       #
       - name: REDIS_HOST
-        value: 'redis.home1.mylogin.space'
+        value: 'dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space'
+
+      - name: REDIS_HOST_PORT
+        value: '6379'
+
+      - name: REDIS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: office-nextcloud-dragonfly
+            key: password
 
       #
       # Storage
