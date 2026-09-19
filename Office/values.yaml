@@ -266,7 +266,7 @@ collabora-online:
   #   matchLabels:
   #     kubernetes.io/metadata.name: your-ingress-controller-namespace
   networkPolicy:
-    enabled: true
+    enabled: false
     ingress:
       # The external LoadBalancer may preserve client source addresses, so
       # the service must accept editor and WebSocket traffic from its
