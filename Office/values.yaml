@@ -561,11 +561,6 @@ nextcloud:
 
         listen.mode = 0777
 
-        php_admin_value[session.save_handler] = redis
-        php_admin_value[session.save_path] = "tls://dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space:6379"
-        php_admin_value[redis.session.locking_enabled] = 1
-        php_admin_value[redis.session.lock_retries] = -1
-        php_admin_value[redis.session.lock_wait_time] = 10000
         ; When POSIX Access Control Lists are supported you can set them using
         ; these options, value is a comma separated list of user/group names.
         ; When set, listen.owner and listen.group are ignored
@@ -973,6 +968,18 @@ nextcloud:
         ;php_admin_value[memory_limit] = 32M
     
     
+    hooks:
+      before-starting: |-
+        set -eu
+        umask 077
+        cat > /usr/local/etc/php/conf.d/redis-session.ini <<EOF
+        session.save_handler = redis
+        session.save_path = "tls://dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space:6379?auth=${REDIS_PASSWORD}"
+        redis.session.locking_enabled = 1
+        redis.session.lock_retries = -1
+        redis.session.lock_wait_time = 10000
+        EOF
+
     # Default config files
     # IMPORTANT: Will be used only if you put extra configs, otherwise default will come from nextcloud itself
     # Default confgurations can be found here: https://github.com/nextcloud/docker/tree/master/16.0/apache/config
