@@ -4,3 +4,11 @@ kind: Kustomization
 labels:
   - pairs:
       resolvemy.host/env: 'prod'
+
+patches:
+  - path: patches/nextcloud-dns.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: core-business-office-nextcloud

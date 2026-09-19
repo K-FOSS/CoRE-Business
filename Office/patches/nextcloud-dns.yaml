@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-business-office-nextcloud
+spec:
+  template:
+    spec:
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 10.44.4.10
+          - 1.1.1.1
+        options:
+          - name: edns0
+          - name: ndots
+            value: '0'
