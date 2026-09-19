@@ -972,7 +972,8 @@ nextcloud:
       before-starting: |-
         set -eu
         umask 077
-        cat > /usr/local/etc/php/conf.d/redis-session.ini <<EOF
+        mkdir -p /tmp/php-conf.d
+        cat > /tmp/php-conf.d/redis-session.ini <<EOF
         session.save_handler = redis
         session.save_path = "tls://dragonfly.core-home1-talos-prod.home1.yvr.mylogin.space:6379?auth=${REDIS_PASSWORD}"
         redis.session.locking_enabled = 1
