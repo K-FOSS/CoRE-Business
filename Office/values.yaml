@@ -1005,7 +1005,7 @@ nextcloud:
       logging.config.php: |-
         <?php
         $CONFIG = array (
-          'log_type' => 'file',
+          'log_type' => 'errorlog',
           'logtimezone' => 'America/Winnipeg',
         );
 
