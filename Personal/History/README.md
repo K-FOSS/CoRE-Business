@@ -21,6 +21,9 @@ connects to the matching
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space` endpoint. Redis is the existing site-local
 Dragonfly service. The chart reads the Dragonfly password from the Backplane
 Vault secret store and constructs a TLS Redis URL for logical database 152.
+The chart also uses the site PostgreSQL Terraform provider to ensure the
+`postgis` extension exists in the Dawarich database before migrations succeed;
+the application role is not granted extension-creation privileges.
 The owning deployment must ensure the [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml)
 and [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
 are active for the selected cluster.

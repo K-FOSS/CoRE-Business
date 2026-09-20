@@ -1,0 +1,26 @@
+{{- if .Values.dawarich.enabled }}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: 'dawarich-postgis'
+spec:
+  providerConfigRef:
+    name: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.dawarich.database.terraformProvider | quote }}
+  forProvider:
+    source: 'Inline'
+    env:
+      - name: 'TF_VAR_database'
+        secretKeyRef:
+          namespace: {{ .Release.Namespace | quote }}
+          name: {{ .Values.dawarich.database.userSecret | quote }}
+          key: {{ .Values.dawarich.database.usernameKey | quote }}
+    module: |
+      variable "database" {
+        type = string
+      }
+
+      resource "postgresql_extension" "postgis" {
+        name     = "postgis"
+        database = var.database
+      }
+{{- end }}
