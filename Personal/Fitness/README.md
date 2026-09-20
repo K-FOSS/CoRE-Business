@@ -1,11 +1,17 @@
 # openGym
 
-This prepared chart deploys [openGym](https://opengym.duarte-santos.ch/), a
+This live chart deploys [openGym](https://opengym.duarte-santos.ch/), a
 self-hosted workout and body-weight tracker, with the
 [BJW-S Common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 It serves `gym.mylogin.space` through a Gateway API HTTPRoute and uses openGym's
 own passkey login. The web container proxies `/api` to the internal API Service,
 so WebAuthn remains on one HTTPS origin.
+
+The owning [Fitness ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Fitness.yaml)
+selects `core-home1-talos-prod`, deploys to `core-fitness-prod`, and renders
+this path with the [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
+It injects the cluster identity and the `main-gw` / `https-myloginspace` Gateway
+attachment. The live endpoint is `https://gym.mylogin.space`.
 
 The chart uses the upstream `1.3.5` web and API images and initializes the
 exercise media PVC from a pinned commit of the
@@ -21,22 +27,17 @@ changes ownership of `/var/cache/nginx/client_temp` and drops workers to UID/GID
 101 during startup.
 
 The chart overrides the image's Docker-only `127.0.0.11` resolver with the
-Kubernetes `kube-dns` service (`kube-dns.kube-system.svc.cluster.local`). The
-owning ApplicationSet must override `clusterDNS` when targeting a cluster with
-a different CoreDNS/kube-dns Service name.
+site's cluster DNS endpoint, `10.44.4.10`. The owning ApplicationSet
+must override `clusterDNS` when targeting a different cluster.
 
-There is currently no active Fitness owner in the
-[CoRE-Backplane Apps/Business tree](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business),
-so this is prepared desired state and will not deploy until an ApplicationSet
-explicitly references `Personal/Fitness`. Its future owner must inject
-`cluster.name`, `datacenter` and `region`, select the target namespace and
-renderer, and confirm the `main-gw` / `https-myloginspace` listener. Resources
-use the stable `fitness` fullname so site-qualified release names cannot create
-invalid Service names. The web route is protected by the site Authentik
+The live ApplicationSet injects `cluster.name`, `datacenter` and `region`, and
+selects the target namespace and renderer. Resources use the stable `fitness`
+fullname so site-qualified release names cannot create invalid Service names.
+The web route is protected by the site Authentik
 forward-auth outpost through an Envoy Gateway
 [`SecurityPolicy`](https://gateway.envoyproxy.io/latest/api/gateway_api/v1alpha1/securitypolicy/);
 the policy fails closed and forwards Authentik session and identity headers to
-openGym. The future owner must ensure the Backplane Authentik proxy Service is
+openGym. The Backplane Authentik proxy Service must remain
 available as `aaa-myloginspace-proxy` in `core-prod`. The chart's
 `<release-name>-authentik` Terraform Workspace creates the forward-auth
 provider and application through the Backplane `authentik` ProviderConfig. The
@@ -62,5 +63,7 @@ Review the upstream [openGym source repository](https://github.com/alexpcosta/op
 [BJW-S Common](https://github.com/bjw-s-labs/helm-charts/tree/main/charts/library/common),
 [Envoy Gateway SecurityPolicy documentation](https://gateway.envoyproxy.io/latest/api/gateway_api/v1alpha1/securitypolicy/),
 and [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) documentation.
-After activation, verify the route, `/api/health`, profile creation, passkey
-sign-in from a second device, media loading and restore of both PVCs.
+Verify the live route, `/api/health`, profile creation, passkey sign-in from a
+second device, media loading and restore of both PVCs. The ApplicationSet keeps
+resources on deletion; treat both retained claims as production data and back
+them up before migration or removal.

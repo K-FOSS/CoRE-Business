@@ -37,7 +37,7 @@ controllers:
         image: {repository: 'ghcr.io/duartesantos8/opengym-web', tag: '', pullPolicy: 'IfNotPresent'}
         # The nginx:alpine image initializes cache ownership and drops workers to UID/GID 101.
         securityContext: {allowPrivilegeEscalation: false, capabilities: {add: ['CHOWN', 'SETGID', 'SETUID'], drop: ['ALL']}}
-        env: {RESOLVER: ''}
+        env: {RESOLVER: '10.44.4.10'}
         resources: {}
         probes:
           startup: {enabled: true, type: 'HTTP', path: '/', port: 80, spec: {periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 30}}
