@@ -4,7 +4,10 @@ This prepared chart deploys [Dawarich](https://dawarich.app/), a self-hosted
 location-history application, using the [BJW-S Common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 It runs Dawarich's web and Sidekiq processes, publishes
 `dawarich.mylogin.space` through a Gateway API HTTPRoute, and retains imports,
-exports and application storage on Longhorn PVCs.
+exports and application storage on Longhorn RWX PVCs using the chart-managed
+`core-history-rwx` StorageClass with two replicas and migration disabled. The web and Sidekiq
+containers share these claims so watched imports and generated files remain
+available to both processes.
 
 The app Pod has a dedicated migration init container using Dawarich's official
 `web-entrypoint.sh`; it waits for PostgreSQL, runs primary/data migrations and

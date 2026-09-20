@@ -1,0 +1,19 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name | quote }}
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: {{ .Values.storageClass.numberOfReplicas | quote }}
+  staleReplicaTimeout: '30'
+  fsType: 'ext4'
+  fromBackup: ''
+  dataLocality: 'disabled'
+  unmapMarkSnapChainRemoved: 'ignored'
+  disableRevisionCounter: 'true'
+  dataEngine: 'v1'
+  migratable: {{ .Values.storageClass.migratable | quote }}
+  backupTargetName: 'default'

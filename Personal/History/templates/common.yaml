@@ -112,7 +112,7 @@ service:
 persistence:
   public:
     type: 'persistentVolumeClaim'
-    storageClass: 'longhorn'
+    storageClass: 'core-history-rwx'
     accessMode: 'ReadWriteMany'
     size: '10Gi'
     retain: true
@@ -123,7 +123,7 @@ persistence:
         sidekiq: [{path: '/var/app/public'}]
   watched:
     type: 'persistentVolumeClaim'
-    storageClass: 'longhorn'
+    storageClass: 'core-history-rwx'
     accessMode: 'ReadWriteMany'
     size: '10Gi'
     retain: true
@@ -134,7 +134,7 @@ persistence:
         sidekiq: [{path: '/var/app/tmp/imports/watched'}]
   storage:
     type: 'persistentVolumeClaim'
-    storageClass: 'longhorn'
+    storageClass: 'core-history-rwx'
     accessMode: 'ReadWriteMany'
     size: '20Gi'
     retain: true
