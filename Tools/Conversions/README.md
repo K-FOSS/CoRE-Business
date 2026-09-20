@@ -10,18 +10,11 @@ See the [release source](https://github.com/snapotter-hq/SnapOtter/tree/v2.2.0),
 
 ## Deployment ownership and prerequisites
 
-As checked on 2026-09-07, no active Backplane ApplicationSet references
-`Tools/Conversions`. Adding this chart alone does not deploy the endpoint.
-The [Cyberchef ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml)
-is the structural reference: native Helm, `core-prod`, no injected values,
-and tenant `core.mylogin.space` bare-metal infrastructure clusters. SnapOtter
-has local persistent state, so its new Backplane owner must select **one**
-intended cluster, set `source.path: Tools/Conversions`, and supply any site
-overrides. `cluster.name`, `datacenter` and `region` are required when any
-automation is enabled; they intentionally have no deployable default. Mirror
-the identity value layer injected by the
-[AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml)
-(which owns GPUStack):
+The live [Conversions ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Conversions.yaml)
+references `Tools/Conversions`, selects `core-home1-talos-prod`, deploys to
+`core-prod`, and renders through the [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
+It injects the cluster identity used by the PostgreSQL, Dragonfly and Authentik
+automation:
 
 ```yaml
 cluster:
@@ -30,13 +23,14 @@ datacenter: 'home1'
 region: 'yvr'
 ```
 
-This is a representative Home1 layer, not a new fleet owner. Do not copy
-CyberChef's fleet-wide selector unchanged: independent instances behind one
-hostname would have different files and sessions.
+The ApplicationSet preserves resources on deletion. This is a single active
+instance behind `conotter.mylogin.space`; do not deploy another instance
+behind the same hostname or split its database, queue and persistent files.
 
 The complete rendering unit is `Chart.yaml`, `values.yaml` and
-`templates/`; there are no Kustomize or Lovely layers. Standard Kubernetes
-resources use BJW-S Common. The `User`, Terraform `Workspace` and `ExternalSecret` use direct
+`templates/`; the live Backplane ApplicationSet renders it through Lovely with
+its injected identity values. There are no local Kustomize layers. Standard
+Kubernetes resources use BJW-S Common. The `User`, Terraform `Workspace` and `ExternalSecret` use direct
 templates because they are operator-specific APIs without Common resource
 classes. Kubernetes 1.31+ and Helm 3.18+ are required by the pinned common
 library. Provision:
@@ -137,9 +131,10 @@ library. Provision:
 BJW-S generates one Deployment, ServiceAccount, ClusterIP Service, PVC and
 HTTPRoute. Separate templates generate the User claim and OIDC Workspace
 and Dragonfly ExternalSecret when enabled. The Service forwards port 80 to 1349. The route carries
-CyberChef's
 `wan-mode: public` and `lan-mode: private` labels and a 600-second timeout;
-these labels do not provide authentication. The Workspace writes
+those labels describe gateway reachability and do not provide authentication.
+The live endpoint is private because the Authentik Workspace creates the
+application and entitlement, both bound to the `SnapOtter Users` group. The Workspace writes
 `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and `OIDC_ISSUER_URL` to
 `<release>-snapotter-oidc`; the container consumes those fields directly.
 Helm never renders credential values. The issuer ends in the generated
@@ -217,8 +212,6 @@ change, SSO login with an allowed member, rejection of a non-member,
 ordinary-user role assignment, an image conversion, a longer conversion,
 download and persistence after a pod restart. Check TLS connectivity, queue progress/events, a
 cross-pool flow and worker recovery after restart, as well as Argo status.
-No cluster reconciliation or live workflow verification has been performed
-as part of adding this chart.
 
 One replica and `Recreate` avoid concurrent writers on the RWO claim; upgrades
 interrupt service and may interrupt active jobs. Back up PostgreSQL and

@@ -62,32 +62,23 @@ notes:
 | [Desktop](Desktop/README.md) | [Desktops](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Desktops.yaml) | GPU-backed LinuxServer Selkies desktops, including 120 FPS OrcaSlicer and separate NVIDIA/Intel Steam streams; NVIDIA Steam starts in Big Picture with H.264 locked, and all routes use Authentik proxy authentication. |
 | [Office](Office/README.md) | [NextCloud](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml) | Nextcloud, Collabora and supporting office services. |
 | [Mail](Mail/README.md) | [Mail](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml) | Multi-site Postfix, Dovecot, Rspamd and Maddy mail stack with DKIM/DNS and optional SimpleLogin. |
+| [Projects](Projects/README.md) | [Projects](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Projects.yaml) | OpenProject with site-local PostgreSQL, generated temporary S3 credentials and persistent attachments. |
 | [Vaultwarden](Passwords/VaultWarden/README.md) | [VaultWarden](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml) | Password vault, database identity and secret synchronization. |
 | [Terminal](Terminal/README.md) | [Terminal](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Terminal.yaml) | Browser-accessible terminal workload. |
 | [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
 | [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
+| [openGym](Personal/Fitness/README.md) | [Fitness](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Fitness.yaml) | Personal workout tracker at `gym.mylogin.space`, with retained Longhorn data and exercise-media storage. |
+| [SnapOtter conversions](Tools/Conversions/README.md) | [Conversions](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Conversions.yaml) | Private Authentik-secured conversion service at `conotter.mylogin.space`, with PostgreSQL, Dragonfly and retained Longhorn data. |
+| [Fediverse social](Social/Fediverse/README.md) | [Fediverse](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml) | Live federated-social stack currently serving Mastodon at `mastodon.mylogin.space`, with Bluesky support and room for PeerTube/Lemmy. |
 
-[SnapOtter conversions](Tools/Conversions/README.md) is prepared at
-`Tools/Conversions` for `conotter.mylogin.space` using BJW-S Common. It has no
-active Backplane owner yet. It automates Authentik OIDC and site-local
-PostgreSQL provisioning using GPUStack's Crossplane patterns, and requires
-a single-cluster site value layer, bootstrap/cookie credentials and persistent
-storage before activation. Site-local Dragonfly credentials are synchronized
-from Vault automatically, with TLS connections on logical database 152.
-
-[Bluesky PDS](Social/Microblog/README.md) is prepared at `Social/Microblog`
-using BJW-S Common, with a pinned official image, a single SQLite-backed replica,
-retained Longhorn storage and public federation routes. It has no Backplane owner
-yet and requires a single-cluster owner, site hostname, wildcard DNS/TLS and a
-namespace-local runtime Secret before activation.
-
-[Mastodon / Fediverse](Social/Fediverse/README.md) is owned by the
-[Fediverse ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml)
-and targets `core-home1-talos-prod` in `core-prod`. It uses BJW-S Common,
-Crossplane Terraform Authentik OIDC and the site-local `mylogin.space` User
-resource for PostgreSQL and S3. The current ApplicationSet injects only site
-identity; hostname, gateway listener and S3 provider values
-remain required before successful reconciliation.
+The Fediverse social stack is live at `mastodon.mylogin.space` under the
+[Fediverse ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml),
+which targets `core-home1-talos-prod` in `core-prod` and renders through Lovely.
+Mastodon is the current production service; the chart also contains optional
+Bluesky PDS support, while PeerTube, Lemmy and related federated services are
+future additions to this stack. The live value layer supplies the Mastodon
+hostname, Gateway attachment and PostgreSQL/S3 provider names. It uses
+Authentik OIDC, site PostgreSQL, S3 media storage and Dragonfly.
 
 ## Work in progress
 
@@ -96,6 +87,13 @@ Common, an official digest-pinned LinkStack image, a single SQLite-backed
 replica, retained Longhorn storage and a public Gateway API route. It has no
 active Backplane owner yet and requires a future single-cluster owner to inject
 site identity, hostname, notification address and TLS listener values.
+
+[Dawarich](Personal/History/README.md) is prepared at `Personal/History` using
+BJW-S Common, a pinned upstream image, retained Longhorn import/storage PVCs,
+site-local Dragonfly, automatically derived site-local PostgreSQL and Authentik
+OIDC. It has no active Backplane owner yet; its future owner must inject site
+identity, confirm the Dragonfly secret path and gateway listener, and review
+the generated OIDC application.
 
 See the [repository guide](docs/REPOSITORY.md) for ownership discovery,
 configuration layers and change validation.

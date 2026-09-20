@@ -104,12 +104,15 @@ S3-compatible object storage. Review database ownership, credentials, bucket
 policy, persistence, backup coverage and deletion semantics before changing a
 connection or resource identity.
 
-The legacy [Mail chart](../Mail/README.md), owned by the
-[Mail ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/Mail.yaml),
+The active, multi-site [Mail chart](../Mail/README.md), owned by the
+[Mail ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml),
 uses the current
 [`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
-to provision Maddy's PostgreSQL database and S3 service account. It connects
-Maddy, Postfix, Dovecot and Rspamd to the `dc1-k3s-node1` site-local services
+to provision Maddy's PostgreSQL database and S3 service account. Its merge
+generator targets the approved `dc1-k3s-node1`, `core-dc1-talos-prod` and
+`core-home1-talos-prod` clusters. Lovely injects each cluster's DNS domain,
+LDAP endpoint, site-local PostgreSQL and Dragonfly endpoints, and PostgreSQL/S3
+provider names into Maddy, Postfix, Dovecot and Rspamd. Those dependencies are
 defined by the
 [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
 [storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml),
@@ -117,6 +120,21 @@ and
 [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
 Dragonfly credentials remain platform-managed and are rendered into Rspamd's
 configuration by External Secrets rather than committed to this repository.
+The checked-in values remain DC1 K3s defaults; validate a render with every
+target's injected values before changing this production stack.
+The selected Mail credential hub exclusively owns the generated Postfix,
+Maddy and optional SimpleLogin identities and publishes their connection
+fields below its cluster path in the shared Vault store. Other Mail targets
+pull from that selected hub path into workload-local Secrets. Chart deletion
+retains both the remote records and the last spoke copies, so credential
+decommissioning and rotation remain explicit operator actions.
+The hub also owns Mail's `DKIMKey` and publishes its generated private key
+below the selected cluster path; spokes recreate the expected local DKIM Secret
+through External Secrets and do not generate independent signing identities.
+The Mail chart selects `dc1-k3s-node1` as that credential hub and uses the
+[BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)
+to generate its standard workloads, Services, persistence and optional route;
+operator-specific custom resources remain explicit Helm templates.
 
 The active [Office chart](../Office/README.md), owned by the
 [NextCloud ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml),
@@ -137,7 +155,10 @@ endpoint defined by the [PostgreSQL
 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml).
 The owning ApplicationSet must inject cluster/site identity, the PGPool host
 and the hub-only User enablement; the chart verifies that the enabled claim is
-rendering on the configured hub cluster.
+rendering on the configured hub cluster. A hub-only External Secrets
+`PushSecret` publishes the generated connection fields to the shared Vault
+store, and spoke-only `ExternalSecret` resources recreate the workload Secret
+without duplicating the User claim or database role.
 
 The active AI chart provisions OpenWebUI's database identity on the site-local
 `psql-<datacenter>-<region>` providers and connects it to the corresponding
@@ -161,7 +182,127 @@ HTTP stream timeouts. The CUDA backend has a blanket `operator: Exists`
 toleration and can therefore tolerate every node taint when its shared-GPU
 resource and remaining scheduling constraints match.
 
+## Active SnapOtter conversions
+
+[SnapOtter conversions](../Tools/Conversions/README.md) uses BJW-S Common 5.0.1
+for a non-root workload, Service, retained Longhorn PVC and private
+Authentik-secured Gateway API route at `conotter.mylogin.space`. It is owned by
+the [Conversions ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Conversions.yaml),
+which selects `core-home1-talos-prod`, deploys to `core-prod` and renders with
+Lovely. The ApplicationSet injects `cluster.name`, `datacenter` and `region`,
+and preserves resources on deletion.
+
+Following GPUStack in the [AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml),
+the chart automates an Authentik OAuth2 provider/application, `SnapOtter Users`
+group and entitlement bindings through a Crossplane Terraform Workspace.
+Generated OIDC credentials go directly to a connection Secret. SSO creates
+ordinary users with email auto-linking disabled; local login remains
+available for recovery. A CoRE User claim provisions the PostgreSQL role and
+owned database using the selected site's `psql-<datacenter>-<region>`
+providers. The app uses the matching `psql-local` endpoint from the
+[PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml).
+Missing site identity fails rendering. An ExternalSecret reads the selected
+site's Dragonfly password from `corevault-rootsecrets` at
+`Storage/DragonFly/CoRE/<region>/<datacenter>/<cluster.name>/Creds`, as published
+by the [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
+It builds a TLS URL on logical database 152 and Reloader restarts the workload
+on Secret changes. All BullMQ pools use the `{snapotter}` hashtag for the
+shared server's existing hashtag locking. The separate `snapotter-runtime`
+Secret now only supplies bootstrap-password and cookie-secret fields by
+default. Logical database selection does not isolate shared credentials;
+queue compatibility and recovery must be verified after reconciliation.
+
+See the component README for provisioning, allowed/denied SSO verification,
+operator conditions and recovery. Argo removal retains the data PVC and User
+claim; the User composition also orphans SQL roles/databases. OIDC Workspace
+removal deletes its managed Authentik resources. Removing group membership
+does not revoke existing SnapOtter sessions or local accounts.
+
+## Active OpenProject
+
+[OpenProject](../Projects/README.md) is owned by the
+[Projects ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Projects.yaml),
+which selects `core-home1-talos-prod`, deploys to `core-prod`, and renders the
+chart through Lovely. The chart uses BJW-S Common rather than the previous
+third-party OpenProject chart. It consumes the current
+[`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+for the existing PostgreSQL database and S3 bucket. Temporary S3 credentials
+are written to an explicit namespace-local Secret and loaded by the workload;
+the old Vault-backed OpenProject S3 Secret is no longer rendered.
+
+The User Composition refreshes temporary S3 credentials, and the workload has
+Reloader annotations for both the User connection Secret and S3 credential
+Secret. Removing the chart does not delete the orphaned PostgreSQL or S3 data;
+verify downstream User, provider, Secret and storage conditions before testing
+the public route.
+
+## Active Landing
+
+[CoRE Landing](../Landing/README.md) publishes Forecastle as the application
+launchpad at `mylogin.space`. It is owned by the [Landing ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Landing.yaml),
+which selects the `core.mylogin.space` tenant's bare-metal infrastructure
+cluster in `yvr` and deploys to `core-prod` with direct Helm rendering at
+`targetRevision: HEAD`. The ApplicationSet enables namespace creation and
+server-side apply and preserves resources when the generated Argo CD
+Application is deleted.
+
+The chart uses its local `prod` values for the `core-prod` namespace, `main-gw`
+Gateway and `https-myloginspace` listener. Forecastle reads annotated Ingress,
+HTTPRoute and `ForecastleApp` resources cluster-wide through the upstream chart's
+RBAC, but displays only the configured `core-prod` namespace. Authentication is
+not provisioned by this chart; review any gateway policy before exposing the
+launchpad. Verify the route, `/healthz`, namespace-scoped discovery and CRD
+discovery after reconciliation.
+
+## Active Fediverse social stack
+
+[Fediverse social](../Social/Fediverse/README.md) is the repository's federated-
+social stack. Its current production component runs the official Mastodon image
+with BJW-S Common 5.0.1, separate web, streaming and Sidekiq Deployments, a
+migration hook, and a public Gateway API HTTPRoute. It is live
+at `mastodon.mylogin.space` and owned
+by the [Fediverse ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml),
+whose merge generator selects `core-home1-talos-prod` for the `yvr` bare-metal
+site and deploys to `core-prod` with Lovely at `targetRevision: HEAD`.
+
+The chart also contains optional Bluesky PDS support under the `bluesky` values
+tree. PeerTube, Lemmy and similar federated services are planned additions to
+this stack; they are not represented as active workloads until their own value
+layers and deployment resources are added.
+
+The current ApplicationSet injects `env`, `datacenter`, `region`, cluster
+identity, the `mastodon.mylogin.space` hostname, the `main-gw` /
+`https-myloginspace` Gateway attachment, and the PostgreSQL/S3 provider names.
+
+The chart follows the current
+[`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+to provision PostgreSQL and an S3 bucket/service account, using the selected
+site's [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
+and [storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
+Crossplane Terraform creates the Authentik OIDC provider, application, access
+group and entitlement bindings. The chart intentionally has no application PVC:
+PostgreSQL and S3 are durable stores, while Mastodon signing/session keys are
+generated once, pushed to Vault and restored through External Secrets.
+`OMNIAUTH_ONLY` defaults to true, so group
+membership and email-verification policy must be reviewed before exposing the
+public route.
+
 ## Repository status
+
+The live [openGym chart](../Personal/Fitness/README.md) is owned by the
+[Fitness ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Fitness.yaml).
+It deploys through Lovely to `core-fitness-prod` on
+`core-home1-talos-prod`, with a Gateway API route at `gym.mylogin.space`,
+retained Longhorn data and exercise-media claims, and Authentik forward-auth.
+The ApplicationSet preserves resources on deletion; back up both claims before
+maintenance, migration or removal. Verify `/api/health`, profile creation,
+passkey sign-in from a second device and exercise-media loading after
+reconciliation.
+
+The prepared [LinkStack chart](../Social/Links/README.md) has no active
+Backplane owner. It follows the current single-replica, retained-Longhorn and
+Gateway API pattern, but must not be treated as deployed until a non-legacy
+ApplicationSet references `Social/Links` and supplies its site values.
 
 Use these as working heuristics, not a formal lifecycle contract:
 
