@@ -120,6 +120,7 @@ persistence:
     advancedMounts:
       app:
         dawarich: [{path: '/var/app/public'}]
+      sidekiq:
         sidekiq: [{path: '/var/app/public'}]
   watched:
     type: 'persistentVolumeClaim'
@@ -131,6 +132,7 @@ persistence:
     advancedMounts:
       app:
         dawarich: [{path: '/var/app/tmp/imports/watched'}]
+      sidekiq:
         sidekiq: [{path: '/var/app/tmp/imports/watched'}]
   storage:
     type: 'persistentVolumeClaim'
@@ -142,6 +144,7 @@ persistence:
     advancedMounts:
       app:
         dawarich: [{path: '/var/app/storage'}]
+      sidekiq:
         sidekiq: [{path: '/var/app/storage'}]
 
 route:
