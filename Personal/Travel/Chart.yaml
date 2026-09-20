@@ -1,0 +1,15 @@
+apiVersion: v2
+name: 'core-business-adventurelog'
+description: 'AdventureLog self-hosted travel tracker using BJW-S Common'
+type: 'application'
+version: '1.0.0'
+appVersion: '0.13.0'
+kubeVersion: '>=1.31.0-0'
+home: 'https://adventurelog.app/'
+sources:
+  - 'https://github.com/seanmorley15/AdventureLog'
+  - 'https://adventurelog.app/docs/'
+dependencies:
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

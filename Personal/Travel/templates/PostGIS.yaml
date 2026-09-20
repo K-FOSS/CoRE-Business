@@ -1,0 +1,24 @@
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: 'adventurelog-postgis'
+spec:
+  providerConfigRef:
+    name: '{{ required "adventurelog.database.terraformProvider must be injected by the owning ApplicationSet" .Values.adventurelog.database.terraformProvider }}'
+  forProvider:
+    source: 'Inline'
+    env:
+      - name: 'TF_VAR_database'
+        secretKeyRef:
+          namespace: '{{ .Release.Namespace }}'
+          name: '{{ .Values.adventurelog.database.userSecret }}'
+          key: '{{ .Values.adventurelog.database.databaseKey }}'
+    module: |
+      variable "database" {
+        type = string
+      }
+
+      resource "postgresql_extension" "postgis" {
+        name     = "postgis"
+        database = var.database
+      }

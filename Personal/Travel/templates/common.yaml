@@ -1,0 +1,134 @@
+{{- include "bjw-s.common.loader.init" . -}}
+
+{{- define "adventurelog.hardcodedValues" -}}
+controllers:
+  app:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      adventurelog:
+        image:
+          repository: ''
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/health', port: 80, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/health', port: 80, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/health', port: 80, scheme: 'HTTP'}
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
+service:
+  app:
+    controller: 'app'
+    ports:
+      http:
+        port: 80
+
+persistence:
+  media:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    globalMounts:
+      - path: '/code/media'
+
+route:
+  app:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'private'
+      lan-mode: 'private'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'app'
+            port: 80
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "adventurelog.hardcodedValues" . | fromYaml) -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- $_ := required "adventurelog.hostname is required" .Values.adventurelog.hostname -}}
+{{- $_ := required "adventurelog.database.userSecret is required" .Values.adventurelog.database.userSecret -}}
+{{- $_ := required "adventurelog.runtimeSecret.secretName is required" .Values.adventurelog.runtimeSecret.secretName -}}
+{{- $_ := required "adventurelog.adminSecret.secretName is required" .Values.adventurelog.adminSecret.secretName -}}
+{{- $_ := set .Values.controllers.app.containers.adventurelog.image "repository" .Values.adventurelog.image.repository -}}
+{{- $_ := set .Values.controllers.app.containers.adventurelog.image "tag" .Values.adventurelog.image.tag -}}
+{{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.database.userSecret "key" .Values.adventurelog.database.passwordKey)) -}}
+{{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.database.userSecret "key" .Values.adventurelog.database.usernameKey)) -}}
+{{- $secretKey := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.runtimeSecret.secretName "key" "SECRET_KEY")) -}}
+{{- $adminPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.adminSecret.secretName "key" "DJANGO_ADMIN_PASSWORD")) -}}
+{{- $databaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.adventurelog.database.host -}}
+{{- $siteURL := printf "https://%s" .Values.adventurelog.hostname -}}
+{{- $env := dict
+  "SITE_URL" $siteURL
+  "ORIGIN" $siteURL
+  "FRONTEND_URL" $siteURL
+  "PUBLIC_URL" $siteURL
+  "PUBLIC_SERVER_URL" "http://127.0.0.1:8000"
+  "CSRF_TRUSTED_ORIGINS" $siteURL
+  "BODY_SIZE_LIMIT" "Infinity"
+  "DEBUG" "False"
+  "POSTGRES_PASSWORD" $dbPassword
+  "PGHOST" $databaseHost
+  "POSTGRES_DB" .Values.adventurelog.database.name
+  "POSTGRES_USER" $dbUsername
+  "PGDATABASE" .Values.adventurelog.database.name
+  "PGUSER" $dbUsername
+  "PGPASSWORD" $dbPassword
+  "SECRET_KEY" $secretKey
+  "DJANGO_ADMIN_USERNAME" .Values.adventurelog.adminSecret.username
+  "DJANGO_ADMIN_PASSWORD" $adminPassword
+  "DJANGO_ADMIN_EMAIL" .Values.adventurelog.adminSecret.email
+  "DISABLE_REGISTRATION" "true"
+}}
+{{- $_ := set .Values.controllers.app.containers.adventurelog "env" $env -}}
+{{- $_ := set .Values.controllers.app.containers.adventurelog "resources" .Values.adventurelog.resources -}}
+{{- $_ := set .Values.persistence.media "storageClass" .Values.storage.className -}}
+{{- $_ := set .Values.persistence.media "size" .Values.storage.mediaSize -}}
+{{- $_ := set .Values.route.app "hostnames" (list .Values.adventurelog.hostname) -}}
+{{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- include "bjw-s.common.loader.generate" . -}}

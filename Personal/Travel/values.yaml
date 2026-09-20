@@ -1,0 +1,51 @@
+# Site-specific values are injected by the owning Backplane ApplicationSet.
+cluster:
+  name: ''
+
+datacenter: ''
+region: ''
+
+global:
+  createDefaultServiceAccount: true
+  fullnameOverride: 'adventurelog'
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+storage:
+  className: 'longhorn'
+  mediaSize: '10Gi'
+
+adventurelog:
+  hostname: 'adventurelog.mylogin.space'
+  image:
+    repository: 'ghcr.io/seanmorley15/adventurelog'
+    tag: 'v0.13.0'
+  database:
+    # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
+    host: ''
+    port: '5432'
+    name: 'database'
+    userSecret: 'adventurelog-database'
+    databaseKey: 'database'
+    usernameKey: 'username'
+    passwordKey: 'password'
+    crossplaneProvider: ''
+    terraformProvider: ''
+  runtimeSecret:
+    generatorName: 'adventurelog-runtime-generator'
+    secretName: 'adventurelog-runtime'
+  adminSecret:
+    generatorName: 'adventurelog-admin-generator'
+    secretName: 'adventurelog-admin'
+    username: 'admin'
+    email: 'admin@mylogin.space'
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '512Mi'
+    limits:
+      cpu: '2'
+      memory: '2Gi'
