@@ -33,6 +33,8 @@ adventurelog:
     # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
     host: ''
     port: '5432'
+    # AdventureLog uses the generated User secret's username as its database
+    # name, matching the database created by the Backplane User resource.
     name: 'database'
     userSecret: 'adventurelog-database'
     databaseKey: 'username'

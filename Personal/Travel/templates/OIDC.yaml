@@ -156,7 +156,10 @@ spec:
             - name: 'PGPORT'
               value: '{{ .Values.adventurelog.database.port }}'
             - name: 'PGDATABASE'
-              value: '{{ .Values.adventurelog.database.name }}'
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ .Values.adventurelog.database.userSecret }}'
+                  key: '{{ .Values.adventurelog.database.databaseKey }}'
             - name: 'PGUSER'
               valueFrom:
                 secretKeyRef:

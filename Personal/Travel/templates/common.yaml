@@ -270,6 +270,7 @@ route:
 {{- $_ := set .Values.controllers.backend.containers.backend.image "digest" .Values.adventurelog.image.backendDigest -}}
 {{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.database.userSecret "key" .Values.adventurelog.database.passwordKey)) -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.database.userSecret "key" .Values.adventurelog.database.usernameKey)) -}}
+{{- $dbName := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.database.userSecret "key" .Values.adventurelog.database.databaseKey)) -}}
 {{- $secretKey := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.runtimeSecret.secretName "key" "SECRET_KEY")) -}}
 {{- $adminPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.adminSecret.secretName "key" "DJANGO_ADMIN_PASSWORD")) -}}
 {{- $databaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.adventurelog.database.host -}}
@@ -278,9 +279,9 @@ route:
 {{- $databaseEnv := dict
   "POSTGRES_PASSWORD" $dbPassword
   "PGHOST" $databaseHost
-  "POSTGRES_DB" .Values.adventurelog.database.name
+  "POSTGRES_DB" $dbName
   "POSTGRES_USER" $dbUsername
-  "PGDATABASE" .Values.adventurelog.database.name
+  "PGDATABASE" $dbName
   "PGUSER" $dbUsername
   "PGPASSWORD" $dbPassword
   "SECRET_KEY" $secretKey
