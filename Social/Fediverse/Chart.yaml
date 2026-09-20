@@ -1,6 +1,6 @@
 apiVersion: v2
 name: 'core-business-social-fediverse'
-description: 'Mastodon and optional Bluesky PDS instances using BJW-S Common, Crossplane and mylogin.space User resources'
+description: 'Federated social stack for Mastodon, Bluesky PDS and future Fediverse services using BJW-S Common, Crossplane and mylogin.space User resources'
 type: 'application'
 version: '1.0.0'
 appVersion: '4.7.2'

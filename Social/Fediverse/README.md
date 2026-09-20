@@ -1,8 +1,11 @@
 # CoRE-Business/Social/Fediverse
 
-This chart deploys the official [Mastodon](https://joinmastodon.org/) image as a
-small Kubernetes instance using the [BJW-S Common library
+This chart is the federated-social application stack for CoRE. It currently
+deploys the official [Mastodon](https://joinmastodon.org/) service as a small
+Kubernetes instance using the [BJW-S Common library
 chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/) 5.0.1.
+The stack is intended to grow to include Bluesky, PeerTube, Lemmy and related
+federated services as their deployment components are added.
 Mastodon web, streaming, Sidekiq and database migrations are rendered through
 Common. The public [Gateway API](https://gateway-api.sigs.k8s.io/) route sends
 `/api/v1/streaming` to Mastodon’s streaming process and all other paths to web.
@@ -58,9 +61,10 @@ and implicit TLS, authenticating with the Tranquil User connection Secret.
 The BJW-S Common resource maps are generated in `templates/common.yaml`.
 `values.yaml` contains site inputs, application tunables and secret references,
 while controllers, Services, persistence, routes and monitors remain close to
-the templates that consume them. Bluesky is disabled by default so the existing
-Mastodon-only ApplicationSet remains safe until its value layer explicitly
-enables and configures the PDS.
+the templates that consume them. Bluesky is disabled by default, so the current
+production ApplicationSet keeps the live deployment Mastodon-only until its
+value layer explicitly enables and configures the PDS. PeerTube and Lemmy are
+not yet rendered by this chart.
 
 ## Ownership and activation
 
