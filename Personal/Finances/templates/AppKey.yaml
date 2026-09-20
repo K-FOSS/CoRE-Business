@@ -5,15 +5,15 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '-10'
 spec:
-  # Firefly III requires exactly 32 characters for APP_KEY. URL-safe output
-  # avoids characters that can be troublesome in environment configuration.
+  # Firefly III requires exactly 32 characters for APP_KEY. Keep the generated
+  # value raw; encoding 32 characters would make the Laravel key too long.
   length: 32
   digits: 0
   symbols: 0
   allowRepeat: true
   secretKeys:
     - 'APP_KEY'
-  encoding: 'base64url'
+  encoding: 'raw'
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
