@@ -2,7 +2,7 @@
 
 {{- define "adventurelog.hardcodedValues" -}}
 controllers:
-  app:
+  frontend:
     type: 'deployment'
     replicas: 1
     strategy: 'Recreate'
@@ -12,10 +12,11 @@ controllers:
         seccompProfile:
           type: 'RuntimeDefault'
     containers:
-      adventurelog:
+      frontend:
         image:
           repository: ''
           tag: ''
+          digest: ''
           pullPolicy: 'IfNotPresent'
         securityContext:
           allowPrivilegeEscalation: false
@@ -28,7 +29,7 @@ controllers:
             enabled: true
             custom: true
             spec:
-              httpGet: {path: '/health', port: 80, scheme: 'HTTP'}
+              httpGet: {path: '/health', port: 3000, scheme: 'HTTP'}
               periodSeconds: 10
               timeoutSeconds: 5
               failureThreshold: 30
@@ -36,21 +37,72 @@ controllers:
             enabled: true
             custom: true
             spec:
-              httpGet: {path: '/health', port: 80, scheme: 'HTTP'}
+              httpGet: {path: '/health', port: 3000, scheme: 'HTTP'}
               periodSeconds: 10
               timeoutSeconds: 5
           liveness:
             enabled: true
             custom: true
             spec:
-              httpGet: {path: '/health', port: 80, scheme: 'HTTP'}
+              httpGet: {path: '/health', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+  backend:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      backend:
+        image:
+          repository: ''
+          tag: ''
+          digest: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/health/', port: 80, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/health/', port: 80, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/health/', port: 80, scheme: 'HTTP'}
               periodSeconds: 30
               timeoutSeconds: 5
               failureThreshold: 5
 
 service:
-  app:
-    controller: 'app'
+  frontend:
+    controller: 'frontend'
+    ports:
+      http:
+        port: 3000
+  backend:
+    controller: 'backend'
     ports:
       http:
         port: 80
@@ -64,11 +116,13 @@ persistence:
     retain: true
     annotations:
       argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
-    globalMounts:
-      - path: '/code/media'
+    advancedMounts:
+      backend:
+        backend:
+          - path: '/code/media'
 
 route:
-  app:
+  frontend:
     kind: 'HTTPRoute'
     labels:
       wan-mode: 'private'
@@ -80,7 +134,21 @@ route:
               type: 'PathPrefix'
               value: '/'
         backendRefs:
-          - identifier: 'app'
+          - identifier: 'frontend'
+            port: 3000
+  backend:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'private'
+      lan-mode: 'private'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'backend'
             port: 80
 {{- end -}}
 
@@ -92,26 +160,24 @@ route:
 {{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
 {{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
 {{- $_ := required "adventurelog.hostname is required" .Values.adventurelog.hostname -}}
+{{- $_ := required "adventurelog.apiHostname is required" .Values.adventurelog.apiHostname -}}
 {{- $_ := required "adventurelog.database.userSecret is required" .Values.adventurelog.database.userSecret -}}
 {{- $_ := required "adventurelog.runtimeSecret.secretName is required" .Values.adventurelog.runtimeSecret.secretName -}}
 {{- $_ := required "adventurelog.adminSecret.secretName is required" .Values.adventurelog.adminSecret.secretName -}}
-{{- $_ := set .Values.controllers.app.containers.adventurelog.image "repository" .Values.adventurelog.image.repository -}}
-{{- $_ := set .Values.controllers.app.containers.adventurelog.image "tag" .Values.adventurelog.image.tag -}}
+{{- $_ := set .Values.controllers.frontend.containers.frontend.image "repository" .Values.adventurelog.image.frontendRepository -}}
+{{- $_ := set .Values.controllers.frontend.containers.frontend.image "tag" .Values.adventurelog.image.tag -}}
+{{- $_ := set .Values.controllers.frontend.containers.frontend.image "digest" .Values.adventurelog.image.frontendDigest -}}
+{{- $_ := set .Values.controllers.backend.containers.backend.image "repository" .Values.adventurelog.image.backendRepository -}}
+{{- $_ := set .Values.controllers.backend.containers.backend.image "tag" .Values.adventurelog.image.tag -}}
+{{- $_ := set .Values.controllers.backend.containers.backend.image "digest" .Values.adventurelog.image.backendDigest -}}
 {{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.database.userSecret "key" .Values.adventurelog.database.passwordKey)) -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.database.userSecret "key" .Values.adventurelog.database.usernameKey)) -}}
 {{- $secretKey := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.runtimeSecret.secretName "key" "SECRET_KEY")) -}}
 {{- $adminPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.adminSecret.secretName "key" "DJANGO_ADMIN_PASSWORD")) -}}
 {{- $databaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.adventurelog.database.host -}}
-{{- $siteURL := printf "https://%s" .Values.adventurelog.hostname -}}
-{{- $env := dict
-  "SITE_URL" $siteURL
-  "ORIGIN" $siteURL
-  "FRONTEND_URL" $siteURL
-  "PUBLIC_URL" $siteURL
-  "PUBLIC_SERVER_URL" "http://127.0.0.1:8000"
-  "CSRF_TRUSTED_ORIGINS" $siteURL
-  "BODY_SIZE_LIMIT" "Infinity"
-  "DEBUG" "False"
+{{- $frontendURL := printf "https://%s" .Values.adventurelog.hostname -}}
+{{- $backendURL := printf "https://%s" .Values.adventurelog.apiHostname -}}
+{{- $databaseEnv := dict
   "POSTGRES_PASSWORD" $dbPassword
   "PGHOST" $databaseHost
   "POSTGRES_DB" .Values.adventurelog.database.name
@@ -124,11 +190,26 @@ route:
   "DJANGO_ADMIN_PASSWORD" $adminPassword
   "DJANGO_ADMIN_EMAIL" .Values.adventurelog.adminSecret.email
   "DISABLE_REGISTRATION" "true"
+  "FRONTEND_URL" $frontendURL
+  "PUBLIC_URL" $backendURL
+  "CSRF_TRUSTED_ORIGINS" (printf "%s,%s" $frontendURL $backendURL)
+  "DEBUG" "False"
 }}
-{{- $_ := set .Values.controllers.app.containers.adventurelog "env" $env -}}
-{{- $_ := set .Values.controllers.app.containers.adventurelog "resources" .Values.adventurelog.resources -}}
+{{- $frontendEnv := dict
+  "ORIGIN" $frontendURL
+  "FRONTEND_URL" $frontendURL
+  "PUBLIC_SERVER_URL" "http://adventurelog-backend:80"
+  "BODY_SIZE_LIMIT" "Infinity"
+}}
+{{- $_ := set .Values.controllers.frontend.containers.frontend "env" $frontendEnv -}}
+{{- $_ := set .Values.controllers.frontend.containers.frontend "resources" .Values.adventurelog.resources.frontend -}}
+{{- $_ := set .Values.controllers.backend.containers.backend "env" $databaseEnv -}}
+{{- $_ := set .Values.controllers.backend.containers.backend "resources" .Values.adventurelog.resources.backend -}}
 {{- $_ := set .Values.persistence.media "storageClass" .Values.storage.className -}}
 {{- $_ := set .Values.persistence.media "size" .Values.storage.mediaSize -}}
-{{- $_ := set .Values.route.app "hostnames" (list .Values.adventurelog.hostname) -}}
-{{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- $_ := set .Values.route.frontend "hostnames" (list .Values.adventurelog.hostname) -}}
+{{- $_ := set .Values.route.backend "hostnames" (list .Values.adventurelog.apiHostname) -}}
+{{- $parentRefs := list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName) -}}
+{{- $_ := set .Values.route.frontend "parentRefs" $parentRefs -}}
+{{- $_ := set .Values.route.backend "parentRefs" $parentRefs -}}
 {{- include "bjw-s.common.loader.generate" . -}}

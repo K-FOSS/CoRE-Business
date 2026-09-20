@@ -20,9 +20,13 @@ storage:
 
 adventurelog:
   hostname: 'adventurelog.mylogin.space'
+  apiHostname: 'adventurelog-api.mylogin.space'
   image:
-    repository: 'ghcr.io/seanmorley15/adventurelog'
+    frontendRepository: 'ghcr.io/seanmorley15/adventurelog-frontend'
+    backendRepository: 'ghcr.io/seanmorley15/adventurelog-backend'
     tag: 'v0.13.0'
+    frontendDigest: 'sha256:51ee22428b4192f4372b54f84c8b90cd710311ad99993c5045f53b51717dd3f7'
+    backendDigest: 'sha256:0250d9cb0d745a8d768f31d3cdc68ac14bfa8b43dedfe0f550158e3861c12db7'
   database:
     # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
     host: ''
@@ -43,9 +47,17 @@ adventurelog:
     username: 'admin'
     email: 'admin@mylogin.space'
   resources:
-    requests:
-      cpu: '100m'
-      memory: '512Mi'
-    limits:
-      cpu: '2'
-      memory: '2Gi'
+    frontend:
+      requests:
+        cpu: '100m'
+        memory: '256Mi'
+      limits:
+        cpu: '1'
+        memory: '1Gi'
+    backend:
+      requests:
+        cpu: '100m'
+        memory: '512Mi'
+      limits:
+        cpu: '2'
+        memory: '2Gi'
