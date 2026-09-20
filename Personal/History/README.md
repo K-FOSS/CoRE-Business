@@ -6,6 +6,12 @@ It runs Dawarich's web and Sidekiq processes, publishes
 `dawarich.mylogin.space` through a Gateway API HTTPRoute, and retains imports,
 exports and application storage on Longhorn PVCs.
 
+The app Pod has a dedicated migration init container using Dawarich's official
+`web-entrypoint.sh`; it waits for PostgreSQL, runs primary/data migrations and
+seeds before the web container starts. Dawarich's web entrypoint remains on the
+web container as an idempotent upgrade safeguard, while Sidekiq waits for the
+same database to become available.
+
 The chart uses the pinned upstream `freikin/dawarich:1.14.5` image. PostgreSQL
 is provisioned through the CoRE `User` resource: the composition creates a
 username-owned database and the chart uses the generated `username` Secret key

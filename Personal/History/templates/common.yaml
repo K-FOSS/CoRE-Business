@@ -11,6 +11,20 @@ controllers:
       securityContext:
         seccompProfile:
           type: 'RuntimeDefault'
+    initContainers:
+      migrate:
+        image:
+          repository: ''
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        entrypoint: ['web-entrypoint.sh']
+        command: ['true']
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
     containers:
       dawarich:
         image:
@@ -146,6 +160,8 @@ route:
 {{- $_ := required "dawarich.oidc.providerConfigRef is required" .Values.dawarich.oidc.providerConfigRef -}}
 {{- $_ := set .Values.controllers.app.containers.dawarich.image "repository" .Values.dawarich.image.repository -}}
 {{- $_ := set .Values.controllers.app.containers.dawarich.image "tag" .Values.dawarich.image.tag -}}
+{{- $_ := set .Values.controllers.app.initContainers.migrate.image "repository" .Values.dawarich.image.repository -}}
+{{- $_ := set .Values.controllers.app.initContainers.migrate.image "tag" .Values.dawarich.image.tag -}}
 {{- $_ := set .Values.controllers.sidekiq.containers.sidekiq.image "repository" .Values.dawarich.image.repository -}}
 {{- $_ := set .Values.controllers.sidekiq.containers.sidekiq.image "tag" .Values.dawarich.image.tag -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.dawarich.database.userSecret "key" .Values.dawarich.database.usernameKey)) -}}
@@ -181,8 +197,10 @@ route:
   "ALLOW_EMAIL_PASSWORD_LOGIN" "false"
 }}
 {{- $_ := set .Values.controllers.app.containers.dawarich "env" $env -}}
+{{- $_ := set .Values.controllers.app.initContainers.migrate "env" $env -}}
 {{- $_ := set .Values.controllers.sidekiq.containers.sidekiq "env" $env -}}
 {{- $_ := set .Values.controllers.app.containers.dawarich "resources" .Values.dawarich.resources.app -}}
+{{- $_ := set .Values.controllers.app.initContainers.migrate "resources" .Values.dawarich.resources.app -}}
 {{- $_ := set .Values.controllers.sidekiq.containers.sidekiq "resources" .Values.dawarich.resources.sidekiq -}}
 {{- $_ := set .Values.route.app "hostnames" (list .Values.dawarich.hostname) -}}
 {{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
