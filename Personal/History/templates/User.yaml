@@ -1,0 +1,18 @@
+{{- if .Values.dawarich.enabled }}
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: 'dawarich-database-user'
+spec:
+  name: 'Dawarich database'
+  psql:
+    enabled: true
+    createUserDatabase: false
+    databases:
+      - {{ .Values.dawarich.database.name | quote }}
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.dawarich.database.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.dawarich.database.terraformProvider | quote }}
+  writeConnectionSecretToRef:
+    name: {{ .Values.dawarich.database.userSecret | quote }}
+{{- end }}

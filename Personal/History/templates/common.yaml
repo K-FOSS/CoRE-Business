@@ -1,0 +1,184 @@
+{{- include "bjw-s.common.loader.init" . -}}
+
+{{- define "history.hardcodedValues" -}}
+controllers:
+  app:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      dawarich:
+        image:
+          repository: ''
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        entrypoint: ['web-entrypoint.sh']
+        command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 3000
+            spec: {periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 30}
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 3000
+            spec: {periodSeconds: 10, timeoutSeconds: 5}
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 3000
+            spec: {periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 5}
+  sidekiq:
+    type: 'deployment'
+    replicas: 1
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      sidekiq:
+        image:
+          repository: ''
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        entrypoint: ['sidekiq-entrypoint.sh']
+        command: ['sidekiq']
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          readiness:
+            enabled: true
+            type: 'Exec'
+            command: ['pgrep', '-f', 'sidekiq']
+            spec: {periodSeconds: 10, timeoutSeconds: 5}
+          liveness:
+            enabled: true
+            type: 'Exec'
+            command: ['pgrep', '-f', 'sidekiq']
+            spec: {periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 5}
+
+service:
+  app:
+    controller: 'app'
+    ports:
+      http:
+        port: 3000
+
+persistence:
+  public:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+    advancedMounts:
+      app:
+        dawarich: [{path: '/var/app/public'}]
+        sidekiq: [{path: '/var/app/public'}]
+  watched:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+    advancedMounts:
+      app:
+        dawarich: [{path: '/var/app/tmp/imports/watched'}]
+        sidekiq: [{path: '/var/app/tmp/imports/watched'}]
+  storage:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '20Gi'
+    retain: true
+    annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
+    advancedMounts:
+      app:
+        dawarich: [{path: '/var/app/storage'}]
+        sidekiq: [{path: '/var/app/storage'}]
+
+route:
+  app:
+    kind: 'HTTPRoute'
+    labels: {wan-mode: 'public', lan-mode: 'private'}
+    hostnames: []
+    rules:
+      - matches: [{path: {type: 'PathPrefix', value: '/'}}]
+        backendRefs: [{identifier: 'app', port: 3000}]
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "history.hardcodedValues" . | fromYaml) -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- $_ := required "dawarich.hostname is required" .Values.dawarich.hostname -}}
+{{- $_ := required "dawarich.oidc.providerConfigRef is required" .Values.dawarich.oidc.providerConfigRef -}}
+{{- $_ := set .Values.controllers.app.containers.dawarich.image "repository" .Values.dawarich.image.repository -}}
+{{- $_ := set .Values.controllers.app.containers.dawarich.image "tag" .Values.dawarich.image.tag -}}
+{{- $_ := set .Values.controllers.sidekiq.containers.sidekiq.image "repository" .Values.dawarich.image.repository -}}
+{{- $_ := set .Values.controllers.sidekiq.containers.sidekiq.image "tag" .Values.dawarich.image.tag -}}
+{{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.dawarich.database.userSecret "key" .Values.dawarich.database.usernameKey)) -}}
+{{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.dawarich.database.userSecret "key" .Values.dawarich.database.passwordKey)) -}}
+{{- $oidcClientID := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.dawarich.oidc.workspaceName "key" "OIDC_CLIENT_ID")) -}}
+{{- $oidcClientSecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.dawarich.oidc.workspaceName "key" "OIDC_CLIENT_SECRET")) -}}
+{{- $secretKeyBase := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.dawarich.runtimeSecret.secretName "key" "SECRET_KEY_BASE")) -}}
+{{- $redisURL := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.dawarich.redis.secretName "key" "REDIS_URL")) -}}
+{{- $env := dict
+  "RAILS_ENV" "production"
+  "SELF_HOSTED" "true"
+  "STORE_GEODATA" "true"
+  "APPLICATION_HOSTS" .Values.dawarich.hostname
+  "APPLICATION_PROTOCOL" "https"
+  "DOMAIN" .Values.dawarich.hostname
+  "TIME_ZONE" .Values.dawarich.timeZone
+  "DATABASE_HOST" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.dawarich.database.host)
+  "DATABASE_PORT" .Values.dawarich.database.port
+  "DATABASE_USERNAME" $dbUsername
+  "DATABASE_PASSWORD" $dbPassword
+  "DATABASE_NAME" .Values.dawarich.database.name
+  "REDIS_URL" $redisURL
+  "BACKGROUND_PROCESSING_CONCURRENCY" .Values.dawarich.backgroundProcessingConcurrency
+  "SECRET_KEY_BASE" $secretKeyBase
+  "RAILS_LOG_TO_STDOUT" "true"
+  "OIDC_CLIENT_ID" $oidcClientID
+  "OIDC_CLIENT_SECRET" $oidcClientSecret
+  "OIDC_ISSUER" (printf "%s/application/o/%s-%s-%s-%s/" (trimSuffix "/" .Values.dawarich.oidc.issuerBaseUrl) .Values.dawarich.oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name)
+  "OIDC_REDIRECT_URI" (printf "https://%s/users/auth/openid_connect/callback" .Values.dawarich.hostname)
+  "OIDC_PROVIDER_NAME" .Values.dawarich.oidc.displayName
+  "OIDC_AUTO_REGISTER" "true"
+  "ALLOW_EMAIL_PASSWORD_REGISTRATION" "false"
+  "ALLOW_EMAIL_PASSWORD_LOGIN" "false"
+}}
+{{- $_ := set .Values.controllers.app.containers.dawarich "env" $env -}}
+{{- $_ := set .Values.controllers.sidekiq.containers.sidekiq "env" $env -}}
+{{- $_ := set .Values.controllers.app.containers.dawarich "resources" .Values.dawarich.resources.app -}}
+{{- $_ := set .Values.controllers.sidekiq.containers.sidekiq "resources" .Values.dawarich.resources.sidekiq -}}
+{{- $_ := set .Values.route.app "hostnames" (list .Values.dawarich.hostname) -}}
+{{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- include "bjw-s.common.loader.generate" . -}}

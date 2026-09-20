@@ -1,0 +1,14 @@
+apiVersion: v2
+name: 'core-business-history'
+description: 'Personal history applications using BJW-S Common'
+type: 'application'
+version: '1.0.0'
+appVersion: '1.14.5'
+kubeVersion: '>=1.31.0-0'
+home: 'https://dawarich.app/'
+sources:
+  - 'https://github.com/Freika/dawarich'
+dependencies:
+  - name: 'common'
+    version: '5.0.1'
+    repository: 'https://bjw-s-labs.github.io/helm-charts/'

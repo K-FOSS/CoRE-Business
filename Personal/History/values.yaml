@@ -1,0 +1,78 @@
+# Site-specific values are injected by the owning Backplane ApplicationSet.
+cluster:
+  name: ''
+
+datacenter: ''
+region: ''
+
+global:
+  createDefaultServiceAccount: true
+  fullnameOverride: 'history'
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+dawarich:
+  enabled: true
+  hostname: 'dawarich.mylogin.space'
+  image:
+    repository: 'docker.io/freikin/dawarich'
+    tag: '1.14.5'
+    pullPolicy: 'IfNotPresent'
+  database:
+    # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
+    host: ''
+    port: '5432'
+    name: 'dawarich'
+    userSecret: 'dawarich-database'
+    usernameKey: 'username'
+    passwordKey: 'password'
+    # Both providers default to psql-<datacenter>-<region>.
+    crossplaneProvider: ''
+    terraformProvider: ''
+  redis:
+    host: ''
+    port: 6379
+    database: 152
+    secretName: 'dawarich-dragonfly'
+    refreshInterval: '1h'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    remoteRef:
+      key: ''
+      property: 'Password'
+  runtimeSecret:
+    generatorName: 'dawarich-runtime-generator'
+    secretName: 'dawarich-runtime'
+  oidc:
+    enabled: true
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'dawarich'
+    accessGroup: 'Home Users'
+    displayName: 'Dawarich'
+    workspaceName: 'history-dawarich-oidc'
+  timeZone: 'UTC'
+  backgroundProcessingConcurrency: '3'
+  resources:
+    app:
+      requests:
+        cpu: '100m'
+        memory: '512Mi'
+      limits:
+        cpu: '2'
+        memory: '4Gi'
+    sidekiq:
+      requests:
+        cpu: '100m'
+        memory: '512Mi'
+      limits:
+        cpu: '2'
+        memory: '4Gi'
+  persistence:
+    publicSize: '10Gi'
+    watchedSize: '10Gi'
+    storageSize: '20Gi'
