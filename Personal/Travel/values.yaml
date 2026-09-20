@@ -35,7 +35,7 @@ adventurelog:
     port: '5432'
     name: 'database'
     userSecret: 'adventurelog-database'
-    databaseKey: 'database'
+    databaseKey: 'username'
     usernameKey: 'username'
     passwordKey: 'password'
     crossplaneProvider: ''
