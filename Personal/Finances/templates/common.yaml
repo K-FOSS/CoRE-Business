@@ -124,7 +124,7 @@ route:
 {{- $_ := required "gateway.name is required" .Values.gateway.name -}}
 {{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
 {{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
-{{- $_ := required "firefly.appKeySecret must reference an externally managed Secret containing APP_KEY" .Values.firefly.appKeySecret -}}
+{{- $_ := required "firefly.appKeySecret is required" .Values.firefly.appKeySecret -}}
 {{- $_ := required "firefly.database.userSecret is required" .Values.firefly.database.userSecret -}}
 {{- $_ := required "firefly.database.crossplane.crossplaneProvider must be injected by the owning ApplicationSet" .Values.firefly.database.crossplane.crossplaneProvider -}}
 {{- $_ := required "firefly.database.crossplane.terraformProvider must be injected by the owning ApplicationSet" .Values.firefly.database.crossplane.terraformProvider -}}

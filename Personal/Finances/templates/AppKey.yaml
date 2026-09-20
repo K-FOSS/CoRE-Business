@@ -1,0 +1,35 @@
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: '{{ .Release.Name }}-app-key'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-10'
+spec:
+  # Firefly III requires exactly 32 characters for APP_KEY. URL-safe output
+  # avoids characters that can be troublesome in environment configuration.
+  length: 32
+  digits: 0
+  symbols: 0
+  allowRepeat: true
+  secretKeys:
+    - 'APP_KEY'
+  encoding: 'base64url'
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ .Release.Name }}-app-key'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-9'
+spec:
+  refreshPolicy: 'CreatedOnce'
+  target:
+    name: '{{ .Values.firefly.appKeySecret }}'
+    creationPolicy: 'Owner'
+    deletionPolicy: 'Retain'
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: 'Password'
+          name: '{{ .Release.Name }}-app-key'

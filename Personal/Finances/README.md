@@ -26,18 +26,23 @@ Firefly III creates its PostgreSQL role and database through the current
 [Backplane `mylogin.space` User resource definition](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml),
 using the generated connection Secret for `DB_DATABASE`, `DB_USERNAME` and
 `DB_PASSWORD`; Backplane
-auto-generates the username and matching database name. The future owner must
-provide an externally managed Secret containing Firefly's `APP_KEY`; no
-credentials are stored in this repository. The 10Gi Longhorn upload PVC is
-retained across chart removal and must be backed up alongside the PostgreSQL
-database.
+auto-generates the username and matching database name. The chart uses the
+[External Secrets Password generator](https://external-secrets.io/latest/api/generator/password/)
+and ExternalSecret CRDs to create `firefly-app-key` once with a 32-character
+`APP_KEY`; the generated value is never stored in this repository, and the
+target Secret is retained across chart removal. The cluster must have the
+External Secrets generator installed before activation. Do not rotate or
+delete the key without planning for existing encrypted data and sessions to
+become unusable.
+The 10Gi Longhorn upload PVC is retained across chart removal and must be backed
+up alongside the PostgreSQL database.
 
 There is currently no active Firefly owner in the
 [CoRE-Backplane Apps/Business tree](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business),
 so this is prepared desired state and will not deploy until an ApplicationSet
 explicitly references `Personal/Finances`. Its future owner must inject
-`cluster.name`, `datacenter`, `region`, `firefly.appKeySecret`, and both Firefly
-PostgreSQL provider references, select
+`cluster.name`, `datacenter`, `region`, and both Firefly PostgreSQL provider
+references, select
 the target namespace and renderer, and confirm the `main-gw` /
 `https-myloginspace` listener. The generated database role and name are
 retained by the Backplane database resources.
@@ -51,14 +56,12 @@ helm lint Personal/Finances \
   --set cluster.name=core-home1-talos-prod \
   --set datacenter=yvr \
   --set region=yvr \
-  --set firefly.appKeySecret=firefly-app-key \
   --set firefly.database.crossplane.crossplaneProvider=psql-home1-yvr \
   --set firefly.database.crossplane.terraformProvider=psql-home1-yvr
 helm template core-business-firefly Personal/Finances --namespace core-prod \
   --set cluster.name=core-home1-talos-prod \
   --set datacenter=yvr \
   --set region=yvr \
-  --set firefly.appKeySecret=firefly-app-key \
   --set firefly.database.crossplane.crossplaneProvider=psql-home1-yvr \
   --set firefly.database.crossplane.terraformProvider=psql-home1-yvr \
   >/tmp/core-business-firefly.yaml

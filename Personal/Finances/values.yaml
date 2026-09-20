@@ -26,7 +26,9 @@ authentik:
 firefly:
   hostname: 'firefly.mylogin.space'
   imageTag: 'version-6.6.6'
-  appKeySecret: ''
+  # Created once by External Secrets; keep this stable because changing APP_KEY
+  # invalidates encrypted sessions and existing encrypted data.
+  appKeySecret: 'firefly-app-key'
   database:
     # These match the current Backplane PostgreSQL service advertised by the User composition.
     host: 'psql-int.mylogin.space'
