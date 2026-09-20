@@ -151,7 +151,24 @@ persistence:
 
 route:
   openproject:
-    enabled: false
+    enabled: true
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    forceRename: '{{ .Release.Name }}'
+    parentRefs:
+      - group: 'gateway.networking.k8s.io'
+        kind: 'Gateway'
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      - {{ .Values.gateway.hostname | quote }}
+    rules:
+      - backendRefs:
+          - identifier: 'openproject'
+            port: 80
 {{- end -}}
 
 {{- $_ := mergeOverwrite .Values (include "projects.hardcodedValues" . | fromYaml) -}}
