@@ -7,9 +7,11 @@ It runs Dawarich's web and Sidekiq processes, publishes
 exports and application storage on Longhorn PVCs.
 
 The chart uses the pinned upstream `freikin/dawarich:1.14.5` image. PostgreSQL
-is provisioned through the CoRE `User` resource and the automatically derived
-site-local `psql-<datacenter>-<region>` providers; it does not deploy a
-database. Dawarich connects to the matching
+is provisioned through the CoRE `User` resource: the composition creates a
+username-owned database and the chart uses the generated `username` Secret key
+as `DATABASE_NAME`. It uses the automatically derived site-local
+`psql-<datacenter>-<region>` providers and does not deploy a database. Dawarich
+connects to the matching
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space` endpoint. Redis is the existing site-local
 Dragonfly service. The chart reads the Dragonfly password from the Backplane
 Vault secret store and constructs a TLS Redis URL for logical database 152.

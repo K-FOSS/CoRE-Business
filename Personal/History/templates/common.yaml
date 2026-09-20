@@ -166,7 +166,7 @@ route:
   "DATABASE_PORT" .Values.dawarich.database.port
   "DATABASE_USERNAME" $dbUsername
   "DATABASE_PASSWORD" $dbPassword
-  "DATABASE_NAME" .Values.dawarich.database.name
+  "DATABASE_NAME" $dbUsername
   "REDIS_URL" $redisURL
   "BACKGROUND_PROCESSING_CONCURRENCY" .Values.dawarich.backgroundProcessingConcurrency
   "SECRET_KEY_BASE" $secretKeyBase

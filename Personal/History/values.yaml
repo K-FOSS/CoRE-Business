@@ -25,7 +25,6 @@ dawarich:
     # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
     host: ''
     port: '5432'
-    name: 'dawarich'
     userSecret: 'dawarich-database'
     usernameKey: 'username'
     passwordKey: 'password'

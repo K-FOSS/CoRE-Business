@@ -7,9 +7,7 @@ spec:
   name: 'Dawarich database'
   psql:
     enabled: true
-    createUserDatabase: false
-    databases:
-      - {{ .Values.dawarich.database.name | quote }}
+    createUserDatabase: true
     crossplane:
       crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.dawarich.database.crossplaneProvider | quote }}
       terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.dawarich.database.terraformProvider | quote }}
