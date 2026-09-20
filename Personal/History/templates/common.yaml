@@ -69,14 +69,19 @@ controllers:
         probes:
           readiness:
             enabled: true
-            type: 'Exec'
-            command: ['pgrep', '-f', 'sidekiq']
-            spec: {periodSeconds: 10, timeoutSeconds: 5}
+            custom: true
+            spec:
+              exec: {command: ['pgrep', '-f', 'sidekiq']}
+              periodSeconds: 10
+              timeoutSeconds: 5
           liveness:
             enabled: true
-            type: 'Exec'
-            command: ['pgrep', '-f', 'sidekiq']
-            spec: {periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 5}
+            custom: true
+            spec:
+              exec: {command: ['pgrep', '-f', 'sidekiq']}
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
 
 service:
   app:
