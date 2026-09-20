@@ -137,9 +137,10 @@ route:
 {{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.database.userSecret "key" .Values.firefly.database.passwordKey)) -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.database.userSecret "key" .Values.firefly.database.usernameKey)) -}}
 {{- $appKeySecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.appKeySecret "key" "APP_KEY")) -}}
+{{- $databaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.firefly.database.host -}}
 {{- $env := dict
   "DB_CONNECTION" "pgsql"
-  "DB_HOST" .Values.firefly.database.host
+  "DB_HOST" $databaseHost
   "DB_PORT" .Values.firefly.database.port
   "DB_DATABASE" $dbUsername
   "DB_USERNAME" $dbUsername

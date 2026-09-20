@@ -30,8 +30,8 @@ firefly:
   # invalidates encrypted sessions and existing encrypted data.
   appKeySecret: 'firefly-app-key'
   database:
-    # These match the current Backplane PostgreSQL service advertised by the User composition.
-    host: 'psql-int.mylogin.space'
+    # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
+    host: ''
     port: '5432'
     userSecret: 'firefly-database'
     passwordKey: 'password'
