@@ -17,8 +17,8 @@ controllers:
           repository: ''
           tag: ''
           pullPolicy: 'IfNotPresent'
-        entrypoint: ['web-entrypoint.sh']
-        command: ['true']
+        command: ['web-entrypoint.sh']
+        args: ['true']
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -31,8 +31,8 @@ controllers:
           repository: ''
           tag: ''
           pullPolicy: 'IfNotPresent'
-        entrypoint: ['web-entrypoint.sh']
-        command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
+        command: ['web-entrypoint.sh']
+        args: ['bin/rails', 'server', '-p', '3000', '-b', '::']
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -72,8 +72,8 @@ controllers:
           repository: ''
           tag: ''
           pullPolicy: 'IfNotPresent'
-        entrypoint: ['sidekiq-entrypoint.sh']
-        command: ['sidekiq']
+        command: ['sidekiq-entrypoint.sh']
+        args: ['sidekiq']
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
