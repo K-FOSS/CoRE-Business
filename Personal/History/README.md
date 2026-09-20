@@ -23,7 +23,9 @@ as `DATABASE_NAME`. It uses the automatically derived site-local
 connects to the matching
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space` endpoint. Redis is the existing site-local
 Dragonfly service. The chart reads the Dragonfly password from the Backplane
-Vault secret store and constructs a TLS Redis URL for logical database 152.
+Vault secret store and constructs a TLS Redis URL; the chart default is logical
+database `152`, while the owning ApplicationSet overrides the deployed value
+to `153`.
 The chart also uses the site PostgreSQL Terraform provider to ensure the
 `postgis` extension exists in the Dawarich database before migrations succeed;
 the application role is not granted extension-creation privileges.
@@ -39,12 +41,15 @@ containers. The callback is
 application is configured for OIDC-only login and automatic account creation.
 Review the access group and issuer values before activation.
 
-There is currently no active [Personal History ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business/Personal)
-referencing `Personal/History`, so this is prepared desired state. A future
-owner must inject `cluster.name`, `datacenter`, `region`, destination namespace
-and the Lovely renderer. It must also
-confirm the `main-gw` / `https-myloginspace` listener and the target cluster's
-Dragonfly Vault path.
+The owning [Personal History ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/History.yaml)
+deploys `Personal/History` through the Argo CD Lovely renderer to the
+production cluster selected by its generator (currently
+`core-home1-talos-prod`) in the `core-prod` namespace. It injects the cluster,
+datacenter and region identity, attaches the `main-gw` /
+`https-myloginspace` listener, derives both PostgreSQL provider names as
+`psql-<datacenter>-<region>`, and selects Dragonfly logical database `153`.
+The ApplicationSet preserves generated resources on Application deletion;
+review that policy before removing the deployment.
 
 Build and render with representative site values:
 
