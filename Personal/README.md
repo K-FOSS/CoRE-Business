@@ -7,6 +7,7 @@ The [Fitness](Fitness/README.md) stack is live at `gym.mylogin.space` under the
 It deploys to `core-fitness-prod` on `core-home1-talos-prod` through the Lovely
 renderer.
 
-The prepared [History](History/README.md) stack deploys Dawarich at
-`dawarich.mylogin.space`; it currently has no active Backplane ApplicationSet
-owner. It uses the site-local Dragonfly service and Authentik OIDC.
+The [History](History/README.md) stack deploys Dawarich at
+`dawarich.mylogin.space` through the [Personal History ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/History.yaml).
+It uses the site-local Dragonfly service, Authentik OIDC and the production
+cluster's PostgreSQL provider.

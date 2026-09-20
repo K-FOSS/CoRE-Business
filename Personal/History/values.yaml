@@ -24,7 +24,7 @@ dawarich:
   hostname: 'dawarich.mylogin.space'
   image:
     repository: 'docker.io/freikin/dawarich'
-    tag: '1.14.5'
+    tag: '1.15.0@sha256:56be3eb19c9a1d735217e8c16283a9ec63e47d91d9d70cdd23102181d51b579b'
     pullPolicy: 'IfNotPresent'
   database:
     # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.

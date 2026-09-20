@@ -88,12 +88,12 @@ replica, retained Longhorn storage and a public Gateway API route. It has no
 active Backplane owner yet and requires a future single-cluster owner to inject
 site identity, hostname, notification address and TLS listener values.
 
-[Dawarich](Personal/History/README.md) is prepared at `Personal/History` using
-BJW-S Common, a pinned upstream image, retained Longhorn import/storage PVCs,
-site-local Dragonfly, automatically derived site-local PostgreSQL and Authentik
-OIDC. It has no active Backplane owner yet; its future owner must inject site
-identity, confirm the Dragonfly secret path and gateway listener, and review
-the generated OIDC application.
+[Dawarich](Personal/History/README.md) is deployed from `Personal/History` by
+the [Personal History ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/History.yaml),
+using BJW-S Common, a pinned upstream image, retained Longhorn import/storage
+PVCs, site-local Dragonfly, automatically derived site-local PostgreSQL and
+Authentik OIDC. The ApplicationSet supplies the site identity, production
+namespace, gateway listener and Lovely rendering layer.
 
 See the [repository guide](docs/REPOSITORY.md) for ownership discovery,
 configuration layers and change validation.

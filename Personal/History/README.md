@@ -15,7 +15,7 @@ seeds before the web container starts. Dawarich's web entrypoint remains on the
 web container as an idempotent upgrade safeguard, while Sidekiq waits for the
 same database to become available.
 
-The chart uses the pinned upstream `freikin/dawarich:1.14.5` image. PostgreSQL
+The chart uses the pinned upstream `freikin/dawarich:1.15.0@sha256:56be3eb19c9a1d735217e8c16283a9ec63e47d91d9d70cdd23102181d51b579b` image. PostgreSQL
 is provisioned through the CoRE `User` resource: the composition creates a
 username-owned database and the chart uses the generated `username` Secret key
 as `DATABASE_NAME`. It uses the automatically derived site-local
@@ -62,6 +62,7 @@ helm template core-business-history Personal/History --namespace core-history-pr
 ```
 
 Review the [Dawarich self-hosting guide](https://dawarich.app/docs/self-hosting/introduction/),
+[Dawarich 1.15.0 release notes](https://github.com/Freika/dawarich/releases/tag/1.15.0),
 [Dawarich environment variables](https://dawarich.app/docs/self-hosting/environment-variables/),
 [Dawarich OIDC guide](https://dawarich.app/docs/self-hosting/configuration/oidc-authentication/),
 [Dawarich source repository](https://github.com/Freika/dawarich),
@@ -72,7 +73,9 @@ Review the [Dawarich self-hosting guide](https://dawarich.app/docs/self-hosting/
 
 After activation, verify the User and Workspace conditions, ExternalSecret
 readiness, PostgreSQL migrations, Dragonfly TLS connectivity, OIDC callback,
-location import, background processing and restoration of all three PVCs.
+location import, background processing and restoration of all three PVCs. For
+the 1.15.0 map and trip changes, review affected trips and use Dawarich's
+recalculation action where their saved routes or distances need updating.
 Removing the chart preserves the PVCs, generated runtime secret and database
 connection Secret; treat those retained resources as a deliberate migration
 and deletion decision.
