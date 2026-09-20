@@ -52,6 +52,10 @@ controllers:
               failureThreshold: 5
   scheduler:
     type: 'cronjob'
+    # CronJob metadata.name is limited to 52 characters because generated Job
+    # names append a timestamp. Keep the site/release-derived name stable while
+    # leaving room for the scheduler suffix.
+    forceRename: '{{ include "bjw-s.common.lib.chart.names.fullname" . | trunc 42 | trimSuffix "-" }}-scheduler'
     cronjob:
       schedule: '* * * * *'
       concurrencyPolicy: 'Forbid'
