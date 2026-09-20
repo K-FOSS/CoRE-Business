@@ -1,6 +1,6 @@
 apiVersion: v2
 name: 'core-business-adventurelog'
-description: 'AdventureLog self-hosted travel tracker using BJW-S Common'
+description: 'AdventureLog and TREK personal travel applications using BJW-S Common'
 type: 'application'
 version: '1.0.0'
 appVersion: '0.13.0'

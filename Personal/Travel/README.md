@@ -11,8 +11,8 @@ from [seanmorley15/AdventureLog](https://github.com/seanmorley15/AdventureLog), 
 to v0.13.0.
 
 [TREK](https://liketrek.com/) is a self-hosted collaborative trip planner with
-maps, itineraries, budgets, packing lists, and real-time collaboration. Its
-component chart and deployment notes are in [`TREK/`](TREK/).
+maps, itineraries, budgets, packing lists, and real-time collaboration. It is
+managed by the same root chart, with its own retained data and uploads PVCs.
 
 The chart runs AdventureLog's split frontend and backend images behind the
 `main-gw` Gateway. The frontend is exposed at `adventurelog.mylogin.space` and

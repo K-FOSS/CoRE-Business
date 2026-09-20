@@ -173,7 +173,7 @@ persistence:
       backend:
         backend:
           - path: '/code/media'
-  trekData:
+  trek-data:
     type: 'persistentVolumeClaim'
     storageClass: 'longhorn'
     accessMode: 'ReadWriteOnce'
@@ -185,7 +185,7 @@ persistence:
       trek:
         trek:
           - path: '/app/data'
-  trekUploads:
+  trek-uploads:
     type: 'persistentVolumeClaim'
     storageClass: 'longhorn'
     accessMode: 'ReadWriteOnce'
@@ -197,7 +197,7 @@ persistence:
       trek:
         trek:
           - path: '/app/uploads'
-  trekTmp:
+  trek-tmp:
     type: 'emptyDir'
     globalMounts:
       - path: '/tmp'
@@ -325,10 +325,10 @@ route:
 {{- $_ := set .Values.controllers.trek.containers.trek "resources" .Values.trek.resources -}}
 {{- $_ := set .Values.persistence.media "storageClass" .Values.storage.className -}}
 {{- $_ := set .Values.persistence.media "size" .Values.storage.mediaSize -}}
-{{- $_ := set .Values.persistence.trekData "storageClass" .Values.storage.className -}}
-{{- $_ := set .Values.persistence.trekData "size" .Values.storage.trekDataSize -}}
-{{- $_ := set .Values.persistence.trekUploads "storageClass" .Values.storage.className -}}
-{{- $_ := set .Values.persistence.trekUploads "size" .Values.storage.trekUploadsSize -}}
+{{- $_ := set (index .Values.persistence "trek-data") "storageClass" .Values.storage.className -}}
+{{- $_ := set (index .Values.persistence "trek-data") "size" .Values.storage.trekDataSize -}}
+{{- $_ := set (index .Values.persistence "trek-uploads") "storageClass" .Values.storage.className -}}
+{{- $_ := set (index .Values.persistence "trek-uploads") "size" .Values.storage.trekUploadsSize -}}
 {{- $_ := set .Values.route.frontend "hostnames" (list .Values.adventurelog.hostname) -}}
 {{- $_ := set .Values.route.backend "hostnames" (list .Values.adventurelog.apiHostname) -}}
 {{- $_ := set .Values.route.trek "hostnames" (list .Values.trek.hostname) -}}
