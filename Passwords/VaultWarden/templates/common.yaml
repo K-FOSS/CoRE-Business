@@ -28,6 +28,7 @@ controllers:
         image:
           repository: {{ .Values.vaultwarden.image.repository | quote }}
           tag: {{ .Values.vaultwarden.image.tag | quote }}
+          digest: {{ .Values.vaultwarden.image.digest | quote }}
           pullPolicy: {{ .Values.vaultwarden.image.pullPolicy | quote }}
         env:
           DATA_FOLDER: '/data'
@@ -121,6 +122,7 @@ service:
         port: 80
         targetPort: 8080
         protocol: HTTP
+        appProtocol: 'kubernetes.io/ws'
 
 persistence:
   data:
