@@ -113,7 +113,7 @@ persistence:
   public:
     type: 'persistentVolumeClaim'
     storageClass: 'longhorn'
-    accessMode: 'ReadWriteOnce'
+    accessMode: 'ReadWriteMany'
     size: '10Gi'
     retain: true
     annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
@@ -124,7 +124,7 @@ persistence:
   watched:
     type: 'persistentVolumeClaim'
     storageClass: 'longhorn'
-    accessMode: 'ReadWriteOnce'
+    accessMode: 'ReadWriteMany'
     size: '10Gi'
     retain: true
     annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
@@ -135,7 +135,7 @@ persistence:
   storage:
     type: 'persistentVolumeClaim'
     storageClass: 'longhorn'
-    accessMode: 'ReadWriteOnce'
+    accessMode: 'ReadWriteMany'
     size: '20Gi'
     retain: true
     annotations: {argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'}
