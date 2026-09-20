@@ -94,6 +94,54 @@ controllers:
               periodSeconds: 30
               timeoutSeconds: 5
               failureThreshold: 5
+  trek:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      trek:
+        image:
+          repository: ''
+          tag: ''
+          digest: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+            add: ['CHOWN', 'SETUID', 'SETGID']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
 
 service:
   frontend:
@@ -106,6 +154,11 @@ service:
     ports:
       http:
         port: 80
+  trek:
+    controller: 'trek'
+    ports:
+      http:
+        port: 3000
 
 persistence:
   media:
@@ -120,6 +173,34 @@ persistence:
       backend:
         backend:
           - path: '/code/media'
+  trekData:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '2Gi'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    advancedMounts:
+      trek:
+        trek:
+          - path: '/app/data'
+  trekUploads:
+    type: 'persistentVolumeClaim'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    advancedMounts:
+      trek:
+        trek:
+          - path: '/app/uploads'
+  trekTmp:
+    type: 'emptyDir'
+    globalMounts:
+      - path: '/tmp'
 
 route:
   frontend:
@@ -150,6 +231,20 @@ route:
         backendRefs:
           - identifier: 'backend'
             port: 80
+  trek:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'private'
+      lan-mode: 'private'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'trek'
+            port: 3000
 {{- end -}}
 
 {{- $_ := mergeOverwrite .Values (include "adventurelog.hardcodedValues" . | fromYaml) -}}
@@ -164,6 +259,9 @@ route:
 {{- $_ := required "adventurelog.database.userSecret is required" .Values.adventurelog.database.userSecret -}}
 {{- $_ := required "adventurelog.runtimeSecret.secretName is required" .Values.adventurelog.runtimeSecret.secretName -}}
 {{- $_ := required "adventurelog.adminSecret.secretName is required" .Values.adventurelog.adminSecret.secretName -}}
+{{- $_ := required "trek.hostname is required" .Values.trek.hostname -}}
+{{- $_ := required "trek.runtimeSecret.secretName is required" .Values.trek.runtimeSecret.secretName -}}
+{{- $_ := required "trek.adminSecret.secretName is required" .Values.trek.adminSecret.secretName -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "repository" .Values.adventurelog.image.frontendRepository -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "tag" .Values.adventurelog.image.tag -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "digest" .Values.adventurelog.image.frontendDigest -}}
@@ -205,11 +303,37 @@ route:
 {{- $_ := set .Values.controllers.frontend.containers.frontend "resources" .Values.adventurelog.resources.frontend -}}
 {{- $_ := set .Values.controllers.backend.containers.backend "env" $databaseEnv -}}
 {{- $_ := set .Values.controllers.backend.containers.backend "resources" .Values.adventurelog.resources.backend -}}
+{{- $_ := set .Values.controllers.trek.containers.trek.image "repository" .Values.trek.image.repository -}}
+{{- $_ := set .Values.controllers.trek.containers.trek.image "tag" .Values.trek.image.tag -}}
+{{- $_ := set .Values.controllers.trek.containers.trek.image "digest" .Values.trek.image.digest -}}
+{{- $trekEncryptionKey := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.trek.runtimeSecret.secretName "key" "ENCRYPTION_KEY")) -}}
+{{- $trekAdminPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.trek.adminSecret.secretName "key" "ADMIN_PASSWORD")) -}}
+{{- $trekURL := printf "https://%s" .Values.trek.hostname -}}
+{{- $trekEnv := dict
+  "NODE_ENV" "production"
+  "PORT" "3000"
+  "TZ" .Values.trek.timeZone
+  "APP_URL" $trekURL
+  "ALLOWED_ORIGINS" $trekURL
+  "FORCE_HTTPS" "true"
+  "TRUST_PROXY" "1"
+  "ENCRYPTION_KEY" $trekEncryptionKey
+  "ADMIN_EMAIL" .Values.trek.adminSecret.email
+  "ADMIN_PASSWORD" $trekAdminPassword
+}}
+{{- $_ := set .Values.controllers.trek.containers.trek "env" $trekEnv -}}
+{{- $_ := set .Values.controllers.trek.containers.trek "resources" .Values.trek.resources -}}
 {{- $_ := set .Values.persistence.media "storageClass" .Values.storage.className -}}
 {{- $_ := set .Values.persistence.media "size" .Values.storage.mediaSize -}}
+{{- $_ := set .Values.persistence.trekData "storageClass" .Values.storage.className -}}
+{{- $_ := set .Values.persistence.trekData "size" .Values.storage.trekDataSize -}}
+{{- $_ := set .Values.persistence.trekUploads "storageClass" .Values.storage.className -}}
+{{- $_ := set .Values.persistence.trekUploads "size" .Values.storage.trekUploadsSize -}}
 {{- $_ := set .Values.route.frontend "hostnames" (list .Values.adventurelog.hostname) -}}
 {{- $_ := set .Values.route.backend "hostnames" (list .Values.adventurelog.apiHostname) -}}
+{{- $_ := set .Values.route.trek "hostnames" (list .Values.trek.hostname) -}}
 {{- $parentRefs := list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName) -}}
 {{- $_ := set .Values.route.frontend "parentRefs" $parentRefs -}}
 {{- $_ := set .Values.route.backend "parentRefs" $parentRefs -}}
+{{- $_ := set .Values.route.trek "parentRefs" $parentRefs -}}
 {{- include "bjw-s.common.loader.generate" . -}}

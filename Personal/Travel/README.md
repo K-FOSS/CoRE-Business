@@ -4,11 +4,15 @@ This directory contains personal travel, flight, routing, adventure planning,
 logging, and tracking applications for
 [K-FOSS/CoRE-Business](https://github.com/K-FOSS/CoRE-Business).
 
-The current stack is AdventureLog, a personal
+The current stacks are AdventureLog and TREK, personal
 [BJW-S Common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 AdventureLog is the [self-hosted travel tracker and trip planner](https://adventurelog.app/)
 from [seanmorley15/AdventureLog](https://github.com/seanmorley15/AdventureLog), pinned here
 to v0.13.0.
+
+[TREK](https://liketrek.com/) is a self-hosted collaborative trip planner with
+maps, itineraries, budgets, packing lists, and real-time collaboration. Its
+component chart and deployment notes are in [`TREK/`](TREK/).
 
 The chart runs AdventureLog's split frontend and backend images behind the
 `main-gw` Gateway. The frontend is exposed at `adventurelog.mylogin.space` and

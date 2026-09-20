@@ -17,6 +17,8 @@ gateway:
 storage:
   className: 'longhorn'
   mediaSize: '10Gi'
+  trekDataSize: '2Gi'
+  trekUploadsSize: '10Gi'
 
 adventurelog:
   hostname: 'adventurelog.mylogin.space'
@@ -46,6 +48,13 @@ adventurelog:
     secretName: 'adventurelog-admin'
     username: 'admin'
     email: 'admin@mylogin.space'
+  oidc:
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'adventurelog'
+    displayName: 'AdventureLog'
+    accessGroup: 'Home Users'
+    workspaceName: 'adventurelog-oidc'
   resources:
     frontend:
       requests:
@@ -61,3 +70,25 @@ adventurelog:
       limits:
         cpu: '2'
         memory: '2Gi'
+
+trek:
+  hostname: 'trek.mylogin.space'
+  image:
+    repository: 'docker.io/mauriceboe/trek'
+    tag: '4.3.0'
+    digest: 'sha256:3521a3a2f121f59c3a30253a8f34fc7941a41ea73e8a6450769ae60e81f1de2a'
+  runtimeSecret:
+    generatorName: 'trek-runtime-generator'
+    secretName: 'trek-runtime'
+  adminSecret:
+    generatorName: 'trek-admin-generator'
+    secretName: 'trek-admin'
+    email: 'admin@mylogin.space'
+  timeZone: 'UTC'
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '256Mi'
+    limits:
+      cpu: '1'
+      memory: '1Gi'

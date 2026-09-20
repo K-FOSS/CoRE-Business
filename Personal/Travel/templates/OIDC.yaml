@@ -1,0 +1,191 @@
+{{- $oidc := .Values.adventurelog.oidc -}}
+{{- $_ := required "adventurelog.oidc.providerConfigRef is required" $oidc.providerConfigRef -}}
+{{- $_ := required "adventurelog.oidc.issuerBaseUrl is required" $oidc.issuerBaseUrl -}}
+{{- $_ := required "adventurelog.oidc.applicationSlug is required" $oidc.applicationSlug -}}
+{{- $_ := required "adventurelog.oidc.displayName is required" $oidc.displayName -}}
+{{- $_ := required "adventurelog.oidc.accessGroup is required" $oidc.accessGroup -}}
+{{- $_ := required "adventurelog.oidc.workspaceName is required" $oidc.workspaceName -}}
+{{- $backendURL := printf "https://%s" .Values.adventurelog.apiHostname -}}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $oidc.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $oidc.providerConfigRef }}'
+  writeConnectionSecretToRef:
+    namespace: '{{ .Release.Namespace }}'
+    name: '{{ $oidc.workspaceName }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      cluster_name: '{{ .Values.cluster.name }}'
+      datacenter: '{{ .Values.datacenter }}'
+      region: '{{ .Values.region }}'
+      application_slug: '{{ $oidc.applicationSlug }}'
+      display_name: '{{ $oidc.displayName }}'
+      access_group: '{{ $oidc.accessGroup }}'
+      issuer_base_url: '{{ trimSuffix "/" $oidc.issuerBaseUrl }}'
+      backend_url: '{{ $backendURL }}'
+    module: |
+      variable "cluster_name" { type = string }
+      variable "datacenter" { type = string }
+      variable "region" { type = string }
+      variable "application_slug" { type = string }
+      variable "display_name" { type = string }
+      variable "access_group" { type = string }
+      variable "issuer_base_url" { type = string }
+      variable "backend_url" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 48
+        special = false
+      }
+
+      resource "authentik_provider_oauth2" "adventurelog" {
+        name               = "${var.display_name} ${var.cluster_name} ${var.datacenter} ${var.region}"
+        client_id          = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        client_secret      = random_password.client_secret.result
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+        allowed_redirect_uris = [{
+          matching_mode = "regex"
+          url           = "^${var.backend_url}/accounts/oidc/.*$"
+        }]
+        property_mappings = data.authentik_property_mapping_provider_scope.scopes.ids
+      }
+
+      resource "authentik_application" "adventurelog" {
+        name              = var.display_name
+        slug              = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group             = "Personal"
+        protocol_provider = authentik_provider_oauth2.adventurelog.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-adventurelog"
+        application = authentik_application.adventurelog.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.adventurelog.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.adventurelog.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }
+
+      output "OIDC_ISSUER_URL" {
+        value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/"
+        sensitive = true
+      }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: '{{ printf "%s-configure" $oidc.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/hook: 'PostSync'
+    argocd.argoproj.io/hook-delete-policy: 'BeforeHookCreation,HookSucceeded'
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: 'adventurelog-oidc-configure'
+    spec:
+      restartPolicy: 'OnFailure'
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+      containers:
+        - name: 'configure'
+          image: '{{ .Values.adventurelog.image.backendRepository }}:{{ .Values.adventurelog.image.tag }}@{{ .Values.adventurelog.image.backendDigest }}'
+          imagePullPolicy: 'IfNotPresent'
+          command: ['/bin/sh', '-c']
+          args:
+            - >-
+              set -eu;
+              python manage.py shell -c
+              'import os; from allauth.socialaccount.models import SocialApp; from django.contrib.sites.models import Site; site = Site.objects.get_current(); site.domain = os.environ["ADVENTURELOG_SITE_DOMAIN"]; site.name = os.environ["ADVENTURELOG_SITE_DOMAIN"]; site.save(); app, _ = SocialApp.objects.update_or_create(provider="openid_connect", provider_id=os.environ["OIDC_CLIENT_ID"], defaults={"name": os.environ["OIDC_DISPLAY_NAME"], "client_id": os.environ["OIDC_CLIENT_ID"], "secret": os.environ["OIDC_CLIENT_SECRET"], "settings": {"server_url": os.environ["OIDC_ISSUER_URL"]}}); app.sites.set([site])'
+          env:
+            - name: 'ADVENTURELOG_SITE_DOMAIN'
+              value: '{{ .Values.adventurelog.apiHostname }}'
+            - name: 'FRONTEND_URL'
+              value: '{{ $backendURL }}'
+            - name: 'PGHOST'
+              value: '{{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.adventurelog.database.host }}'
+            - name: 'PGPORT'
+              value: '{{ .Values.adventurelog.database.port }}'
+            - name: 'PGDATABASE'
+              value: '{{ .Values.adventurelog.database.name }}'
+            - name: 'PGUSER'
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ .Values.adventurelog.database.userSecret }}'
+                  key: '{{ .Values.adventurelog.database.usernameKey }}'
+            - name: 'PGPASSWORD'
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ .Values.adventurelog.database.userSecret }}'
+                  key: '{{ .Values.adventurelog.database.passwordKey }}'
+            - name: 'SECRET_KEY'
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ .Values.adventurelog.runtimeSecret.secretName }}'
+                  key: 'SECRET_KEY'
+            - name: 'OIDC_CLIENT_ID'
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ $oidc.workspaceName }}'
+                  key: 'OIDC_CLIENT_ID'
+            - name: 'OIDC_CLIENT_SECRET'
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ $oidc.workspaceName }}'
+                  key: 'OIDC_CLIENT_SECRET'
+            - name: 'OIDC_ISSUER_URL'
+              valueFrom:
+                secretKeyRef:
+                  name: '{{ $oidc.workspaceName }}'
+                  key: 'OIDC_ISSUER_URL'
+            - name: 'OIDC_DISPLAY_NAME'
+              value: '{{ $oidc.displayName }}'
