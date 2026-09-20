@@ -42,22 +42,27 @@ controllers:
         probes:
           startup:
             enabled: true
-            type: 'HTTP'
-            path: '/'
-            port: 3000
-            spec: {periodSeconds: 10, timeoutSeconds: 5, failureThreshold: 30}
+            custom: true
+            spec:
+              httpGet: {path: '/', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
           readiness:
             enabled: true
-            type: 'HTTP'
-            path: '/'
-            port: 3000
-            spec: {periodSeconds: 10, timeoutSeconds: 5}
+            custom: true
+            spec:
+              httpGet: {path: '/', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
           liveness:
             enabled: true
-            type: 'HTTP'
-            path: '/'
-            port: 3000
-            spec: {periodSeconds: 30, timeoutSeconds: 5, failureThreshold: 5}
+            custom: true
+            spec:
+              httpGet: {path: '/', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
   sidekiq:
     type: 'deployment'
     replicas: 1
@@ -199,6 +204,10 @@ route:
 {{- $_ := set .Values.controllers.app.containers.dawarich "env" $env -}}
 {{- $_ := set .Values.controllers.app.initContainers.migrate "env" $env -}}
 {{- $_ := set .Values.controllers.sidekiq.containers.sidekiq "env" $env -}}
+{{- $probeHeaders := list (dict "name" "Host" "value" .Values.dawarich.hostname) -}}
+{{- $_ := set .Values.controllers.app.containers.dawarich.probes.startup.spec.httpGet "httpHeaders" $probeHeaders -}}
+{{- $_ := set .Values.controllers.app.containers.dawarich.probes.readiness.spec.httpGet "httpHeaders" $probeHeaders -}}
+{{- $_ := set .Values.controllers.app.containers.dawarich.probes.liveness.spec.httpGet "httpHeaders" $probeHeaders -}}
 {{- $_ := set .Values.controllers.app.containers.dawarich "resources" .Values.dawarich.resources.app -}}
 {{- $_ := set .Values.controllers.app.initContainers.migrate "resources" .Values.dawarich.resources.app -}}
 {{- $_ := set .Values.controllers.sidekiq.containers.sidekiq "resources" .Values.dawarich.resources.sidekiq -}}
