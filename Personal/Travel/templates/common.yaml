@@ -96,6 +96,7 @@ controllers:
               failureThreshold: 5
   trek:
     type: 'deployment'
+    forceRename: 'core-personal-travel-trek'
     replicas: 1
     strategy: 'Recreate'
     pod:
@@ -156,6 +157,7 @@ service:
         port: 80
   trek:
     controller: 'trek'
+    forceRename: 'core-personal-travel-trek'
     ports:
       http:
         port: 3000
@@ -175,6 +177,7 @@ persistence:
           - path: '/code/media'
   trek-data:
     type: 'persistentVolumeClaim'
+    forceRename: 'core-personal-travel-trek-data'
     storageClass: 'longhorn'
     accessMode: 'ReadWriteOnce'
     size: '2Gi'
@@ -187,6 +190,7 @@ persistence:
           - path: '/app/data'
   trek-uploads:
     type: 'persistentVolumeClaim'
+    forceRename: 'core-personal-travel-trek-uploads'
     storageClass: 'longhorn'
     accessMode: 'ReadWriteOnce'
     size: '10Gi'
@@ -233,6 +237,7 @@ route:
             port: 80
   trek:
     kind: 'HTTPRoute'
+    forceRename: 'core-personal-travel-trek'
     labels:
       wan-mode: 'private'
       lan-mode: 'private'
