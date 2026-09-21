@@ -427,6 +427,7 @@ route:
 {{- $smtpEnv := dict
   "A_SMTP_USERNAME" $smtpUsername
   "DEFAULT_FROM_EMAIL" (printf "$(A_SMTP_USERNAME)@%s" .Values.adventurelog.smtp.domain)
+  "EMAIL_BACKEND" "email"
   "EMAIL_HOST" .Values.adventurelog.smtp.host
   "EMAIL_HOST_PASSWORD" $smtpPassword
   "EMAIL_HOST_USER" $smtpUsername
