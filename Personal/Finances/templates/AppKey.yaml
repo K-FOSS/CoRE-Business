@@ -32,4 +32,4 @@ spec:
         generatorRef:
           apiVersion: generators.external-secrets.io/v1alpha1
           kind: 'Password'
-        name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-app-key'
+          name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-app-key'
