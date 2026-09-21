@@ -206,7 +206,7 @@ route:
   frontend:
     kind: 'HTTPRoute'
     labels:
-      wan-mode: 'private'
+      wan-mode: 'public'
       lan-mode: 'private'
     hostnames: []
     rules:
@@ -220,7 +220,7 @@ route:
   backend:
     kind: 'HTTPRoute'
     labels:
-      wan-mode: 'private'
+      wan-mode: 'public'
       lan-mode: 'private'
     hostnames: []
     rules:
@@ -235,7 +235,7 @@ route:
     kind: 'HTTPRoute'
     forceRename: 'core-personal-travel-trek'
     labels:
-      wan-mode: 'private'
+      wan-mode: 'public'
       lan-mode: 'private'
     hostnames: []
     rules:
