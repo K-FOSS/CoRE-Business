@@ -86,6 +86,13 @@ trek:
     generatorName: 'trek-admin-generator'
     secretName: 'trek-admin'
     email: 'admin@mylogin.space'
+  oidc:
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'trek'
+    displayName: 'TREK'
+    accessGroup: 'Home Users'
+    workspaceName: 'trek-oidc'
   timeZone: 'UTC'
   resources:
     requests:

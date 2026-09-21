@@ -1,0 +1,124 @@
+{{- $oidc := .Values.trek.oidc -}}
+{{- $_ := required "trek.oidc.providerConfigRef is required" $oidc.providerConfigRef -}}
+{{- $_ := required "trek.oidc.issuerBaseUrl is required" $oidc.issuerBaseUrl -}}
+{{- $_ := required "trek.oidc.applicationSlug is required" $oidc.applicationSlug -}}
+{{- $_ := required "trek.oidc.displayName is required" $oidc.displayName -}}
+{{- $_ := required "trek.oidc.accessGroup is required" $oidc.accessGroup -}}
+{{- $_ := required "trek.oidc.workspaceName is required" $oidc.workspaceName -}}
+{{- $issuerBaseUrl := trimSuffix "/" $oidc.issuerBaseUrl -}}
+{{- $slug := printf "%s-%s-%s-%s" $oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name -}}
+{{- $issuer := printf "%s/application/o/%s" $issuerBaseUrl $slug -}}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $oidc.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $oidc.providerConfigRef }}'
+  writeConnectionSecretToRef:
+    namespace: '{{ .Release.Namespace }}'
+    name: '{{ $oidc.workspaceName }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      cluster_name: '{{ .Values.cluster.name }}'
+      datacenter: '{{ .Values.datacenter }}'
+      region: '{{ .Values.region }}'
+      application_slug: '{{ $oidc.applicationSlug }}'
+      display_name: '{{ $oidc.displayName }}'
+      access_group: '{{ $oidc.accessGroup }}'
+      issuer_base_url: '{{ $issuerBaseUrl }}'
+      trek_url: 'https://{{ .Values.trek.hostname }}'
+    module: |
+      variable "cluster_name" { type = string }
+      variable "datacenter" { type = string }
+      variable "region" { type = string }
+      variable "application_slug" { type = string }
+      variable "display_name" { type = string }
+      variable "access_group" { type = string }
+      variable "issuer_base_url" { type = string }
+      variable "trek_url" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 48
+        special = false
+      }
+
+      resource "authentik_provider_oauth2" "trek" {
+        name               = "${var.display_name} ${var.cluster_name} ${var.datacenter} ${var.region}"
+        client_id          = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        client_secret      = random_password.client_secret.result
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+        allowed_redirect_uris = [{
+          matching_mode = "strict"
+          url           = "${var.trek_url}/api/auth/oidc/callback"
+        }]
+        property_mappings = data.authentik_property_mapping_provider_scope.scopes.ids
+      }
+
+      resource "authentik_application" "trek" {
+        name              = var.display_name
+        slug              = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group             = "Personal"
+        protocol_provider = authentik_provider_oauth2.trek.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-trek"
+        application = authentik_application.trek.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.trek.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.trek.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }
+
+      output "OIDC_ISSUER" {
+        value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        sensitive = true
+      }
+
+      output "OIDC_DISCOVERY_URL" {
+        value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/.well-known/openid-configuration"
+        sensitive = true
+      }
