@@ -63,6 +63,12 @@ field. AirTrail is pinned to v3.12.0 by digest, exposed at
 `airtrail.mylogin.space`, and stores uploads on a retained Longhorn PVC. This
 follows [AirTrail's PostgreSQL configuration](https://github.com/JohanOhly/AirTrail/blob/main/.env.example)
 and its [production Compose definition](https://github.com/JohanOhly/AirTrail/blob/main/docker/production/compose.yml).
+AirTrail native OIDC is provisioned through Authentik using the
+[AirTrail OAuth configuration](https://airtrail.johan.ohly.dk/docs/features/oauth): the generated
+`airtrail-oidc` connection Secret supplies the client ID, client secret, and discovery URL to the
+container, and the strict callback is `https://airtrail.mylogin.space/login`. The Authentik
+application is limited to the `Home Users` group. The existing Envoy forward-auth policy remains
+in place as the outer route protection.
 The AirTrail pod runs with filesystem group `1000` so its non-root process can
 write the uploads claim; probes use `/`, which is the serving endpoint exposed
 by the pinned image.

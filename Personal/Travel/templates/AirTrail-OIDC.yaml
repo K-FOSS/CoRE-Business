@@ -1,0 +1,128 @@
+{{- $oidc := .Values.airtrail.oidc -}}
+{{- $_ := required "airtrail.oidc.providerConfigRef is required" $oidc.providerConfigRef -}}
+{{- $_ := required "airtrail.oidc.issuerBaseUrl is required" $oidc.issuerBaseUrl -}}
+{{- $_ := required "airtrail.oidc.applicationSlug is required" $oidc.applicationSlug -}}
+{{- $_ := required "airtrail.oidc.displayName is required" $oidc.displayName -}}
+{{- $_ := required "airtrail.oidc.accessGroup is required" $oidc.accessGroup -}}
+{{- $_ := required "airtrail.oidc.workspaceName is required" $oidc.workspaceName -}}
+{{- $issuerBaseUrl := trimSuffix "/" $oidc.issuerBaseUrl -}}
+{{- $slug := printf "%s-%s-%s-%s" $oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name -}}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $oidc.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $oidc.providerConfigRef }}'
+  writeConnectionSecretToRef:
+    namespace: '{{ .Release.Namespace }}'
+    name: '{{ $oidc.workspaceName }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      access_group: '{{ $oidc.accessGroup }}'
+      airtrail_url: 'https://{{ .Values.airtrail.hostname }}'
+      application_slug: '{{ $oidc.applicationSlug }}'
+      cluster_name: '{{ .Values.cluster.name }}'
+      datacenter: '{{ .Values.datacenter }}'
+      display_name: '{{ $oidc.displayName }}'
+      issuer_base_url: '{{ $issuerBaseUrl }}'
+      region: '{{ .Values.region }}'
+    module: |
+      variable "access_group" { type = string }
+      variable "airtrail_url" { type = string }
+      variable "application_slug" { type = string }
+      variable "cluster_name" { type = string }
+      variable "datacenter" { type = string }
+      variable "display_name" { type = string }
+      variable "issuer_base_url" { type = string }
+      variable "region" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      data "authentik_certificate_key_pair" "signing_key" {
+        name = "tls"
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 48
+        special = false
+      }
+
+      resource "authentik_provider_oauth2" "airtrail" {
+        name                 = "${var.display_name} ${var.cluster_name} ${var.datacenter} ${var.region}"
+        client_id            = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        client_secret        = random_password.client_secret.result
+        signing_key          = data.authentik_certificate_key_pair.signing_key.id
+        authorization_flow   = data.authentik_flow.authorization.id
+        invalidation_flow    = data.authentik_flow.invalidation.id
+        allowed_redirect_uris = [{
+          matching_mode = "strict"
+          url           = "${var.airtrail_url}/login"
+        }]
+        property_mappings = data.authentik_property_mapping_provider_scope.scopes.ids
+      }
+
+      resource "authentik_application" "airtrail" {
+        name              = var.display_name
+        slug              = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group             = "Personal"
+        protocol_provider = authentik_provider_oauth2.airtrail.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-airtrail"
+        application = authentik_application.airtrail.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.airtrail.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.airtrail.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }
+
+      output "OIDC_ISSUER" {
+        value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        sensitive = true
+      }
+
+      output "OIDC_DISCOVERY_URL" {
+        value     = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/.well-known/openid-configuration"
+        sensitive = true
+      }

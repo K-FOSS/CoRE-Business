@@ -348,6 +348,8 @@ route:
 {{- $_ := required "trek.adminSecret.secretName is required" .Values.trek.adminSecret.secretName -}}
 {{- $_ := required "airtrail.hostname is required" .Values.airtrail.hostname -}}
 {{- $_ := required "airtrail.database.userSecret is required" .Values.airtrail.database.userSecret -}}
+{{- $_ := required "airtrail.oidc.providerConfigRef is required" .Values.airtrail.oidc.providerConfigRef -}}
+{{- $_ := required "airtrail.oidc.workspaceName is required" .Values.airtrail.oidc.workspaceName -}}
 {{- $_ := required "adventurelog.smtp.secretName is required" .Values.adventurelog.smtp.secretName -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "repository" .Values.adventurelog.image.frontendRepository -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "tag" .Values.adventurelog.image.tag -}}
@@ -446,6 +448,16 @@ route:
   "DB_PASSWORD" $airtrailPassword
   "DB_URL" (printf "postgres://$(A_DB_USERNAME):$(DB_PASSWORD)@%s:%s/$(DB_DATABASE_NAME)" $airtrailDatabaseHost .Values.airtrail.database.port)
   "DB_USERNAME" $airtrailUsername
+  "OAUTH_ENABLED" "true"
+  "OAUTH_ISSUER_URL" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.airtrail.oidc.workspaceName "key" "OIDC_DISCOVERY_URL")))
+  "OAUTH_CLIENT_ID" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.airtrail.oidc.workspaceName "key" "OIDC_CLIENT_ID")))
+  "OAUTH_CLIENT_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.airtrail.oidc.workspaceName "key" "OIDC_CLIENT_SECRET")))
+  "OAUTH_TOKEN_ENDPOINT_AUTH_METHOD" .Values.airtrail.oidc.tokenEndpointAuthMethod
+  "OAUTH_SCOPE" .Values.airtrail.oidc.scope
+  "OAUTH_AUTO_REGISTER" .Values.airtrail.oidc.autoRegister
+  "OAUTH_AUTO_LOGIN" .Values.airtrail.oidc.autoLogin
+  "OAUTH_HIDE_PASSWORD_FORM" .Values.airtrail.oidc.hidePasswordForm
+  "OAUTH_BUTTON_TEXT" .Values.airtrail.oidc.buttonText
   "ORIGIN" (printf "https://%s" .Values.airtrail.hostname)
   "UPLOAD_LOCATION" "/app/uploads"
 }}
