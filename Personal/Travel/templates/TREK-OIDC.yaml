@@ -61,6 +61,10 @@ spec:
         name = var.access_group
       }
 
+      data "authentik_certificate_key_pair" "signing_key" {
+        name = "tls"
+      }
+
       resource "random_password" "client_secret" {
         length  = 48
         special = false
@@ -70,6 +74,7 @@ spec:
         name               = "${var.display_name} ${var.cluster_name} ${var.datacenter} ${var.region}"
         client_id          = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
         client_secret      = random_password.client_secret.result
+        signing_key        = data.authentik_certificate_key_pair.signing_key.id
         authorization_flow = data.authentik_flow.authorization.id
         invalidation_flow  = data.authentik_flow.invalidation.id
         allowed_redirect_uris = [{
