@@ -14,6 +14,10 @@ to v0.13.0.
 maps, itineraries, budgets, packing lists, and real-time collaboration. It is
 managed by the same root chart, with `core-personal-travel-trek-data` and
 `core-personal-travel-trek-uploads` retained data and uploads PVCs.
+TREK OIDC is provisioned through Authentik and receives its generated client
+credentials from the `trek-oidc` connection Secret; its callback is
+`https://trek.mylogin.space/api/auth/oidc/callback`, matching [TREK's OIDC
+guide](https://github.com/liketrek/TREK/wiki/OIDC-SSO).
 
 The chart runs AdventureLog's split frontend and backend images behind the
 `main-gw` Gateway. The frontend is exposed at `adventurelog.mylogin.space` and
