@@ -7,8 +7,10 @@ optimization—rather than define a single mandatory application. Firefly III is
 the starting point and current reference implementation; additional apps can
 be added when they provide a distinct capability.
 
-The chart currently prepares Firefly III only. The companion applications below
-are candidates for future additions, not deployed components or commitments.
+The chart currently prepares Firefly III only. Wealthfolio and a Bloomberg-like
+market-research workstation are desired future components; the companion
+applications below are not deployed yet and still require separate ownership,
+rendering, persistence, access, and data-provider design.
 
 This prepared chart deploys [Firefly III](https://www.firefly-iii.org/), a
 self-hosted personal finance manager, with the
@@ -16,6 +18,18 @@ self-hosted personal finance manager, with the
 It serves `firefly.mylogin.space` through a Gateway API HTTPRoute and uses the
 upstream Firefly III container image at version `6.6.6`. Access is protected by
 Authentik forward authentication.
+
+Authentication is intended to be seamless: Envoy sends the request to the
+site Authentik outpost, the outpost returns the authenticated user's email,
+and Firefly's `remote_user_guard` uses that email to load the matching local
+Firefly user. The `/outpost.goauthentik.io/` callback path is routed directly
+to the outpost so login redirects and logout work on the Firefly hostname.
+Firefly's native password login is intentionally disabled by this configuration.
+The Authentik email must remain stable after a Firefly user is created; changing
+it can result in a new Firefly user rather than access to the existing user's
+data. This uses Firefly's
+[remote-user authentication](https://github.com/firefly-iii/firefly-iii/blob/main/config/auth.php)
+and Authentik's [Envoy forward-auth integration](https://docs.goauthentik.io/add-secure-apps/providers/proxy/server_envoy/).
 
 ## Candidate companion applications
 
@@ -29,7 +43,8 @@ tracking, with at most one specialist application for each unmet goal.
 | Plan spending with an envelope budget | [Actual Budget](https://actualbudget.org/) ([installation documentation](https://actualbudget.org/docs/install/)) | Local-first envelope budgeting, multi-device sync, imports, API, and optional bank sync through supported providers. | Strongest next candidate if the priority is assigning available cash to categories before spending. Validate Canadian-bank coverage and the handling of bank-sync credentials before enabling it. |
 | Track recurring bills and subscriptions | [Wallos](https://github.com/ellite/Wallos) ([API documentation](https://api.wallosapp.com/)) | Focused, self-hostable subscription tracking with recurring-expense and budget views. | Good lightweight companion for renewal dates, cancellation review, and recurring-cost visibility; keep actual transactions in Firefly III. |
 | Track investments and portfolio performance | [Ghostfolio](https://ghostfol.io/) ([source and self-hosting documentation](https://github.com/ghostfolio/ghostfolio)) | Open-source wealth management for stocks, ETFs, and crypto, designed for continuous personal use. | Good web-based candidate when portfolio analytics are needed; verify market-data-provider requirements and backups first. |
-| Track investments plus longer-term goals locally | [Wealthfolio](https://wealthfolio.app/) ([documentation](https://wealthfolio.app/docs/introduction/)) | Local-first investment tracking with holdings, allocation, income, net worth, budgeting, and retirement/FIRE planning. | Worth comparing with Ghostfolio if privacy and planning matter more than a central always-on web service. |
+| Track investments plus longer-term goals locally | [Wealthfolio](https://wealthfolio.app/) ([documentation](https://wealthfolio.app/docs/introduction/)) | Local-first investment tracking with holdings, allocation, income, net worth, budgeting, and retirement/FIRE planning. | Desired component. Evaluate as the portfolio, net-worth, and long-term planning system alongside Firefly III. |
+| Bloomberg-style market research and monitoring | [OpenBB](https://openbb.co/) ([documentation](https://docs.openbb.co/)) | Customizable research workspaces, data-provider integrations, dashboards, AI-assisted workflows, and CLI/API access through its Open Data Platform. | Preferred candidate for the market workstation. Confirm the current self-hosted/VPC packaging, supported Canadian and global data sources, licensing, latency, and historical-data costs before deployment. |
 
 [Maybe](https://github.com/maybe-finance/maybe) is not recommended for a new
 deployment: its upstream repository states that it is no longer actively
@@ -41,11 +56,24 @@ security story is selected.
 1. Keep Firefly III as the transaction ledger and establish import, backup, and
    reconciliation workflows.
 2. Add Wallos if recurring bills and subscriptions are the immediate gap.
-3. Evaluate Actual Budget if the main gap is forward-looking, envelope-style
+3. Add Wealthfolio for investment holdings, portfolio performance, net worth,
+   and longer-term planning.
+4. Evaluate OpenBB as the research workstation for market dashboards, company
+   and macro research, news/data exploration, and watchlists. Treat it as a
+   market-data and research layer, not as the household transaction ledger.
+5. Evaluate Actual Budget if the main gap is forward-looking, envelope-style
    cash allocation. Decide whether it complements Firefly III or becomes the
    budgeting source of truth before importing the same accounts into both.
-4. Add either Ghostfolio or Wealthfolio only if investment and retirement
-   planning needs exceed Firefly III's scope.
+6. Add Ghostfolio only if it provides a clear capability that Wealthfolio does
+   not. Consider [QuantConnect LEAN](https://www.lean.io/) ([documentation](https://www.quantconnect.com/docs/v2/)) later for research, backtesting, or algorithmic trading; it is an engine, not a Bloomberg-style terminal.
+
+The desired high-level split is:
+
+| System | Primary responsibility |
+| --- | --- |
+| Firefly III | Household transaction ledger, categorization, recurring transactions, and detailed cash-flow history |
+| Wealthfolio | Investment holdings, performance, net worth, contributions, and retirement/FIRE planning |
+| OpenBB | Market data, watchlists, research dashboards, macro/company analysis, and news/data workflows |
 
 Bank aggregators and investment market-data providers may transmit sensitive
 financial information to third parties. Treat credentials, provider terms,
@@ -132,4 +160,10 @@ Review the upstream [Firefly III source repository](https://github.com/firefly-i
 and [Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) documentation.
 After activation, verify PostgreSQL connectivity, the `/health` endpoint, login
 and transaction creation, scheduler completion, route policy behavior, and
-restore of both the database and upload PVC.
+restore of both the database and upload PVC. For the authentication path,
+verify that `https://firefly.mylogin.space/outpost.goauthentik.io/ping` returns
+HTTP `204`, an unauthenticated browser session redirects to Authentik, the
+post-login request reaches Firefly without a second Firefly login form, and
+`/outpost.goauthentik.io/sign_out` clears the provider session. Also verify
+that requests carrying a client-supplied `X-authentik-email` without a valid
+Authentik session are denied rather than reaching Firefly.

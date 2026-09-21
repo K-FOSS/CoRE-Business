@@ -138,6 +138,7 @@ route:
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.database.userSecret "key" .Values.firefly.database.usernameKey)) -}}
 {{- $appKeySecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.appKeySecret "key" "APP_KEY")) -}}
 {{- $databaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.firefly.database.host -}}
+{{/* Authentik's X-authentik-email is consumed by Firefly's remote user guard. */}}
 {{- $env := dict
   "DB_CONNECTION" "pgsql"
   "DB_HOST" $databaseHost
@@ -148,6 +149,9 @@ route:
   "APP_KEY" $appKeySecret
   "APP_URL" (printf "https://%s" .Values.firefly.hostname)
   "TRUSTED_PROXIES" "**"
+  "AUTHENTICATION_GUARD" "remote_user_guard"
+  "AUTHENTICATION_GUARD_HEADER" "HTTP_X_AUTHENTIK_EMAIL"
+  "AUTHENTICATION_GUARD_EMAIL" "HTTP_X_AUTHENTIK_EMAIL"
   "DEFAULT_LANGUAGE" "en_US"
   "DEFAULT_LOCALE" "equal"
   "TZ" "UTC"
