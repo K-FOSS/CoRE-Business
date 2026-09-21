@@ -63,6 +63,9 @@ field. AirTrail is pinned to v3.12.0 by digest, exposed at
 `airtrail.mylogin.space`, and stores uploads on a retained Longhorn PVC. This
 follows [AirTrail's PostgreSQL configuration](https://github.com/JohanOhly/AirTrail/blob/main/.env.example)
 and its [production Compose definition](https://github.com/JohanOhly/AirTrail/blob/main/docker/production/compose.yml).
+The AirTrail pod runs with filesystem group `1000` so its non-root process can
+write the uploads claim; probes use `/`, which is the serving endpoint exposed
+by the pinned image.
 
 AdventureLog resource names remain under the existing `adventurelog` prefix.
 Other application resources use the `core-personal-travel-` prefix. The TREK
@@ -80,9 +83,12 @@ must render this directory through the
 [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
 
 The first-admin password is generated into the `adventurelog-admin` Secret and
-must be retrieved through the cluster's approved secret-access workflow. User
-registration is disabled; create additional users after signing in as the
-generated admin.
+must be retrieved through the cluster's approved secret-access workflow. For
+the existing database, the image's first-boot admin creation hook is disabled
+so an existing user with the same email is not recreated; the existing account
+remains authoritative. Set `adventurelog.adminSecret.bootstrap` to `true` only
+when initializing an empty AdventureLog database. User registration is
+disabled.
 
 ## TODO
 

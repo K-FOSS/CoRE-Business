@@ -147,6 +147,8 @@ controllers:
     pod:
       automountServiceAccountToken: false
       securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: 'OnRootMismatch'
         seccompProfile:
           type: 'RuntimeDefault'
     containers:
@@ -167,7 +169,7 @@ controllers:
             enabled: true
             custom: true
             spec:
-              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              httpGet: {path: '/', port: 3000, scheme: 'HTTP'}
               periodSeconds: 10
               timeoutSeconds: 5
               failureThreshold: 30
@@ -175,14 +177,14 @@ controllers:
             enabled: true
             custom: true
             spec:
-              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              httpGet: {path: '/', port: 3000, scheme: 'HTTP'}
               periodSeconds: 10
               timeoutSeconds: 5
           liveness:
             enabled: true
             custom: true
             spec:
-              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              httpGet: {path: '/', port: 3000, scheme: 'HTTP'}
               periodSeconds: 30
               timeoutSeconds: 5
               failureThreshold: 5
