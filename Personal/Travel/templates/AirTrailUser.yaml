@@ -8,7 +8,7 @@ spec:
     enabled: true
     createUserDatabase: true
     crossplane:
-      crossplaneProvider: '{{ required "airtrail.database.crossplaneProvider must be injected by the owning ApplicationSet" .Values.airtrail.database.crossplaneProvider }}'
-      terraformProvider: '{{ required "airtrail.database.terraformProvider must be injected by the owning ApplicationSet" .Values.airtrail.database.terraformProvider }}'
+      crossplaneProvider: '{{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.airtrail.database.crossplaneProvider }}'
+      terraformProvider: '{{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.airtrail.database.terraformProvider }}'
   writeConnectionSecretToRef:
     name: '{{ .Values.airtrail.database.userSecret }}'

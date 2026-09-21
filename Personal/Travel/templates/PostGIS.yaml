@@ -4,7 +4,7 @@ metadata:
   name: 'adventurelog-postgis'
 spec:
   providerConfigRef:
-    name: '{{ required "adventurelog.database.terraformProvider must be injected by the owning ApplicationSet" .Values.adventurelog.database.terraformProvider }}'
+    name: '{{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.adventurelog.database.terraformProvider }}'
   forProvider:
     source: 'Inline'
     env:
