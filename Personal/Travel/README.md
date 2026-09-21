@@ -12,7 +12,8 @@ to v0.13.0.
 
 [TREK](https://liketrek.com/) is a self-hosted collaborative trip planner with
 maps, itineraries, budgets, packing lists, and real-time collaboration. It is
-managed by the same root chart, with its own retained data and uploads PVCs.
+managed by the same root chart, with `core-personal-travel-trek-data` and
+`core-personal-travel-trek-uploads` retained data and uploads PVCs.
 
 The chart runs AdventureLog's split frontend and backend images behind the
 `main-gw` Gateway. The frontend is exposed at `adventurelog.mylogin.space` and
@@ -38,12 +39,19 @@ field. This follows [AirTrail's PostgreSQL configuration](https://github.com/Joh
 and its [production Compose definition](https://github.com/JohanOhly/AirTrail/blob/main/docker/production/compose.yml).
 AirTrail itself is not deployed by this change.
 
+AdventureLog resource names remain under the existing `adventurelog` prefix.
+Other application resources use the `core-personal-travel-` prefix. The TREK
+PVC names changed from the earlier `adventurelog-trek-*` names; the old claims
+are retained by Kubernetes and require an explicit data migration before their
+contents can be used by the renamed claims.
+
 The current Backplane tree does not yet contain an owning AdventureLog
 ApplicationSet. Add one under
 [`Apps/Business/Personal/`](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business/Personal)
 before expecting Argo CD to deploy this directory. That ApplicationSet must
-inject `cluster.name`, `datacenter`, `region`, and the environment-specific
-PostgreSQL provider names, and must render this directory through the
+inject `cluster.name`, `datacenter`, and `region`; PostgreSQL provider names
+default to `psql-<datacenter>-<region>` and can be overridden when needed. It
+must render this directory through the
 [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
 
 The first-admin password is generated into the `adventurelog-admin` Secret and
