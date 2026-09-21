@@ -41,6 +41,45 @@ spec:
           name: '{{ .Values.authentik.outpost.name }}'
           port: {{ .Values.authentik.outpost.port }}
       path: '/outpost.goauthentik.io/auth/envoy'
+{{- if .Values.httpbin.enabled }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ .Release.Name }}-httpbin-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-httpbin'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-*'
+        - 'authorization'
+        - 'Content-Type'
+        - 'Location'
+      backendSettings:
+        loadBalancer:
+          type: 'ConsistentHash'
+          consistentHash:
+            type: 'SourceIP'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ .Values.authentik.outpost.namespace }}'
+          name: '{{ .Values.authentik.outpost.name }}'
+          port: {{ .Values.authentik.outpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+{{- end }}
 ---
 apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
@@ -74,3 +113,28 @@ spec:
         group             = "{{ required "authentik.application.group is required" .Values.authentik.application.group }}"
         protocol_provider = authentik_provider_proxy.app.id
       }
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-authentik-outpost'
+spec:
+  parentRefs:
+    - kind: 'Gateway'
+      name: '{{ .Values.gateway.name }}'
+      namespace: '{{ .Values.gateway.namespace }}'
+      sectionName: '{{ .Values.gateway.sectionName }}'
+  hostnames:
+    - '{{ .Values.firefly.hostname }}'
+  rules:
+    - matches:
+        - path:
+            type: 'PathPrefix'
+            value: '/outpost.goauthentik.io'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ .Values.authentik.outpost.name }}'
+          namespace: '{{ .Values.authentik.outpost.namespace }}'
+          port: {{ .Values.authentik.outpost.port }}

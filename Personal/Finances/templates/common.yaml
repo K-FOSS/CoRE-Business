@@ -118,6 +118,84 @@ route:
 {{- end -}}
 
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
+{{- define "httpbin.config" -}}
+controllers:
+  httpbin:
+    type: 'deployment'
+    replicas: 1
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      httpbin:
+        image:
+          repository: 'ghcr.io/mccutchen/go-httpbin'
+          tag: ''
+          pullPolicy: 'IfNotPresent'
+        command: ['/bin/go-httpbin']
+        args: ['-port=8080', '-log-format=json']
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env:
+          PREFIX: '/auth-debug'
+          EXCLUDE_HEADERS: ''
+        resources:
+          requests:
+            cpu: '10m'
+            memory: '32Mi'
+          limits:
+            cpu: '200m'
+            memory: '128Mi'
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/auth-debug/status/204'
+            port: 8080
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/auth-debug/status/204'
+            port: 8080
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+service:
+  httpbin:
+    controller: 'httpbin'
+    ports:
+      http:
+        port: 8080
+route:
+  httpbin:
+    kind: 'HTTPRoute'
+    forceRename: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-httpbin'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/auth-debug'
+        backendRefs:
+          - identifier: 'httpbin'
+            port: 8080
+{{- end -}}
+{{- if .Values.httpbin.enabled }}
+{{- $_ := mergeOverwrite .Values (include "httpbin.config" . | fromYaml) -}}
+{{- $_ := set .Values.controllers.httpbin.containers.httpbin.image "tag" .Values.httpbin.imageTag -}}
+{{- $_ := set .Values.route.httpbin "hostnames" (list .Values.firefly.hostname) -}}
+{{- $_ := set .Values.route.httpbin "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- end }}
 {{- $_ := required "firefly.hostname is required" .Values.firefly.hostname -}}
 {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$" .Values.firefly.hostname) -}}
 {{- fail "firefly.hostname must be a public DNS hostname without scheme, port or wildcard" -}}

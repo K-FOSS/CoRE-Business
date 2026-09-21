@@ -46,3 +46,9 @@ firefly:
     limits:
       cpu: '1000m'
       memory: '1Gi'
+
+# Opt-in diagnostic endpoint. It shares Firefly's hostname and Authentik
+# provider, and is reachable at /auth-debug/headers when enabled.
+httpbin:
+  enabled: true
+  imageTag: '2.25.0'
