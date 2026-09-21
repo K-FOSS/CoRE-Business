@@ -1,0 +1,14 @@
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: 'habitsync-database-user'
+spec:
+  name: 'HabitSync database'
+  psql:
+    enabled: true
+    createUserDatabase: true
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.habitsync.database.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.habitsync.database.terraformProvider | quote }}
+  writeConnectionSecretToRef:
+    name: {{ .Values.habitsync.database.userSecret | quote }}

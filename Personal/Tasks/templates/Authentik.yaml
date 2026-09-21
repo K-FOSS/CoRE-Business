@@ -106,3 +106,102 @@ spec:
         value     = random_password.client_secret.result
         sensitive = true
       }
+---
+{{ $habitOidc := .Values.habitsync.oidc -}}
+{{- $_ := required "habitsync.oidc.providerConfigRef is required" $habitOidc.providerConfigRef -}}
+{{- $_ := required "habitsync.oidc.issuerBaseUrl is required" $habitOidc.issuerBaseUrl -}}
+{{- $_ := required "habitsync.oidc.applicationSlug is required" $habitOidc.applicationSlug -}}
+{{- $_ := required "habitsync.oidc.accessGroup is required" $habitOidc.accessGroup -}}
+{{- $_ := required "habitsync.oidc.displayName is required" $habitOidc.displayName -}}
+{{- $_ := required "habitsync.oidc.workspaceName is required" $habitOidc.workspaceName -}}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $habitOidc.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $habitOidc.providerConfigRef }}'
+  writeConnectionSecretToRef:
+    namespace: '{{ .Release.Namespace }}'
+    name: '{{ $habitOidc.workspaceName }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      cluster_name: '{{ .Values.cluster.name }}'
+      datacenter: '{{ .Values.datacenter }}'
+      region: '{{ .Values.region }}'
+      application_slug: '{{ $habitOidc.applicationSlug }}'
+      access_group: '{{ $habitOidc.accessGroup }}'
+      issuer_base_url: '{{ trimSuffix "/" $habitOidc.issuerBaseUrl }}'
+      external_url: 'https://{{ .Values.habitsync.hostname }}'
+      display_name: '{{ $habitOidc.displayName }}'
+    module: |
+      variable "cluster_name" { type = string }
+      variable "datacenter" { type = string }
+      variable "region" { type = string }
+      variable "application_slug" { type = string }
+      variable "access_group" { type = string }
+      variable "issuer_base_url" { type = string }
+      variable "external_url" { type = string }
+      variable "display_name" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      resource "authentik_provider_oauth2" "habitsync" {
+        name                 = "${var.display_name} ${var.cluster_name} ${var.datacenter} ${var.region}"
+        client_type          = "public"
+        client_id            = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        authorization_flow   = data.authentik_flow.authorization.id
+        invalidation_flow    = data.authentik_flow.invalidation.id
+        allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/auth-callback" }]
+        property_mappings    = data.authentik_property_mapping_provider_scope.scopes.ids
+      }
+
+      resource "authentik_application" "habitsync" {
+        name              = var.display_name
+        slug              = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group             = "Personal"
+        protocol_provider = authentik_provider_oauth2.habitsync.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-habitsync"
+        application = authentik_application.habitsync.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.habitsync.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.habitsync.client_id
+        sensitive = true
+      }

@@ -50,12 +50,66 @@ controllers:
               timeoutSeconds: 5
               failureThreshold: 5
 
+  habitsync:
+    type: 'deployment'
+    replicas: 1
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      habitsync:
+        image:
+          repository: ''
+          tag: ''
+          digest: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 6842
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 6842
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 6842
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
 service:
   app:
     controller: 'app'
     ports:
       http:
         port: 2021
+  habitsync:
+    controller: 'habitsync'
+    ports:
+      http:
+        port: 6842
 
 persistence:
   data:
@@ -79,6 +133,13 @@ route:
     rules:
       - matches: [{path: {type: 'PathPrefix', value: '/'}}]
         backendRefs: [{identifier: 'app', port: 2021}]
+  habitsync:
+    kind: 'HTTPRoute'
+    labels: {wan-mode: 'private', lan-mode: 'private'}
+    hostnames: []
+    rules:
+      - matches: [{path: {type: 'PathPrefix', value: '/'}}]
+        backendRefs: [{identifier: 'habitsync', port: 6842}]
 {{- end -}}
 
 {{- $_ := mergeOverwrite .Values (include "tasks.hardcodedValues" . | fromYaml) -}}
@@ -93,21 +154,37 @@ route:
 {{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
 {{- $_ := required "donetick.database.userSecret is required" .Values.donetick.database.userSecret -}}
 {{- $_ := required "donetick.oidc.workspaceName is required" .Values.donetick.oidc.workspaceName -}}
+{{- $_ := required "habitsync.hostname is required" .Values.habitsync.hostname -}}
+{{- $_ := required "habitsync.database.userSecret is required" .Values.habitsync.database.userSecret -}}
+{{- $_ := required "habitsync.jwtSecret.secretName is required" .Values.habitsync.jwtSecret.secretName -}}
+{{- $_ := required "habitsync.oidc.workspaceName is required" .Values.habitsync.oidc.workspaceName -}}
 {{- $_ := set .Values.controllers.app.containers.donetick.image "repository" .Values.donetick.image.repository -}}
 {{- $_ := set .Values.controllers.app.containers.donetick.image "tag" .Values.donetick.image.tag -}}
 {{- $_ := set .Values.controllers.app.containers.donetick.image "digest" .Values.donetick.image.digest -}}
 {{- $_ := set .Values.controllers.app.containers.donetick "resources" .Values.donetick.resources -}}
+{{- $_ := set .Values.controllers.habitsync.containers.habitsync.image "repository" .Values.habitsync.image.repository -}}
+{{- $_ := set .Values.controllers.habitsync.containers.habitsync.image "tag" .Values.habitsync.image.tag -}}
+{{- $_ := set .Values.controllers.habitsync.containers.habitsync.image "digest" .Values.habitsync.image.digest -}}
+{{- $_ := set .Values.controllers.habitsync.containers.habitsync "resources" .Values.habitsync.resources -}}
 {{- $_ := set .Values.persistence.data "storageClass" .Values.storageClass.name -}}
 {{- $_ := set .Values.persistence.data "size" .Values.donetick.dataSize -}}
 {{- $_ := set .Values.route.app "hostnames" (list .Values.donetick.hostname) -}}
 {{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- $_ := set .Values.route.habitsync "hostnames" (list .Values.habitsync.hostname) -}}
+{{- $_ := set .Values.route.habitsync "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
 {{- $jwtSecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.jwtSecret.secretName "key" "JWT_SECRET")) -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.database.userSecret "key" .Values.donetick.database.usernameKey)) -}}
 {{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.database.userSecret "key" .Values.donetick.database.passwordKey)) -}}
 {{- $oidcClientID := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.oidc.workspaceName "key" "OIDC_CLIENT_ID")) -}}
 {{- $oidcClientSecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.oidc.workspaceName "key" "OIDC_CLIENT_SECRET")) -}}
+{{- $habitDbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.habitsync.database.userSecret "key" .Values.habitsync.database.usernameKey)) -}}
+{{- $habitDbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.habitsync.database.userSecret "key" .Values.habitsync.database.passwordKey)) -}}
+{{- $habitOidcClientID := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.habitsync.oidc.workspaceName "key" "OIDC_CLIENT_ID")) -}}
+{{- $habitJwtSecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.habitsync.jwtSecret.secretName "key" "JWT_SECRET")) -}}
 {{- $databaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.donetick.database.host -}}
 {{- $oidcBase := printf "%s/application/o" (trimSuffix "/" .Values.donetick.oidc.issuerBaseUrl) -}}
+{{- $habitDatabaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.habitsync.database.host -}}
+{{- $habitOidcIssuer := printf "%s/application/o/%s-%s-%s-%s" (trimSuffix "/" .Values.habitsync.oidc.issuerBaseUrl) .Values.habitsync.oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name -}}
 {{- $_ := set .Values.controllers.app.containers.donetick "env" (dict
   "DT_ENV" "selfhosted"
   "DT_JWT_SECRET" $jwtSecret
@@ -131,6 +208,18 @@ route:
   "DT_SINGLE_CIRCLE_INSTANCE" (toString .Values.donetick.singleCircleInstance)
   "DT_DISABLE_PASSWORD_AUTH" (toString .Values.donetick.disablePasswordAuth)
   "TZ" .Values.donetick.timeZone
+) -}}
+{{- $_ := set .Values.controllers.habitsync.containers.habitsync "env" (dict
+  "BASE_URL" (printf "https://%s" .Values.habitsync.hostname)
+  "DB_NAME" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.habitsync.database.userSecret "key" .Values.habitsync.database.databaseKey)))
+  "SPRING_DATASOURCE_URL" (printf "jdbc:postgresql://%s:%s/$(DB_NAME)" $habitDatabaseHost .Values.habitsync.database.port)
+  "SPRING_DATASOURCE_USERNAME" $habitDbUsername
+  "SPRING_DATASOURCE_PASSWORD" $habitDbPassword
+  "SPRING_DATASOURCE_DRIVER_CLASS_NAME" "org.postgresql.Driver"
+  "JWT_SECRET" $habitJwtSecret
+  "APP_SECURITY_ISSUERS_AUTHENTIK_URL" $habitOidcIssuer
+  "APP_SECURITY_ISSUERS_AUTHENTIK_CLIENT_ID" $habitOidcClientID
+  "APP_SECURITY_ISSUERS_AUTHENTIK_NEEDS_CONFIRMATION" "false"
 ) -}}
 {{- include "bjw-s.common.loader.init" . -}}
 {{- include "bjw-s.common.loader.generate" . -}}

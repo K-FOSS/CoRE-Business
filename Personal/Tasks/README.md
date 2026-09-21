@@ -2,7 +2,8 @@
 
 This chart starts the personal task stack with
 [Donetick](https://github.com/donetick/donetick), a self-hosted task and chore
-manager, rendered through the
+manager, and [HabitSync](https://github.com/jofoerster/habitsync), a
+self-hosted habit tracker, rendered through the
 [BJW-S Common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 
 ## Current deployment
@@ -31,7 +32,17 @@ OIDC client Secret is consumed from the Workspace connection Secret. Password
 authentication is disabled and Donetick's single-circle mode is enabled.
 The configured Authentik authorization, token and userinfo URLs use the
 provider's global `/application/o/` endpoints; the application slug is used
-only for the provider/application identity and redirect registration.
+only for the provider/application identity and redirect registration. Donetick's
+web redirect URI is `/auth/oauth2`; the frontend exchanges the returned code
+with the API at `/api/v1/auth/oauth2/callback`.
+
+HabitSync is deployed at `habits.mylogin.space` using the pinned upstream
+`0.19.3` image. It uses PostgreSQL through its own Backplane User resource;
+the generated connection Secret's `username` is used as both the PostgreSQL
+username and database name. Its Authentik provider is a public PKCE client
+with the strict redirect URI `https://habits.mylogin.space/auth-callback`,
+restricted to `Home Users`. HabitSync uses its own retained JWT Secret and
+does not share Donetick's credentials.
 
 No Backplane ApplicationSet currently selects `Personal/Tasks` in this
 worktree. Before activation, add or confirm the owning ApplicationSet and
@@ -43,7 +54,7 @@ and [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/ma
 PostgreSQL host/provider selection follows those injected site values; do not
 replace it with local defaults. The User API contract is defined by the
 Backplane [User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
-Back up both the PostgreSQL database and the
+Back up both application databases and the
 uploads PVC before migration or deletion. The StorageClass is Retain and is
 site-specific; do not rename it after provisioning without planning a volume
 migration.
@@ -58,8 +69,12 @@ helm template core-business-tasks Personal/Tasks --namespace core-tasks-prod \
 git diff --check
 ```
 
-Review the rendered output for the image digest, private route labels, OIDC
+Review the rendered output for both image digests, private route labels, OIDC
 and database Secret references, User resource provider names and the target
-namespace before adding the ApplicationSet. After reconciliation, verify the
-PostgreSQL/User and Authentik Workspace conditions, OIDC login, task creation,
-logout/login, and database persistence.
+namespace before adding the ApplicationSet. After reconciliation, verify both
+PostgreSQL/User and Authentik Workspace conditions, OIDC login, task/habit
+creation, logout/login, and database persistence.
+
+HabitSync’s upstream [deployment and OIDC configuration](https://github.com/jofoerster/habitsync#docker-compose-recommended-for-production-use)
+and [PostgreSQL settings](https://github.com/jofoerster/habitsync#database-and-backups)
+are the application contract used by this chart.

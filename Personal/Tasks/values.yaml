@@ -56,3 +56,37 @@ donetick:
       cpu: '500m'
       memory: '512Mi'
   dataSize: '10Gi'
+
+habitsync:
+  hostname: 'habits.mylogin.space'
+  image:
+    repository: 'ghcr.io/jofoerster/habitsync'
+    tag: '0.19.3'
+    digest: 'sha256:970f6e141094663b078809e77291ab1951cd5114ecfe7bc711a56d60e93c99cc'
+  database:
+    # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
+    host: ''
+    port: '5432'
+    userSecret: 'habitsync-database'
+    usernameKey: 'username'
+    passwordKey: 'password'
+    databaseKey: 'username'
+    crossplaneProvider: ''
+    terraformProvider: ''
+  jwtSecret:
+    generatorName: 'habitsync-jwt-generator'
+    secretName: 'habitsync-jwt'
+  oidc:
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'habitsync'
+    accessGroup: 'Home Users'
+    displayName: 'HabitSync'
+    workspaceName: 'tasks-habitsync-oidc'
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '512Mi'
+    limits:
+      cpu: '1'
+      memory: '1Gi'
