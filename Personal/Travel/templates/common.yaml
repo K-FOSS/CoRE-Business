@@ -139,6 +139,53 @@ controllers:
               periodSeconds: 30
               timeoutSeconds: 5
               failureThreshold: 5
+  airtrail:
+    type: 'deployment'
+    forceRename: 'core-personal-travel-airtrail'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      airtrail:
+        image:
+          repository: ''
+          tag: ''
+          digest: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet: {path: '/api/health', port: 3000, scheme: 'HTTP'}
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
 
 service:
   frontend:
@@ -154,6 +201,12 @@ service:
   trek:
     controller: 'trek'
     forceRename: 'core-personal-travel-trek'
+    ports:
+      http:
+        port: 3000
+  airtrail:
+    controller: 'airtrail'
+    forceRename: 'core-personal-travel-airtrail'
     ports:
       http:
         port: 3000
@@ -201,6 +254,19 @@ persistence:
     type: 'emptyDir'
     globalMounts:
       - path: '/tmp'
+  airtrail-uploads:
+    type: 'persistentVolumeClaim'
+    forceRename: 'core-personal-travel-airtrail-uploads'
+    storageClass: 'longhorn'
+    accessMode: 'ReadWriteOnce'
+    size: '10Gi'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    advancedMounts:
+      airtrail:
+        airtrail:
+          - path: '/app/uploads'
 
 route:
   frontend:
@@ -246,6 +312,21 @@ route:
         backendRefs:
           - identifier: 'trek'
             port: 3000
+  airtrail:
+    kind: 'HTTPRoute'
+    forceRename: 'core-personal-travel-airtrail'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'airtrail'
+            port: 3000
 {{- end -}}
 
 {{- $_ := mergeOverwrite .Values (include "adventurelog.hardcodedValues" . | fromYaml) -}}
@@ -263,6 +344,9 @@ route:
 {{- $_ := required "trek.hostname is required" .Values.trek.hostname -}}
 {{- $_ := required "trek.runtimeSecret.secretName is required" .Values.trek.runtimeSecret.secretName -}}
 {{- $_ := required "trek.adminSecret.secretName is required" .Values.trek.adminSecret.secretName -}}
+{{- $_ := required "airtrail.hostname is required" .Values.airtrail.hostname -}}
+{{- $_ := required "airtrail.database.userSecret is required" .Values.airtrail.database.userSecret -}}
+{{- $_ := required "adventurelog.smtp.secretName is required" .Values.adventurelog.smtp.secretName -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "repository" .Values.adventurelog.image.frontendRepository -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "tag" .Values.adventurelog.image.tag -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "digest" .Values.adventurelog.image.frontendDigest -}}
@@ -331,6 +415,37 @@ route:
 }}
 {{- $_ := set .Values.controllers.trek.containers.trek "env" $trekEnv -}}
 {{- $_ := set .Values.controllers.trek.containers.trek "resources" .Values.trek.resources -}}
+{{- $_ := set .Values.controllers.airtrail.containers.airtrail.image "repository" .Values.airtrail.image.repository -}}
+{{- $_ := set .Values.controllers.airtrail.containers.airtrail.image "tag" .Values.airtrail.image.tag -}}
+{{- $_ := set .Values.controllers.airtrail.containers.airtrail.image "digest" .Values.airtrail.image.digest -}}
+{{- $smtpUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.smtp.secretName "key" .Values.adventurelog.smtp.usernameKey)) -}}
+{{- $smtpPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.smtp.secretName "key" .Values.adventurelog.smtp.passwordKey)) -}}
+{{- $smtpEnv := dict
+  "A_SMTP_USERNAME" $smtpUsername
+  "DEFAULT_FROM_EMAIL" (printf "$(A_SMTP_USERNAME)@%s" .Values.adventurelog.smtp.domain)
+  "EMAIL_HOST" .Values.adventurelog.smtp.host
+  "EMAIL_HOST_PASSWORD" $smtpPassword
+  "EMAIL_HOST_USER" $smtpUsername
+  "EMAIL_PORT" .Values.adventurelog.smtp.port
+  "EMAIL_USE_TLS" .Values.adventurelog.smtp.useTls
+  "EMAIL_USE_SSL" .Values.adventurelog.smtp.useSsl
+}}
+{{- $_ := mergeOverwrite .Values.controllers.backend.containers.backend.env $smtpEnv -}}
+{{- $airtrailDatabaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.airtrail.database.host -}}
+{{- $airtrailUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.airtrail.database.userSecret "key" "username")) -}}
+{{- $airtrailPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.airtrail.database.userSecret "key" "password")) -}}
+{{- $airtrailEnv := dict
+  "A_DB_USERNAME" $airtrailUsername
+  "BODY_SIZE_LIMIT" "20M"
+  "DB_DATABASE_NAME" $airtrailUsername
+  "DB_PASSWORD" $airtrailPassword
+  "DB_URL" (printf "postgres://$(A_DB_USERNAME):$(DB_PASSWORD)@%s:%s/$(DB_DATABASE_NAME)" $airtrailDatabaseHost .Values.airtrail.database.port)
+  "DB_USERNAME" $airtrailUsername
+  "ORIGIN" (printf "https://%s" .Values.airtrail.hostname)
+  "UPLOAD_LOCATION" "/app/uploads"
+}}
+{{- $_ := set .Values.controllers.airtrail.containers.airtrail "env" $airtrailEnv -}}
+{{- $_ := set .Values.controllers.airtrail.containers.airtrail "resources" .Values.trek.resources -}}
 {{- $_ := set .Values.persistence.media "storageClass" .Values.storage.className -}}
 {{- $_ := set .Values.persistence.media "size" .Values.storage.mediaSize -}}
 {{- $_ := set (index .Values.persistence "trek-data") "storageClass" .Values.storage.className -}}
@@ -340,8 +455,10 @@ route:
 {{- $_ := set .Values.route.frontend "hostnames" (list .Values.adventurelog.hostname) -}}
 {{- $_ := set .Values.route.backend "hostnames" (list .Values.adventurelog.apiHostname) -}}
 {{- $_ := set .Values.route.trek "hostnames" (list .Values.trek.hostname) -}}
+{{- $_ := set .Values.route.airtrail "hostnames" (list .Values.airtrail.hostname) -}}
 {{- $parentRefs := list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName) -}}
 {{- $_ := set .Values.route.frontend "parentRefs" $parentRefs -}}
 {{- $_ := set .Values.route.backend "parentRefs" $parentRefs -}}
 {{- $_ := set .Values.route.trek "parentRefs" $parentRefs -}}
+{{- $_ := set .Values.route.airtrail "parentRefs" $parentRefs -}}
 {{- include "bjw-s.common.loader.generate" . -}}

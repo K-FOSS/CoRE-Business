@@ -11,7 +11,10 @@
 {{- $_ := required "authentik.applications.trek.displayName is required" .Values.authentik.applications.trek.displayName -}}
 {{- $_ := required "authentik.applications.trek.slug is required" .Values.authentik.applications.trek.slug -}}
 {{- $_ := required "authentik.applications.trek.group is required" .Values.authentik.applications.trek.group -}}
-{{- range $route := list (dict "name" "adventurelog-frontend" "authName" "adventurelog") (dict "name" "adventurelog-backend" "authName" "adventurelog") (dict "name" "core-personal-travel-trek" "authName" "trek") }}
+{{- $_ := required "authentik.applications.airtrail.displayName is required" .Values.authentik.applications.airtrail.displayName -}}
+{{- $_ := required "authentik.applications.airtrail.slug is required" .Values.authentik.applications.airtrail.slug -}}
+{{- $_ := required "authentik.applications.airtrail.group is required" .Values.authentik.applications.airtrail.group -}}
+{{- range $route := list (dict "name" "adventurelog-frontend" "authName" "adventurelog") (dict "name" "adventurelog-backend" "authName" "adventurelog") (dict "name" "core-personal-travel-trek" "authName" "trek") (dict "name" "core-personal-travel-airtrail" "authName" "airtrail") }}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
@@ -54,9 +57,14 @@ spec:
 apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
 metadata:
+  # Keep the Terraform workspace's external name short. The provider-terraform
+  # controller incorporates it into its state-lock Lease labels, which must
+  # stay within Kubernetes' 63-byte label limit even when the Helm release name
+  # is long. Retain the Kubernetes object name for upgrade continuity.
   name: '{{ $.Release.Name }}-forward-auth'
   annotations:
     argocd.argoproj.io/sync-wave: '-5'
+    crossplane.io/external-name: 'core-personal-travel-auth'
 spec:
   providerConfigRef:
     name: '{{ $.Values.authentik.providerConfigRef }}'
@@ -116,6 +124,21 @@ spec:
         protocol_provider = authentik_provider_proxy.trek.id
       }
 
+      resource "authentik_provider_proxy" "airtrail" {
+        name               = "{{ $.Values.authentik.applications.airtrail.slug }}"
+        mode               = "forward_single"
+        external_host      = "https://{{ $.Values.airtrail.hostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "airtrail" {
+        name              = "{{ $.Values.authentik.applications.airtrail.displayName }}"
+        slug              = "{{ $.Values.authentik.applications.airtrail.slug }}"
+        group             = "{{ $.Values.authentik.applications.airtrail.group }}"
+        protocol_provider = authentik_provider_proxy.airtrail.id
+      }
+
       data "authentik_group" "access" {
         name = "Home Users"
       }
@@ -134,6 +157,12 @@ spec:
 
       resource "authentik_policy_binding" "adventurelog_api_access" {
         target = authentik_application.adventurelog_api.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "airtrail_access" {
+        target = authentik_application.airtrail.uuid
         group  = data.authentik_group.access.id
         order  = 0
       }

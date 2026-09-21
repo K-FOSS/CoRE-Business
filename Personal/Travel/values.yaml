@@ -33,6 +33,10 @@ authentik:
       displayName: 'TREK Forward Auth'
       slug: 'trek-forward-auth'
       group: 'Personal'
+    airtrail:
+      displayName: 'AirTrail Forward Auth'
+      slug: 'airtrail-forward-auth'
+      group: 'Personal'
 
 storage:
   className: 'longhorn'
@@ -70,6 +74,16 @@ adventurelog:
     secretName: 'adventurelog-admin'
     username: 'admin'
     email: 'admin@mylogin.space'
+  smtp:
+    host: 'mail.mylogin.space'
+    port: '465'
+    # Reuse the AdventureLog User connection Secret, as Tranquil does.
+    secretName: 'adventurelog-database'
+    usernameKey: 'username'
+    passwordKey: 'password'
+    useTls: 'false'
+    useSsl: 'true'
+    domain: 'mail.mylogin.space'
   oidc:
     providerConfigRef: 'authentik'
     issuerBaseUrl: 'https://idp.mylogin.space'
@@ -123,9 +137,16 @@ trek:
       memory: '1Gi'
 
 airtrail:
+  hostname: 'airtrail.mylogin.space'
+  image:
+    repository: 'docker.io/johly/airtrail'
+    tag: 'v3.12.0'
+    digest: 'sha256:4de4ca7dd57a95dac88af3f3e0cd5309006d9f672859a58b28d0c1ca1c31986d'
   database:
     # AirTrail's DB_USERNAME and DB_DATABASE_NAME use the generated User
     # secret's username, matching the database created by the Backplane User.
     userSecret: 'airtrail-database'
+    host: ''
+    port: '5432'
     crossplaneProvider: ''
     terraformProvider: ''

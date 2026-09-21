@@ -4,7 +4,7 @@ This directory contains personal travel, flight, routing, adventure planning,
 logging, and tracking applications for
 [K-FOSS/CoRE-Business](https://github.com/K-FOSS/CoRE-Business).
 
-The current stacks are AdventureLog and TREK, personal
+The current stack is AdventureLog, TREK, and AirTrail: personal
 [BJW-S Common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 AdventureLog is the [self-hosted travel tracker and trip planner](https://adventurelog.app/)
 from [seanmorley15/AdventureLog](https://github.com/seanmorley15/AdventureLog), pinned here
@@ -21,13 +21,17 @@ guide](https://github.com/liketrek/TREK/wiki/OIDC-SSO).
 The Authentik provider uses the site's `tls` certificate key pair so TREK receives
 an asymmetric (RS256) ID token, as required by TREK 4.3.0.
 
-The AdventureLog frontend, AdventureLog API, and TREK routes are protected
+The AdventureLog frontend, AdventureLog API, TREK, and AirTrail routes are protected
 fail-closed by Envoy Gateway
 [`SecurityPolicy`](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/)
 resources that call the site's Authentik forward-auth outpost
 (`aaa-myloginspace-proxy`). The chart creates separate Authentik forward-single
-providers for the three public hostnames and grants the route namespace access
-to the outpost Service with a Gateway API `ReferenceGrant`.
+providers for the four public hostnames and grants the route namespace access
+to the outpost Service with a Gateway API `ReferenceGrant`. The Crossplane
+Terraform Workspace uses the short external name `core-personal-travel-auth`
+while retaining its Kubernetes object name for upgrade continuity; this avoids
+exceeding Kubernetes' 63-byte state-lock label limit when the site injects a
+long release name.
 
 The chart runs AdventureLog's split frontend and backend images behind the
 `main-gw` Gateway. The frontend is exposed at `adventurelog.mylogin.space` and
@@ -44,14 +48,21 @@ ApplicationSets; the database user contract is defined by the
 The generated Django secret and first-admin password are retained by External
 Secrets; no credential values are committed.
 
-The chart also provisions an independent PostgreSQL identity for the planned
-AirTrail flight-tracking service through a second
+AdventureLog SMTP follows the Tranquil design in the Fediverse stack: it reuses
+the AdventureLog User connection Secret (`adventurelog-database`) for the
+username and password, derives the sender at runtime as
+`<username>@mail.mylogin.space`, and uses implicit TLS on
+`mail.mylogin.space:465`. No mail credential values are committed. AdventureLog
+maps this to its documented `EMAIL_*` settings, including `EMAIL_USE_SSL`.
+
+The chart also provisions an independent PostgreSQL identity for AirTrail through a second
 `mylogin.space/v1alpha1 User` resource. It publishes the generated
 `username/password` connection secret as `airtrail-database`; AirTrail's
-`DB_USERNAME` and `DB_DATABASE_NAME` should both use the generated `username`
-field. This follows [AirTrail's PostgreSQL configuration](https://github.com/JohanOhly/AirTrail/blob/main/.env.example)
+`DB_USERNAME`, `DB_DATABASE_NAME`, and `DB_URL` use that generated username
+field. AirTrail is pinned to v3.12.0 by digest, exposed at
+`airtrail.mylogin.space`, and stores uploads on a retained Longhorn PVC. This
+follows [AirTrail's PostgreSQL configuration](https://github.com/JohanOhly/AirTrail/blob/main/.env.example)
 and its [production Compose definition](https://github.com/JohanOhly/AirTrail/blob/main/docker/production/compose.yml).
-AirTrail itself is not deployed by this change.
 
 AdventureLog resource names remain under the existing `adventurelog` prefix.
 Other application resources use the `core-personal-travel-` prefix. The TREK
@@ -83,10 +94,8 @@ generated admin.
   The pinned image currently hard-codes Django's cache to local memcached, so
   this requires an upstream configuration change or a maintained derivative
   image.
-- [ ] Add a flight tracker/logging service alongside AdventureLog. Evaluate:
-  - [AirTrail](https://airtrail.johan.ohly.dk/), a self-hosted open-source
-    personal flight-tracking system and the strongest initial fit for this
-    stack.
+- [ ] Evaluate flight-tracker alternatives against the deployed AirTrail before
+  expanding the stack:
   - [Jetlog](https://github.com/pbogre/jetlog), a self-hosted flight log with
     map/statistics views and import/export support; review its authentication,
     image pinning, and external API behavior before deployment.
