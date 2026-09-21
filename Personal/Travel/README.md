@@ -29,6 +29,15 @@ ApplicationSets; the database user contract is defined by the
 The generated Django secret and first-admin password are retained by External
 Secrets; no credential values are committed.
 
+The chart also provisions an independent PostgreSQL identity for the planned
+AirTrail flight-tracking service through a second
+`mylogin.space/v1alpha1 User` resource. It publishes the generated
+`username/password` connection secret as `airtrail-database`; AirTrail's
+`DB_USERNAME` and `DB_DATABASE_NAME` should both use the generated `username`
+field. This follows [AirTrail's PostgreSQL configuration](https://github.com/JohanOhly/AirTrail/blob/main/.env.example)
+and its [production Compose definition](https://github.com/JohanOhly/AirTrail/blob/main/docker/production/compose.yml).
+AirTrail itself is not deployed by this change.
+
 The current Backplane tree does not yet contain an owning AdventureLog
 ApplicationSet. Add one under
 [`Apps/Business/Personal/`](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business/Personal)

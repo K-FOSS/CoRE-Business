@@ -94,3 +94,11 @@ trek:
     limits:
       cpu: '1'
       memory: '1Gi'
+
+airtrail:
+  database:
+    # AirTrail's DB_USERNAME and DB_DATABASE_NAME use the generated User
+    # secret's username, matching the database created by the Backplane User.
+    userSecret: 'airtrail-database'
+    crossplaneProvider: ''
+    terraformProvider: ''
