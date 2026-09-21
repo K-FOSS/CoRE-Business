@@ -1,7 +1,7 @@
 apiVersion: generators.external-secrets.io/v1alpha1
 kind: Password
 metadata:
-  name: '{{ .Release.Name }}-app-key'
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-app-key'
   annotations:
     argocd.argoproj.io/sync-wave: '-10'
 spec:
@@ -18,7 +18,7 @@ spec:
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
-  name: '{{ .Release.Name }}-app-key'
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-app-key'
   annotations:
     argocd.argoproj.io/sync-wave: '-9'
 spec:
@@ -32,4 +32,4 @@ spec:
         generatorRef:
           apiVersion: generators.external-secrets.io/v1alpha1
           kind: 'Password'
-          name: '{{ .Release.Name }}-app-key'
+        name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-app-key'

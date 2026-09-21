@@ -8,7 +8,7 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
-  name: '{{ .Release.Name }}-auth'
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-auth'
 spec:
   targetRefs:
     - group: 'gateway.networking.k8s.io'
@@ -46,7 +46,7 @@ spec:
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
-  name: '{{ .Release.Name }}-httpbin-auth'
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-httpbin-auth'
 spec:
   targetRefs:
     - group: 'gateway.networking.k8s.io'
@@ -84,7 +84,7 @@ spec:
 apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
 metadata:
-  name: '{{ .Release.Name }}-authentik'
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-authentik'
 spec:
   providerConfigRef:
     name: '{{ .Values.authentik.providerConfigRef }}'
@@ -100,7 +100,7 @@ spec:
       }
 
       resource "authentik_provider_proxy" "app" {
-        name               = "{{ .Release.Name }}"
+        name               = "{{ include "bjw-s.common.lib.chart.names.fullname" . }}"
         mode               = "forward_single"
         external_host      = "https://{{ required "firefly.hostname is required" .Values.firefly.hostname }}"
         authorization_flow = data.authentik_flow.authorization.id
@@ -109,7 +109,7 @@ spec:
 
       resource "authentik_application" "app" {
         name              = "{{ required "authentik.application.displayName is required" .Values.authentik.application.displayName }}"
-        slug              = "{{ .Release.Name }}"
+        slug              = "{{ include "bjw-s.common.lib.chart.names.fullname" . }}"
         group             = "{{ required "authentik.application.group is required" .Values.authentik.application.group }}"
         protocol_provider = authentik_provider_proxy.app.id
       }

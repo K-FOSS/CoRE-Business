@@ -7,6 +7,9 @@ region: ''
 
 global:
   createDefaultServiceAccount: true
+  # Keep generated Kubernetes names valid when the Backplane release name
+  # includes the full site and repository path.
+  fullnameOverride: 'core-business-finances'
 
 gateway:
   name: 'main-gw'
