@@ -72,6 +72,9 @@ adventurelog:
   adminSecret:
     generatorName: 'adventurelog-admin-generator'
     secretName: 'adventurelog-admin'
+    # This database already contains the admin email; let the existing account
+    # remain authoritative instead of rerunning the image's first-boot hook.
+    bootstrap: false
     username: 'admin'
     email: 'admin@mylogin.space'
   smtp:

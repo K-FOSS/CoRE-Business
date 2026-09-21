@@ -370,15 +370,17 @@ route:
   "PGUSER" $dbUsername
   "PGPASSWORD" $dbPassword
   "SECRET_KEY" $secretKey
-  "DJANGO_ADMIN_USERNAME" .Values.adventurelog.adminSecret.username
-  "DJANGO_ADMIN_PASSWORD" $adminPassword
-  "DJANGO_ADMIN_EMAIL" .Values.adventurelog.adminSecret.email
   "DISABLE_REGISTRATION" "true"
   "FRONTEND_URL" $frontendURL
   "PUBLIC_URL" $backendURL
   "CSRF_TRUSTED_ORIGINS" (printf "%s,%s" $frontendURL $backendURL)
   "DEBUG" "False"
 }}
+{{- if .Values.adventurelog.adminSecret.bootstrap -}}
+{{- $_ := set $databaseEnv "DJANGO_ADMIN_USERNAME" .Values.adventurelog.adminSecret.username -}}
+{{- $_ := set $databaseEnv "DJANGO_ADMIN_PASSWORD" $adminPassword -}}
+{{- $_ := set $databaseEnv "DJANGO_ADMIN_EMAIL" .Values.adventurelog.adminSecret.email -}}
+{{- end -}}
 {{- $frontendEnv := dict
   "ORIGIN" $frontendURL
   "FRONTEND_URL" $frontendURL
