@@ -1,0 +1,139 @@
+{{- $_ := required "authentik.providerConfigRef is required" .Values.authentik.providerConfigRef -}}
+{{- $_ := required "authentik.outpost.name is required" .Values.authentik.outpost.name -}}
+{{- $_ := required "authentik.outpost.namespace is required" .Values.authentik.outpost.namespace -}}
+{{- $_ := required "authentik.outpost.port is required" .Values.authentik.outpost.port -}}
+{{- $_ := required "authentik.applications.adventurelog.displayName is required" .Values.authentik.applications.adventurelog.displayName -}}
+{{- $_ := required "authentik.applications.adventurelog.slug is required" .Values.authentik.applications.adventurelog.slug -}}
+{{- $_ := required "authentik.applications.adventurelog.group is required" .Values.authentik.applications.adventurelog.group -}}
+{{- $_ := required "authentik.applications.adventurelogApi.displayName is required" .Values.authentik.applications.adventurelogApi.displayName -}}
+{{- $_ := required "authentik.applications.adventurelogApi.slug is required" .Values.authentik.applications.adventurelogApi.slug -}}
+{{- $_ := required "authentik.applications.adventurelogApi.group is required" .Values.authentik.applications.adventurelogApi.group -}}
+{{- $_ := required "authentik.applications.trek.displayName is required" .Values.authentik.applications.trek.displayName -}}
+{{- $_ := required "authentik.applications.trek.slug is required" .Values.authentik.applications.trek.slug -}}
+{{- $_ := required "authentik.applications.trek.group is required" .Values.authentik.applications.trek.group -}}
+{{- range $route := list (dict "name" "adventurelog-frontend" "authName" "adventurelog") (dict "name" "adventurelog-backend" "authName" "adventurelog") (dict "name" "core-personal-travel-trek" "authName" "trek") }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ $.Release.Name }}-{{ $route.name }}-forward-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ $route.name }}'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-*'
+        - 'authorization'
+        - 'Content-Type'
+        - 'Location'
+      backendSettings:
+        loadBalancer:
+          type: 'ConsistentHash'
+          consistentHash:
+            type: 'SourceIP'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ $.Values.authentik.outpost.namespace }}'
+          name: '{{ $.Values.authentik.outpost.name }}'
+          port: {{ $.Values.authentik.outpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+{{- end }}
+---
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $.Release.Name }}-forward-auth'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $.Values.authentik.providerConfigRef }}'
+  forProvider:
+    source: 'Inline'
+    module: | # hcl
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      resource "authentik_provider_proxy" "adventurelog" {
+        name               = "{{ $.Values.authentik.applications.adventurelog.slug }}"
+        mode               = "forward_single"
+        external_host      = "https://{{ $.Values.adventurelog.hostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "adventurelog" {
+        name              = "{{ $.Values.authentik.applications.adventurelog.displayName }}"
+        slug              = "{{ $.Values.authentik.applications.adventurelog.slug }}"
+        group             = "{{ $.Values.authentik.applications.adventurelog.group }}"
+        protocol_provider = authentik_provider_proxy.adventurelog.id
+      }
+
+      resource "authentik_provider_proxy" "adventurelog_api" {
+        name               = "{{ $.Values.authentik.applications.adventurelogApi.slug }}"
+        mode               = "forward_single"
+        external_host      = "https://{{ $.Values.adventurelog.apiHostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "adventurelog_api" {
+        name              = "{{ $.Values.authentik.applications.adventurelogApi.displayName }}"
+        slug              = "{{ $.Values.authentik.applications.adventurelogApi.slug }}"
+        group             = "{{ $.Values.authentik.applications.adventurelogApi.group }}"
+        protocol_provider = authentik_provider_proxy.adventurelog_api.id
+      }
+
+      resource "authentik_provider_proxy" "trek" {
+        name               = "{{ $.Values.authentik.applications.trek.slug }}"
+        mode               = "forward_single"
+        external_host      = "https://{{ $.Values.trek.hostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "trek" {
+        name              = "{{ $.Values.authentik.applications.trek.displayName }}"
+        slug              = "{{ $.Values.authentik.applications.trek.slug }}"
+        group             = "{{ $.Values.authentik.applications.trek.group }}"
+        protocol_provider = authentik_provider_proxy.trek.id
+      }
+
+      data "authentik_group" "access" {
+        name = "Home Users"
+      }
+
+      resource "authentik_policy_binding" "adventurelog_access" {
+        target = authentik_application.adventurelog.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "trek_access" {
+        target = authentik_application.trek.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "adventurelog_api_access" {
+        target = authentik_application.adventurelog_api.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }

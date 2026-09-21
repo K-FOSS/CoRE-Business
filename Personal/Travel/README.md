@@ -18,6 +18,16 @@ TREK OIDC is provisioned through Authentik and receives its generated client
 credentials from the `trek-oidc` connection Secret; its callback is
 `https://trek.mylogin.space/api/auth/oidc/callback`, matching [TREK's OIDC
 guide](https://github.com/liketrek/TREK/wiki/OIDC-SSO).
+The Authentik provider uses the site's `tls` certificate key pair so TREK receives
+an asymmetric (RS256) ID token, as required by TREK 4.3.0.
+
+The AdventureLog frontend, AdventureLog API, and TREK routes are protected
+fail-closed by Envoy Gateway
+[`SecurityPolicy`](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/)
+resources that call the site's Authentik forward-auth outpost
+(`aaa-myloginspace-proxy`). The chart creates separate Authentik forward-single
+providers for the three public hostnames and grants the route namespace access
+to the outpost Service with a Gateway API `ReferenceGrant`.
 
 The chart runs AdventureLog's split frontend and backend images behind the
 `main-gw` Gateway. The frontend is exposed at `adventurelog.mylogin.space` and

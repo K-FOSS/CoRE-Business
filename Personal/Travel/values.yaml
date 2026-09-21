@@ -14,6 +14,26 @@ gateway:
   namespace: 'core-prod'
   sectionName: 'https-myloginspace'
 
+authentik:
+  providerConfigRef: 'authentik'
+  outpost:
+    name: 'aaa-myloginspace-proxy'
+    namespace: 'core-prod'
+    port: 80
+  applications:
+    adventurelog:
+      displayName: 'AdventureLog Forward Auth'
+      slug: 'adventurelog-forward-auth'
+      group: 'Personal'
+    adventurelogApi:
+      displayName: 'AdventureLog API Forward Auth'
+      slug: 'adventurelog-api-forward-auth'
+      group: 'Personal'
+    trek:
+      displayName: 'TREK Forward Auth'
+      slug: 'trek-forward-auth'
+      group: 'Personal'
+
 storage:
   className: 'longhorn'
   mediaSize: '10Gi'
