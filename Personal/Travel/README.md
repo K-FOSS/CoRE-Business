@@ -61,6 +61,14 @@ generated admin.
 
 ## TODO
 
+- [ ] Replace the current AdventureLog backend runtime with a rootless-capable
+  image before treating this deployment as production-ready. The pinned
+  upstream image currently runs Supervisor-managed Nginx, memcached, cron, and
+  Gunicorn as a bundled root-oriented process set.
+- [ ] Investigate moving AdventureLog's cache to the site's Dragonfly cluster.
+  The pinned image currently hard-codes Django's cache to local memcached, so
+  this requires an upstream configuration change or a maintained derivative
+  image.
 - [ ] Add a flight tracker/logging service alongside AdventureLog. Evaluate:
   - [AirTrail](https://airtrail.johan.ohly.dk/), a self-hosted open-source
     personal flight-tracking system and the strongest initial fit for this

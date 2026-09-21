@@ -64,10 +64,6 @@ controllers:
           tag: ''
           digest: ''
           pullPolicy: 'IfNotPresent'
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ['ALL']
         env: {}
         resources: {}
         probes:
