@@ -29,6 +29,9 @@ by a Crossplane Terraform
 and restricted to the `Home Users` group; the generated
 OIDC client Secret is consumed from the Workspace connection Secret. Password
 authentication is disabled and Donetick's single-circle mode is enabled.
+The configured Authentik authorization, token and userinfo URLs use the
+provider's global `/application/o/` endpoints; the application slug is used
+only for the provider/application identity and redirect registration.
 
 No Backplane ApplicationSet currently selects `Personal/Tasks` in this
 worktree. Before activation, add or confirm the owning ApplicationSet and
