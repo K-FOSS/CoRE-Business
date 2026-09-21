@@ -126,7 +126,7 @@ route:
   "DT_OAUTH2_AUTH_URL" (printf "%s/authorize/" $oidcBase)
   "DT_OAUTH2_TOKEN_URL" (printf "%s/token/" $oidcBase)
   "DT_OAUTH2_USER_INFO_URL" (printf "%s/userinfo/" $oidcBase)
-  "DT_OAUTH2_REDIRECT_URL" (printf "https://%s/api/v1/auth/oauth2/callback" .Values.donetick.hostname)
+  "DT_OAUTH2_REDIRECT_URL" (printf "https://%s/auth/oauth2" .Values.donetick.hostname)
   "DT_OAUTH2_NAME" .Values.donetick.oidc.displayName
   "DT_SINGLE_CIRCLE_INSTANCE" (toString .Values.donetick.singleCircleInstance)
   "DT_DISABLE_PASSWORD_AUTH" (toString .Values.donetick.disablePasswordAuth)

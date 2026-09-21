@@ -69,7 +69,7 @@ spec:
         client_secret        = random_password.client_secret.result
         authorization_flow   = data.authentik_flow.authorization.id
         invalidation_flow    = data.authentik_flow.invalidation.id
-        allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/api/v1/auth/oauth2/callback" }]
+        allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/auth/oauth2" }]
         property_mappings    = data.authentik_property_mapping_provider_scope.scopes.ids
       }
 
