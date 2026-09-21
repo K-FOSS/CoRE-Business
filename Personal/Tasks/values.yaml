@@ -1,0 +1,58 @@
+# Site-specific values should be injected by the owning Backplane ApplicationSet.
+cluster:
+  name: ''
+
+datacenter: ''
+region: ''
+
+global:
+  createDefaultServiceAccount: true
+  fullnameOverride: 'donetick'
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+storageClass:
+  name: 'core-tasks-rwx'
+  numberOfReplicas: '2'
+  migratable: 'false'
+
+donetick:
+  hostname: 'tasks.mylogin.space'
+  image:
+    repository: 'docker.io/donetick/donetick'
+    tag: 'v0.1.79'
+    digest: 'sha256:a1cc21dd5a37acb5009009f13e5d2529153049361afb0a1cd94bde312382d36a'
+  jwtSecret:
+    generatorName: 'donetick-jwt-generator'
+    secretName: 'donetick-jwt'
+  database:
+    # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
+    host: ''
+    port: '5432'
+    userSecret: 'donetick-database'
+    usernameKey: 'username'
+    passwordKey: 'password'
+    databaseKey: 'username'
+    crossplaneProvider: ''
+    terraformProvider: ''
+  oidc:
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'donetick'
+    accessGroup: 'Home Users'
+    displayName: 'Donetick'
+    workspaceName: 'tasks-donetick-oidc'
+  timeZone: 'Etc/UTC'
+  singleCircleInstance: true
+  disablePasswordAuth: true
+  resources:
+    requests:
+      cpu: '25m'
+      memory: '128Mi'
+    limits:
+      cpu: '500m'
+      memory: '512Mi'
+  dataSize: '10Gi'

@@ -1,0 +1,108 @@
+{{- $oidc := .Values.donetick.oidc -}}
+{{- $_ := required "donetick.oidc.providerConfigRef is required" $oidc.providerConfigRef -}}
+{{- $_ := required "donetick.oidc.issuerBaseUrl is required" $oidc.issuerBaseUrl -}}
+{{- $_ := required "donetick.oidc.applicationSlug is required" $oidc.applicationSlug -}}
+{{- $_ := required "donetick.oidc.accessGroup is required" $oidc.accessGroup -}}
+{{- $_ := required "donetick.oidc.displayName is required" $oidc.displayName -}}
+{{- $_ := required "donetick.oidc.workspaceName is required" $oidc.workspaceName -}}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $oidc.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $oidc.providerConfigRef }}'
+  writeConnectionSecretToRef:
+    namespace: '{{ .Release.Namespace }}'
+    name: '{{ $oidc.workspaceName }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      cluster_name: '{{ .Values.cluster.name }}'
+      datacenter: '{{ .Values.datacenter }}'
+      region: '{{ .Values.region }}'
+      application_slug: '{{ $oidc.applicationSlug }}'
+      access_group: '{{ $oidc.accessGroup }}'
+      issuer_base_url: '{{ trimSuffix "/" $oidc.issuerBaseUrl }}'
+      external_url: 'https://{{ .Values.donetick.hostname }}'
+      display_name: '{{ $oidc.displayName }}'
+    module: |
+      variable "cluster_name" { type = string }
+      variable "datacenter" { type = string }
+      variable "region" { type = string }
+      variable "application_slug" { type = string }
+      variable "access_group" { type = string }
+      variable "issuer_base_url" { type = string }
+      variable "external_url" { type = string }
+      variable "display_name" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 48
+        special = false
+      }
+
+      resource "authentik_provider_oauth2" "donetick" {
+        name                 = "${var.display_name} ${var.cluster_name} ${var.datacenter} ${var.region}"
+        client_id            = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        client_secret        = random_password.client_secret.result
+        authorization_flow   = data.authentik_flow.authorization.id
+        invalidation_flow    = data.authentik_flow.invalidation.id
+        allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/api/v1/auth/oauth2/callback" }]
+        property_mappings    = data.authentik_property_mapping_provider_scope.scopes.ids
+      }
+
+      resource "authentik_application" "donetick" {
+        name              = var.display_name
+        slug              = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group             = "Personal"
+        protocol_provider = authentik_provider_oauth2.donetick.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-donetick"
+        application = authentik_application.donetick.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.donetick.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.donetick.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }

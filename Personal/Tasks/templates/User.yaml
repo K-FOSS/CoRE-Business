@@ -1,0 +1,14 @@
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: 'donetick-database-user'
+spec:
+  name: 'Donetick database'
+  psql:
+    enabled: true
+    createUserDatabase: true
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.donetick.database.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.donetick.database.terraformProvider | quote }}
+  writeConnectionSecretToRef:
+    name: {{ .Values.donetick.database.userSecret | quote }}

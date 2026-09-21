@@ -1,0 +1,136 @@
+{{- define "tasks.hardcodedValues" -}}
+controllers:
+  app:
+    type: 'deployment'
+    replicas: 1
+    strategy: 'Recreate'
+    pod:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      donetick:
+        image:
+          repository: ''
+          tag: ''
+          digest: ''
+          pullPolicy: 'IfNotPresent'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        env: {}
+        resources: {}
+        probes:
+          startup:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/health'
+            port: 2021
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/health'
+            port: 2021
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/api/v1/health'
+            port: 2021
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 5
+
+service:
+  app:
+    controller: 'app'
+    ports:
+      http:
+        port: 2021
+
+persistence:
+  data:
+    type: 'persistentVolumeClaim'
+    storageClass: ''
+    accessMode: 'ReadWriteMany'
+    size: '10Gi'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    advancedMounts:
+      app:
+        donetick:
+          - path: '/donetick-data'
+
+route:
+  app:
+    kind: 'HTTPRoute'
+    labels: {wan-mode: 'private', lan-mode: 'private'}
+    hostnames: []
+    rules:
+      - matches: [{path: {type: 'PathPrefix', value: '/'}}]
+        backendRefs: [{identifier: 'app', port: 2021}]
+{{- end -}}
+
+{{- $_ := mergeOverwrite .Values (include "tasks.hardcodedValues" . | fromYaml) -}}
+{{- $_ := required "gateway.name is required" .Values.gateway.name -}}
+{{- $_ := required "gateway.namespace is required" .Values.gateway.namespace -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- $_ := required "donetick.hostname is required" .Values.donetick.hostname -}}
+{{- $_ := required "donetick.jwtSecret.secretName is required" .Values.donetick.jwtSecret.secretName -}}
+{{- $_ := required "donetick.jwtSecret.generatorName is required" .Values.donetick.jwtSecret.generatorName -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "donetick.database.userSecret is required" .Values.donetick.database.userSecret -}}
+{{- $_ := required "donetick.oidc.workspaceName is required" .Values.donetick.oidc.workspaceName -}}
+{{- $_ := set .Values.controllers.app.containers.donetick.image "repository" .Values.donetick.image.repository -}}
+{{- $_ := set .Values.controllers.app.containers.donetick.image "tag" .Values.donetick.image.tag -}}
+{{- $_ := set .Values.controllers.app.containers.donetick.image "digest" .Values.donetick.image.digest -}}
+{{- $_ := set .Values.controllers.app.containers.donetick "resources" .Values.donetick.resources -}}
+{{- $_ := set .Values.persistence.data "storageClass" .Values.storageClass.name -}}
+{{- $_ := set .Values.persistence.data "size" .Values.donetick.dataSize -}}
+{{- $_ := set .Values.route.app "hostnames" (list .Values.donetick.hostname) -}}
+{{- $_ := set .Values.route.app "parentRefs" (list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName)) -}}
+{{- $jwtSecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.jwtSecret.secretName "key" "JWT_SECRET")) -}}
+{{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.database.userSecret "key" .Values.donetick.database.usernameKey)) -}}
+{{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.database.userSecret "key" .Values.donetick.database.passwordKey)) -}}
+{{- $oidcClientID := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.oidc.workspaceName "key" "OIDC_CLIENT_ID")) -}}
+{{- $oidcClientSecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.donetick.oidc.workspaceName "key" "OIDC_CLIENT_SECRET")) -}}
+{{- $databaseHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.donetick.database.host -}}
+{{- $oidcBase := printf "%s/application/o/%s-%s-%s-%s" (trimSuffix "/" .Values.donetick.oidc.issuerBaseUrl) .Values.donetick.oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name -}}
+{{- $_ := set .Values.controllers.app.containers.donetick "env" (dict
+  "DT_ENV" "selfhosted"
+  "DT_JWT_SECRET" $jwtSecret
+  "DT_DATABASE_TYPE" "postgres"
+  "DT_DATABASE_HOST" $databaseHost
+  "DT_DATABASE_PORT" .Values.donetick.database.port
+  "DT_DATABASE_USER" $dbUsername
+  "DT_DATABASE_PASSWORD" $dbPassword
+  "DT_DATABASE_NAME" $dbUsername
+  "DT_DATABASE_MIGRATION" "true"
+  "DT_STORAGE_STORAGE_TYPE" "local"
+  "DT_STORAGE_BASE_PATH" "/donetick-data/uploads"
+  "DT_SERVER_PUBLIC_HOST" (printf "https://%s" .Values.donetick.hostname)
+  "DT_OAUTH2_CLIENT_ID" $oidcClientID
+  "DT_OAUTH2_CLIENT_SECRET" $oidcClientSecret
+  "DT_OAUTH2_AUTH_URL" (printf "%s/authorize/" $oidcBase)
+  "DT_OAUTH2_TOKEN_URL" (printf "%s/token/" $oidcBase)
+  "DT_OAUTH2_USER_INFO_URL" (printf "%s/userinfo/" $oidcBase)
+  "DT_OAUTH2_REDIRECT_URL" (printf "https://%s/api/v1/auth/oauth2/callback" .Values.donetick.hostname)
+  "DT_OAUTH2_NAME" .Values.donetick.oidc.displayName
+  "DT_SINGLE_CIRCLE_INSTANCE" (toString .Values.donetick.singleCircleInstance)
+  "DT_DISABLE_PASSWORD_AUTH" (toString .Values.donetick.disablePasswordAuth)
+  "TZ" .Values.donetick.timeZone
+) -}}
+{{- include "bjw-s.common.loader.init" . -}}
+{{- include "bjw-s.common.loader.generate" . -}}
