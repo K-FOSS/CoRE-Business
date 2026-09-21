@@ -13,6 +13,9 @@ spec:
     createUserDatabase: false
     databases:
       - 'Gmdfb5HXbk'
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.openproject.database.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.openproject.database.terraformProvider | quote }}
 
   s3:
     enabled: true
@@ -20,6 +23,9 @@ spec:
     createCredentials: true
     buckets:
       - 'ba8f4fed-33ed-6b22-9d0a-3a7b064db6dc-6g7ka2'
+    crossplane:
+      crossplaneProvider: {{ default (printf "s3-%s-%s-core" .Values.region .Values.datacenter) .Values.openproject.s3.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "s3-%s-%s-core" .Values.region .Values.datacenter) .Values.openproject.s3.terraformProvider | quote }}
     writeCredentialsSecretRef:
       name: 'business-projects-openproject-s3-{{ .Values.secretSuffix }}'
       namespace: {{ .Release.Namespace | quote }}

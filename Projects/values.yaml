@@ -27,9 +27,13 @@ openproject:
     host: ''
     port: 5432
     userSecretName: ''
+    crossplaneProvider: ''
+    terraformProvider: ''
 
   s3:
     credentialsSecretName: ''
+    crossplaneProvider: ''
+    terraformProvider: ''
 
   resources: {}
 
