@@ -50,8 +50,9 @@ Secrets; no credential values are committed.
 
 AdventureLog SMTP follows the Tranquil design in the Fediverse stack: it reuses
 the AdventureLog User connection Secret (`adventurelog-database`) for the
-username and password, derives the sender at runtime as
-`<username>@mail.mylogin.space`, and uses implicit TLS on
+SMTP username and password. The User resource declares
+`adventurelog@mail.mylogin.space` as its email and AdventureLog uses that same
+address as its outbound sender with implicit TLS on
 `mail.mylogin.space:465`. No mail credential values are committed. AdventureLog
 maps this to its documented `EMAIL_*` settings, including `EMAIL_USE_SSL`.
 

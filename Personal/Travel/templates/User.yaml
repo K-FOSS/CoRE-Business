@@ -4,6 +4,7 @@ metadata:
   name: 'adventurelog-database-user'
 spec:
   name: 'AdventureLog database'
+  email: '{{ .Values.adventurelog.smtp.fromAddress }}'
   psql:
     enabled: true
     createUserDatabase: true

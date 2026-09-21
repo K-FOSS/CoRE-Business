@@ -80,7 +80,8 @@ adventurelog:
   smtp:
     host: 'mail.mylogin.space'
     port: '465'
-    # Reuse the AdventureLog User connection Secret, as Tranquil does.
+    fromAddress: 'adventurelog@mail.mylogin.space'
+    # Reuse the AdventureLog User connection Secret for SMTP authentication.
     secretName: 'adventurelog-database'
     usernameKey: 'username'
     passwordKey: 'password'

@@ -351,6 +351,7 @@ route:
 {{- $_ := required "airtrail.oidc.providerConfigRef is required" .Values.airtrail.oidc.providerConfigRef -}}
 {{- $_ := required "airtrail.oidc.workspaceName is required" .Values.airtrail.oidc.workspaceName -}}
 {{- $_ := required "adventurelog.smtp.secretName is required" .Values.adventurelog.smtp.secretName -}}
+{{- $_ := required "adventurelog.smtp.fromAddress is required" .Values.adventurelog.smtp.fromAddress -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "repository" .Values.adventurelog.image.frontendRepository -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "tag" .Values.adventurelog.image.tag -}}
 {{- $_ := set .Values.controllers.frontend.containers.frontend.image "digest" .Values.adventurelog.image.frontendDigest -}}
@@ -427,8 +428,7 @@ route:
 {{- $smtpUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.smtp.secretName "key" .Values.adventurelog.smtp.usernameKey)) -}}
 {{- $smtpPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.adventurelog.smtp.secretName "key" .Values.adventurelog.smtp.passwordKey)) -}}
 {{- $smtpEnv := dict
-  "A_SMTP_USERNAME" $smtpUsername
-  "DEFAULT_FROM_EMAIL" (printf "$(A_SMTP_USERNAME)@%s" .Values.adventurelog.smtp.domain)
+  "DEFAULT_FROM_EMAIL" .Values.adventurelog.smtp.fromAddress
   "EMAIL_BACKEND" "email"
   "EMAIL_HOST" .Values.adventurelog.smtp.host
   "EMAIL_HOST_PASSWORD" $smtpPassword
