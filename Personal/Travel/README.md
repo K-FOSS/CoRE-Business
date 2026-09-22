@@ -18,6 +18,10 @@ TREK OIDC is provisioned through Authentik and receives its generated client
 credentials from the `trek-oidc` connection Secret; its callback is
 `https://trek.mylogin.space/api/auth/oidc/callback`, matching [TREK's OIDC
 guide](https://github.com/liketrek/TREK/wiki/OIDC-SSO).
+TREK's `ALLOW_INTERNAL_NETWORK` setting is configurable as the boolean
+`trek.allowInternalNetwork` value and defaults to `true`.
+Its `ALLOWED_ORIGINS` includes both the public hostname and the in-cluster
+Service DNS address generated from the release namespace.
 The Authentik provider uses the site's `tls` certificate key pair so TREK receives
 an asymmetric (RS256) ID token, as required by TREK 4.3.0.
 

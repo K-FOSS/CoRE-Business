@@ -402,12 +402,13 @@ route:
 {{- $trekEncryptionKey := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.trek.runtimeSecret.secretName "key" "ENCRYPTION_KEY")) -}}
 {{- $trekAdminPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.trek.adminSecret.secretName "key" "ADMIN_PASSWORD")) -}}
 {{- $trekURL := printf "https://%s" .Values.trek.hostname -}}
+{{- $trekInternalURL := printf "http://core-personal-travel-trek.%s.svc.cluster.local" .Release.Namespace -}}
 {{- $trekEnv := dict
   "NODE_ENV" "production"
   "PORT" "3000"
   "TZ" .Values.trek.timeZone
   "APP_URL" $trekURL
-  "ALLOWED_ORIGINS" $trekURL
+  "ALLOWED_ORIGINS" (printf "%s,%s" $trekURL $trekInternalURL)
   "ALLOW_INTERNAL_NETWORK" (.Values.trek.allowInternalNetwork | toString)
   "FORCE_HTTPS" "true"
   "TRUST_PROXY" "1"

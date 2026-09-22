@@ -79,14 +79,14 @@ adventurelog:
     email: 'admin@mylogin.space'
   smtp:
     host: 'mail.mylogin.space'
-    port: '465'
+    port: '587'
     fromAddress: 'adventurelog@mail.mylogin.space'
     # Reuse the AdventureLog User connection Secret for SMTP authentication.
     secretName: 'adventurelog-database'
     usernameKey: 'username'
     passwordKey: 'password'
-    useTls: 'false'
-    useSsl: 'true'
+    useTls: 'true'
+    useSsl: 'false'
     domain: 'mail.mylogin.space'
   oidc:
     providerConfigRef: 'authentik'
