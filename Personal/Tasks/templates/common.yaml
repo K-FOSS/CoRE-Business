@@ -67,7 +67,11 @@ controllers:
           pullPolicy: 'IfNotPresent'
         securityContext:
           allowPrivilegeEscalation: false
+          runAsUser: 0
+          runAsGroup: 0
+          runAsNonRoot: false
           capabilities:
+            add: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID']
             drop: ['ALL']
         env: {}
         resources: {}
@@ -211,6 +215,8 @@ route:
 ) -}}
 {{- $_ := set .Values.controllers.habitsync.containers.habitsync "env" (dict
   "BASE_URL" (printf "https://%s" .Values.habitsync.hostname)
+  "PUID" "6842"
+  "PGID" "6842"
   "DB_NAME" (dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.habitsync.database.userSecret "key" .Values.habitsync.database.databaseKey)))
   "SPRING_DATASOURCE_URL" (printf "jdbc:postgresql://%s:%s/$(DB_NAME)" $habitDatabaseHost .Values.habitsync.database.port)
   "SPRING_DATASOURCE_USERNAME" $habitDbUsername
