@@ -113,6 +113,7 @@ adventurelog:
 
 trek:
   hostname: 'trek.mylogin.space'
+  allowInternalNetwork: true
   image:
     repository: 'docker.io/mauriceboe/trek'
     tag: '4.3.0'

@@ -408,6 +408,7 @@ route:
   "TZ" .Values.trek.timeZone
   "APP_URL" $trekURL
   "ALLOWED_ORIGINS" $trekURL
+  "ALLOW_INTERNAL_NETWORK" (.Values.trek.allowInternalNetwork | toString)
   "FORCE_HTTPS" "true"
   "TRUST_PROXY" "1"
   "ENCRYPTION_KEY" $trekEncryptionKey
