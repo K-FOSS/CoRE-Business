@@ -410,7 +410,7 @@ route:
   "APP_URL" $trekURL
   "ALLOWED_ORIGINS" (printf "%s,%s" $trekURL $trekInternalURL)
   "ALLOW_INTERNAL_NETWORK" (.Values.trek.allowInternalNetwork | toString)
-  "FORCE_HTTPS" "true"
+  "FORCE_HTTPS" "false"
   "TRUST_PROXY" "1"
   "ENCRYPTION_KEY" $trekEncryptionKey
   "ADMIN_EMAIL" .Values.trek.adminSecret.email
