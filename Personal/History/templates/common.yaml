@@ -182,7 +182,7 @@ route:
   "RAILS_ENV" "production"
   "SELF_HOSTED" "true"
   "STORE_GEODATA" "true"
-  "APPLICATION_HOSTS" .Values.dawarich.hostname
+  "APPLICATION_HOSTS" (concat (list .Values.dawarich.hostname) .Values.dawarich.additionalHostnames | join ",")
   "APPLICATION_PROTOCOL" "https"
   "DOMAIN" .Values.dawarich.hostname
   "TIME_ZONE" .Values.dawarich.timeZone

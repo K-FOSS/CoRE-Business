@@ -22,6 +22,8 @@ gateway:
 dawarich:
   enabled: true
   hostname: 'dawarich.mylogin.space'
+  additionalHostnames:
+    - 'history.core-prod.svc.cluster.local'
   image:
     repository: 'docker.io/freikin/dawarich'
     tag: '1.15.0@sha256:56be3eb19c9a1d735217e8c16283a9ec63e47d91d9d70cdd23102181d51b579b'
