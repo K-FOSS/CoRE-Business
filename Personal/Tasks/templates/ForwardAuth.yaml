@@ -1,0 +1,39 @@
+{{- $routeNames := dict
+  "donetick" (printf "%s-app" .Values.global.fullnameOverride)
+  "habitsync" (printf "%s-habitsync" .Values.global.fullnameOverride)
+-}}
+{{- range $name, $routeName := $routeNames }}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ $routeName }}-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ $routeName }}'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-*'
+        - 'authorization'
+        - 'Content-Type'
+        - 'Location'
+      backendSettings:
+        loadBalancer:
+          type: 'ConsistentHash'
+          consistentHash:
+            type: 'SourceIP'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: 'core-prod'
+          name: 'aaa-myloginspace-proxy'
+          port: 80
+      path: '/outpost.goauthentik.io/auth/envoy'
+---
+{{- end }}

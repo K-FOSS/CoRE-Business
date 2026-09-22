@@ -1,0 +1,81 @@
+{{- $apps := list
+  (dict "name" "donetick" "app" .Values.donetick "routeName" (printf "%s-app" .Values.global.fullnameOverride))
+  (dict "name" "habitsync" "app" .Values.habitsync "routeName" (printf "%s-habitsync" .Values.global.fullnameOverride))
+-}}
+{{- range $item := $apps }}
+{{- $forwardAuth := $item.app.forwardAuth -}}
+{{- $_ := required (printf "%s.forwardAuth.providerConfigRef is required" $item.name) $forwardAuth.providerConfigRef -}}
+{{- $_ := required (printf "%s.forwardAuth.accessGroup is required" $item.name) $forwardAuth.accessGroup -}}
+{{- $_ := required (printf "%s.forwardAuth.displayName is required" $item.name) $forwardAuth.displayName -}}
+{{- $_ := required (printf "%s.forwardAuth.workspaceName is required" $item.name) $forwardAuth.workspaceName -}}
+{{- $_ := required (printf "%s.hostname is required" $item.name) $item.app.hostname -}}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $forwardAuth.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $forwardAuth.providerConfigRef }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      access_group: '{{ $forwardAuth.accessGroup }}'
+      display_name: '{{ $forwardAuth.displayName }}'
+      external_host: 'https://{{ $item.app.hostname }}'
+      application_slug: '{{ $item.name }}-forward-auth'
+      route_name: '{{ $item.routeName }}'
+    module: |
+      variable "access_group" { type = string }
+      variable "display_name" { type = string }
+      variable "external_host" { type = string }
+      variable "application_slug" { type = string }
+      variable "route_name" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      resource "authentik_provider_proxy" "forward_auth" {
+        name               = var.display_name
+        mode               = "forward_single"
+        external_host      = var.external_host
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "forward_auth" {
+        name              = var.display_name
+        slug              = var.application_slug
+        group             = "Personal"
+        meta_hide         = true
+        protocol_provider = authentik_provider_proxy.forward_auth.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-${var.application_slug}"
+        application = authentik_application.forward_auth.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.forward_auth.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+---
+{{ end }}

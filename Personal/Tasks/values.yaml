@@ -45,6 +45,11 @@ donetick:
     accessGroup: 'Home Users'
     displayName: 'Donetick'
     workspaceName: 'tasks-donetick-oidc'
+  forwardAuth:
+    providerConfigRef: 'authentik'
+    accessGroup: 'Home Users'
+    displayName: 'Donetick Forward Auth'
+    workspaceName: 'tasks-donetick-forward-auth'
   timeZone: 'Etc/UTC'
   singleCircleInstance: true
   disablePasswordAuth: true
@@ -83,6 +88,11 @@ habitsync:
     accessGroup: 'Home Users'
     displayName: 'HabitSync'
     workspaceName: 'tasks-habitsync-oidc'
+  forwardAuth:
+    providerConfigRef: 'authentik'
+    accessGroup: 'Home Users'
+    displayName: 'HabitSync Forward Auth'
+    workspaceName: 'tasks-habitsync-forward-auth'
   resources:
     requests:
       cpu: '100m'

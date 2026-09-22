@@ -42,7 +42,26 @@ the generated connection Secret's `username` is used as both the PostgreSQL
 username and database name. Its Authentik provider is a public PKCE client
 with the strict redirect URI `https://habits.mylogin.space/auth-callback`,
 restricted to `Home Users`. HabitSync uses its own retained JWT Secret and
-does not share Donetick's credentials.
+does not share Donetick's credentials. Its upstream entrypoint must start as
+root to create UID/GID `6842`, repair `/data` ownership, and then drop to that
+UID/GID with `su-exec`; the chart grants only the required bootstrap
+capabilities and keeps the application process unprivileged.
+The HabitSync issuer URL intentionally retains Authentik's trailing `/` so
+Spring Security's issuer validation matches the discovery document.
+
+Both HTTPRoutes are protected by Envoy Gateway
+[`SecurityPolicy`](https://gateway.envoyproxy.io/latest/api/gateway_api/v1alpha1/securitypolicy/)
+resources using
+the site Authentik forward-auth outpost Service
+[`aaa-myloginspace-proxy`](https://docs.goauthentik.io/add-secure-apps/providers/proxy/forward_auth/)
+in `core-prod`. The policies fail closed and forward
+the Authentik session and identity headers to the applications. The outpost
+must remain available for either application to be reachable.
+Dedicated Authentik forward-auth Workspaces create `forward_single` proxy
+providers for both hostnames and bind access to `Home Users`; the OIDC
+Workspaces remain separate application login clients. The forward-auth
+applications set Authentik's `meta_hide` flag, so they do not appear in users'
+Application Dashboard while remaining available to the outpost.
 
 No Backplane ApplicationSet currently selects `Personal/Tasks` in this
 worktree. Before activation, add or confirm the owning ApplicationSet and
