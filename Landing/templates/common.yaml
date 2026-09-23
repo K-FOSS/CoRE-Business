@@ -47,7 +47,7 @@ service:
         port: 8080
         protocol: 'HTTP'
 persistence:
-  discoveryConfig:
+  discovery-config:
     type: 'configMap'
     name: {{ printf "%s-discovery" .Release.Name | quote }}
     advancedMounts:
@@ -55,12 +55,12 @@ persistence:
         discovery:
           - path: '/etc/nginx/conf.d/default.conf'
             subPath: 'default.conf'
-  discoveryContent:
+  discovery-content:
     type: 'configMap'
     name: {{ printf "%s-discovery" .Release.Name | quote }}
     globalMounts:
       - path: '/etc/nginx/well-known'
-  nginxTmp:
+  nginx-tmp:
     type: 'emptyDir'
     globalMounts:
       - path: '/tmp'
