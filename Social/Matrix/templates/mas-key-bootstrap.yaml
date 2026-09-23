@@ -75,8 +75,8 @@ spec:
             - >-
               set -eu;
               umask 077;
-              awk '$1 == "secret:" { print $2; exit }' /run/mas-generated/config.yaml > /tmp/matrix-secret;
-              awk '$1 == "encryption:" { print $2; exit }' /run/mas-generated/config.yaml > /tmp/encryption-key;
+              awk '$1 == "secret:" { print $2; exit }' /run/mas-generated/config.yaml | tr -d '\n' > /tmp/matrix-secret;
+              awk '$1 == "encryption:" { print $2; exit }' /run/mas-generated/config.yaml | tr -d '\n' > /tmp/encryption-key;
               sed -n '/^      -----BEGIN RSA PRIVATE KEY-----/,/^      -----END RSA PRIVATE KEY-----/ { s/^      //; p; }' /run/mas-generated/config.yaml > /tmp/rsa-key;
               test -s /tmp/matrix-secret && test -s /tmp/encryption-key && test -s /tmp/rsa-key;
               matrix_secret=$(base64 /tmp/matrix-secret | tr -d '\n');
