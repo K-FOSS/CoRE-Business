@@ -29,6 +29,7 @@ data:
     }
   security.txt: |
     Contact: {{ .Values.discovery.securityTxt.contact }}
+    Expires: {{ .Values.discovery.securityTxt.expires }}
     Preferred-Languages: {{ .Values.discovery.securityTxt.preferredLanguages }}
     Canonical: https://{{ .Values.discovery.hostname }}/.well-known/security.txt
 {{- if .Values.discovery.matrix.enabled }}

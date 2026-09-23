@@ -49,7 +49,27 @@ check_static() {
 }
 
 check_static security "${base_url}/.well-known/security.txt" 'text/plain'
-grep -Fq 'Canonical: https://mylogin.space/.well-known/security.txt' "${tmp_dir}/security.body"
+security_body="${tmp_dir}/security.body"
+grep -Fxq 'Contact: mailto:security@mylogin.space' "${security_body}"
+grep -Fxq 'Preferred-Languages: en' "${security_body}"
+grep -Fxq 'Canonical: https://mylogin.space/.well-known/security.txt' "${security_body}"
+expires="$(awk -F': ' '$1 == "Expires" { print $2; exit }' "${security_body}")"
+if [[ ! "${expires}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+  echo 'security.txt: Expires must be an RFC 3339 UTC timestamp' >&2
+  exit 1
+fi
+if ! expires_epoch="$(date -u -d "${expires}" +%s 2>/dev/null)"; then
+  echo 'security.txt: Expires is not a valid UTC date' >&2
+  exit 1
+fi
+if [[ "$(date -u -d "${expires}" +%Y-%m-%dT%H:%M:%SZ)" != "${expires}" ]]; then
+  echo "security.txt: Expires is not a canonical UTC date: ${expires}" >&2
+  exit 1
+fi
+if (( expires_epoch <= $(date -u +%s) )); then
+  echo "security.txt: Expires has passed: ${expires}" >&2
+  exit 1
+fi
 
 check_static matrix_client "${base_url}/.well-known/matrix/client" 'application/json'
 check_static matrix_server "${base_url}/.well-known/matrix/server" 'application/json'

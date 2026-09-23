@@ -19,6 +19,7 @@ discovery:
     pullPolicy: 'IfNotPresent'
   securityTxt:
     contact: 'mailto:security@mylogin.space'
+    expires: '2027-03-23T00:00:00Z'
     preferredLanguages: 'en'
   matrix:
     enabled: true
