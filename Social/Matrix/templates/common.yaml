@@ -8,6 +8,7 @@
 {{- $_ := required "synapse.psql.crossplaneProvider is required" .Values.synapse.psql.crossplaneProvider -}}
 {{- $_ := required "synapse.psql.terraformProvider is required" .Values.synapse.psql.terraformProvider -}}
 {{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- $_ := required "element.hostname is required" .Values.element.hostname -}}
 {{- if and .Values.synapse.ldap.enabled (not .Values.synapse.ldap.existingSecret) }}
 {{- fail "synapse.ldap.existingSecret is required when LDAP is enabled" }}
 {{- end }}
@@ -104,6 +105,44 @@ controllers:
             port: 8008
             spec:
               initialDelaySeconds: 30
+  element:
+    replicas: 2
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: 'OnRootMismatch'
+    containers:
+      element:
+        image:
+          repository: {{ .Values.element.image.repository | quote }}
+          tag: {{ .Values.element.image.tag | quote }}
+          pullPolicy: {{ .Values.element.image.pullPolicy | quote }}
+        ports:
+          - name: http
+            containerPort: 8080
+        env:
+          ELEMENT_WEB_PORT: '8080'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        resources:
+          {{- toYaml .Values.element.resources | nindent 10 }}
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/config.json'
+            port: 8080
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/config.json'
+            port: 8080
+
 persistence:
   runtime:
     type: 'emptyDir'
@@ -124,6 +163,14 @@ persistence:
       argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
     globalMounts:
       - path: '/data'
+  element-config:
+    type: 'configMap'
+    name: {{ printf "element-%s-config" .Release.Name | quote }}
+    advancedMounts:
+      element:
+        element:
+          - path: '/app/config.json'
+            subPath: 'config.json'
 {{- if .Values.synapse.ldap.enabled }}
   ldap:
     type: 'secret'
@@ -139,6 +186,11 @@ service:
     ports:
       http:
         port: 8008
+  element:
+    controller: 'element'
+    ports:
+      http:
+        port: 8080
 
 route:
   synapse:
@@ -165,6 +217,30 @@ route:
         backendRefs:
           - identifier: 'synapse'
             port: 8008
+  element:
+    kind: 'HTTPRoute'
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/appName: 'Element Web'
+      forecastle.stakater.com/group: 'Social'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames:
+      - {{ .Values.element.hostname | quote }}
+    parentRefs:
+      - name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'element'
+            port: 8080
 {{- end }}
 
 {{- $hardcodedValues := include "app-template.hardcodedValues" . | fromYaml -}}

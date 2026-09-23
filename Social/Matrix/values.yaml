@@ -9,6 +9,19 @@ gateway:
   namespace: 'core-prod'
   sectionName: 'https-myloginspace'
 
+element:
+  hostname: 'element.mylogin.space'
+  image:
+    repository: 'ghcr.io/element-hq/element-web'
+    tag: 'v1.12.29@sha256:cc6c2bbd3196432bf7a72bb155b759c869367dffe86a1c6abb13abbb2e52937e'
+    pullPolicy: 'IfNotPresent'
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '128Mi'
+    limits:
+      memory: '512Mi'
+
 synapse:
   hostname: 'matrix.mylogin.space'
   serverName: 'matrix.mylogin.space'

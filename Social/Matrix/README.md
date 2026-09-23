@@ -2,6 +2,9 @@
 
 This chart deploys the [Element Synapse homeserver](https://github.com/element-hq/synapse)
 with the [BJW-S Common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
+It also deploys the [Element Web client](https://github.com/element-hq/element-web)
+at `element.mylogin.space`, preconfigured for the local Synapse server at
+`matrix.mylogin.space`.
 It creates a `mylogin.space/v1alpha1` `User` service account and a retained
 `synapse` database on the Backplane global PostgreSQL provider. The database
 endpoint is intentionally `psql-int...`, never the site-local `psql-local...`

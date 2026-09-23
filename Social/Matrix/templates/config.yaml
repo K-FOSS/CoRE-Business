@@ -68,3 +68,20 @@ data:
             mail: 'mail'
             name: 'displayName'
 {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "element-%s-config" .Release.Name | quote }}
+data:
+  config.json: |
+    {
+      "default_server_name": {{ .Values.synapse.serverName | quote }},
+      "default_server_config": {
+        "m.homeserver": {
+          "base_url": {{ printf "https://%s" .Values.synapse.hostname | quote }}
+        }
+      },
+      "disable_custom_urls": true,
+      "brand": "Element"
+    }
