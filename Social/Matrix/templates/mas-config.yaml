@@ -34,12 +34,16 @@ secrets:
     - key_file: '/run/mas/RSA_KEY'
 passwords:
   enabled: false
+  schemes:
+    - version: 1
+      algorithm: 'bcrypt'
+      unicode_normalization: true
 upstream_oauth2:
   providers:
     - id: '01JZ7K9Q3P6B4M2N8R5T1V0XCY'
       synapse_idp_id: 'oidc-authentik'
       human_name: {{ $root.Values.synapse.oidc.displayName | quote }}
-      issuer: {{ printf "%s/application/o/%s-%s-%s-%s/" (trimSuffix "/" $root.Values.synapse.oidc.issuerBaseUrl) $root.Values.synapse.oidc.applicationSlug $root.Values.region $root.Values.cluster.name | quote }}
+      issuer: {{ printf "%s/application/o/%s-%s-%s-%s/" (trimSuffix "/" $root.Values.synapse.oidc.issuerBaseUrl) $root.Values.synapse.oidc.applicationSlug $root.Values.region $root.Values.datacenter $root.Values.cluster.name | quote }}
       client_id: '__OIDC_CLIENT_ID__'
       client_secret: '__OIDC_CLIENT_SECRET__'
       token_endpoint_auth_method: 'client_secret_basic'

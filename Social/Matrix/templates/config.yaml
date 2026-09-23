@@ -51,7 +51,9 @@ data:
       enabled: false
 {{- if .Values.synapse.oidc.enabled }}
     oidc_providers:
-      - idp_id: 'oidc-authentik'
+      # Synapse stores this provider as oidc-authentik internally; its parser
+      # adds the oidc- prefix to this YAML idp_id.
+      - idp_id: 'authentik'
         idp_name: {{ .Values.synapse.oidc.displayName | quote }}
         discover: true
         issuer: __OIDC_ISSUER_JSON__
