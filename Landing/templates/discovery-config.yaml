@@ -1,0 +1,44 @@
+{{- if .Values.discovery.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-discovery" .Release.Name | quote }}
+data:
+  default.conf: |
+    server {
+      listen 8080;
+      server_name _;
+      location = /.well-known/security.txt {
+        default_type text/plain;
+        alias /etc/nginx/well-known/security.txt;
+      }
+      location = /.well-known/matrix/client {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin '*' always;
+        alias /etc/nginx/well-known/matrix-client.json;
+      }
+      location = /.well-known/matrix/server {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin '*' always;
+        alias /etc/nginx/well-known/matrix-server.json;
+      }
+      location = /.well-known/atproto-did {
+        default_type text/plain;
+        alias /etc/nginx/well-known/atproto-did;
+      }
+    }
+  security.txt: |
+    Contact: {{ .Values.discovery.securityTxt.contact }}
+    Preferred-Languages: {{ .Values.discovery.securityTxt.preferredLanguages }}
+    Canonical: https://{{ .Values.discovery.hostname }}/.well-known/security.txt
+{{- if .Values.discovery.matrix.enabled }}
+  matrix-client.json: |
+    {"m.homeserver":{"base_url":"{{ .Values.discovery.matrix.homeserverBaseUrl }}"}}
+  matrix-server.json: |
+    {"m.server":"{{ .Values.discovery.matrix.serverName }}"}
+{{- end }}
+{{- if and .Values.atproto.enabled .Values.atproto.hostname .Values.atproto.did }}
+  atproto-did: |
+    {{ .Values.atproto.did }}
+{{- end }}
+{{- end }}

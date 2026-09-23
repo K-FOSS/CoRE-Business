@@ -4,6 +4,41 @@ landingHttpRoute:
   enabled: true
   backendPort: 80
 
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+discovery:
+  enabled: true
+  hostname: 'mylogin.space'
+  serviceName: 'core-home1-talos-prod-business-landing-prod-discovery'
+  image:
+    repository: 'nginxinc/nginx-unprivileged'
+    tag: '1.27.5-alpine'
+    pullPolicy: 'IfNotPresent'
+  securityTxt:
+    contact: 'mailto:security@mylogin.space'
+    preferredLanguages: 'en'
+  matrix:
+    enabled: true
+    homeserverBaseUrl: 'https://matrix.mylogin.space'
+    serverName: 'matrix.mylogin.space:443'
+
+# Keep this disabled until a specific handle and its matching DID have been
+# approved and verified in DNS/AT Protocol management.
+atproto:
+  enabled: false
+  hostname: ''
+  did: ''
+
+mastodonDiscovery:
+  enabled: true
+  hostname: 'mastodon.mylogin.space'
+  # Keep aligned with the active Fediverse ApplicationSet release name.
+  serviceName: 'core-home1-talos-prod-business-social-fediverse-prod-web'
+  servicePort: 3000
+
 forecastle:
   nameOverride: 'landing'
 

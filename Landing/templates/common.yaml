@@ -1,0 +1,76 @@
+{{- define "discovery.hardcodedValues" -}}
+controllers:
+  discovery:
+    replicas: 2
+    strategy: 'RollingUpdate'
+    pod:
+      securityContext:
+        seccompProfile:
+          type: 'RuntimeDefault'
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        fsGroupChangePolicy: 'OnRootMismatch'
+    containers:
+      discovery:
+        image:
+          repository: {{ .Values.discovery.image.repository | quote }}
+          tag: {{ .Values.discovery.image.tag | quote }}
+          pullPolicy: {{ .Values.discovery.image.pullPolicy | quote }}
+        ports:
+          - name: 'http'
+            containerPort: 8080
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - 'ALL'
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/.well-known/security.txt'
+            port: 8080
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/.well-known/security.txt'
+            port: 8080
+service:
+  discovery:
+    forceRename: {{ printf "%s-discovery" .Release.Name | quote }}
+    controller: 'discovery'
+    ports:
+      http:
+        port: 8080
+        protocol: 'HTTP'
+persistence:
+  discoveryConfig:
+    type: 'configMap'
+    name: {{ printf "%s-discovery" .Release.Name | quote }}
+    advancedMounts:
+      discovery:
+        discovery:
+          - path: '/etc/nginx/conf.d/default.conf'
+            subPath: 'default.conf'
+  discoveryContent:
+    type: 'configMap'
+    name: {{ printf "%s-discovery" .Release.Name | quote }}
+    globalMounts:
+      - path: '/etc/nginx/well-known'
+  nginxTmp:
+    type: 'emptyDir'
+    globalMounts:
+      - path: '/tmp'
+      - path: '/var/cache/nginx'
+{{- end }}
+{{- include "bjw-s.common.loader.init" . -}}
+{{- if .Values.discovery.enabled }}
+{{- $discoveryValues := include "discovery.hardcodedValues" . | fromYaml -}}
+{{- $_ := set .Values "controllers" $discoveryValues.controllers -}}
+{{- $_ := set .Values "service" $discoveryValues.service -}}
+{{- $_ := set .Values "persistence" $discoveryValues.persistence -}}
+{{- include "bjw-s.common.loader.generate" . }}
+{{- end }}
