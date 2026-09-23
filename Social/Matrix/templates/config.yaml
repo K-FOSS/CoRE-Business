@@ -24,6 +24,7 @@ data:
         port: {{ .Values.synapse.psql.port }}
         cp_min: 5
         cp_max: 20
+        allow_unsafe_locale: {{ .Values.synapse.psql.allowUnsafeLocale }}
     media_store_path: /data/media_store
     uploads_path: /data/uploads
     signing_key_path: /data/{{ .Values.synapse.serverName }}.signing.key

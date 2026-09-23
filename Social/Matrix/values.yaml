@@ -25,6 +25,9 @@ synapse:
     host: 'psql-int.core-home1-talos-prod.home1.yvr.mylogin.space'
     port: 5432
     database: 'synapse'
+    # Compatibility switch for the existing global database. Recreate it with
+    # LC_COLLATE=C and LC_CTYPE=C before disabling this override.
+    allowUnsafeLocale: true
     crossplaneProvider: 'psql-main'
     terraformProvider: 'psql'
   oidc:

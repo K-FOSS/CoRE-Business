@@ -25,3 +25,10 @@ Verify the User/XR conditions, PostgreSQL Role/Database, Authentik Workspace,
 OIDC callback, federation port policy, and a real Element login after Argo CD
 reconciliation. Synapse recommends PostgreSQL for production deployments and
 documents federation and reverse-proxy requirements in its [installation guide](https://github.com/element-hq/synapse/blob/develop/docs/setup/installation.md).
+
+The chart currently sets Synapse's `allow_unsafe_locale` because the existing
+global PostgreSQL database was created with `en_US.UTF-8` collation. Synapse
+documents this as a compatibility override; the safest permanent remediation
+is to stop the service, dump the database, and recreate it with UTF-8,
+`LC_COLLATE=C`, `LC_CTYPE=C`, and `template0`, then restore it. Do not drop the
+database or change its locale in place without a tested backup.
