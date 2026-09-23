@@ -24,6 +24,8 @@ data:
         x_forwarded: true
         resources:
           - names: [client, federation]
+    enable_media_repo: true
+    enable_local_media_storage: true
     database:
       name: psycopg2
       args:
@@ -35,8 +37,8 @@ data:
         cp_min: 5
         cp_max: 20
       allow_unsafe_locale: {{ .Values.synapse.psql.allowUnsafeLocale }}
-    media_store_path: /data/media_store
-    uploads_path: /data/uploads
+    media_store_path: {{ .Values.synapse.storage.mediaStorePath | quote }}
+    uploads_path: {{ .Values.synapse.storage.uploadsPath | quote }}
     signing_key_path: /data/{{ .Values.synapse.serverName }}.signing.key
     macaroon_secret_key: __MACAROON_SECRET_KEY_JSON__
     form_secret: __FORM_SECRET_JSON__

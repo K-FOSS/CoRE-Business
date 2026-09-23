@@ -99,3 +99,5 @@ synapse:
   storage:
     size: '50Gi'
     storageClass: 'longhorn'
+    mediaStorePath: '/data/media_store'
+    uploadsPath: '/data/uploads'
