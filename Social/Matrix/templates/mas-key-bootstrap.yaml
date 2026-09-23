@@ -68,18 +68,12 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ['ALL']
-      containers:
-        - name: publish
+        - name: prepare-secret
           image: 'docker.io/library/alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8'
           command: ['sh', '-c']
           args:
             - >-
               set -eu;
-              api='https://kubernetes.default.svc';
-              token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token);
-              ca='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt';
-              secret_url="$api/api/v1/namespaces/$POD_NAMESPACE/secrets/{{ .Values.mas.secretManagement.secretName }}";
-              if wget -q --ca-certificate="$ca" --header="Authorization: Bearer $token" -O /dev/null "$secret_url"; then exit 0; fi;
               umask 077;
               awk '$1 == "secret:" { print $2; exit }' /run/mas-generated/config.yaml > /tmp/matrix-secret;
               awk '$1 == "encryption:" { print $2; exit }' /run/mas-generated/config.yaml > /tmp/encryption-key;
@@ -88,8 +82,28 @@ spec:
               matrix_secret=$(base64 /tmp/matrix-secret | tr -d '\n');
               encryption_key=$(base64 /tmp/encryption-key | tr -d '\n');
               rsa_key=$(base64 /tmp/rsa-key | tr -d '\n');
-              body=$(printf '{"apiVersion":"v1","kind":"Secret","metadata":{"name":"{{ .Values.mas.secretManagement.secretName }}"},"type":"Opaque","data":{"MATRIX_SECRET":"%s","ENCRYPTION_KEY":"%s","RSA_KEY":"%s"}}' "$matrix_secret" "$encryption_key" "$rsa_key");
-              wget -q --ca-certificate="$ca" --header="Authorization: Bearer $token" --header='Content-Type: application/json' --post-data="$body" -O /dev/null "$api/api/v1/namespaces/$POD_NAMESPACE/secrets";
+              printf '{"apiVersion":"v1","kind":"Secret","metadata":{"name":"{{ .Values.mas.secretManagement.secretName }}"},"type":"Opaque","data":{"MATRIX_SECRET":"%s","ENCRYPTION_KEY":"%s","RSA_KEY":"%s"}}' "$matrix_secret" "$encryption_key" "$rsa_key" > /run/mas-generated/secret.json;
+          volumeMounts:
+            - name: generated-config
+              mountPath: '/run/mas-generated'
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
+      containers:
+        - name: publish
+          image: 'docker.io/curlimages/curl:8.14.1@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b'
+          command: ['sh', '-c']
+          args:
+            - >-
+              set -eu;
+              api='https://kubernetes.default.svc';
+              token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token);
+              ca='/var/run/secrets/kubernetes.io/serviceaccount/ca.crt';
+              secret_url="$api/api/v1/namespaces/$POD_NAMESPACE/secrets/{{ .Values.mas.secretManagement.secretName }}";
+              status=$(curl --silent --show-error --cacert "$ca" --header "Authorization: Bearer $token" --output /dev/null --write-out '%{http_code}' "$secret_url");
+              if [ "$status" = '200' ]; then exit 0; fi;
+              curl --fail --silent --show-error --cacert "$ca" --header "Authorization: Bearer $token" --header 'Content-Type: application/json' --data-binary @/run/mas-generated/secret.json "$api/api/v1/namespaces/$POD_NAMESPACE/secrets" >/dev/null;
           env:
             - name: POD_NAMESPACE
               valueFrom:
