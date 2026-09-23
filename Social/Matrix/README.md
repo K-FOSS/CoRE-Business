@@ -12,7 +12,8 @@ service; update the provider and host together through the owning ApplicationSet
 
 OIDC is provisioned through Authentik using the same Crossplane Terraform
 `Workspace` pattern as the [Fediverse stack](https://github.com/K-FOSS/CoRE-Business/tree/main/Social/Fediverse).
-The default login path is Authentik OIDC, which can in turn use CoRE LDAP.
+Element automatically redirects unauthenticated users to Synapse SSO, which
+then uses the Authentik OIDC provider. Authentik can in turn use CoRE LDAP.
 Synapse's optional [LDAP password provider](https://github.com/matrix-org/matrix-synapse-ldap3)
 is disabled by default and requires a separately managed bind-password Secret.
 

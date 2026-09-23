@@ -13,7 +13,7 @@ element:
   hostname: 'element.mylogin.space'
   image:
     repository: 'ghcr.io/element-hq/element-web'
-    tag: 'v1.12.29@sha256:cc6c2bbd3196432bf7a72bb155b759c869367dffe86a1c6abb13abbb2e52937e'
+    tag: 'v1.12.29@sha256:da32e88c8dafe2c3d4f40ca5e90ab2f43a7c9ac35f0977ec7662dcb4fdcd56d8'
     pullPolicy: 'IfNotPresent'
   resources:
     requests:

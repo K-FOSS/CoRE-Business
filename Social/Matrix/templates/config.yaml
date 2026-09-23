@@ -83,5 +83,8 @@ data:
         }
       },
       "disable_custom_urls": true,
-      "brand": "Element"
+      "brand": "Element"{{ if .Values.synapse.oidc.enabled }},
+      "sso_redirect_options": {
+        "immediate": true
+      }{{ end }}
     }
