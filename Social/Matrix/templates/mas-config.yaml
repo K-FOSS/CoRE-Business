@@ -1,62 +1,78 @@
+{{- define "matrix.mas.config" -}}
+{{- $root := .root -}}
+{{- $database := .database -}}
+http:
+  public_base: {{ printf "https://%s/" $root.Values.mas.hostname | quote }}
+  issuer: {{ printf "https://%s/" $root.Values.mas.hostname | quote }}
+  listeners:
+    - name: web
+      resources:
+        - name: discovery
+        - name: human
+        - name: oauth
+        - name: compat
+        - name: graphql
+        - name: assets
+        - name: health
+      binds:
+        - address: '[::]:8080'
+database:
+  host: {{ $database.host | quote }}
+  port: {{ $database.port }}
+  username: '__DB_USERNAME__'
+  password: '__DB_PASSWORD__'
+  database: {{ $database.database | quote }}
+  ssl_mode: 'disable'
+matrix:
+  kind: 'synapse'
+  homeserver: {{ $root.Values.synapse.serverName | quote }}
+  endpoint: 'http://{{ $root.Release.Name }}-synapse:8008'
+  secret_file: '/run/mas/MATRIX_SECRET'
+secrets:
+  encryption_file: '/run/mas/ENCRYPTION_KEY'
+  keys:
+    - key_file: '/run/mas/RSA_KEY'
+passwords:
+  enabled: false
+upstream_oauth2:
+  providers:
+    - id: '01JZ7K9Q3P6B4M2N8R5T1V0XCY'
+      synapse_idp_id: 'oidc-authentik'
+      human_name: {{ $root.Values.synapse.oidc.displayName | quote }}
+      issuer: {{ printf "%s/application/o/%s-%s-%s-%s/" (trimSuffix "/" $root.Values.synapse.oidc.issuerBaseUrl) $root.Values.synapse.oidc.applicationSlug $root.Values.region $root.Values.cluster.name | quote }}
+      client_id: '__OIDC_CLIENT_ID__'
+      client_secret: '__OIDC_CLIENT_SECRET__'
+      token_endpoint_auth_method: 'client_secret_basic'
+      scope: 'openid profile email'
+      claims_imports:
+        localpart:
+          action: 'require'
+          on_conflict: 'set'
+          template: '{{ "{{ user.preferred_username }}" }}'
+        displayname:
+          action: 'suggest'
+          template: '{{ "{{ user.name }}" }}'
+        email:
+          action: 'suggest'
+          template: '{{ "{{ user.email }}" }}'
+{{- end }}
 {{- if .Values.mas.enabled }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ printf "mas-%s-config" .Release.Name | quote }}
 data:
   config.yaml: |
-    http:
-      public_base: {{ printf "https://%s/" .Values.mas.hostname | quote }}
-      issuer: {{ printf "https://%s/" .Values.mas.hostname | quote }}
-      listeners:
-        - name: web
-          resources:
-            - name: discovery
-            - name: human
-            - name: oauth
-            - name: compat
-            - name: graphql
-            - name: assets
-            - name: health
-          binds:
-            - address: '[::]:8080'
-    database:
-      host: {{ .Values.synapse.psql.host | quote }}
-      port: {{ .Values.synapse.psql.port }}
-      username: "__DB_USERNAME__"
-      password: "__DB_PASSWORD__"
-      database: {{ .Values.mas.user.username | quote }}
-      ssl_mode: 'disable'
-    matrix:
-      kind: 'synapse'
-      homeserver: {{ .Values.synapse.serverName | quote }}
-      endpoint: 'http://{{ .Release.Name }}-synapse:8008'
-      secret_file: '/run/mas/MATRIX_SECRET'
-    secrets:
-      encryption_file: '/run/mas/ENCRYPTION_KEY'
-      keys:
-        - key_file: '/run/mas/RSA_KEY'
-    passwords:
-      enabled: false
-    upstream_oauth2:
-      providers:
-        - id: '01JZ7K9Q3P6B4M2N8R5T1V0XCY'
-          synapse_idp_id: 'oidc-authentik'
-          human_name: {{ .Values.synapse.oidc.displayName | quote }}
-          issuer: {{ printf "%s/application/o/%s-%s-%s-%s/" (trimSuffix "/" .Values.synapse.oidc.issuerBaseUrl) .Values.synapse.oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name | quote }}
-          client_id: "__OIDC_CLIENT_ID__"
-          client_secret: "__OIDC_CLIENT_SECRET__"
-          token_endpoint_auth_method: 'client_secret_basic'
-          scope: 'openid profile email'
-          claims_imports:
-            localpart:
-              action: 'require'
-              on_conflict: 'set'
-              template: '{{ "{{ user.preferred_username }}" }}'
-            displayname:
-              action: 'suggest'
-              template: '{{ "{{ user.name }}" }}'
-            email:
-              action: 'suggest'
-              template: '{{ "{{ user.email }}" }}'
+    {{ include "matrix.mas.config" (dict "root" . "database" (dict "host" .Values.synapse.psql.host "port" .Values.synapse.psql.port "database" .Values.mas.user.username)) | nindent 4 }}
+{{- if .Values.migration.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "mas-migration-%s-config" .Release.Name | quote }}
+data:
+  config.yaml: |
+    {{ include "matrix.mas.config" (dict "root" . "database" (dict "host" (ternary .Values.migration.dryRunDatabase.host .Values.synapse.psql.host (eq .Values.migration.mode "dry-run")) "port" (ternary .Values.migration.dryRunDatabase.port .Values.synapse.psql.port (eq .Values.migration.mode "dry-run")) "database" (ternary .Values.migration.dryRunDatabase.database .Values.mas.user.username (eq .Values.migration.mode "dry-run")))) | nindent 4 }}
+{{- end }}
 {{- end }}

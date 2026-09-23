@@ -49,9 +49,9 @@ data:
     enable_registration: {{ .Values.synapse.registration.enabled }}
     password_config:
       enabled: false
-{{- if and .Values.synapse.oidc.enabled (not .Values.mas.enabled) }}
+{{- if .Values.synapse.oidc.enabled }}
     oidc_providers:
-      - idp_id: 'authentik'
+      - idp_id: 'oidc-authentik'
         idp_name: {{ .Values.synapse.oidc.displayName | quote }}
         discover: true
         issuer: __OIDC_ISSUER_JSON__

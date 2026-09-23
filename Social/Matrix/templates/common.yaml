@@ -9,6 +9,19 @@
 {{- $_ := required "synapse.psql.terraformProvider is required" .Values.synapse.psql.terraformProvider -}}
 {{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
 {{- $_ := required "element.hostname is required" .Values.element.hostname -}}
+{{- if not (has .Values.migration.mode (list "check" "dry-run" "migrate")) }}
+{{- fail "migration.mode must be check, dry-run, or migrate" }}
+{{- end }}
+{{- if and .Values.migration.enabled (eq .Values.migration.mode "dry-run") }}
+{{- $_ := required "migration.dryRunDatabase.host is required for dry-run" .Values.migration.dryRunDatabase.host -}}
+{{- $_ := required "migration.dryRunDatabase.database is required for dry-run" .Values.migration.dryRunDatabase.database -}}
+{{- if eq .Values.migration.dryRunDatabase.database .Values.mas.user.username }}
+{{- fail "migration.dryRunDatabase.database must not be the production MAS database" }}
+{{- end }}
+{{- end }}
+{{- if and .Values.migration.enabled (eq .Values.migration.mode "migrate") (not .Values.migration.migrateApproved) }}
+{{- fail "migration.migrateApproved must be true before rendering a real migration Job" }}
+{{- end }}
 {{- if .Values.mas.enabled }}
 {{- $_ := required "mas.hostname is required" .Values.mas.hostname -}}
 {{- $_ := required "mas.user.connectionSecretName is required" .Values.mas.user.connectionSecretName -}}
@@ -36,8 +49,10 @@ defaultPodOptions:
 
 controllers:
   synapse:
-    replicas: 1
+    replicas: {{ .Values.synapse.replicas }}
     strategy: 'Recreate'
+    serviceAccount:
+      name: 'default'
     initContainers:
         config:
           image:
@@ -114,7 +129,9 @@ controllers:
               initialDelaySeconds: 30
 {{- if .Values.mas.enabled }}
   mas:
-    replicas: 1
+    replicas: {{ .Values.mas.replicas | default 1 }}
+    serviceAccount:
+      name: 'default'
     pod:
       securityContext:
         runAsNonRoot: true
@@ -132,10 +149,7 @@ controllers:
         args:
           - >-
             set -eu;
-            escape() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g' -e 's/"/\\"/g'; };
-            db_user=$(escape "$DB_USERNAME"); db_password=$(escape "$DB_PASSWORD");
-            oidc_client_id=$(escape "$OIDC_CLIENT_ID"); oidc_client_secret=$(escape "$OIDC_CLIENT_SECRET");
-            sed -e "s|__DB_USERNAME__|$db_user|g" -e "s|__DB_PASSWORD__|$db_password|g" -e "s|__OIDC_CLIENT_ID__|$oidc_client_id|g" -e "s|__OIDC_CLIENT_SECRET__|$oidc_client_secret|g" /run/mas-template/config.yaml > /run/mas-runtime/config.yaml
+            awk 'function replace(line, token, value, pos) { while ((pos = index(line, token)) > 0) line = substr(line, 1, pos - 1) value substr(line, pos + length(token)); return line } { print replace(replace(replace(replace($0, "__DB_USERNAME__", ENVIRON["DB_USERNAME"]), "__DB_PASSWORD__", ENVIRON["DB_PASSWORD"]), "__OIDC_CLIENT_ID__", ENVIRON["OIDC_CLIENT_ID"]), "__OIDC_CLIENT_SECRET__", ENVIRON["OIDC_CLIENT_SECRET"]) }' /run/mas-template/config.yaml > /run/mas-runtime/config.yaml
         env:
           DB_USERNAME:
             secretKeyRef:
@@ -186,8 +200,145 @@ controllers:
             spec:
               initialDelaySeconds: 30
 {{- end }}
+{{- if .Values.migration.enabled }}
+  masMigration:
+    enabled: true
+    type: 'job'
+    forceRename: {{ printf "%s-mas-syn2mas" .Release.Name | quote }}
+    serviceAccount:
+      identifier: 'masMigration'
+    job:
+      backoffLimit: 0
+      activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+    pod:
+      restartPolicy: 'Never'
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: 'OnRootMismatch'
+        seccompProfile:
+          type: 'RuntimeDefault'
+    initContainers:
+      synapse-config:
+        image:
+          repository: {{ .Values.synapse.image.repository | quote }}
+          tag: {{ .Values.synapse.image.tag | quote }}
+          pullPolicy: {{ .Values.synapse.image.pullPolicy | quote }}
+        command: ['python', '-c']
+        args:
+          - >-
+            from pathlib import Path; import json, os; src = Path('/run/template/homeserver.yaml'); p = Path('/run/synapse/homeserver.yaml'); s = src.read_text(); s = s.replace('__DB_USERNAME_JSON__', json.dumps(os.environ['SYNAPSE_DB_USERNAME'])); s = s.replace('__DB_PASSWORD_JSON__', json.dumps(os.environ['SYNAPSE_DB_PASSWORD'])); s = s.replace('__MACAROON_SECRET_KEY_JSON__', json.dumps(os.environ['MACAROON_SECRET_KEY'])); s = s.replace('__FORM_SECRET_JSON__', json.dumps(os.environ['FORM_SECRET'])); s = s.replace('__OIDC_CLIENT_ID_JSON__', json.dumps(os.environ['OIDC_CLIENT_ID'])); s = s.replace('__OIDC_CLIENT_SECRET_JSON__', json.dumps(os.environ['OIDC_CLIENT_SECRET'])); s = s.replace('__OIDC_ISSUER_JSON__', json.dumps(os.environ['OIDC_ISSUER_URL'])); p.write_text(s)
+        env:
+          MACAROON_SECRET_KEY:
+            secretKeyRef:
+              name: {{ .Values.synapse.secretManagement.secretName | quote }}
+              key: 'MACAROON_SECRET_KEY'
+          FORM_SECRET:
+            secretKeyRef:
+              name: {{ .Values.synapse.secretManagement.secretName | quote }}
+              key: 'FORM_SECRET'
+          SYNAPSE_DB_PASSWORD:
+            secretKeyRef:
+              name: {{ .Values.synapse.user.connectionSecretName | quote }}
+              key: 'password'
+          SYNAPSE_DB_USERNAME:
+            secretKeyRef:
+              name: {{ .Values.synapse.user.connectionSecretName | quote }}
+              key: 'username'
+          OIDC_CLIENT_ID:
+            secretKeyRef:
+              name: {{ .Values.synapse.oidc.secretName | quote }}
+              key: 'OIDC_CLIENT_ID'
+          OIDC_CLIENT_SECRET:
+            secretKeyRef:
+              name: {{ .Values.synapse.oidc.secretName | quote }}
+              key: 'OIDC_CLIENT_SECRET'
+          OIDC_ISSUER_URL:
+            secretKeyRef:
+              name: {{ .Values.synapse.oidc.secretName | quote }}
+              key: 'OIDC_ISSUER_URL'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+      mas-config:
+        image:
+          repository: 'docker.io/library/busybox'
+          tag: '1.37.0@sha256:4f93577242de6585bb7211f687673fc8a715571fdec8cf0901fd0724dc05dea2'
+          pullPolicy: 'IfNotPresent'
+        command: ['sh', '-c']
+        args:
+          - >-
+            set -eu;
+            awk 'function escape(v) { gsub(/\\\\/, "\\\\\\\\", v); gsub(/&/, "\\\\&", v); return v } { gsub(/__DB_USERNAME__/, escape(ENVIRON["DB_USERNAME"])); gsub(/__DB_PASSWORD__/, escape(ENVIRON["DB_PASSWORD"])); gsub(/__OIDC_CLIENT_ID__/, escape(ENVIRON["OIDC_CLIENT_ID"])); gsub(/__OIDC_CLIENT_SECRET__/, escape(ENVIRON["OIDC_CLIENT_SECRET"])); print }' /run/mas-template/config.yaml > /run/mas-runtime/config.yaml
+        env:
+          DB_USERNAME:
+            secretKeyRef:
+              name: {{ if and (eq .Values.migration.mode "dry-run") .Values.migration.dryRunDatabase.connectionSecretName }}{{ .Values.migration.dryRunDatabase.connectionSecretName | quote }}{{ else }}{{ .Values.mas.user.connectionSecretName | quote }}{{ end }}
+              key: 'username'
+          DB_PASSWORD:
+            secretKeyRef:
+              name: {{ if and (eq .Values.migration.mode "dry-run") .Values.migration.dryRunDatabase.connectionSecretName }}{{ .Values.migration.dryRunDatabase.connectionSecretName | quote }}{{ else }}{{ .Values.mas.user.connectionSecretName | quote }}{{ end }}
+              key: 'password'
+          OIDC_CLIENT_ID:
+            secretKeyRef:
+              name: {{ .Values.synapse.oidc.secretName | quote }}
+              key: 'OIDC_CLIENT_ID'
+          OIDC_CLIENT_SECRET:
+            secretKeyRef:
+              name: {{ .Values.synapse.oidc.secretName | quote }}
+              key: 'OIDC_CLIENT_SECRET'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+      database-safety:
+        image:
+          repository: 'docker.io/library/busybox'
+          tag: '1.37.0@sha256:4f93577242de6585bb7211f687673fc8a715571fdec8cf0901fd0724dc05dea2'
+          pullPolicy: 'IfNotPresent'
+        command: ['sh', '-c']
+        args:
+          - >-
+            set -eu;
+            if [ "$MODE" = 'dry-run' ] && { [ "$MIGRATION_DB" = "$PRODUCTION_DB" ] || [ "$MIGRATION_HOST" = "$PRODUCTION_HOST" ] && [ "$MIGRATION_DB" = "$PRODUCTION_DB" ]; }; then echo 'refusing to run dry-run against the production MAS database' >&2; exit 2; fi
+        env:
+          MODE:
+            value: {{ .Values.migration.mode | quote }}
+          MIGRATION_HOST:
+            value: {{ if eq .Values.migration.mode "dry-run" }}{{ .Values.migration.dryRunDatabase.host | quote }}{{ else }}{{ .Values.synapse.psql.host | quote }}{{ end }}
+          MIGRATION_DB:
+            value: {{ if eq .Values.migration.mode "dry-run" }}{{ .Values.migration.dryRunDatabase.database | quote }}{{ else }}{{ .Values.mas.user.username | quote }}{{ end }}
+          PRODUCTION_HOST:
+            value: {{ .Values.synapse.psql.host | quote }}
+          PRODUCTION_DB:
+            value: {{ .Values.mas.user.username | quote }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+    containers:
+      mas-migration:
+        image:
+          repository: {{ .Values.mas.image.repository | quote }}
+          tag: {{ .Values.mas.image.tag | quote }}
+          pullPolicy: {{ .Values.mas.image.pullPolicy | quote }}
+        command: ['/usr/local/bin/mas-cli']
+        args: {{ if eq .Values.migration.mode "check" }}['--config', '/run/mas-runtime/config.yaml', 'syn2mas', 'check', '--synapse-config', '/run/synapse/homeserver.yaml']{{ else if eq .Values.migration.mode "dry-run" }}['--config', '/run/mas-runtime/config.yaml', 'syn2mas', 'migrate', '--dry-run', '--synapse-config', '/run/synapse/homeserver.yaml']{{ else }}['--config', '/run/mas-runtime/config.yaml', 'syn2mas', 'migrate', '--synapse-config', '/run/synapse/homeserver.yaml']{{ end }}
+        resources:
+          {{- toYaml .Values.migration.resources | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+{{- end }}
   element:
     replicas: 2
+    serviceAccount:
+      name: 'default'
     pod:
       securityContext:
         runAsNonRoot: true
@@ -286,6 +437,46 @@ persistence:
             readOnly: true
       mas:
         mas:
+          - path: '/run/mas'
+            readOnly: true
+{{- end }}
+{{- if .Values.migration.enabled }}
+  migration-synapse-runtime:
+    type: 'emptyDir'
+    advancedMounts:
+      masMigration:
+        synapse-config:
+          - path: '/run/synapse'
+        mas-migration:
+          - path: '/run/synapse'
+  migration-mas-runtime:
+    type: 'emptyDir'
+    advancedMounts:
+      masMigration:
+        mas-config:
+          - path: '/run/mas-runtime'
+        mas-migration:
+          - path: '/run/mas-runtime'
+  mas-migration-template:
+    type: 'configMap'
+    name: {{ printf "mas-migration-%s-config" .Release.Name | quote }}
+    advancedMounts:
+      masMigration:
+        mas-config:
+          - path: '/run/mas-template'
+  migration-synapse-template:
+    type: 'configMap'
+    name: {{ printf "synapse-%s-config" .Release.Name | quote }}
+    advancedMounts:
+      masMigration:
+        synapse-config:
+          - path: '/run/template'
+  migration-mas-secrets:
+    type: 'secret'
+    name: {{ .Values.mas.secretManagement.secretName | quote }}
+    advancedMounts:
+      masMigration:
+        mas-migration:
           - path: '/run/mas'
             readOnly: true
 {{- end }}
@@ -436,4 +627,7 @@ route:
 {{- $_ := set .Values "controllers" $hardcodedValues.controllers -}}
 {{- $_ := set .Values "service" $hardcodedValues.service -}}
 {{- $_ := set .Values "route" $hardcodedValues.route -}}
+{{- if .Values.migration.enabled }}
+{{- $_ := set .Values "serviceAccount" (dict "masMigration" (dict "enabled" true "forceRename" (printf "%s-mas-migration" .Release.Name))) -}}
+{{- end }}
 {{- include "bjw-s.common.loader.generate" . -}}

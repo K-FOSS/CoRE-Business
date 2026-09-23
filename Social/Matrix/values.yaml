@@ -25,6 +25,7 @@ element:
 
 mas:
   enabled: true
+  replicas: 1
   hostname: 'matrix-auth.mylogin.space'
   keyGeneration:
     enabled: true
@@ -49,6 +50,7 @@ mas:
 synapse:
   hostname: 'matrix.mylogin.space'
   serverName: 'matrix.mylogin.space'
+  replicas: 1
   image:
     repository: 'ghcr.io/element-hq/synapse'
     tag: 'v1.139.0'
@@ -103,3 +105,22 @@ synapse:
     storageClass: 'longhorn'
     mediaStorePath: '/data/media_store'
     uploadsPath: '/data/uploads'
+
+migration:
+  # Deliberately false: the migration Job is never part of an ordinary sync.
+  enabled: true
+  mode: 'migrate'
+  dryRunDatabase:
+    host: ''
+    port: 5432
+    database: ''
+    connectionSecretName: ''
+  migrateApproved: true
+  activeDeadlineSeconds: 1800
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '256Mi'
+    limits:
+      cpu: '1'
+      memory: '1Gi'
