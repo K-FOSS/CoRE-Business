@@ -49,7 +49,7 @@ data:
     enable_registration: {{ .Values.synapse.registration.enabled }}
     password_config:
       enabled: false
-{{- if .Values.synapse.oidc.enabled }}
+{{- if and .Values.synapse.oidc.enabled (not .Values.mas.enabled) }}
     oidc_providers:
       - idp_id: 'authentik'
         idp_name: {{ .Values.synapse.oidc.displayName | quote }}

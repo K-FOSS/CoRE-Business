@@ -132,7 +132,7 @@ controllers:
         args:
           - >-
             set -eu;
-            escape() { printf '%s' "$1" | sed 's/[\\&|]/\\\\&/g'; };
+            escape() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g' -e 's/"/\\"/g'; };
             db_user=$(escape "$DB_USERNAME"); db_password=$(escape "$DB_PASSWORD");
             oidc_client_id=$(escape "$OIDC_CLIENT_ID"); oidc_client_secret=$(escape "$OIDC_CLIENT_SECRET");
             sed -e "s|__DB_USERNAME__|$db_user|g" -e "s|__DB_PASSWORD__|$db_password|g" -e "s|__OIDC_CLIENT_ID__|$oidc_client_id|g" -e "s|__OIDC_CLIENT_SECRET__|$oidc_client_secret|g" /run/mas-template/config.yaml > /run/mas-runtime/config.yaml
@@ -338,6 +338,41 @@ route:
         namespace: {{ .Values.gateway.namespace | quote }}
         sectionName: {{ .Values.gateway.sectionName | quote }}
     rules:
+{{- if .Values.mas.enabled }}
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/v1/login'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/v3/login'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/r0/login'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/v1/logout'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/v3/logout'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/r0/logout'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/v1/refresh'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/v3/refresh'
+          - path:
+              type: 'PathPrefix'
+              value: '/_matrix/client/r0/refresh'
+        backendRefs:
+          - identifier: 'mas'
+            port: 8080
+        timeouts:
+          request: {{ .Values.gateway.requestTimeout | quote }}
+{{- end }}
       - matches:
           - path:
               type: 'PathPrefix'

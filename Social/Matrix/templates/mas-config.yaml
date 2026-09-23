@@ -23,8 +23,8 @@ data:
     database:
       host: {{ .Values.synapse.psql.host | quote }}
       port: {{ .Values.synapse.psql.port }}
-      username: __DB_USERNAME__
-      password: __DB_PASSWORD__
+      username: "__DB_USERNAME__"
+      password: "__DB_PASSWORD__"
       database: {{ .Values.mas.user.username | quote }}
       ssl_mode: 'disable'
     matrix:
@@ -44,8 +44,8 @@ data:
           synapse_idp_id: 'oidc-authentik'
           human_name: {{ .Values.synapse.oidc.displayName | quote }}
           issuer: {{ printf "%s/application/o/%s-%s-%s-%s/" (trimSuffix "/" .Values.synapse.oidc.issuerBaseUrl) .Values.synapse.oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name | quote }}
-          client_id: __OIDC_CLIENT_ID__
-          client_secret: __OIDC_CLIENT_SECRET__
+          client_id: "__OIDC_CLIENT_ID__"
+          client_secret: "__OIDC_CLIENT_SECRET__"
           token_endpoint_auth_method: 'client_secret_basic'
           scope: 'openid profile email'
           claims_imports:

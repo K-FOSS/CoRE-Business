@@ -13,7 +13,9 @@ service; update the provider and host together through the owning ApplicationSet
 The chart also deploys [Matrix Authentication Service (MAS)](https://element-hq.github.io/matrix-authentication-service/)
 at `matrix-auth.mylogin.space` for ElementX/native Matrix authentication. MAS
 uses a dedicated PostgreSQL `User` database and the existing Authentik OIDC
-client. On first install, a restricted bootstrap Job generates its
+client. When MAS is enabled, it owns the browser/OIDC login flow; Synapse's
+legacy `oidc_providers` block is intentionally omitted to avoid conflicting
+with delegated OAuth authentication. On first install, a restricted bootstrap Job generates its
 `MATRIX_SECRET`, `ENCRYPTION_KEY`, and `RSA_KEY` into the retained Kubernetes
 Secret `matrix-mas-runtime`; later reconciliations only reuse that Secret.
 Alternatively, set `mas.keyGeneration.enabled` to `false` and provide the
