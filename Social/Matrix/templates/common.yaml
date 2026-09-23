@@ -1,0 +1,175 @@
+{{- include "bjw-s.common.loader.init" . -}}
+{{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
+{{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
+{{- $_ := required "synapse.hostname is required" .Values.synapse.hostname -}}
+{{- $_ := required "synapse.serverName is required" .Values.synapse.serverName -}}
+{{- $_ := required "synapse.psql.host must identify global PostgreSQL, not psql-local" .Values.synapse.psql.host -}}
+{{- $_ := required "synapse.psql.crossplaneProvider is required" .Values.synapse.psql.crossplaneProvider -}}
+{{- $_ := required "synapse.psql.terraformProvider is required" .Values.synapse.psql.terraformProvider -}}
+{{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
+{{- if and .Values.synapse.ldap.enabled (not .Values.synapse.ldap.existingSecret) }}
+{{- fail "synapse.ldap.existingSecret is required when LDAP is enabled" }}
+{{- end }}
+{{- define "app-template.hardcodedValues" -}}
+global:
+  nameOverride: {{ .Release.Name | quote }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 991
+    runAsGroup: 991
+    fsGroup: 991
+    fsGroupChangePolicy: 'OnRootMismatch'
+    seccompProfile:
+      type: 'RuntimeDefault'
+
+controllers:
+  synapse:
+    replicas: 1
+    strategy: 'Recreate'
+    initContainers:
+        config:
+          image:
+            repository: {{ .Values.synapse.image.repository | quote }}
+            tag: {{ .Values.synapse.image.tag | quote }}
+            pullPolicy: {{ .Values.synapse.image.pullPolicy | quote }}
+          command: ['python', '-c']
+          args:
+            - >-
+              from pathlib import Path; import json, os; src = Path('/run/template/homeserver.yaml'); p = Path('/run/synapse/homeserver.yaml'); s = src.read_text(); s = s.replace('__DB_USERNAME_JSON__', json.dumps(os.environ['SYNAPSE_DB_USERNAME'])); s = s.replace('__DB_PASSWORD_JSON__', json.dumps(os.environ['SYNAPSE_DB_PASSWORD'])); s = s.replace('__MACAROON_SECRET_KEY_JSON__', json.dumps(os.environ['MACAROON_SECRET_KEY'])); s = s.replace('__FORM_SECRET_JSON__', json.dumps(os.environ['FORM_SECRET'])); s = s.replace('__OIDC_CLIENT_ID_JSON__', json.dumps(os.environ['OIDC_CLIENT_ID'])); s = s.replace('__OIDC_CLIENT_SECRET_JSON__', json.dumps(os.environ['OIDC_CLIENT_SECRET'])); s = s.replace('__OIDC_ISSUER_JSON__', json.dumps(os.environ['OIDC_ISSUER_URL'])); p.write_text(s)
+          env:
+            MACAROON_SECRET_KEY:
+              secretKeyRef:
+                name: {{ .Values.synapse.secretManagement.secretName | quote }}
+                key: 'MACAROON_SECRET_KEY'
+            FORM_SECRET:
+              secretKeyRef:
+                name: {{ .Values.synapse.secretManagement.secretName | quote }}
+                key: 'FORM_SECRET'
+            SYNAPSE_DB_PASSWORD:
+              secretKeyRef:
+                name: {{ .Values.synapse.user.connectionSecretName | quote }}
+                key: 'password'
+            SYNAPSE_DB_USERNAME:
+              secretKeyRef:
+                name: {{ .Values.synapse.user.connectionSecretName | quote }}
+                key: 'username'
+            OIDC_CLIENT_ID:
+              secretKeyRef:
+                name: {{ .Values.synapse.oidc.secretName | quote }}
+                key: 'OIDC_CLIENT_ID'
+            OIDC_CLIENT_SECRET:
+              secretKeyRef:
+                name: {{ .Values.synapse.oidc.secretName | quote }}
+                key: 'OIDC_CLIENT_SECRET'
+            OIDC_ISSUER_URL:
+              secretKeyRef:
+                name: {{ .Values.synapse.oidc.secretName | quote }}
+                key: 'OIDC_ISSUER_URL'
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
+    containers:
+      synapse:
+        image:
+          repository: {{ .Values.synapse.image.repository | quote }}
+          tag: {{ .Values.synapse.image.tag | quote }}
+          pullPolicy: {{ .Values.synapse.image.pullPolicy | quote }}
+        command: ['python', '-m', 'synapse.app.homeserver']
+        args: ['--config-path', '/run/synapse/homeserver.yaml']
+        env: {}
+        ports:
+          - name: http
+            containerPort: 8008
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        resources:
+          {{- toYaml .Values.synapse.resources | nindent 10 }}
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 8008
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 8008
+            spec:
+              initialDelaySeconds: 30
+persistence:
+  runtime:
+    type: 'emptyDir'
+    globalMounts:
+      - path: '/run/synapse'
+  config:
+    type: 'configMap'
+    name: {{ printf "synapse-%s-config" .Release.Name | quote }}
+    globalMounts:
+      - path: '/run/template'
+  data:
+    type: 'persistentVolumeClaim'
+    storageClass: {{ .Values.synapse.storage.storageClass | quote }}
+    accessMode: 'ReadWriteOnce'
+    size: {{ .Values.synapse.storage.size | quote }}
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    globalMounts:
+      - path: '/data'
+{{- if .Values.synapse.ldap.enabled }}
+  ldap:
+    type: 'secret'
+    name: {{ .Values.synapse.ldap.existingSecret | quote }}
+    globalMounts:
+      - path: '/run/ldap'
+        readOnly: true
+{{- end }}
+
+service:
+  synapse:
+    controller: 'synapse'
+    ports:
+      http:
+        port: 8008
+
+route:
+  synapse:
+    kind: 'HTTPRoute'
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/appName: 'Matrix'
+      forecastle.stakater.com/group: 'Social'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames:
+      - {{ .Values.synapse.hostname | quote }}
+    parentRefs:
+      - name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'synapse'
+            port: 8008
+{{- end }}
+
+{{- $hardcodedValues := include "app-template.hardcodedValues" . | fromYaml -}}
+{{- $_ := mustMergeOverwrite .Values $hardcodedValues -}}
+{{- $_ := set .Values "controllers" $hardcodedValues.controllers -}}
+{{- $_ := set .Values "service" $hardcodedValues.service -}}
+{{- $_ := set .Values "route" $hardcodedValues.route -}}
+{{- include "bjw-s.common.loader.generate" . -}}

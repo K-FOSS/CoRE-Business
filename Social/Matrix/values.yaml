@@ -1,0 +1,63 @@
+# Site and cluster inputs are injected by the owning Backplane ApplicationSet.
+cluster:
+  name: ''
+datacenter: ''
+region: ''
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+synapse:
+  hostname: 'matrix.mylogin.space'
+  serverName: 'matrix.mylogin.space'
+  image:
+    repository: 'ghcr.io/element-hq/synapse'
+    tag: 'v1.139.0'
+    pullPolicy: 'IfNotPresent'
+  user:
+    name: 'matrix-synapse'
+    username: 'matrix-synapse'
+    connectionSecretName: 'matrix-synapse-user'
+  psql:
+    # This is the Backplane global/hub PostgreSQL service, not psql-local.
+    host: 'psql-int.core-home1-talos-prod.home1.yvr.mylogin.space'
+    port: 5432
+    database: 'synapse'
+    crossplaneProvider: 'psql-main'
+    terraformProvider: 'psql'
+  oidc:
+    enabled: true
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'matrix'
+    accessGroup: 'Matrix Users'
+    displayName: 'mylogin.space'
+    secretName: 'matrix-synapse-oidc'
+  ldap:
+    enabled: false
+    existingSecret: ''
+    uri: 'ldaps://ldap-home1.mylogin.space:636'
+    base: 'ou=users,dc=mylogin,dc=space'
+    bindDn: ''
+    bindPasswordKey: 'password'
+  registration:
+    enabled: false
+  secretManagement:
+    generatorName: 'matrix-synapse-secrets'
+    secretName: 'matrix-synapse-runtime'
+    bootstrapSecretName: 'matrix-synapse-runtime-bootstrap'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'mainvault-core'
+    remoteKey: 'Social/Matrix/Synapse'
+  resources:
+    requests:
+      cpu: '500m'
+      memory: '1Gi'
+    limits:
+      memory: '2Gi'
+  storage:
+    size: '50Gi'
+    storageClass: 'longhorn'

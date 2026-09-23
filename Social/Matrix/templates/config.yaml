@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "synapse-%s-config" .Release.Name | quote }}
+data:
+  homeserver.yaml: |
+    server_name: {{ .Values.synapse.serverName | quote }}
+    public_baseurl: {{ printf "https://%s/" .Values.synapse.hostname | quote }}
+    pid_file: /data/homeserver.pid
+    listeners:
+      - port: 8008
+        type: http
+        tls: false
+        x_forwarded: true
+        resources:
+          - names: [client, federation]
+    database:
+      name: psycopg2
+      args:
+        user: __DB_USERNAME_JSON__
+        password: __DB_PASSWORD_JSON__
+        database: {{ .Values.synapse.psql.database | quote }}
+        host: {{ .Values.synapse.psql.host | quote }}
+        port: {{ .Values.synapse.psql.port }}
+        cp_min: 5
+        cp_max: 20
+    media_store_path: /data/media_store
+    uploads_path: /data/uploads
+    signing_key_path: /data/{{ .Values.synapse.serverName }}.signing.key
+    macaroon_secret_key: __MACAROON_SECRET_KEY_JSON__
+    form_secret: __FORM_SECRET_JSON__
+    trusted_key_servers:
+      - server_name: matrix.org
+    report_stats: false
+    enable_registration: {{ .Values.synapse.registration.enabled }}
+    password_config:
+      enabled: false
+{{- if .Values.synapse.oidc.enabled }}
+    oidc_providers:
+      - idp_id: 'authentik'
+        idp_name: {{ .Values.synapse.oidc.displayName | quote }}
+        discover: true
+        issuer: __OIDC_ISSUER_JSON__
+        client_id: __OIDC_CLIENT_ID_JSON__
+        client_secret: __OIDC_CLIENT_SECRET_JSON__
+        scopes: ['openid', 'profile', 'email']
+        user_mapping_provider:
+          config:
+            localpart_template: '{{ "{{ user.preferred_username }}" }}'
+            display_name_template: '{{ "{{ user.name|default(user.preferred_username) }}" }}'
+            email_template: '{{ "{{ user.email }}" }}'
+{{- end }}
+{{- if .Values.synapse.ldap.enabled }}
+    modules:
+      - module: 'ldap_auth_provider.LdapAuthProviderModule'
+        config:
+          enabled: true
+          mode: 'search'
+          uri: {{ .Values.synapse.ldap.uri | quote }}
+          start_tls: false
+          base: {{ .Values.synapse.ldap.base | quote }}
+          bind_dn: {{ .Values.synapse.ldap.bindDn | quote }}
+          bind_password_file: '/run/ldap/{{ .Values.synapse.ldap.bindPasswordKey }}'
+          attributes:
+            uid: 'uid'
+            mail: 'mail'
+            name: 'displayName'
+{{- end }}
