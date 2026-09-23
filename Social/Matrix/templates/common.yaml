@@ -146,13 +146,19 @@ controllers:
 persistence:
   runtime:
     type: 'emptyDir'
-    globalMounts:
-      - path: '/run/synapse'
+    advancedMounts:
+      synapse:
+        config:
+          - path: '/run/synapse'
+        synapse:
+          - path: '/run/synapse'
   config:
     type: 'configMap'
     name: {{ printf "synapse-%s-config" .Release.Name | quote }}
-    globalMounts:
-      - path: '/run/template'
+    advancedMounts:
+      synapse:
+        config:
+          - path: '/run/template'
   data:
     type: 'persistentVolumeClaim'
     storageClass: {{ .Values.synapse.storage.storageClass | quote }}
@@ -161,8 +167,10 @@ persistence:
     retain: true
     annotations:
       argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
-    globalMounts:
-      - path: '/data'
+    advancedMounts:
+      synapse:
+        synapse:
+          - path: '/data'
   element-config:
     type: 'configMap'
     name: {{ printf "element-%s-config" .Release.Name | quote }}
@@ -175,9 +183,11 @@ persistence:
   ldap:
     type: 'secret'
     name: {{ .Values.synapse.ldap.existingSecret | quote }}
-    globalMounts:
-      - path: '/run/ldap'
-        readOnly: true
+    advancedMounts:
+      synapse:
+        synapse:
+          - path: '/run/ldap'
+            readOnly: true
 {{- end }}
 
 service:
