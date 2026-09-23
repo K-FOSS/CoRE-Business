@@ -6,6 +6,8 @@ data:
   homeserver.yaml: |
     server_name: {{ .Values.synapse.serverName | quote }}
     public_baseurl: {{ printf "https://%s/" .Values.synapse.hostname | quote }}
+    serve_server_wellknown: true
+    include_profile_updates_in_sync: true
 {{- if .Values.mas.enabled }}
     extra_well_known_client_content:
       org.matrix.msc2965.authentication:
