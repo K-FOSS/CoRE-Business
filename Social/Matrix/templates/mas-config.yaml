@@ -51,6 +51,7 @@ data:
           claims_imports:
             localpart:
               action: 'require'
+              on_conflict: 'set'
               template: '{{ "{{ user.preferred_username }}" }}'
             displayname:
               action: 'suggest'
