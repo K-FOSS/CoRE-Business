@@ -12,7 +12,7 @@ spec:
     enabled: true
     createUserDatabase: true
     databases:
-      - {{ .Values.synapse.psql.database | quote }}
+      - {{ default .Values.synapse.user.username .Values.synapse.psql.database | quote }}
     crossplane:
       crossplaneProvider: {{ .Values.synapse.psql.crossplaneProvider | quote }}
       terraformProvider: {{ .Values.synapse.psql.terraformProvider | quote }}

@@ -24,7 +24,7 @@ synapse:
     # This is the Backplane global/hub PostgreSQL service, not psql-local.
     host: 'psql-int.core-home1-talos-prod.home1.yvr.mylogin.space'
     port: 5432
-    database: 'synapse'
+    database: ''
     # Compatibility switch for the existing global database. Recreate it with
     # LC_COLLATE=C and LC_CTYPE=C before disabling this override.
     allowUnsafeLocale: true

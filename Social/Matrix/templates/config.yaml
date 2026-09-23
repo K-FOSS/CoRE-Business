@@ -19,12 +19,12 @@ data:
       args:
         user: __DB_USERNAME_JSON__
         password: __DB_PASSWORD_JSON__
-        database: {{ .Values.synapse.psql.database | quote }}
+        database: {{ default .Values.synapse.user.username .Values.synapse.psql.database | quote }}
         host: {{ .Values.synapse.psql.host | quote }}
         port: {{ .Values.synapse.psql.port }}
         cp_min: 5
         cp_max: 20
-        allow_unsafe_locale: {{ .Values.synapse.psql.allowUnsafeLocale }}
+    allow_unsafe_locale: {{ .Values.synapse.psql.allowUnsafeLocale }}
     media_store_path: /data/media_store
     uploads_path: /data/uploads
     signing_key_path: /data/{{ .Values.synapse.serverName }}.signing.key
@@ -32,6 +32,7 @@ data:
     form_secret: __FORM_SECRET_JSON__
     trusted_key_servers:
       - server_name: matrix.org
+    suppress_key_server_warning: true
     report_stats: false
     enable_registration: {{ .Values.synapse.registration.enabled }}
     password_config:
