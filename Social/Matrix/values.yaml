@@ -25,7 +25,7 @@ element:
 
 mas:
   enabled: true
-  hostname: 'auth.matrix.mylogin.space'
+  hostname: 'matrix-auth.mylogin.space'
   image:
     repository: 'ghcr.io/element-hq/matrix-authentication-service'
     tag: '1.20.0@sha256:1b0cc87ca6bd6186172a123228cfc3be4c94522d5ecc71e7baeaf23e48ce883a'
