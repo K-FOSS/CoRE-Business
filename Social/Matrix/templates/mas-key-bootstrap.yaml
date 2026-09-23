@@ -34,7 +34,7 @@ subjects:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ printf "%s-mas-key-bootstrap" .Release.Name | quote }}
+  name: {{ printf "%s-mas-key-init" .Release.Name | quote }}
   annotations:
     argocd.argoproj.io/sync-wave: '-20'
     argocd.argoproj.io/hook: 'Sync'
