@@ -8,6 +8,7 @@ gateway:
   name: 'main-gw'
   namespace: 'core-prod'
   sectionName: 'https-myloginspace'
+  requestTimeout: '1m'
 
 element:
   hostname: 'element.mylogin.space'
@@ -21,6 +22,27 @@ element:
       memory: '128Mi'
     limits:
       memory: '512Mi'
+
+mas:
+  enabled: true
+  hostname: 'auth.matrix.mylogin.space'
+  image:
+    repository: 'ghcr.io/element-hq/matrix-authentication-service'
+    tag: '1.20.0@sha256:1b0cc87ca6bd6186172a123228cfc3be4c94522d5ecc71e7baeaf23e48ce883a'
+    pullPolicy: 'IfNotPresent'
+  user:
+    name: 'matrix-mas'
+    username: 'matrix-mas'
+    connectionSecretName: 'matrix-mas-user'
+  secretManagement:
+    secretName: 'matrix-mas-runtime'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'mainvault-core'
+    remoteKey: 'Social/Matrix/MAS'
+    matrixSecretKey: 'MATRIX_SECRET'
+    encryptionKey: 'ENCRYPTION_KEY'
+    signingKey: 'RSA_KEY'
 
 synapse:
   hostname: 'matrix.mylogin.space'

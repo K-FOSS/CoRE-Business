@@ -9,6 +9,11 @@
 {{- $_ := required "synapse.psql.terraformProvider is required" .Values.synapse.psql.terraformProvider -}}
 {{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
 {{- $_ := required "element.hostname is required" .Values.element.hostname -}}
+{{- if .Values.mas.enabled }}
+{{- $_ := required "mas.hostname is required" .Values.mas.hostname -}}
+{{- $_ := required "mas.user.connectionSecretName is required" .Values.mas.user.connectionSecretName -}}
+{{- $_ := required "mas.secretManagement.secretName is required" .Values.mas.secretManagement.secretName -}}
+{{- end }}
 {{- if and .Values.synapse.ldap.enabled (not .Values.synapse.ldap.existingSecret) }}
 {{- fail "synapse.ldap.existingSecret is required when LDAP is enabled" }}
 {{- end }}
@@ -105,6 +110,80 @@ controllers:
             port: 8008
             spec:
               initialDelaySeconds: 30
+{{- if .Values.mas.enabled }}
+  mas:
+    replicas: 1
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: 'OnRootMismatch'
+    initContainers:
+      config:
+        image:
+          repository: 'docker.io/library/busybox'
+          tag: '1.37.0@sha256:4f93577242de6585bb7211f687673fc8a715571fdec8cf0901fd0724dc05dea2'
+          pullPolicy: 'IfNotPresent'
+        command: ['sh', '-c']
+        args:
+          - >-
+            set -eu;
+            escape() { printf '%s' "$1" | sed 's/[\\&|]/\\\\&/g'; };
+            db_user=$(escape "$DB_USERNAME"); db_password=$(escape "$DB_PASSWORD");
+            oidc_client_id=$(escape "$OIDC_CLIENT_ID"); oidc_client_secret=$(escape "$OIDC_CLIENT_SECRET");
+            sed -e "s|__DB_USERNAME__|$db_user|g" -e "s|__DB_PASSWORD__|$db_password|g" -e "s|__OIDC_CLIENT_ID__|$oidc_client_id|g" -e "s|__OIDC_CLIENT_SECRET__|$oidc_client_secret|g" /run/mas-template/config.yaml > /run/mas-runtime/config.yaml
+        env:
+          DB_USERNAME:
+            secretKeyRef:
+              name: {{ .Values.mas.user.connectionSecretName | quote }}
+              key: 'username'
+          DB_PASSWORD:
+            secretKeyRef:
+              name: {{ .Values.mas.user.connectionSecretName | quote }}
+              key: 'password'
+          OIDC_CLIENT_ID:
+            secretKeyRef:
+              name: {{ .Values.synapse.oidc.secretName | quote }}
+              key: 'OIDC_CLIENT_ID'
+          OIDC_CLIENT_SECRET:
+            secretKeyRef:
+              name: {{ .Values.synapse.oidc.secretName | quote }}
+              key: 'OIDC_CLIENT_SECRET'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+    containers:
+      mas:
+        image:
+          repository: {{ .Values.mas.image.repository | quote }}
+          tag: {{ .Values.mas.image.tag | quote }}
+          pullPolicy: {{ .Values.mas.image.pullPolicy | quote }}
+        command: ['/usr/local/bin/mas-cli']
+        args: ['--config', '/run/mas-runtime/config.yaml', 'server']
+        ports:
+          - name: http
+            containerPort: 8080
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 8080
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/health'
+            port: 8080
+            spec:
+              initialDelaySeconds: 30
+{{- end }}
   element:
     replicas: 2
     pod:
@@ -179,6 +258,35 @@ persistence:
         element:
           - path: '/app/config.json'
             subPath: 'config.json'
+{{- if .Values.mas.enabled }}
+  mas-template:
+    type: 'configMap'
+    name: {{ printf "mas-%s-config" .Release.Name | quote }}
+    advancedMounts:
+      mas:
+        config:
+          - path: '/run/mas-template'
+  mas-runtime:
+    type: 'emptyDir'
+    advancedMounts:
+      mas:
+        config:
+          - path: '/run/mas-runtime'
+        mas:
+          - path: '/run/mas-runtime'
+  mas-secrets:
+    type: 'secret'
+    name: {{ .Values.mas.secretManagement.secretName | quote }}
+    advancedMounts:
+      synapse:
+        synapse:
+          - path: '/run/mas'
+            readOnly: true
+      mas:
+        mas:
+          - path: '/run/mas'
+            readOnly: true
+{{- end }}
 {{- if .Values.synapse.ldap.enabled }}
   ldap:
     type: 'secret'
@@ -201,6 +309,14 @@ service:
     ports:
       http:
         port: 8080
+        appProtocol: 'kubernetes.io/ws'
+{{- if .Values.mas.enabled }}
+  mas:
+    controller: 'mas'
+    ports:
+      http:
+        port: 8080
+{{- end }}
 
 route:
   synapse:
@@ -227,6 +343,8 @@ route:
         backendRefs:
           - identifier: 'synapse'
             port: 8008
+        timeouts:
+          request: {{ .Values.gateway.requestTimeout | quote }}
   element:
     kind: 'HTTPRoute'
     annotations:
@@ -251,6 +369,29 @@ route:
         backendRefs:
           - identifier: 'element'
             port: 8080
+        timeouts:
+          request: {{ .Values.gateway.requestTimeout | quote }}
+{{- if .Values.mas.enabled }}
+  mas:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames:
+      - {{ .Values.mas.hostname | quote }}
+    parentRefs:
+      - name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'mas'
+            port: 8080
+{{- end }}
 {{- end }}
 
 {{- $hardcodedValues := include "app-template.hardcodedValues" . | fromYaml -}}

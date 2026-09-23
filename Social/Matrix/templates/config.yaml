@@ -6,6 +6,16 @@ data:
   homeserver.yaml: |
     server_name: {{ .Values.synapse.serverName | quote }}
     public_baseurl: {{ printf "https://%s/" .Values.synapse.hostname | quote }}
+{{- if .Values.mas.enabled }}
+    extra_well_known_client_content:
+      org.matrix.msc2965.authentication:
+        issuer: {{ printf "https://%s/" .Values.mas.hostname | quote }}
+        account: {{ printf "https://%s/account/" .Values.mas.hostname | quote }}
+    matrix_authentication_service:
+      enabled: true
+      endpoint: 'http://{{ .Release.Name }}-mas:8080'
+      secret_path: '/run/mas/matrix-secret'
+{{- end }}
     pid_file: /data/homeserver.pid
     listeners:
       - port: 8008

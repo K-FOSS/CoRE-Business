@@ -19,6 +19,7 @@ spec:
       access_group: {{ .Values.synapse.oidc.accessGroup | quote }}
       issuer_base_url: {{ trimSuffix "/" .Values.synapse.oidc.issuerBaseUrl | quote }}
       external_url: {{ printf "https://%s" .Values.synapse.hostname | quote }}
+      mas_external_url: {{ printf "https://%s" .Values.mas.hostname | quote }}
     module: |
       variable "cluster_name" { type = string }
       variable "datacenter" { type = string }
@@ -27,6 +28,7 @@ spec:
       variable "access_group" { type = string }
       variable "issuer_base_url" { type = string }
       variable "external_url" { type = string }
+      variable "mas_external_url" { type = string }
       data "authentik_flow" "authorization" { slug = "default-provider-authorization-explicit-consent" }
       data "authentik_flow" "invalidation" { slug = "default-provider-invalidation-flow" }
       data "authentik_property_mapping_provider_scope" "scopes" {
@@ -46,7 +48,10 @@ spec:
         client_secret = random_password.client_secret.result
         client_type = "confidential"
         signing_key = data.authentik_certificate_key_pair.signing_key.id
-        allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/_synapse/client/oidc/callback" }]
+        allowed_redirect_uris = [
+          { matching_mode = "strict", url = "${var.external_url}/_synapse/client/oidc/callback" },
+          { matching_mode = "strict", url = "${var.mas_external_url}/upstream/callback/01JZ7K9Q3P6B4M2N8R5T1V0XCY" },
+        ]
         property_mappings = data.authentik_property_mapping_provider_scope.scopes.ids
         authorization_flow = data.authentik_flow.authorization.id
         invalidation_flow = data.authentik_flow.invalidation.id

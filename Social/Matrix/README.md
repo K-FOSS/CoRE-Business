@@ -10,6 +10,15 @@ It creates a `mylogin.space/v1alpha1` `User` service account and a retained
 endpoint is intentionally `psql-int...`, never the site-local `psql-local...`
 service; update the provider and host together through the owning ApplicationSet.
 
+The chart also deploys [Matrix Authentication Service (MAS)](https://element-hq.github.io/matrix-authentication-service/)
+at `auth.matrix.mylogin.space` for ElementX/native Matrix authentication. MAS
+uses a dedicated PostgreSQL `User` database and the existing Authentik OIDC
+client. Its `MATRIX_SECRET`, `ENCRYPTION_KEY`, and `RSA_KEY` values must exist
+in the configured secret store at `Social/Matrix/MAS`; these values are
+required and are never generated or committed by the chart. Synapse delegates
+authentication to MAS and serves the `org.matrix.msc2965.authentication`
+advertisement from `/.well-known/matrix/client`.
+
 OIDC is provisioned through Authentik using the same Crossplane Terraform
 `Workspace` pattern as the [Fediverse stack](https://github.com/K-FOSS/CoRE-Business/tree/main/Social/Fediverse).
 Element automatically redirects unauthenticated users to Synapse SSO, which
@@ -25,9 +34,11 @@ The `User` claim follows the current [mylogin.space User XRD](https://github.com
 Synapse signing keys and media are retained on Longhorn. Before activation,
 add an owner under `Apps/Business/Social/` and inject `cluster.name`,
 `datacenter`, `region`, the global PostgreSQL values, and the target Gateway.
-Verify the User/XR conditions, PostgreSQL Role/Database, Authentik Workspace,
-OIDC callback, federation port policy, and a real Element login after Argo CD
-reconciliation. Synapse recommends PostgreSQL for production deployments and
+Verify both User/XR conditions and PostgreSQL Role/Database resources, the
+Authentik Workspace callbacks, MAS health and discovery endpoints, the
+ElementX well-known advertisement, federation port policy, and a real Element
+and ElementX login after Argo CD reconciliation. Synapse recommends PostgreSQL
+for production deployments and
 documents federation and reverse-proxy requirements in its [installation guide](https://github.com/element-hq/synapse/blob/develop/docs/setup/installation.md).
 
 The chart currently sets Synapse's `allow_unsafe_locale` because the existing

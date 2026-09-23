@@ -20,3 +20,28 @@ spec:
     - 'LDAPService'
   writeConnectionSecretToRef:
     name: {{ .Values.synapse.user.connectionSecretName | quote }}
+{{- if .Values.mas.enabled }}
+---
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ .Values.mas.user.name | quote }}
+  annotations:
+    argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+spec:
+  name: 'Matrix Authentication Service'
+  username: {{ .Values.mas.user.username | quote }}
+  serviceAccount: true
+  psql:
+    enabled: true
+    createUserDatabase: true
+    databases:
+      - {{ .Values.mas.user.username | quote }}
+    crossplane:
+      crossplaneProvider: {{ .Values.synapse.psql.crossplaneProvider | quote }}
+      terraformProvider: {{ .Values.synapse.psql.terraformProvider | quote }}
+  groups:
+    - 'LDAPService'
+  writeConnectionSecretToRef:
+    name: {{ .Values.mas.user.connectionSecretName | quote }}
+{{- end }}
