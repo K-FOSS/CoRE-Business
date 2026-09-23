@@ -57,13 +57,25 @@ spec:
         group = "${var.datacenter}-${var.cluster_name}"
         protocol_provider = authentik_provider_oauth2.synapse.id
       }
-      resource "authentik_group" "synapse_users" { name = var.access_group, is_superuser = false }
+      resource "authentik_group" "synapse_users" {
+        name = var.access_group
+        is_superuser = false
+      }
       resource "authentik_policy_binding" "application_access" {
         target = authentik_application.synapse.uuid
         group = authentik_group.synapse_users.id
         order = 0
       }
-      output "OIDC_CLIENT_ID" { value = authentik_provider_oauth2.synapse.client_id, sensitive = true }
-      output "OIDC_CLIENT_SECRET" { value = random_password.client_secret.result, sensitive = true }
-      output "OIDC_ISSUER_URL" { value = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/", sensitive = true }
+      output "OIDC_CLIENT_ID" {
+        value = authentik_provider_oauth2.synapse.client_id
+        sensitive = true
+      }
+      output "OIDC_CLIENT_SECRET" {
+        value = random_password.client_secret.result
+        sensitive = true
+      }
+      output "OIDC_ISSUER_URL" {
+        value = "${var.issuer_base_url}/application/o/${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}/"
+        sensitive = true
+      }
 {{- end }}
