@@ -44,7 +44,7 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ printf "%s-mas-key-bootstrap" .Release.Name | quote }}
+        app.kubernetes.io/name: {{ printf "%s-mas-key-bootstrap" .Release.Name | trunc 63 | trimSuffix "-" | quote }}
     spec:
       automountServiceAccountToken: true
       restartPolicy: OnFailure
