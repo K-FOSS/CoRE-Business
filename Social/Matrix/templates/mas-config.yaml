@@ -31,11 +31,11 @@ data:
       kind: 'synapse'
       homeserver: {{ .Values.synapse.serverName | quote }}
       endpoint: 'http://{{ .Release.Name }}-synapse:8008'
-      secret_file: '/run/mas/matrix-secret'
+      secret_file: '/run/mas/MATRIX_SECRET'
     secrets:
-      encryption_file: '/run/mas/encryption-key'
+      encryption_file: '/run/mas/ENCRYPTION_KEY'
       keys:
-        - key_file: '/run/mas/rsa-key'
+        - key_file: '/run/mas/RSA_KEY'
     passwords:
       enabled: false
     upstream_oauth2:

@@ -12,7 +12,9 @@
 {{- if .Values.mas.enabled }}
 {{- $_ := required "mas.hostname is required" .Values.mas.hostname -}}
 {{- $_ := required "mas.user.connectionSecretName is required" .Values.mas.user.connectionSecretName -}}
-{{- $_ := required "mas.secretManagement.secretName is required" .Values.mas.secretManagement.secretName -}}
+{{- if not .Values.mas.keyGeneration.enabled }}
+{{- $_ := required "mas.secretManagement.secretName is required when MAS key generation is disabled" .Values.mas.secretManagement.secretName -}}
+{{- end }}
 {{- end }}
 {{- if and .Values.synapse.ldap.enabled (not .Values.synapse.ldap.existingSecret) }}
 {{- fail "synapse.ldap.existingSecret is required when LDAP is enabled" }}

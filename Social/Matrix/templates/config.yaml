@@ -14,7 +14,7 @@ data:
     matrix_authentication_service:
       enabled: true
       endpoint: 'http://{{ .Release.Name }}-mas:8080'
-      secret_path: '/run/mas/matrix-secret'
+      secret_path: '/run/mas/MATRIX_SECRET'
 {{- end }}
     pid_file: /data/homeserver.pid
     listeners:

@@ -11,13 +11,22 @@ endpoint is intentionally `psql-int...`, never the site-local `psql-local...`
 service; update the provider and host together through the owning ApplicationSet.
 
 The chart also deploys [Matrix Authentication Service (MAS)](https://element-hq.github.io/matrix-authentication-service/)
-at `auth.matrix.mylogin.space` for ElementX/native Matrix authentication. MAS
+at `matrix-auth.mylogin.space` for ElementX/native Matrix authentication. MAS
 uses a dedicated PostgreSQL `User` database and the existing Authentik OIDC
-client. Its `MATRIX_SECRET`, `ENCRYPTION_KEY`, and `RSA_KEY` values must exist
-in the configured secret store at `Social/Matrix/MAS`; these values are
-required and are never generated or committed by the chart. Synapse delegates
+client. On first install, a restricted bootstrap Job generates its
+`MATRIX_SECRET`, `ENCRYPTION_KEY`, and `RSA_KEY` into the retained Kubernetes
+Secret `matrix-mas-runtime`; later reconciliations only reuse that Secret.
+Alternatively, set `mas.keyGeneration.enabled` to `false` and provide the
+existing Vault-backed Secret at `Social/Matrix/MAS`. Synapse delegates
 authentication to MAS and serves the `org.matrix.msc2965.authentication`
 advertisement from `/.well-known/matrix/client`.
+
+The bootstrap Job has only namespace-scoped `get` and `create` access to
+Secrets. It generates the RSA signing key as PKCS#8 PEM, which MAS accepts;
+the encryption and Matrix secrets are generated as random hexadecimal values.
+Deleting `matrix-mas-runtime` requires another Argo CD sync to regenerate it,
+and should only be done after confirming that MAS data and recovery material
+are no longer needed.
 
 OIDC is provisioned through Authentik using the same Crossplane Terraform
 `Workspace` pattern as the [Fediverse stack](https://github.com/K-FOSS/CoRE-Business/tree/main/Social/Fediverse).
@@ -31,7 +40,8 @@ The future/live owner must be an explicit Backplane ApplicationSet using the
 and the [storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
 The `User` claim follows the current [mylogin.space User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
 
-Synapse signing keys and media are retained on Longhorn. Before activation,
+Synapse signing keys, uploaded media, and temporary upload files are retained
+on the Longhorn-backed homeserver PVC under `/data`. Before activation,
 add an owner under `Apps/Business/Social/` and inject `cluster.name`,
 `datacenter`, `region`, the global PostgreSQL values, and the target Gateway.
 Verify both User/XR conditions and PostgreSQL Role/Database resources, the
