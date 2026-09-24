@@ -208,6 +208,7 @@ service:
         port: 5061
         targetPort: tls-sipext
         protocol: TCP
+{{- if .Values.freeswitch.publicExposure.enabled }}
   freeswitch-rtp:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
     controller: freeswitch
@@ -231,6 +232,7 @@ service:
           start: {{ .Values.freeswitch.rtp.min }}
           end: {{ sub (.Values.freeswitch.rtp.max | int) 1 }}
         protocol: UDP
+{{- end }}
 {{- end }}
 
 persistence:

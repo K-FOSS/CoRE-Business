@@ -22,7 +22,8 @@ uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
 `ServerSideApply=true`, and injects the following Helm merge values:
 
 - `env`, `datacenter`, `region`, and `cluster` identity/type/domain metadata.
-- `asterisk.enabled` and `freeswitch.enabled` per cluster.
+- `asterisk.enabled`, `freeswitch.enabled`, and FreeSWITCH public exposure per
+  cluster.
 - `hub` metadata for spoke clusters.
 - `gateway.name`, `gateway.namespace`, and `gateway.sectionName`.
 - `jitsi.domain` and `jitsi.tls.secretName`.
@@ -74,7 +75,7 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. |
-| FreeSWITCH | Disabled | When enabled, creates a service identity, SIP services/routes, and External Secret-backed configuration. |
+| FreeSWITCH | Disabled | When enabled, creates internal SIP services and External Secret-backed configuration. Public SIP/TLS routes and the PureLB RTP service require the separate `freeswitch.publicExposure.enabled` opt-in. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim

@@ -31,7 +31,7 @@ jitsi:
     secretName: 'myloginspace-default-certificates'
 
 network:
-  externalIP: '66.165.222.126'
+  externalIP: '66.165.222.103'
   egressIP: '66.165.222.103'
 
 asterisk:
@@ -51,6 +51,8 @@ asterisk:
 
 freeswitch:
   enabled: false
+  publicExposure:
+    enabled: false
   image:
     # renovate: datasource=docker depName=kristianfjones/freeswitch
     repository: 'kristianfjones/freeswitch'
