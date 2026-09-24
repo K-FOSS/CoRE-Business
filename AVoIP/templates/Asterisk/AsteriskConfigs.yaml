@@ -10,12 +10,17 @@ data:
   asterisk.conf: |
     [options]
     entityid={{ .Values.asterisk.entityID }}
+    systemname=avoip-asterisk
 
   modules.conf: |
     [modules]
     autoload=yes
     require = chan_pjsip.so
     require = res_http_media_cache.so
+    noload = chan_iax2.so
+    noload = res_config_ldap.so
+    noload = res_config_pgsql.so
+    noload = res_phoneprov.so
     noload = res_hep.so
     noload = res_hep_pjsip.so
     noload = res_hep_rtcp.so
