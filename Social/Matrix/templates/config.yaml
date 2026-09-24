@@ -77,7 +77,7 @@ data:
           uri: {{ printf "ldaps://ldap-%s.%s:636" .Values.datacenter .Values.domain | quote }}
           start_tls: false
           base: {{ printf "ou=users,dc=ldap,dc=%s" (replace "." ",dc=" .Values.domain) | quote }}
-          bind_dn: {{ printf "cn=%s,ou=users,dc=ldap,dc=%s" .Values.mas.user.username (replace "." ",dc=" .Values.domain) | quote }}
+          bind_dn: {{ printf "cn=%s,ou=users,dc=ldap,dc=%s" .Values.synapse.user.username (replace "." ",dc=" .Values.domain) | quote }}
           bind_password_file: '/run/ldap/{{ .Values.synapse.ldap.bindPasswordKey }}'
           attributes:
             uid: 'uid'

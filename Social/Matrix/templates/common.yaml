@@ -30,9 +30,6 @@
 {{- $_ := required "mas.secretManagement.secretName is required when MAS key generation is disabled" .Values.mas.secretManagement.secretName -}}
 {{- end }}
 {{- end }}
-{{- if and .Values.synapse.ldap.enabled (not .Values.synapse.ldap.existingSecret) }}
-{{- fail "synapse.ldap.existingSecret is required when LDAP is enabled" }}
-{{- end }}
 {{- define "app-template.hardcodedValues" -}}
 global:
   nameOverride: {{ .Release.Name | quote }}
@@ -484,7 +481,7 @@ persistence:
 {{- if .Values.synapse.ldap.enabled }}
   ldap:
     type: 'secret'
-    name: {{ .Values.synapse.ldap.existingSecret | quote }}
+    name: {{ .Values.synapse.user.connectionSecretName | quote }}
     advancedMounts:
       synapse:
         synapse:

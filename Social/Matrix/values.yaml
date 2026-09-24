@@ -79,8 +79,7 @@ synapse:
     displayName: 'mylogin.space'
     secretName: 'matrix-synapse-oidc'
   ldap:
-    enabled: true
-    existingSecret: ''
+    enabled: false
     bindPasswordKey: 'password'
   registration:
     enabled: false
@@ -106,7 +105,7 @@ synapse:
 
 migration:
   # Deliberately false: the migration Job is never part of an ordinary sync.
-  enabled: true
+  enabled: false
   mode: 'migrate'
   dryRunDatabase:
     host: ''
