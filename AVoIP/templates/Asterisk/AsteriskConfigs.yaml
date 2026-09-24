@@ -61,9 +61,10 @@ data:
     clearglobalvars=no
 
     [from-external]
-    exten => 18077893501,1,Playback(demo-echodone)
-      same => n,Wait(1.25)
-      same => n,Dial(PJSIP/5859@freeswitch)
+    exten => 18077893501,1,Answer()
+      same => n,Playback(demo-congrats)
+      same => n,Playback(demo-instruct)
       same => n,Playback(demo-echodone)
+      same => n,Echo()
       same => n,Hangup()
 {{- end }}
