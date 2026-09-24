@@ -23,6 +23,18 @@ controllers:
         app: '{{ include "avoip.fullname" . }}-asterisk'
     containers:
       asterisk:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            umask 077
+            printf '[freeswitch-auth]\n' > /tmp/avoip-pjsip-auth.conf
+            printf 'type=auth\n' >> /tmp/avoip-pjsip-auth.conf
+            printf 'auth_type=userpass\n' >> /tmp/avoip-pjsip-auth.conf
+            printf 'username=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-pjsip-auth.conf
+            printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-pjsip-auth.conf
+            exec /usr/sbin/asterisk
         image:
           # Built by the site-local Core-Docker project from the upstream
           # andrius/asterisk image source.
@@ -223,6 +235,16 @@ persistence:
         asterisk:
           - path: /etc/asterisk/pjsip.conf
             subPath: pjsip.conf
+  asterisk-user:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-asterisk'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /tmp/avoip-username
+            subPath: username
+          - path: /tmp/avoip-password
+            subPath: password
 {{- end }}
 {{- if .Values.freeswitch.enabled }}
   freeswitch-config:

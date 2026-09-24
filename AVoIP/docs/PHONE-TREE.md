@@ -59,8 +59,17 @@ The active SIP profiles are defined in
 
 - `external` listens on SIP `5080` and TLS SIP `5081`, advertises the configured
   external addresses, and uses the `public` context.
-- `asterisk` remains available for the separate Asterisk peer, but it is not a
-  public fallback route.
+- `asterisk` remains an internal, ACL-restricted peer for Asterisk. It requires
+  SIP digest authentication and resolves the supplied username with the LDAP
+  `cn=%s` filter; it is not a public fallback route. Asterisk obtains its
+  username/password from its generated mylogin.space `User` connection Secret
+  at startup, so neither credential is rendered into Git-managed configuration.
+
+Outbound authorization therefore has two independent gates: the request must
+come from the internal Asterisk ACL, and its username/password must validate
+against the LDAP-backed FreeSWITCH directory. Flowroute traffic uses the
+separate external profile and source CIDR ACL; it is not given access to the
+internal application-authenticated profile.
 
 ## Network and media
 
@@ -104,10 +113,18 @@ Before enabling the hub:
 1. Confirm the Flowroute ExternalSecret is ready and the gateway registers.
 2. Confirm the DID identity exists in the current mylogin.space directory and
    can register.
-3. Send a SIP MESSAGE to the DID and verify delivery through
+3. Confirm the Asterisk `User` claim produces its connection Secret and that
+   Asterisk starts with the generated PJSIP auth object (without printing the
+   Secret values).
+4. Send a SIP MESSAGE to the DID and verify delivery through
    `mod_sms_flowroute`.
-4. Place an inbound call and verify the registered DID endpoint receives it.
-5. Verify RTP, DTMF, TLS certificate validation, and provider failure behavior.
+5. Place an inbound call and verify the registered DID endpoint receives it.
+6. Place an outbound call through Asterisk and verify FreeSWITCH rejects an
+   invalid credential or non-internal source.
+7. Verify RTP, DTMF, TLS certificate validation, and provider failure behavior.
 
 FreeSWITCH references: [official documentation](https://developer.signalwire.com/freeswitch/)
 and the [XML dialplan documentation](https://developer.signalwire.com/freeswitch/FreeSWITCH-Explained/Configuration/Dialplan/).
+The LDAP lookup behavior follows [mod_xml_ldap](https://developer.signalwire.com/freeswitch/module-reference/xml-interfaces/mod_xml_ldap/),
+and the profile authentication boundary follows the [Sofia SIP profile
+documentation](https://developer.signalwire.com/freeswitch/users-and-endpoints/sip-profiles/).

@@ -23,7 +23,7 @@ data:
         </gateways>
         <settings>
             <param name="apply-inbound-acl" value="asterisk"/>
-            <param name="auth-calls" value="false"/>
+            <param name="auth-calls" value="true"/>
             <param name="context" value="public"/>
             <param name="rtp-ip" value="0.0.0.0"/>
             <param name="sip-ip" value="0.0.0.0"/>

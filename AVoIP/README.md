@@ -73,7 +73,7 @@ The chart defaults are intentionally mostly inactive:
 | Component | Chart behavior | User/API resources |
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
-| Asterisk | Disabled | When enabled, creates a service identity and External Secret-backed SIP configuration. |
+| Asterisk | Disabled | When enabled, creates a service identity and External Secret-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. |
 | FreeSWITCH | Disabled | When enabled, creates a service identity, SIP services/routes, and External Secret-backed configuration. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
@@ -88,6 +88,15 @@ also exposes `psql`, `s3`, `mysql`, `mongodb`, `email`, `username`, and
 [User Composition](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserComposition.yaml)
 does not consume `AVoIP`, `mysql`, or `mongodb`; this chart does not set those
 fields.
+
+When both voice services are enabled, FreeSWITCH authenticates the internal
+Asterisk peer against the LDAP-backed directory using the username/password
+from Asterisk's generated User connection Secret. The Asterisk container
+creates its local PJSIP auth object at startup from mounted Secret files; the
+credentials are not present in the chart ConfigMap or Helm values. FreeSWITCH
+keeps Flowroute inbound traffic on its separate source-ACL-protected external
+profile, so carrier ingress does not bypass application authentication. See
+[PHONE-TREE.md](docs/PHONE-TREE.md) for the call paths and verification checks.
 
 ## Live `dc1-k3s` snapshot
 

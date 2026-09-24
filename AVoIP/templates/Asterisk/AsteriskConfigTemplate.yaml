@@ -11,6 +11,10 @@ data:
     ; AVoIP's active PJSIP peers.
     ; Flowroute is terminated by FreeSWITCH; Asterisk only peers with FreeSWITCH.
 
+    ; The entrypoint writes this auth object from the mylogin.space User
+    ; connection Secret at startup. Credentials never enter this ConfigMap.
+    #include /tmp/avoip-pjsip-auth.conf
+
     [transport-udp]
     type=transport
     protocol=udp
@@ -22,6 +26,7 @@ data:
     [freeswitch]
     type=endpoint
     transport=transport-udp
+    outbound_auth=freeswitch-auth
     trust_id_inbound=yes
     trust_id_outbound=yes
     aors=freeswitch
