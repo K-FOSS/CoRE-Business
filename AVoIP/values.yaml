@@ -61,7 +61,7 @@ freeswitch:
     # PureLB address reserved for the public FreeSWITCH RTP service.
     address: '66.165.222.101'
     sip:
-      enabled: false
+      enabled: true
   preBridgeAudio:
     enabled: true
     url: 'https://static.mylogin.space/black_alert.mp3'
