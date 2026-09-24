@@ -86,6 +86,28 @@ controllers:
         fsGroup: 1000
         runAsGroup: 1000
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+    initContainers:
+      tls-material:
+        image:
+          repository: '{{ .Values.freeswitch.image.repository }}'
+          tag: '{{ .Values.freeswitch.image.tag }}'
+          digest: '{{ .Values.freeswitch.image.digest }}'
+          pullPolicy: '{{ .Values.freeswitch.image.pullPolicy }}'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            umask 077
+            cat /tls-input/tls.crt /tls-input/tls.key > /tls-output/agent.pem
+            cp /tls-input/tls.crt /tls-output/cafile.pem
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
     containers:
       freeswitch:
         image:
@@ -287,21 +309,21 @@ persistence:
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}
-  freeswitch-tls-certs:
+  freeswitch-tls-source:
     type: secret
     name: resolvemyhost-default-certificates
-    items:
-      - key: tls-combined.pem
-        path: agent.pem
-      - key: tls.crt
-        path: tls.crt
     advancedMounts:
       freeswitch:
+        tls-material:
+          - path: /tls-input
+  freeswitch-tls-certs:
+    type: emptyDir
+    advancedMounts:
+      freeswitch:
+        tls-material:
+          - path: /tls-output
         freeswitch:
-          - path: /etc/freeswitch/tls/agent.pem
-            subPath: agent.pem
-          - path: /etc/freeswitch/tls/cafile.pem
-            subPath: tls.crt
+          - path: /etc/freeswitch/tls
   freeswitch-sip-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-freeswitch-sip-configs'
