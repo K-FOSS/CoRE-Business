@@ -374,16 +374,31 @@ persistence:
       asterisk:
         asterisk:
           - path: /tmp
-  asterisk-runtime:
+  asterisk-run:
+    type: emptyDir
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /var/run/asterisk
+  asterisk-lib:
     type: emptyDir
     advancedMounts:
       asterisk:
         asterisk-sounds:
           - path: /var/lib/asterisk
         asterisk:
-          - path: /var/run/asterisk
           - path: /var/lib/asterisk
+  asterisk-log:
+    type: emptyDir
+    advancedMounts:
+      asterisk:
+        asterisk:
           - path: /var/log/asterisk
+  asterisk-spool:
+    type: emptyDir
+    advancedMounts:
+      asterisk:
+        asterisk:
           - path: /var/spool/asterisk
 {{- end }}
 {{- if .Values.freeswitch.enabled }}
