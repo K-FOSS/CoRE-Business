@@ -31,8 +31,8 @@ jitsi:
     secretName: 'myloginspace-default-certificates'
 
 network:
-  externalIP: '66.165.222.103'
-  egressIP: '66.165.222.103'
+  externalIP: '66.165.222.101'
+  egressIP: '66.165.222.101'
 
 asterisk:
   enabled: false
