@@ -99,7 +99,10 @@ data:
         }
       },
       "disable_custom_urls": true,
-      "brand": "Element"{{ if .Values.synapse.oidc.enabled }},
+      "brand": "Element",
+      "features": {
+        "feature_user_status": true
+      }{{ if .Values.synapse.oidc.enabled }},
       "sso_redirect_options": {
         "immediate": true
       }{{ end }}
