@@ -51,7 +51,7 @@ data:
     enable_registration: {{ .Values.synapse.registration.enabled }}
     password_config:
       enabled: false
-{{- if .Values.synapse.oidc.enabled }}
+{{- if and .Values.synapse.oidc.enabled (not .Values.mas.enabled) }}
     oidc_providers:
       # Synapse stores this provider as oidc-authentik internally; its parser
       # adds the oidc- prefix to this YAML idp_id.
