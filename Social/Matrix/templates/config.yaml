@@ -74,10 +74,10 @@ data:
         config:
           enabled: true
           mode: 'search'
-          uri: {{ .Values.synapse.ldap.uri | quote }}
+          uri: {{ printf "ldaps://ldap-%s.%s:636" .Values.datacenter .Values.domain | quote }}
           start_tls: false
-          base: {{ .Values.synapse.ldap.base | quote }}
-          bind_dn: {{ .Values.synapse.ldap.bindDn | quote }}
+          base: {{ printf "ou=users,dc=ldap,dc=%s" (replace "." ",dc=" .Values.domain) | quote }}
+          bind_dn: {{ printf "cn=%s,ou=users,dc=ldap,dc=%s" .Values.mas.user.username (replace "." ",dc=" .Values.domain) | quote }}
           bind_password_file: '/run/ldap/{{ .Values.synapse.ldap.bindPasswordKey }}'
           attributes:
             uid: 'uid'

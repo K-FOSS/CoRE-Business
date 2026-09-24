@@ -1,6 +1,7 @@
 {{- include "bjw-s.common.loader.init" . -}}
 {{- $_ := required "cluster.name must be injected by the owning ApplicationSet" .Values.cluster.name -}}
 {{- $_ := required "datacenter must be injected by the owning ApplicationSet" .Values.datacenter -}}
+{{- $_ := required "domain is required" .Values.domain -}}
 {{- $_ := required "region must be injected by the owning ApplicationSet" .Values.region -}}
 {{- $_ := required "synapse.hostname is required" .Values.synapse.hostname -}}
 {{- $_ := required "synapse.serverName is required" .Values.synapse.serverName -}}

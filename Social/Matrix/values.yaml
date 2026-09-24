@@ -2,6 +2,7 @@
 cluster:
   name: ''
 datacenter: ''
+domain: 'mylogin.space'
 region: ''
 
 gateway:
@@ -78,11 +79,8 @@ synapse:
     displayName: 'mylogin.space'
     secretName: 'matrix-synapse-oidc'
   ldap:
-    enabled: false
+    enabled: true
     existingSecret: ''
-    uri: 'ldaps://ldap-home1.mylogin.space:636'
-    base: 'ou=users,dc=mylogin,dc=space'
-    bindDn: ''
     bindPasswordKey: 'password'
   registration:
     enabled: false
