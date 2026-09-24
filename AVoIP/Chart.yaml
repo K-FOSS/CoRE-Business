@@ -6,6 +6,12 @@ name: core-business-avoip
 
 dependencies:
   #
+  # BJW-S common library chart for supported workloads and Services
+  #
+  - name: common
+    version: 5.0.1
+    repository: https://bjw-s-labs.github.io/helm-charts/
+  #
   # Collabora
   #
   - name: jitsi-meet

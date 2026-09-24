@@ -1,0 +1,307 @@
+{{- include "bjw-s.common.loader.init" . }}
+
+{{- define "avoip.common.values" -}}
+global:
+  nameOverride: '{{ .Release.Name }}'
+  createDefaultServiceAccount: false
+
+defaultPodOptions:
+  labels:
+    logs: loki-myloginspace
+
+controllers:
+{{- if .Values.asterisk.enabled }}
+  asterisk:
+    forceRename: '{{ include "avoip.fullname" . }}-asterisk'
+    strategy: RollingUpdate
+    replicas: 1
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: default
+    pod:
+      labels:
+        app: '{{ include "avoip.fullname" . }}-asterisk'
+    containers:
+      asterisk:
+        image:
+          repository: kristianfoss/newasterisk
+          tag: 'core'
+          pullPolicy: Always
+        ports:
+          - name: tcp-sip
+            containerPort: 5060
+            protocol: TCP
+          - name: udp-sip
+            containerPort: 5060
+            protocol: UDP
+          - name: tls-sips
+            containerPort: 5061
+            protocol: TCP
+{{- range untilStep (.Values.asterisk.rtp.min | int) (.Values.asterisk.rtp.max | int) 1 }}
+          - name: 'udp-{{ . }}'
+            containerPort: {{ . }}
+            protocol: UDP
+          - name: 'tcp-{{ . }}'
+            containerPort: {{ . }}
+            protocol: TCP
+{{- end }}
+{{- end }}
+{{- if .Values.freeswitch.enabled }}
+  freeswitch:
+    forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
+    strategy: RollingUpdate
+    replicas: 1
+    minReadySeconds: 30
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: default
+    pod:
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsUser: 1000
+      labels:
+        app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
+    containers:
+      freeswitch:
+        image:
+          repository: kristianfjones/freeswitch
+          tag: 'latest'
+          pullPolicy: Always
+        env:
+          - name: USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-freeswitch'
+                key: username
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-freeswitch'
+                key: password
+        securityContext:
+          capabilities:
+            add:
+              - IPC_LOCK
+              - NET_ADMIN
+              - NET_RAW
+              - NET_BROADCAST
+              - SYS_NICE
+              - SYS_RESOURCE
+        ports:
+          - name: udp-sip
+            containerPort: 5060
+            protocol: UDP
+          - name: tcp-sip
+            containerPort: 5060
+            protocol: TCP
+          - name: tls-sips
+            containerPort: 5061
+            protocol: TCP
+          - name: udp-sipext
+            containerPort: 5080
+            protocol: UDP
+          - name: tcp-sipext
+            containerPort: 5080
+            protocol: TCP
+          - name: tls-sipext
+            containerPort: 5081
+            protocol: TCP
+
+{{- end }}
+
+service:
+{{- if .Values.asterisk.enabled }}
+  asterisk:
+    forceRename: '{{ include "avoip.fullname" . }}-asterisk'
+    controller: asterisk
+    extraSelectorLabels:
+      app: '{{ include "avoip.fullname" . }}-asterisk'
+    ports:
+      tcp-sip:
+        port: 5060
+        targetPort: tcp-sip
+        protocol: TCP
+      udp-sip:
+        port: 5060
+        targetPort: udp-sip
+        protocol: UDP
+{{- end }}
+{{- if .Values.freeswitch.enabled }}
+  freeswitch:
+    forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
+    controller: freeswitch
+    extraSelectorLabels:
+      app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
+    ports:
+      tcp-sip:
+        port: 5060
+        targetPort: tcp-sip
+        protocol: TCP
+      udp-sip:
+        port: 5060
+        targetPort: udp-sip
+        protocol: UDP
+      tls-sips:
+        port: 5061
+        targetPort: tls-sips
+        protocol: TCP
+  freeswitch-ext:
+    forceRename: '{{ include "avoip.fullname" . }}-ext-freeswitch'
+    controller: freeswitch
+    extraSelectorLabels:
+      app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
+    ports:
+      tcp-sip:
+        port: 5060
+        targetPort: tcp-sipext
+        protocol: TCP
+      udp-sip:
+        port: 5060
+        targetPort: udp-sipext
+        protocol: UDP
+      tls-sips:
+        port: 5061
+        targetPort: tls-sipext
+        protocol: TCP
+  freeswitch-rtp:
+    forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
+    controller: freeswitch
+    type: LoadBalancer
+    loadBalancerClass: purelb.io/purelb
+    annotations:
+      purelb.io/allow-shared-ip: main-gw.resolvemy.host
+      purelb.io/service-group: main-public
+      purelb.io/allow-local: 'true'
+    extraSelectorLabels:
+      app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
+    ports:
+      sip-udp:
+        port: 5060
+        targetPort: 5080
+        protocol: UDP
+      sip-tcp:
+        port: 5060
+        targetPort: 5080
+        protocol: TCP
+      rtp:
+        portRange:
+          start: {{ .Values.freeswitch.rtp.min }}
+          end: {{ sub (.Values.freeswitch.rtp.max | int) 1 }}
+        protocol: UDP
+{{- end }}
+
+persistence:
+{{- if .Values.asterisk.enabled }}
+  asterisk-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-asterisk-configs'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /etc/asterisk/rtp.conf
+            subPath: rtp.conf
+          - path: /etc/asterisk/extensions.conf
+            subPath: extensions.conf
+          - path: /etc/asterisk/logger.conf
+            subPath: logger.conf
+          - path: /etc/asterisk/modules.conf
+            subPath: modules.conf
+          - path: /etc/asterisk/asterisk.conf
+            subPath: asterisk.conf
+  asterisk-secret-config:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-asterisk-sip-config'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /etc/asterisk/pjsip.conf
+            subPath: pjsip.conf
+{{- end }}
+{{- if .Values.freeswitch.enabled }}
+  freeswitch-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-freeswitch-configs'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/freeswitch.xml
+            subPath: freeswitch.xml
+          - path: /etc/freeswitch/vars.xml
+            subPath: vars.xml
+          - path: /etc/freeswitch/extensions.conf
+            subPath: extensions.conf
+  freeswitch-sms-config:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-freeswitch-sms'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/autoload_configs/sms_flowroute.conf.xml
+            subPath: sms_flowroute.conf.xml
+  freeswitch-misc-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-freeswitch-misc-configs'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+{{- range $file := list "verto.conf.xml" "ldap.conf.xml" "opus.conf.xml" "opal.conf.xml" "alsa.conf.xml" "fifo.conf.xml" "local_stream.conf.xml" "modules.conf.xml" "ivr.conf.xml" "switch.conf.xml" "logfile.conf.xml" "acl.conf.xml" "sofia.conf.xml" "voicemail.conf.xml" }}
+          - path: /etc/freeswitch/autoload_configs/{{ $file }}
+            subPath: {{ $file }}
+{{- end }}
+  freeswitch-ivr-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-freeswitch-ivr-configs'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/ivr_menus/demo-ivr.xml
+            subPath: demo-ivr.xml
+  freeswitch-tls-certs:
+    type: secret
+    name: resolvemyhost-default-certificates
+    items:
+      - key: tls-combined.pem
+        path: agent.pem
+      - key: tls.crt
+        path: tls.crt
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/tls/agent.pem
+            subPath: agent.pem
+          - path: /etc/freeswitch/tls/cafile.pem
+            subPath: tls.crt
+  freeswitch-sip-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-freeswitch-sip-configs'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/sip_profiles/external.xml
+            subPath: external.xml
+          - path: /etc/freeswitch/sip_profiles/asterisk.xml
+            subPath: asterisk.xml
+  freeswitch-upstream-config:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-freeswitch-upstream'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/sip_profiles/external/flowroute.xml
+            subPath: flowroute.xml
+  freeswitch-dialplan-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/dialplan/default.xml
+            subPath: default.xml
+          - path: /etc/freeswitch/dialplan/public.xml
+            subPath: public.xml
+{{- end }}
+{{- end }}
+
+{{- $_ := mergeOverwrite .Values (include "avoip.common.values" . | fromYaml) -}}
+{{- include "bjw-s.common.loader.generate" . }}

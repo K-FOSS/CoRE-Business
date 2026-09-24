@@ -1,3 +1,7 @@
+global:
+  # BJW-S common should use Kubernetes' namespace default ServiceAccount.
+  createDefaultServiceAccount: false
+
 env: 'prod'
 
 datacenter: 'dc1'
