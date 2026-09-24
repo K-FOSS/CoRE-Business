@@ -62,7 +62,7 @@ spec:
         name = "Matrix Synapse"
         slug = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
         group = "${var.datacenter}-${var.cluster_name}"
-        meta_hide = true
+        meta_launch_url = "blank://blank"
         protocol_provider = authentik_provider_oauth2.synapse.id
       }
       resource "authentik_application" "element" {
