@@ -42,7 +42,11 @@ controllers:
           - /bin/sh
           - -c
         args:
-          - cp -R /usr/share/asterisk/sounds/. /var/lib/asterisk/sounds/
+          - |
+            set -eu
+            mkdir -p /var/lib/asterisk/sounds/en /var/log/asterisk/cdr-csv
+            cp -R /usr/share/asterisk/sounds/en/. /var/lib/asterisk/sounds/en/
+            test -f /var/lib/asterisk/sounds/en/demo-congrats.gsm
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -392,6 +396,8 @@ persistence:
     type: emptyDir
     advancedMounts:
       asterisk:
+        asterisk-sounds:
+          - path: /var/log/asterisk
         asterisk:
           - path: /var/log/asterisk
   asterisk-spool:
