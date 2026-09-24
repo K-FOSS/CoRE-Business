@@ -25,7 +25,7 @@ Service DNS address generated from the release namespace.
 The Authentik provider uses the site's `tls` certificate key pair so TREK receives
 an asymmetric (RS256) ID token, as required by TREK 4.3.0.
 
-The AdventureLog frontend, AdventureLog API, TREK, and AirTrail routes are protected
+The AdventureLog frontend, AdventureLog API, TREK UI, and AirTrail routes are protected
 fail-closed by Envoy Gateway
 [`SecurityPolicy`](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/)
 resources that call the site's Authentik forward-auth outpost
@@ -36,6 +36,11 @@ Terraform Workspace uses the short external name `core-personal-travel-auth`
 while retaining its Kubernetes object name for upgrade continuity; this avoids
 exceeding Kubernetes' 63-byte state-lock label limit when the site injects a
 long release name.
+
+TREK's versioned `/api/v1` route is intentionally separate from the protected
+UI route so requests authenticated by a TREK API key reach TREK directly. TREK
+still validates the key and its read scopes; only the Authentik browser forward-auth
+check is bypassed for that path. The `/mcp` endpoint remains behind Authentik.
 
 The chart runs AdventureLog's split frontend and backend images behind the
 `main-gw` Gateway. The frontend is exposed at `adventurelog.mylogin.space` and

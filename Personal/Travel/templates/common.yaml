@@ -314,6 +314,21 @@ route:
         backendRefs:
           - identifier: 'trek'
             port: 3000
+  trek-api:
+    kind: 'HTTPRoute'
+    forceRename: 'core-personal-travel-trek-api'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames: []
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/api/v1'
+        backendRefs:
+          - identifier: 'trek'
+            port: 3000
   airtrail:
     kind: 'HTTPRoute'
     forceRename: 'core-personal-travel-airtrail'
@@ -474,10 +489,12 @@ route:
 {{- $_ := set .Values.route.frontend "hostnames" (list .Values.adventurelog.hostname) -}}
 {{- $_ := set .Values.route.backend "hostnames" (list .Values.adventurelog.apiHostname) -}}
 {{- $_ := set .Values.route.trek "hostnames" (list .Values.trek.hostname) -}}
+{{- $_ := set (index .Values.route "trek-api") "hostnames" (list .Values.trek.hostname) -}}
 {{- $_ := set .Values.route.airtrail "hostnames" (list .Values.airtrail.hostname) -}}
 {{- $parentRefs := list (dict "kind" "Gateway" "name" .Values.gateway.name "namespace" .Values.gateway.namespace "sectionName" .Values.gateway.sectionName) -}}
 {{- $_ := set .Values.route.frontend "parentRefs" $parentRefs -}}
 {{- $_ := set .Values.route.backend "parentRefs" $parentRefs -}}
 {{- $_ := set .Values.route.trek "parentRefs" $parentRefs -}}
+{{- $_ := set (index .Values.route "trek-api") "parentRefs" $parentRefs -}}
 {{- $_ := set .Values.route.airtrail "parentRefs" $parentRefs -}}
 {{- include "bjw-s.common.loader.generate" . -}}
