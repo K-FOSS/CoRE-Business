@@ -69,6 +69,12 @@ Secrets, SSO `User` claims, Cilium egress policy, and Gateway API routes remain
 local templates because they are application-specific or operator-specific
 resources not provided by the common chart.
 
+Both voice controllers use surge-first `RollingUpdate` settings with one extra
+pod allowed and zero unavailable replicas. Asterisk uses its local CLI uptime
+check for startup, readiness, and liveness; FreeSWITCH uses a non-network
+process/configuration check because its event socket is not enabled. Each
+controller must pass startup and readiness before the old replica is removed.
+
 The chart defaults are intentionally mostly inactive:
 
 | Component | Chart behavior | User/API resources |
