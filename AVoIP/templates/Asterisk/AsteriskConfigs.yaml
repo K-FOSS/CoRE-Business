@@ -9,6 +9,7 @@ metadata:
 data:
   asterisk.conf: |
     [options]
+    languageprefix=yes
     entityid={{ .Values.asterisk.entityID }}
     systemname=avoip-asterisk
 
