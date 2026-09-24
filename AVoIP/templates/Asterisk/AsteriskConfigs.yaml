@@ -41,6 +41,10 @@ data:
     noload => chan_sip.so
     noload => app_voicemail_imap.so
     noload => app_voicemail_odbc.so
+    noload => app_fax.so
+    noload => app_faxdetect.so
+    noload => res_fax.so
+    noload => res_fax_spandsp.so
 
   logger.conf: |
     [general]

@@ -66,12 +66,19 @@ freeswitch:
     enabled: true
     url: 'https://static.mylogin.space/black_alert.mp3'
   image:
-    # renovate: datasource=docker depName=kristianfjones/freeswitch
-    repository: 'kristianfjones/freeswitch'
-    tag: 'latest'
+    # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
+    repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'
+    # Forgejo build tags are immutable; latest-build-64 is the successful build
+    # for Core-Docker run 64, which includes the FreeSWITCH dependency fix.
+    tag: 'latest-build-64'
     digest: ''
-    pullPolicy: 'Always'
+    pullPolicy: 'IfNotPresent'
   did: '18077893501'
+  fax:
+    enabled: true
+    spoolPath: '/var/spool/freeswitch'
+    ident: 'AVoIP'
+    header: 'AVoIP'
   flowroute:
     signalingCIDRs:
       - '34.210.91.112/28'

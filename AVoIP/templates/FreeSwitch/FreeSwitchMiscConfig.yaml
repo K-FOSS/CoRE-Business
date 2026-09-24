@@ -55,6 +55,7 @@ data:
         <load module="mod_dialplan_xml"/>
         <load module="mod_dptools"/>
         <load module="mod_shout"/>
+        <load module="mod_spandsp"/>
         <load module="mod_commands"/>
         <load module="mod_event_socket"/>
         <load module="mod_opus"/>
@@ -116,6 +117,20 @@ data:
         <param name="listen-port" value="8021"/>
         <param name="password" value="$${password}"/>
       </settings>
+    </configuration>
+
+  spandsp.conf.xml: |
+    <configuration name="spandsp.conf" description="SpanDSP config">
+      <fax-settings>
+        <param name="use-ecm" value="true"/>
+        <param name="verbose" value="false"/>
+        <param name="enable-t38" value="true"/>
+        <param name="enable-t38-request" value="true"/>
+        <param name="ident" value="{{ $.Values.freeswitch.fax.ident }}"/>
+        <param name="header" value="{{ $.Values.freeswitch.fax.header }}"/>
+        <param name="spool-dir" value="{{ $.Values.freeswitch.fax.spoolPath }}"/>
+        <param name="file-prefix" value="faxrx"/>
+      </fax-settings>
     </configuration>
 
   acl.conf.xml: |

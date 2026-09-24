@@ -8,11 +8,11 @@ The chart defaults Asterisk and FreeSWITCH to disabled. The current [AVoIP
 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml)
 enables both only on `core-dc1-talos-prod`.
 
-Public SIP exposure is currently disabled by default with
-`freeswitch.publicExposure.enabled: false`. This keeps the FreeSWITCH
-ClusterIP services and outbound Flowroute registration available without
-creating public TCP/UDP/TLS routes or a PureLB RTP LoadBalancer. Public
-exposure is an explicit later opt-in.
+Public SIP exposure is disabled by default with
+`freeswitch.publicExposure.sip.enabled: false`. FreeSWITCH keeps its internal
+ClusterIP services and outbound Flowroute registration, while the optional
+PureLB LoadBalancer exposes RTP only at the requested
+`freeswitch.publicExposure.address`.
 
 ## Configured DID
 
@@ -33,12 +33,18 @@ Inbound calls follow this path:
 3. The external profile applies the `flowroute` ACL and rejects sources that
    are not in the configured Flowroute signaling CIDRs.
 4. The public context matches only the configured DID.
-5. FreeSWITCH bridges the call through its internal `asterisk` gateway to the
-   Asterisk ClusterIP service. This path does not query LDAP or require a
-   directory registration for the DID.
-6. Asterisk receives the DID in its `from-external` context and handles the
-   application route. If the internal Asterisk peer is unavailable, the call
-   fails; there are no public fallback sample routes.
+5. With fax handling enabled, FreeSWITCH answers the carrier leg, disables echo
+   cancellation, waits two seconds for fax tone stabilization, and runs
+   SpanDSP `rxfax` with T.38 negotiation enabled.
+6. FreeSWITCH writes the received TIFF to its ephemeral fax spool and logs the
+   fax result, then hangs up. The DID does not bridge to Asterisk while fax
+   handling is enabled.
+
+FreeSWITCH emits INFO log markers when the DID call is received and when fax
+processing completes. The receive implementation uses
+[`mod_spandsp`](https://developer.signalwire.com/freeswitch/applications/fax/)
+and its `rxfax` application. Received TIFFs are lost when the pod is replaced;
+durable storage and delivery are not configured yet.
 
 The public dialplan is in
 [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
@@ -76,6 +82,9 @@ The active SIP profiles are defined in
   `cn=%s` filter; it is not a public fallback route. Asterisk obtains its
   username/password from its generated mylogin.space `User` connection Secret
   at startup, so neither credential is rendered into Git-managed configuration.
+- The image's default `internal`, `internal-ipv6`, and `external-ipv6` Sofia
+  profiles are overlaid with empty files so they cannot compete for SIP port
+  `5060` or create an unintended additional listener.
 
 Outbound authorization therefore has two independent gates: the request must
 come from the internal Asterisk ACL, and its username/password must validate
@@ -87,26 +96,48 @@ bridged to Asterisk without LDAP authentication.
 
 - Asterisk runs as an unprivileged UID/GID `1000`, with all Linux capabilities
   dropped, privilege escalation disabled, and the Kubernetes RuntimeDefault
-  seccomp profile. Its root filesystem is read-only; runtime, spool, log, and
-  temporary files use ephemeral `emptyDir` mounts and are lost when the pod is
-  replaced.
+  seccomp profile. Its root filesystem is read-only; its run, library, log,
+  spool, and temporary files use separate ephemeral `emptyDir` mounts and are
+  lost when the pod is replaced.
+- Asterisk's PJSIP transport treats the cluster pod network as local and does
+  not advertise the public NAT address to FreeSWITCH. With no external media
+  or signaling override configured, Asterisk advertises its pod address for
+  the internal SIP/RTP leg; the Asterisk ClusterIP Service remains the SIP
+  rendezvous point.
+- The Asterisk init container copies packaged sounds from the image's
+  `/usr/share/asterisk/sounds` into the writable library volume at
+  `/var/lib/asterisk/sounds`, which is the normal `Playback()` search path.
 - Asterisk's global Entity ID is explicitly configured in `values.yaml`, so
   startup does not need to read a hardware MAC address from the pod interface.
+- Asterisk startup, readiness, and liveness use `asterisk -rx 'core show
+  uptime'`; FreeSWITCH uses a non-network process/configuration check because
+  its event socket is not enabled. Startup checks allow up to three minutes
+  for FreeSWITCH and two minutes for Asterisk.
+- Both controllers use surge-first rolling updates with zero unavailable pods
+  and require the replacement to pass readiness before the old replica is
+  removed.
 - FreeSWITCH runs with `-nf -nc` so it remains a foreground Kubernetes process
   without attaching an interactive console prompt to the container log stream.
-- When `freeswitch.publicExposure.enabled` is true, Gateway API routes expose
-  TCP, UDP, and TLS SIP through `main-gw`; they are not rendered by default.
+- FreeSWITCH's Event Socket is enabled on loopback TCP `8021` for local control
+  and diagnostics. It is not exposed through a Service or public route, and its
+  password comes from the existing Secret-backed FreeSWITCH credential.
+- Public TCP/UDP SIP Gateway API routes are not rendered unless
+  `freeswitch.publicExposure.sip.enabled` is explicitly enabled. The existing
+  TLS SIP route remains attached to the configured `core-prod/main-gw`
+  Gateway.
 - The external SIP profile only accepts signaling from the Flowroute PoP CIDRs
   in `freeswitch.flowroute.signalingCIDRs`.
 - TLS uses `sip.resolvemy.host` and the configured certificate Secret.
 - The certificate Secret is consumed at runtime as `tls.crt` and `tls.key`; a
   rootless init container combines them into FreeSWITCH's required
   `agent.pem` without storing a combined private-key file in Git.
-- When public exposure is enabled, PureLB exposes external SIP and RTP.
+- When public RTP exposure is enabled, PureLB exposes RTP only at the requested
+  `freeswitch.publicExposure.address`.
 - RTP uses the configured FreeSWITCH range `11000–11049`.
-- `network.externalIP` and `network.egressIP` currently use the live NAT
-  address `66.165.222.103`; the former stale `66.165.222.126` address is no
-  longer advertised.
+- The external FreeSWITCH profile advertises the requested PureLB RTP address
+  `66.165.222.101` when public RTP exposure is enabled. The outbound SIP
+  egress address is also `66.165.222.101`; the former `66.165.222.103` and
+  stale `66.165.222.126` addresses are no longer used.
 
 See [common.yaml](../templates/common.yaml),
 [FreeSwitchTCPRoute.yaml](../templates/FreeSwitch/FreeSwitchTCPRoute.yaml),

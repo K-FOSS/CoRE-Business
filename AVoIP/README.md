@@ -46,6 +46,12 @@ observed at revision `f043ea6e783e1655db2a1456ad2a2c5b575479cf`, with Argo
 reporting `Synced` and `Healthy` on 2026-06-11. Its old speech resources remain
 pending the newer ApplicationSet/chart reconciliation.
 
+The deployed FreeSWITCH image is built by the site-local
+[Core-Docker Forgejo project](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker)
+from its [FreeSWITCH image definition](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker/src/branch/main/Images/FreeSwitch)
+and consumed from the Forgejo container registry. The chart pins an immutable
+Forgejo build tag rather than the moving Docker Hub `latest` image.
+
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
 the chart’s Jitsi dependency still receives its detailed settings under
@@ -81,7 +87,7 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. Unused Asterisk LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, CDR/CEL, and IAX2 modules are disabled; LDAP remains a FreeSWITCH internal-peer concern. |
-| FreeSWITCH | Disabled | When enabled, creates internal SIP services and External Secret-backed configuration. Public SIP/TLS routes and the PureLB RTP service require the separate `freeswitch.publicExposure.enabled` opt-in. |
+| FreeSWITCH | Disabled | When enabled, creates internal SIP services and External Secret-backed configuration. The configured DID currently receives fax with SpanDSP/T.38 into an ephemeral TIFF spool. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; public SIP/TCP/UDP remains disabled unless `freeswitch.publicExposure.sip.enabled` is explicitly enabled, while the TLS route remains available. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim
