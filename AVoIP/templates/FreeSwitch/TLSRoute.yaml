@@ -14,8 +14,8 @@ spec:
     - group: gateway.networking.k8s.io
       kind: Gateway
       name: main-gw
-      namespace: kuadrant-core-prod
-      sectionName: sip-tls
+      namespace: core-prod
+      sectionName: tls-sip
 
   hostnames:
     - sip.resolvemy.host
