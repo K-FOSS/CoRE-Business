@@ -314,7 +314,7 @@ service:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
     controller: freeswitch
     type: LoadBalancer
-    loadBalancerClass: purelb.io/purelb
+    loadBalancerClass: purelb.io/purelbv2
     annotations:
       purelb.io/allow-shared-ip: main-gw.resolvemy.host
       purelb.io/service-group: core-public
