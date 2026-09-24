@@ -317,7 +317,7 @@ service:
     loadBalancerClass: purelb.io/purelb
     annotations:
       purelb.io/allow-shared-ip: main-gw.resolvemy.host
-      purelb.io/service-group: main-public
+      purelb.io/service-group: core-public
       purelb.io/allow-local: 'true'
       purelb.io/addresses: '{{ .Values.freeswitch.publicExposure.address }}'
     ports:

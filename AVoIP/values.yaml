@@ -59,7 +59,7 @@ freeswitch:
   publicExposure:
     enabled: true
     # PureLB address reserved for the public FreeSWITCH RTP service.
-    address: '66.165.222.103'
+    address: '66.165.222.101'
     sip:
       enabled: false
   image:
