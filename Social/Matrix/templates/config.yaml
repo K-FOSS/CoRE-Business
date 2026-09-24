@@ -51,6 +51,18 @@ data:
     enable_registration: {{ .Values.synapse.registration.enabled }}
     password_config:
       enabled: false
+{{- if .Values.turn.enabled }}
+    turn_uris:
+{{- range .Values.turn.ports }}
+      - {{ printf "turn:%s:%d?transport=udp" $.Values.turn.hostname (int .) | quote }}
+      - {{ printf "turn:%s:%d?transport=tcp" $.Values.turn.hostname (int .) | quote }}
+{{- end }}
+{{- if and .Values.turn.username .Values.turn.password }}
+    turn_username: {{ .Values.turn.username | quote }}
+    turn_password: {{ .Values.turn.password | quote }}
+{{- end }}
+    turn_allow_guests: {{ .Values.turn.allowGuests }}
+{{- end }}
 {{- if and .Values.synapse.oidc.enabled (not .Values.mas.enabled) }}
     oidc_providers:
       # Synapse stores this provider as oidc-authentik internally; its parser

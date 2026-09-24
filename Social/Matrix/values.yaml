@@ -11,6 +11,12 @@ gateway:
   sectionName: 'https-myloginspace'
   requestTimeout: '1m'
 
+turn:
+  enabled: true
+  hostname: 'nat.mylogin.space'
+  ports: [3478]
+  allowGuests: true
+
 element:
   hostname: 'element.mylogin.space'
   image:
