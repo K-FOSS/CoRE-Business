@@ -32,7 +32,7 @@ spec:
 
     # Specify the IP address used to SNAT traffic matched by the policy.
     # It must exist as an IP associated with a network interface on the instance.
-    egressIP: 66.165.222.103
+    egressIP: {{ $.Values.network.egressIP }}
 
     # Alternatively it's possible to specify the interface to be used for egress traffic.
     # In this case the first IPv4 assigned to that interface will be used as egress IP.
