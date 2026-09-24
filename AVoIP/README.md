@@ -53,6 +53,9 @@ metadata until its templates are changed.
 
 ## Chart state
 
+The complete current DID flow, SIP messaging path, registration behavior, and
+operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
+
 The Asterisk and FreeSWITCH Deployments and Services are rendered through the
 pinned [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)
 `5.0.1`, following the workload pattern used by the repository's AI stack.
@@ -129,11 +132,10 @@ The replacement speech path is the deployed AI stack:
 - The [AI chart documentation](https://github.com/K-FOSS/CoRE-Business/blob/main/AI/README.md)
   describes the current GPUStack, Speaches, Gateway, and Wyoming deployment.
 
-Remaining integration work is to connect the FreeSWITCH media/IVR flow to the
-existing Wyoming endpoint (or an OpenAI-compatible speech bridge) and test
-streaming audio, model selection, timeouts, and failure behavior. This chart
-does not yet implement that telephony bridge; its old Vosk and Mycroft
-resources have been removed.
+Remaining integration work is to connect the minimal FreeSWITCH DID service to
+the existing Wyoming endpoint (or an OpenAI-compatible speech bridge) if voice
+TTS/STT is needed. This chart does not currently ship an IVR or speech bridge;
+its old Vosk and Mycroft resources have been removed.
 
 ## Documented chart/live differences
 

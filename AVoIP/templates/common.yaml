@@ -235,8 +235,6 @@ persistence:
             subPath: freeswitch.xml
           - path: /etc/freeswitch/vars.xml
             subPath: vars.xml
-          - path: /etc/freeswitch/extensions.conf
-            subPath: extensions.conf
   freeswitch-sms-config:
     type: secret
     name: '{{ include "avoip.fullname" . }}-freeswitch-sms'
@@ -251,18 +249,10 @@ persistence:
     advancedMounts:
       freeswitch:
         freeswitch:
-{{- range $file := list "verto.conf.xml" "ldap.conf.xml" "opus.conf.xml" "opal.conf.xml" "alsa.conf.xml" "fifo.conf.xml" "local_stream.conf.xml" "modules.conf.xml" "ivr.conf.xml" "switch.conf.xml" "logfile.conf.xml" "acl.conf.xml" "sofia.conf.xml" "voicemail.conf.xml" }}
+{{- range $file := list "ldap.conf.xml" "opus.conf.xml" "modules.conf.xml" "console.conf.xml" "switch.conf.xml" "logfile.conf.xml" "acl.conf.xml" "sofia.conf.xml" }}
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}
-  freeswitch-ivr-config:
-    type: configMap
-    name: '{{ include "avoip.fullname" . }}-freeswitch-ivr-configs'
-    advancedMounts:
-      freeswitch:
-        freeswitch:
-          - path: /etc/freeswitch/ivr_menus/demo-ivr.xml
-            subPath: demo-ivr.xml
   freeswitch-tls-certs:
     type: secret
     name: resolvemyhost-default-certificates

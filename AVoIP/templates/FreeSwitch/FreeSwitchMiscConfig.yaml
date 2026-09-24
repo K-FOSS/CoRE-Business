@@ -8,554 +8,100 @@ metadata:
 
 data:
   ldap.conf.xml: |
-    <configuration name="xml_ldap.conf" description=" XML LDAP Gateway">
-    <bindings>
-      <binding name="directory">
-
-
-        <param name="filter" value="(&amp;(objectClass=user)(cn=%s))" bindings="directory"/>
-
-        <param name="basedn" value="ou=%s,ou=users,dc=ldap,dc=mylogin,dc=space" />
-        <param name="url" value="ldaps://ldap.mylogin.space" />
-        <param name="binddn" value="cn=$${username},ou=users,dc=ldap,dc=mylogin,dc=space" />
-        <param name="bindpass" value="$${password}" />
-
-        <trans>
-
-          <tran name="id" mapfrom="uid" />
-          <tran name="cidr" mapfrom="fsCIDR" />
-          <tran name="number-alias" mapfrom="fsNumberAlias" />
-          <tran name="dial-string" mapfrom="fsDialString" />
-          <tran name="password" mapfrom="fsPassword" />
-          <tran name="a1-hash" mapfrom="fsA1Hash" />
-          <tran name="reverse-auth-user" mapfrom="fsReverseAuthUser" />
-          <tran name="reverse-auth-pass" mapfrom="fsReverseAuthPass" />
-          <tran name="vm-enabled" mapfrom="fsVmEnabled" />
-          <tran name="vm-password" mapfrom="vmPassword" />
-          <tran name="vm-mailto" mapfrom="fsVmMailTo" />
-          <tran name="vm-notify-mailto" mapfrom="fsVmNotifyMailTo" />
-          <tran name="vm-attach-file" mapfrom="fsVmAttachFile" />
-          <tran name="vm-message-ext" mapfrom="fsVmMessageExt" />
-          <tran name="vm-email-all-messages" mapfrom="fsVmEmailAllMessages" />
-          <tran name="vm-keep-local-after-email" mapfrom="fsVmKeepLocalAfterEmail" />
-          <tran name="vm-notify-email-all-messages" mapfrom="fsVmNotifyEmailAllMessages" />
-          <tran name="vm-skip-instructions" mapfrom="fsVmSkipInstructions" />
-          <tran name="vm-cc" mapfrom="fsVmCc" />
-          <tran name="vm-disk-quota" mapfrom="fsVmDiskQuota" />
-          <tran name="accountcode" mapfrom="fsAccountCode" />
-          <tran name="user_context" mapfrom="fsUserContext" />
-          <tran name="vm_mailbox" mapfrom="fsVmMailbox" />
-          <tran name="callgroup" mapfrom="fsCallGroup" />
-          <tran name="toll_allow" mapfrom="fsTollAllow" />
-          <tran name="effective_caller_id_number" mapfrom="fsEffectiveCallerIDNumber" />
-          <tran name="effective_caller_id_name" mapfrom="fsEffectiveCallerIDName" />
-          <tran name="outbound_caller_id_number" mapfrom="fsOutboundCallerIDNumber" />
-          <tran name="outbound_caller_id_name" mapfrom="fsOutboundCallerIDName" />
-        </trans>
-      </binding>
-    </bindings>
+    <configuration name="xml_ldap.conf" description="LDAP directory gateway">
+      <bindings>
+        <binding name="directory">
+          <param name="filter" value="(&amp;(objectClass=user)(cn=%s))" bindings="directory"/>
+          <param name="basedn" value="ou=%s,ou=users,dc=ldap,dc=mylogin,dc=space"/>
+          <param name="url" value="ldaps://ldap.mylogin.space"/>
+          <param name="binddn" value="cn=$${username},ou=users,dc=ldap,dc=mylogin,dc=space"/>
+          <param name="bindpass" value="$${password}"/>
+          <trans>
+            <tran name="id" mapfrom="uid"/>
+            <tran name="cidr" mapfrom="fsCIDR"/>
+            <tran name="number-alias" mapfrom="fsNumberAlias"/>
+            <tran name="dial-string" mapfrom="fsDialString"/>
+            <tran name="password" mapfrom="fsPassword"/>
+            <tran name="a1-hash" mapfrom="fsA1Hash"/>
+            <tran name="user_context" mapfrom="fsUserContext"/>
+            <tran name="callgroup" mapfrom="fsCallGroup"/>
+            <tran name="effective_caller_id_number" mapfrom="fsEffectiveCallerIDNumber"/>
+            <tran name="effective_caller_id_name" mapfrom="fsEffectiveCallerIDName"/>
+          </trans>
+        </binding>
+      </bindings>
     </configuration>
+
   opus.conf.xml: |
     <configuration name="opus.conf">
-        <settings>
-            <param name="use-vbr" value="1"/>
-
-            <param name="complexity" value="10"/>
-
-
-
-
-
-
-
-
-
-            <param name="keep-fec-enabled" value="1"/>
-
-
-            <param name="maxaveragebitrate" value="0"/>
-            <param name="maxplaybackrate" value="0"/>
-
-
-
-
-
+      <settings>
+        <param name="use-vbr" value="1"/>
+        <param name="complexity" value="10"/>
+        <param name="keep-fec-enabled" value="1"/>
+        <param name="maxaveragebitrate" value="0"/>
+        <param name="maxplaybackrate" value="0"/>
         <param name="mono" value="0"/>
-        </settings>
-    </configuration>
-  opal.conf.xml: |
-    <configuration name="opal.conf" description="Opal Endpoints">
-      <settings>
-          <param name="trace-level" value="3"/>
-          <param name="context" value="default"/>
-          <param name="dialplan" value="XML"/>
-          <param name="dtmf-type" value="signal"/>
-          <param name="jitter-size" value="40,100"/>
-
-
-          <param name="gk-address" value=""/>
-          <param name="gk-identifer" value=""/>
-          <param name="gk-interface" value="$${local_ip_v4}"/>
-      </settings>
-      <listeners>
-          <listener name="default">
-            <param name="h323-ip" value="$${local_ip_v4}"/>
-            <param name="h323-port" value="1720"/>
-          </listener>
-      </listeners>
-    </configuration>
-  verto.conf.xml: |
-    <configuration name="verto.conf" description="HTML5 Verto Endpoint">
-
-      <settings>
-        <param name="debug" value="0"/>
-
-
-
-
-
-
-
-      </settings>
-
-      <profiles>
-        <profile name="default-v4">
-          <param name="bind-local" value="$${local_ip_v4}:8081"/>
-          <param name="bind-local" value="$${local_ip_v4}:8082" secure="true"/>
-          <param name="force-register-domain" value="$${domain}"/>
-          <param name="secure-combined" value="$${certs_dir}/wss.pem"/>
-          <param name="secure-chain" value="$${certs_dir}/wss.pem"/>
-          <param name="userauth" value="true"/>
-
-          <param name="blind-reg" value="false"/>
-          <param name="mcast-ip" value="224.1.1.1"/>
-          <param name="mcast-port" value="1337"/>
-          <param name="rtp-ip" value="$${local_ip_v4}"/>
-          <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
-          <param name="local-network" value="localnet.auto"/>
-          <param name="outbound-codec-string" value="opus,h264,vp8"/>
-          <param name="inbound-codec-string" value="opus,h264,vp8"/>
-
-          <param name="apply-candidate-acl" value="localnet.auto"/>
-          <param name="apply-candidate-acl" value="wan_v4.auto"/>
-          <param name="apply-candidate-acl" value="rfc1918.auto"/>
-          <param name="apply-candidate-acl" value="any_v4.auto"/>
-          <param name="timer-name" value="soft"/>
-
-        </profile>
-
-        <profile name="default-v6">
-          <param name="bind-local" value="[$${local_ip_v6}]:8081"/>
-          <param name="bind-local" value="[$${local_ip_v6}]:8082" secure="true"/>
-          <param name="force-register-domain" value="$${domain}"/>
-          <param name="secure-combined" value="$${certs_dir}/wss.pem"/>
-          <param name="secure-chain" value="$${certs_dir}/wss.pem"/>
-          <param name="userauth" value="true"/>
-
-          <param name="blind-reg" value="false"/>
-          <param name="rtp-ip" value="$${local_ip_v6}"/>
-
-          <param name="outbound-codec-string" value="opus,h264,vp8"/>
-          <param name="inbound-codec-string" value="opus,h264,vp8"/>
-
-          <param name="apply-candidate-acl" value="wan_v6.auto"/>
-          <param name="apply-candidate-acl" value="rfc1918.auto"/>
-          <param name="apply-candidate-acl" value="any_v6.auto"/>
-          <param name="apply-candidate-acl" value="wan_v4.auto"/>
-          <param name="apply-candidate-acl" value="any_v4.auto"/>
-          <param name="timer-name" value="soft"/>
-
-        </profile>
-      </profiles>
-    </configuration>
-  alsa.conf.xml: |
-    <configuration name="alsa.conf" description="Soundcard Endpoint">
-      <settings>
-
-        <param name="dialplan" value="XML"/>
-        <param name="cid-name" value="N800 Alsa"/>
-        <param name="cid-num" value="5555551212"/>
-
-
-        <param name="sample-rate" value="8000"/>
-        <param name="codec-ms" value="20"/>
       </settings>
     </configuration>
-  fifo.conf.xml: |
-    <configuration name="fifo.conf" description="FIFO Configuration">
-      <settings>
-        <param name="delete-all-outbound-member-on-startup" value="false"/>
-      </settings>
-      <fifos>
-        <fifo name="cool_fifo@$${domain}" importance="0">
 
-        </fifo>
-      </fifos>
-    </configuration>
-  local_stream.conf.xml: |
-    <configuration name="local_stream.conf" description="stream files from local dir">
-
-      <directory name="default" path="$${sounds_dir}/music/8000">
-        <param name="rate" value="8000"/>
-        <param name="shuffle" value="true"/>
-        <param name="channels" value="1"/>
-        <param name="interval" value="20"/>
-        <param name="timer-name" value="soft"/>
-
-
-
-
-
-
-      </directory>
-
-      <directory name="moh/8000" path="$${sounds_dir}/music/8000">
-        <param name="rate" value="8000"/>
-        <param name="shuffle" value="true"/>
-        <param name="channels" value="1"/>
-        <param name="interval" value="20"/>
-        <param name="timer-name" value="soft"/>
-      </directory>
-
-      <directory name="moh/32000" path="$${sounds_dir}/music/32000">
-        <param name="rate" value="32000"/>
-        <param name="shuffle" value="true"/>
-        <param name="channels" value="1"/>
-        <param name="interval" value="20"/>
-        <param name="timer-name" value="soft"/>
-      </directory>
-    </configuration>
-  ivr.conf.xml: |
-    <configuration name="ivr.conf" description="IVR menus">
-      <menus>
-        <X-PRE-PROCESS cmd="include" data="../ivr_menus/*.xml"/>
-      </menus>
-    </configuration>
   modules.conf.xml: |
     <configuration name="modules.conf" description="Modules">
       <modules>
-
         <load module="mod_console"/>
-
         <load module="mod_logfile"/>
-
-
-
-
-
-
-        <load module="mod_enum"/>
-
-
-
-
-
-
-
-        <load module="mod_xml_ldap"/>
-
-
-
-        <load module="mod_cdr_csv"/>
-
-
-        <load module="mod_event_socket"/>
-
-
-
-
-
-
-
-
-
-
-
-
-
         <load module="mod_sofia"/>
-        <load module="mod_loopback"/>
-
-
-
-
-
-        <load module="mod_rtc"/>
-
-        <load module="mod_verto"/>
-
-
-        <load module="mod_commands"/>
-        <load module="mod_conference"/>
-
-        <load module="mod_db"/>
-        <load module="mod_dptools"/>
-        <load module="mod_expr"/>
-        <load module="mod_fifo"/>
-        <load module="mod_hash"/>
-
-        <load module="mod_voicemail"/>
-
-
-
-
-        <load module="mod_esf"/>
-        <load module="mod_fsv"/>
-
-        <load module="mod_valet_parking"/>
-
-
-
-
-
-
-        <load module="mod_httapi"/>
-
-
-
-
-
-
-
-
-
-
+        <load module="mod_xml_ldap"/>
+        <load module="mod_sms_flowroute"/>
         <load module="mod_dialplan_xml"/>
-        <load module="mod_dialplan_asterisk"/>
-
-
-        <load module="mod_spandsp"/>
-        <load module="mod_g723_1"/>
-        <load module="mod_g729"/>
-        <load module="mod_amr"/>
-
-
-        <load module="mod_b64"/>
-
-
+        <load module="mod_dptools"/>
+        <load module="mod_commands"/>
         <load module="mod_opus"/>
-
-
-        <load module="mod_av"/>
-        <load module="mod_sndfile"/>
-        <load module="mod_native_file"/>
-
-        <load module="mod_png"/>
-
-
-
-
-        <load module="mod_local_stream"/>
-        <load module="mod_tone_stream"/>
-
-
-
-
-
-
-
-
-
-
-
-        <load module="mod_lua"/>
-
-
-
-
-
-
-
-
-
-        <load module="mod_say_en"/>
-
-
-
-
-
-
-
-
       </modules>
     </configuration>
 
   console.conf.xml: |
     <configuration name="console.conf" description="Console Logger">
-
-
       <mappings>
-
         <map name="all" value="console,debug,info,notice,warning,err,crit,alert"/>
-
-
       </mappings>
       <settings>
-
         <param name="colorize" value="false"/>
         <param name="log_event" value="DEBUG"/>
         <param name="all" value="DEBUG"/>
         <param name="loglevel" value="$${console_loglevel}"/>
       </settings>
     </configuration>
+
   switch.conf.xml: |
     <configuration name="switch.conf" description="Core Configuration">
-
-      <cli-keybindings>
-        <key name="1" value="help"/>
-        <key name="2" value="status"/>
-        <key name="3" value="show channels"/>
-        <key name="4" value="show calls"/>
-        <key name="5" value="sofia status"/>
-        <key name="6" value="reloadxml"/>
-        <key name="7" value="console loglevel 0"/>
-        <key name="8" value="console loglevel 7"/>
-        <key name="9" value="sofia status profile internal"/>
-        <key name="10" value="sofia profile internal siptrace on"/>
-        <key name="11" value="sofia profile internal siptrace off"/>
-        <key name="12" value="version"/>
-      </cli-keybindings>
-
-      <default-ptimes>
-
-
-      </default-ptimes>
-
       <settings>
-
         <param name="colorize-console" value="false"/>
-
-
         <param name="dialplan-timestamps" value="false"/>
-
-
-
-
-
-
-
-
-
-
         <param name="max-db-handles" value="50"/>
-
         <param name="db-handle-timeout" value="10"/>
-
-
-
-
-
-
-
-
         <param name="max-sessions" value="1000"/>
-
         <param name="sessions-per-second" value="30"/>
-
-        <param name="loglevel" value="debug"/>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        <param name="mailer-app" value="sendmail"/>
-        <param name="mailer-app-args" value="-t"/>
-        <param name="dump-cores" value="yes"/>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        <param name="loglevel" value="info"/>
         <param name="rtp-start-port" value="{{ .Values.freeswitch.rtp.min }}"/>
         <param name="rtp-end-port" value="{{ .Values.freeswitch.rtp.max }}"/>
-
-
-
-
         <param name="rtp-enable-zrtp" value="false"/>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       </settings>
-
     </configuration>
 
   logfile.conf.xml: |
     <configuration name="logfile.conf" description="File Logging">
       <settings>
-
-      <param name="rotate-on-hup" value="true"/>
+        <param name="rotate-on-hup" value="true"/>
       </settings>
       <profiles>
         <profile name="default">
           <settings>
-
             <param name="logfile" value="/dev/stdout"/>
-
             <param name="rollover" value="0"/>
-
-
-        <param name="maximum-rotate" value="32"/>
-
-            <param name="uuid" value="true" />
+            <param name="uuid" value="true"/>
           </settings>
           <mappings>
-
-      <map name="all" value="console,debug,info,notice,warning,err,crit,alert"/>
+            <map name="all" value="console,debug,info,notice,warning,err,crit,alert"/>
           </mappings>
         </profile>
       </profiles>
@@ -564,21 +110,6 @@ data:
   acl.conf.xml: |
     <configuration name="acl.conf" description="Network Lists">
       <network-lists>
-
-
-        <list name="lan" default="allow">
-          <node type="deny" cidr="192.168.42.0/24"/>
-          <node type="allow" cidr="192.168.42.42/32"/>
-        </list>
-
-
-        <list name="domains" default="deny">
-
-          <node type="allow" domain="$${domain}"/>
-
-
-        </list>
-
         <list name="asterisk" default="deny">
           <node type="allow" cidr="10.0.0.0/8"/>
         </list>
@@ -589,95 +120,13 @@ data:
     </configuration>
 
   sofia.conf.xml: |
-    <configuration name="sofia.conf" description="sofia Endpoint">
-
+    <configuration name="sofia.conf" description="Sofia Endpoint">
       <global_settings>
         <param name="log-level" value="0"/>
-
-
         <param name="debug-presence" value="0"/>
-
-
-
-
-
       </global_settings>
-
-
       <profiles>
         <X-PRE-PROCESS cmd="include" data="../sip_profiles/*.xml"/>
-      </profiles>
-
-    </configuration>
-
-  voicemail.conf.xml: |
-    <configuration name="voicemail.conf" description="Voicemail">
-      <settings>
-      </settings>
-      <profiles>
-        <profile name="default">
-          <param name="file-extension" value="wav"/>
-          <param name="terminator-key" value="#"/>
-          <param name="max-login-attempts" value="3"/>
-          <param name="digit-timeout" value="10000"/>
-          <param name="min-record-len" value="3"/>
-          <param name="max-record-len" value="300"/>
-          <param name="max-retries" value="3"/>
-          <param name="tone-spec" value="%(1000, 0, 640)"/>
-          <param name="callback-dialplan" value="XML"/>
-          <param name="callback-context" value="default"/>
-          <param name="play-new-messages-key" value="1"/>
-          <param name="play-saved-messages-key" value="2"/>
-
-          <param name="login-keys" value="0"/>
-          <param name="main-menu-key" value="0"/>
-          <param name="config-menu-key" value="5"/>
-          <param name="record-greeting-key" value="1"/>
-          <param name="choose-greeting-key" value="2"/>
-          <param name="change-pass-key" value="6"/>
-          <param name="record-name-key" value="3"/>
-          <param name="record-file-key" value="3"/>
-          <param name="listen-file-key" value="1"/>
-          <param name="save-file-key" value="2"/>
-          <param name="delete-file-key" value="7"/>
-          <param name="undelete-file-key" value="8"/>
-          <param name="email-key" value="4"/>
-          <param name="pause-key" value="0"/>
-          <param name="restart-key" value="1"/>
-          <param name="ff-key" value="6"/>
-          <param name="rew-key" value="4"/>
-          <param name="skip-greet-key" value="#"/>
-          <param name="previous-message-key" value="1"/>
-          <param name="next-message-key" value="3"/>
-          <param name="skip-info-key" value="*"/>
-          <param name="repeat-message-key" value="0"/>
-          <param name="record-silence-threshold" value="200"/>
-          <param name="record-silence-hits" value="2"/>
-          <param name="web-template-file" value="web-vm.tpl"/>
-          <param name="db-password-override" value="false"/>
-          <param name="allow-empty-password-auth" value="true"/>
-
-
-
-          <param name="operator-extension" value="operator XML default"/>
-          <param name="operator-key" value="9"/>
-          <param name="vmain-extension" value="vmain XML default"/>
-          <param name="vmain-key" value="*"/>
-
-
-          <email>
-      <param name="template-file" value="voicemail.tpl"/>
-      <param name="notify-template-file" value="notify-voicemail.tpl"/>
-
-            <param name="date-fmt" value="%A, %B %d %Y, %I %M %p"/>
-            <param name="email-from" value="${voicemail_account}@${voicemail_domain}"/>
-          </email>
-
-
-
-
-
-        </profile>
       </profiles>
     </configuration>
 {{- end }}

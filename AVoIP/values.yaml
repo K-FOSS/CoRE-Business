@@ -42,6 +42,7 @@ asterisk:
 
 freeswitch:
   enabled: false
+  did: '18077893501'
   rtp:
     min: 11000
     max: 11050
