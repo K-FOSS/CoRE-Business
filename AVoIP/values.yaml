@@ -36,6 +36,11 @@ network:
 
 asterisk:
   enabled: false
+  # Asterisk and FreeSWITCH communicate over the cluster pod network. Leave
+  # external media/signaling addresses unset so PJSIP advertises the pod IP.
+  localNet: '172.16.0.0/12'
+  externalMediaAddress: ''
+  externalSignalingAddress: ''
   # Stable locally administered Asterisk Entity ID; do not derive it from the
   # pod network interface because pod MAC addresses are not deployment state.
   entityID: '02:dc:1a:22:2a:01'

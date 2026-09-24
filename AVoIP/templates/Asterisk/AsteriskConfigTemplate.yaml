@@ -19,9 +19,13 @@ data:
     type=transport
     protocol=udp
     bind=0.0.0.0
-    local_net=10.4.0.0/16
-    external_media_address={{ $.Values.network.externalIP }}
-    external_signaling_address={{ $.Values.network.externalIP }}
+    local_net={{ $.Values.asterisk.localNet }}
+{{- with $.Values.asterisk.externalMediaAddress }}
+    external_media_address={{ . }}
+{{- end }}
+{{- with $.Values.asterisk.externalSignalingAddress }}
+    external_signaling_address={{ . }}
+{{- end }}
 
     [freeswitch]
     type=endpoint
