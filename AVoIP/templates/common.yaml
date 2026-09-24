@@ -24,6 +24,12 @@ controllers:
     containers:
       asterisk:
         image:
+          # Built by the site-local Core-Docker project from the upstream
+          # andrius/asterisk image source.
+          # https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker
+          # Backups: https://github.com/K-FOSS/Core-Docker
+          #          https://slop.writemy.codes/CoRE/Core-Docker
+          # https://github.com/andrius/asterisk
           repository: kristianfoss/newasterisk
           tag: 'core'
           pullPolicy: Always

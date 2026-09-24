@@ -169,6 +169,11 @@ Principal upstream projects:
 
 - [Asterisk](https://www.asterisk.org/) and its
   [documentation](https://docs.asterisk.org/)
+- The deployed Asterisk image is built by the site-local
+  [Core-Docker project](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker)
+  from the upstream [andrius/asterisk image source](https://github.com/andrius/asterisk).
+  Backups are maintained at [GitHub](https://github.com/K-FOSS/Core-Docker) and
+  [slop.writemy.codes](https://slop.writemy.codes/CoRE/Core-Docker).
 - [FreeSWITCH](https://signalwire.com/freeswitch) and its
   [source repository](https://github.com/signalwire/freeswitch)
 - [Wyoming OpenAI adapter](https://github.com/roryeckel/wyoming_openai)
