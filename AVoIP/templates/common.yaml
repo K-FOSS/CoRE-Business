@@ -110,6 +110,11 @@ controllers:
               - ALL
     containers:
       freeswitch:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - exec /usr/bin/freeswitch -nonat -nocal -nort -nosql -nf -c </dev/null
         image:
           repository: '{{ .Values.freeswitch.image.repository }}'
           tag: '{{ .Values.freeswitch.image.tag }}'
