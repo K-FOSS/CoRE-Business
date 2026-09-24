@@ -10,8 +10,8 @@ spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      namespace: kuadrant-core-prod
-      name: main-gw
+      namespace: {{ $.Values.gateway.namespace }}
+      name: {{ $.Values.gateway.name }}
       sectionName: sip-udp
 
   rules:

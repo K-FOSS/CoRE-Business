@@ -425,7 +425,7 @@ persistence:
     advancedMounts:
       freeswitch:
         freeswitch:
-{{- range $file := list "ldap.conf.xml" "opus.conf.xml" "modules.conf.xml" "console.conf.xml" "switch.conf.xml" "logfile.conf.xml" "acl.conf.xml" "sofia.conf.xml" }}
+{{- range $file := list "ldap.conf.xml" "opus.conf.xml" "modules.conf.xml" "console.conf.xml" "switch.conf.xml" "logfile.conf.xml" "event_socket.conf.xml" "acl.conf.xml" "sofia.conf.xml" }}
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}
