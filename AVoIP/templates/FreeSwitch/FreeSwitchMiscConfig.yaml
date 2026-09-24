@@ -11,17 +11,17 @@ data:
     <configuration name="xml_ldap.conf" description=" XML LDAP Gateway">
     <bindings>
       <binding name="directory">
-        <!--%s is populated with the extension -->
-        <!--filter example with custom objectClass -->
+
+
         <param name="filter" value="(&amp;(objectClass=user)(cn=%s))" bindings="directory"/>
-        <!--basedn for the searches %s is replaced with domain-->
+
         <param name="basedn" value="ou=%s,ou=users,dc=ldap,dc=mylogin,dc=space" />
         <param name="url" value="ldaps://ldap.mylogin.space" />
         <param name="binddn" value="cn=$${username},ou=users,dc=ldap,dc=mylogin,dc=space" />
         <param name="bindpass" value="$${password}" />
 
         <trans>
-          <!-- mapping of ldap attrs into FS attrs - fsaccount.schema -->
+
           <tran name="id" mapfrom="uid" />
           <tran name="cidr" mapfrom="fsCIDR" />
           <tran name="number-alias" mapfrom="fsNumberAlias" />
@@ -59,35 +59,27 @@ data:
     <configuration name="opus.conf">
         <settings>
             <param name="use-vbr" value="1"/>
-            <!--<param name="use-dtx" value="1"/>-->
+
             <param name="complexity" value="10"/>
-      <!-- Set the initial packet loss percentage 0-100 -->
-            <!--<param name="packet-loss-percent" value="10"/>-->
-      <!-- Support asymmetric sample rates -->
-            <!--<param name="asymmetric-sample-rates" value="1"/>-->
 
-      <!-- Enable bitrate negotiation -->
-            <!--<param name="bitrate-negotiation" value="1"/>-->
 
-      <!-- Keep FEC Enabled -->
+
+
+
+
+
+
+
             <param name="keep-fec-enabled" value="1"/>
-      <!--<param name="use-jb-lookahead" value="true"/> -->
-            <!--
-              maxaveragebitrate: the maximum average codec bitrate (values: 6000 to 510000 in bps) 0 is not considered
-              maxplaybackrate: the maximum codec internal frequency (values: 8000, 12000, 16000, 24000, 48000 in Hz) 0 is not considered
-              This will set the local encoder and instruct the remote encoder trough specific "fmtp" attibute in the SDP.
 
-              Example: if you receive "maxaveragebitrate=20000" from SDP and you have set "maxaveragebitrate=24000" in this configuration
-                        the lowest will prevail in this case "20000" is set on the encoder and the corresponding fmtp attribute will be set
-                        to instruct the remote encoder to do the same.
-            -->
+
             <param name="maxaveragebitrate" value="0"/>
             <param name="maxplaybackrate" value="0"/>
-      <!-- Max capture rate, 8000, 12000, 16000, 24000 and 48000 are valid options -->
-            <!--<param name="sprop-maxcapturerate" value="0"/>-->
-      <!-- Enable automatic bitrate variation during the call based on RTCP feedback -->
-      <!--<param name="adjust-bitrate" value="1"/>-->
-      <!-- will enforce mono even if the remote party wants stereo. must be used in conjunction with param "max-audio-channels" set to 1 in switch.conf.xml. -->
+
+
+
+
+
         <param name="mono" value="0"/>
         </settings>
     </configuration>
@@ -97,13 +89,13 @@ data:
           <param name="trace-level" value="3"/>
           <param name="context" value="default"/>
           <param name="dialplan" value="XML"/>
-          <param name="dtmf-type" value="signal"/>                   <!-- string, signal, rfc2833, in-band -->
-          <param name="jitter-size" value="40,100"/>                 <!-- Jitter buffer min/max size, milliseconds -->
-          <!-- <param name="codec-prefs" value="PCMU,PCMA"/> -->     <!-- list, and preferecnce order, of codecs -->
-          <!-- <param name="disable-transcoding" value="true"/> -->  <!-- do not transcode, use source channel codec only -->
-          <param name="gk-address" value=""/>                        <!-- empty to disable, "*" to search LAN -->
-          <param name="gk-identifer" value=""/>                      <!-- optional name of gk -->
-          <param name="gk-interface" value="$${local_ip_v4}"/>       <!-- optional listener interface name -->
+          <param name="dtmf-type" value="signal"/>
+          <param name="jitter-size" value="40,100"/>
+
+
+          <param name="gk-address" value=""/>
+          <param name="gk-identifer" value=""/>
+          <param name="gk-interface" value="$${local_ip_v4}"/>
       </settings>
       <listeners>
           <listener name="default">
@@ -117,13 +109,13 @@ data:
 
       <settings>
         <param name="debug" value="0"/>
-        <!-- <param name="kslog" value="true"/> -->
-        <!-- seconds to wait before hanging up a disconnected channel -->
-        <!-- <param name="detach-timeout-sec" value="120"/> -->
-        <!-- enable broadcasting all FreeSWITCH events in Verto -->
-        <!-- <param name="enable-fs-events" value="false"/> -->
-        <!-- enable broadcasting FreeSWITCH presence events in Verto -->
-        <!-- <param name="enable-presence" value="true"/> -->
+
+
+
+
+
+
+
       </settings>
 
       <profiles>
@@ -134,7 +126,7 @@ data:
           <param name="secure-combined" value="$${certs_dir}/wss.pem"/>
           <param name="secure-chain" value="$${certs_dir}/wss.pem"/>
           <param name="userauth" value="true"/>
-          <!-- setting this to true will allow anyone to register even with no account so use with care -->
+
           <param name="blind-reg" value="false"/>
           <param name="mcast-ip" value="224.1.1.1"/>
           <param name="mcast-port" value="1337"/>
@@ -149,7 +141,7 @@ data:
           <param name="apply-candidate-acl" value="rfc1918.auto"/>
           <param name="apply-candidate-acl" value="any_v4.auto"/>
           <param name="timer-name" value="soft"/>
-          
+
         </profile>
 
         <profile name="default-v6">
@@ -159,10 +151,10 @@ data:
           <param name="secure-combined" value="$${certs_dir}/wss.pem"/>
           <param name="secure-chain" value="$${certs_dir}/wss.pem"/>
           <param name="userauth" value="true"/>
-          <!-- setting this to true will allow anyone to register even with no account so use with care -->
+
           <param name="blind-reg" value="false"/>
           <param name="rtp-ip" value="$${local_ip_v6}"/>
-          <!--  <param name="ext-rtp-ip" value=""/> -->
+
           <param name="outbound-codec-string" value="opus,h264,vp8"/>
           <param name="inbound-codec-string" value="opus,h264,vp8"/>
 
@@ -172,19 +164,19 @@ data:
           <param name="apply-candidate-acl" value="wan_v4.auto"/>
           <param name="apply-candidate-acl" value="any_v4.auto"/>
           <param name="timer-name" value="soft"/>
-          
+
         </profile>
       </profiles>
     </configuration>
   alsa.conf.xml: |
     <configuration name="alsa.conf" description="Soundcard Endpoint">
       <settings>
-        <!--Default dialplan and caller-id info -->
+
         <param name="dialplan" value="XML"/>
         <param name="cid-name" value="N800 Alsa"/>
         <param name="cid-num" value="5555551212"/>
 
-        <!--audio sample rate and interval -->
+
         <param name="sample-rate" value="8000"/>
         <param name="codec-ms" value="20"/>
       </settings>
@@ -196,25 +188,25 @@ data:
       </settings>
       <fifos>
         <fifo name="cool_fifo@$${domain}" importance="0">
-          <!--<member timeout="60" simo="1" lag="20">{member_wait=nowait}user/1005@$${domain}</member>-->
+
         </fifo>
       </fifos>
     </configuration>
   local_stream.conf.xml: |
     <configuration name="local_stream.conf" description="stream files from local dir">
-      <!-- fallback to default if requested moh class isn't found -->
+
       <directory name="default" path="$${sounds_dir}/music/8000">
         <param name="rate" value="8000"/>
         <param name="shuffle" value="true"/>
         <param name="channels" value="1"/>
         <param name="interval" value="20"/>
         <param name="timer-name" value="soft"/>
-        <!-- list of short files to break in with every so often -->
-        <!--<param name="chime-list" value="file1.wav,file2.wav"/>-->
-        <!-- frequency of break-in (seconds)-->
-        <!--<param name="chime-freq" value="30"/>-->
-        <!-- limit to how many seconds the file will play -->
-        <!--<param name="chime-max" value="500"/>-->
+
+
+
+
+
+
       </directory>
 
       <directory name="moh/8000" path="$${sounds_dir}/music/8000">
@@ -242,198 +234,164 @@ data:
   modules.conf.xml: |
     <configuration name="modules.conf" description="Modules">
       <modules>
-        <!-- Loggers (I'd load these first) -->
+
         <load module="mod_console"/>
-        <!-- <load module="mod_graylog2"/> -->
+
         <load module="mod_logfile"/>
-        <!-- <load module="mod_syslog"/> -->
 
-        <!--<load module="mod_yaml"/>-->
 
-        <!-- Multi-Faceted -->
-        <!-- mod_enum is a dialplan interface, an application interface and an api command interface -->
+
+
+
+
         <load module="mod_enum"/>
 
-        <!-- XML Interfaces -->
-        <!-- <load module="mod_xml_rpc"/> -->
-        <!-- <load module="mod_xml_curl"/> -->
-        <!-- <load module="mod_xml_cdr"/> -->
-        <!-- <load module="mod_xml_radius"/> -->
-        <!-- <load module="mod_xml_scgi"/> -->
+
+
+
+
+
+
         <load module="mod_xml_ldap"/>
 
-        <!-- Event Handlers -->
-        <!-- <load module="mod_amqp"/> -->
+
+
         <load module="mod_cdr_csv"/>
-        <!-- <load module="mod_cdr_sqlite"/> -->
-        <!-- <load module="mod_event_multicast"/> -->
+
+
         <load module="mod_event_socket"/>
-        <!-- <load module="mod_event_zmq"/> -->
-        <!-- <load module="mod_zeroconf"/> -->
-        <!-- <load module="mod_erlang_event"/> -->
-        <!-- <load module="mod_smpp"/> -->
-        <!-- <load module="mod_snmp"/> -->
 
-        <!-- Directory Interfaces -->
-        <!-- <load module="mod_ldap"/> -->
 
-        <!-- Endpoints -->
-        <!-- <load module="mod_dingaling"/> -->
-        <!-- <load module="mod_portaudio"/> -->
-        <!-- <load module="mod_alsa"/> -->
+
+
+
+
+
+
+
+
+
+
+
         <load module="mod_sofia"/>
         <load module="mod_loopback"/>
-        <!-- <load module="mod_woomera"/> -->
-        <!-- <load module="mod_freetdm"/> -->
-        <!-- <load module="mod_unicall"/> -->
-        <!-- <load module="mod_skinny"/> -->
-        <!-- <load module="mod_khomp"/>   -->
+
+
+
+
+
         <load module="mod_rtc"/>
-        <!-- <load module="mod_rtmp"/>   -->
+
         <load module="mod_verto"/>
 
-        <!-- Applications -->
+
         <load module="mod_commands"/>
         <load module="mod_conference"/>
-        <!-- <load module="mod_curl"/> -->
+
         <load module="mod_db"/>
         <load module="mod_dptools"/>
         <load module="mod_expr"/>
         <load module="mod_fifo"/>
         <load module="mod_hash"/>
-        <!--<load module="mod_mongo"/> -->
+
         <load module="mod_voicemail"/>
-        <!--<load module="mod_directory"/>-->
-        <!--<load module="mod_distributor"/>-->
-        <!--<load module="mod_lcr"/>-->
-        <!--<load module="mod_easyroute"/>-->
+
+
+
+
         <load module="mod_esf"/>
         <load module="mod_fsv"/>
-        <!--<load module="mod_cluechoo"/>-->
+
         <load module="mod_valet_parking"/>
-        <!--<load module="mod_fsk"/>-->
-        <!--<load module="mod_spy"/>-->
-        <!--<load module="mod_sms"/>-->
-        <!--<load module="mod_sms_flowroute"/>-->
-        <!--<load module="mod_smpp"/>-->
-        <!--<load module="mod_random"/>-->
+
+
+
+
+
+
         <load module="mod_httapi"/>
-        <!--<load module="mod_translate"/>-->
 
-        <!-- SNOM Module -->
-        <!--<load module="mod_snom"/>-->
 
-        <!-- This one only works on Linux for now -->
-        <!--<load module="mod_ladspa"/>-->
 
-        <!-- Dialplan Interfaces -->
-        <!-- <load module="mod_dialplan_directory"/> -->
+
+
+
+
+
+
+
         <load module="mod_dialplan_xml"/>
         <load module="mod_dialplan_asterisk"/>
 
-        <!-- Codec Interfaces -->
+
         <load module="mod_spandsp"/>
         <load module="mod_g723_1"/>
         <load module="mod_g729"/>
         <load module="mod_amr"/>
-        <!--<load module="mod_ilbc"/>-->
-        <!--<load module="mod_h26x"/>-->
+
+
         <load module="mod_b64"/>
-        <!--<load module="mod_siren"/>-->
-        <!--<load module="mod_isac"/>-->
+
+
         <load module="mod_opus"/>
 
-        <!-- File Format Interfaces -->
+
         <load module="mod_av"/>
         <load module="mod_sndfile"/>
         <load module="mod_native_file"/>
-        <!--<load module="mod_opusfile"/>-->
+
         <load module="mod_png"/>
-        <!-- <load module="mod_shell_stream"/> -->
-        <!--For icecast/mp3 streams/files-->
-        <!--<load module="mod_shout"/>-->
-        <!--For local streams (play all the files in a directory)-->
+
+
+
+
         <load module="mod_local_stream"/>
         <load module="mod_tone_stream"/>
 
-        <!-- Timers -->
-        <!-- <load module="mod_timerfd"/> -->
-        <!-- <load module="mod_posix_timer"/> -->
 
-        <!-- Languages -->
-        <!-- <load module="mod_v8"/> -->
-        <!-- <load module="mod_perl"/> -->
-        <!-- <load module="mod_python"/> -->
-        <!-- <load module="mod_python3"/> -->
-        <!-- <load module="mod_java"/> -->
+
+
+
+
+
+
+
+
+
         <load module="mod_lua"/>
 
-        <!-- ASR /TTS -->
-        <!-- <load module="mod_flite"/> -->
-        <!-- <load module="mod_pocketsphinx"/> -->
-        <!-- <load module="mod_cepstral"/> -->
-        <!-- <load module="mod_tts_commandline"/> -->
-        <!-- <load module="mod_rss"/> -->
 
-        <!-- Say -->
+
+
+
+
+
+
+
         <load module="mod_say_en"/>
-        <!-- <load module="mod_say_ru"/> -->
-        <!-- <load module="mod_say_zh"/> -->
-        <!-- <load module="mod_say_sv"/> -->
 
-        <!-- Third party modules -->
-        <!--<load module="mod_nibblebill"/>-->
-        <!--<load module="mod_callcenter"/>-->
+
+
+
+
+
+
 
       </modules>
     </configuration>
 
   console.conf.xml: |
     <configuration name="console.conf" description="Console Logger">
-      <!-- pick a file name, a function name or 'all' -->
-      <!-- map as many as you need for specific debugging -->
+
+
       <mappings>
-        <!-- 
-          name can be a file name, function name or 'all' 
-          value is one or more of debug,info,notice,warning,err,crit,alert,all
-          See examples below
-          The following map is the default, which is all debug levels enabled:
-          <map name="all" value="debug,info,notice,warning,err,crit,alert"/>
-          Example: the following turns on debugging for error and critical levels only
-          <map name="all" value="err,crit"/>
-          NOTE: using map name="all" will override any other settings!  If you 
-                want a more specific set of console messages then you will need
-                to specify which files and/or functions you want to have debug
-                messages.  One option is to turn on just the more critical 
-                messages with map name="all", then specify the other types of 
-                console messages you want to see for various files and functions.
-          Example: turn on ERROR, CRIT, ALERT for all modules, then specify other
-                  levels for various modules and functions
-            <map name="all" value="err,crit,alert"/>
-            <map name="switch_loadable_module_process" value="all"/>
-            <map name="mod_local_stream.c" value="warning,debug"/>
-            <map name="mod_sndfile.c" value="warning,info,debug"/>
-        -->
+
         <map name="all" value="console,debug,info,notice,warning,err,crit,alert"/>
-        
-        <!--
-          You can use or modify this sample set of mappings.  It turns on higher
-          level messages for all modules and then specifies extra lower level
-          messages for freetdm, Sofia, and switch core messages.
-          
-        <map name="all"                         value="warning,err,crit,alert"/>
-        <map name="zap_analog.c"                value="all"/>
-        <map name="zap_io.c"                    value="all"/>
-        <map name="zap_isdn.c"                  value="all"/>
-        <map name="zap_zt.c"                    value="all"/>
-        <map name="mod_freetdm"                 value="all"/>
-        <map name="sofia.c"                     value="notice"/>
-        <map name="switch_core_state_machine.c" value="all"/>      
-        
-        -->
+
+
       </mappings>
       <settings>
-        <!-- comment or set to false for no color logging -->
+
         <param name="colorize" value="false"/>
         <param name="log_event" value="DEBUG"/>
         <param name="all" value="DEBUG"/>
@@ -456,197 +414,121 @@ data:
         <key name="10" value="sofia profile internal siptrace on"/>
         <key name="11" value="sofia profile internal siptrace off"/>
         <key name="12" value="version"/>
-      </cli-keybindings> 
-      
+      </cli-keybindings>
+
       <default-ptimes>
-        <!-- Set this to override the 20ms assumption of various codecs in the sdp with no ptime defined -->
-        <!-- <codec name="G729" ptime="40"/> -->
+
+
       </default-ptimes>
-      
+
       <settings>
-        <!-- Colorize the Console -->
+
         <param name="colorize-console" value="false"/>
 
-        <!--Include full timestamps in dialplan logs -->
+
         <param name="dialplan-timestamps" value="false"/>
 
-        <!-- Run the timer at 20ms by default and drop down as needed unless you set 1m-timer=true which was previous default -->
-        <!-- <param name="1ms-timer" value="true"/> -->
-
-        <!--
-      Set the Switch Name for HA environments.
-      When setting the switch name, it will override the system hostname for all DB and CURL requests
-      allowing cluster environments such as RHCS to have identical FreeSWITCH configurations but run
-      as different hostnames.
-        -->
-        <!-- <param name="switchname" value="freeswitch"/> -->
-        <!-- <param name="cpu-idle-smoothing-depth" value="30"/> -->
 
 
-        <!-- Maximum number of simultaneous DB handles open -->
+
+
+
+
+
+
+
         <param name="max-db-handles" value="50"/>
-        <!-- Maximum number of seconds to wait for a new DB handle before failing -->
+
         <param name="db-handle-timeout" value="10"/>
 
-        <!-- Minimum idle CPU before refusing calls -->
-        <!-- <param name="min-idle-cpu" value="25"/> -->
 
-        <!-- Interval between heartbeat events -->
-        <!-- <param name="event-heartbeat-interval" value="20"/> -->
 
-        <!--
-      Max number of sessions to allow at any given time.
-      
-      NOTICE: If you're driving 28 T1's in a single box you should set this to 644*2 or 1288
-      this will ensure you're able to use the entire DS3 without a problem.  Otherwise you'll
-      be 144 channels short of always filling that DS3 up which can translate into waste.
-        -->
+
+
+
+
+
         <param name="max-sessions" value="1000"/>
-        <!--Most channels to create per second -->
+
         <param name="sessions-per-second" value="30"/>
-        <!-- Default Global Log Level - value is one of debug,info,notice,warning,err,crit,alert -->
+
         <param name="loglevel" value="debug"/>
 
-        <!-- Set the core DEBUG level (0-10) -->
-        <!-- <param name="debug-level" value="10"/> -->
 
-        <!-- SQL Buffer length within rage of 32k to 10m -->
-        <!-- <param name="sql-buffer-len" value="1m"/> -->
-        <!-- Maximum SQL Buffer length must be greater than sql-buffer-len -->
-        <!-- <param name="max-sql-buffer-len" value="2m"/> -->
 
-        <!-- 
-      The min-dtmf-duration specifies the minimum DTMF duration to use on 
-      outgoing events. Events shorter than this will be increased in duration
-      to match min_dtmf_duration. You cannot configure a dtmf duration on a 
-      profile that is less than this setting. You may increase this value,
-      but cannot set it lower than 400. This value cannot exceed 
-      max-dtmf-duration. -->
-        <!-- <param name="min-dtmf-duration" value="400"/> -->
 
-        <!-- 
-      The max-dtmf-duration caps the playout of a DTMF event at the specified
-      duration. Events exceeding this duration will be truncated to this
-      duration. You cannot configure a duration on a profile that exceeds
-      this setting. This setting can be lowered, but cannot exceed 192000. 
-      This setting cannot be set lower than min_dtmf_duration. -->
-        <!-- <param name="max-dtmf-duration" value="192000"/> -->
 
-        <!-- 
-      The default_dtmf_duration specifies the DTMF duration to use on
-      originated DTMF events or on events that are received without a
-      duration specified. This value can be increased or lowered. This
-      value is lower-bounded by min_dtmf_duration and upper-bounded by
-      max-dtmf-duration\. -->
-        <!-- <param name="default-dtmf-duration" value="2000"/> -->
 
-        <!--
-      If you want to send out voicemail notifications via Windows you'll need to change the mailer-app
-      variable to the setting below:
-      
-      <param name="mailer-app" value="msmtp"/>
-      
-      Do not change mailer-app-args.
-      You will also need to download a sendmail clone for Windows (msmtp). This version works without issue:
-      http://msmtp.sourceforge.net/index.html. Download and copy the .exe to %winddir%\system32.
-      You'll need to create a small config file for smtp credentials (host name, authentication, tls, etc.) in
-      %USERPROFILE%\Application Data\ called "msmtprc.txt". Below is a sample copy of this file:
-      
-      ###################################
-      # The SMTP server of the provider.
-      account provider
-      host smtp.myisp.com
-      from john@myisp.com
-      auth login
-      user johndoe
-      password mypassword
-      
-      # Set a default account
-      account default : provider
-      ###################################
-      
-        -->    
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         <param name="mailer-app" value="sendmail"/>
         <param name="mailer-app-args" value="-t"/>
         <param name="dump-cores" value="yes"/>
 
-        <!-- Enable verbose channel events to include every detail about a channel on every event  -->
-        <!-- <param name="verbose-channel-events" value="no"/> -->
 
-        <!-- Enable clock nanosleep -->
-        <!-- <param name="enable-clock-nanosleep" value="true"/> -->
 
-        <!-- Enable monotonic timing -->
-        <!-- <param name="enable-monotonic-timing" value="true"/> -->
 
-        <!-- NEEDS DOCUMENTATION -->
-        <!-- <param name="enable-softtimer-timerfd" value="true"/> -->
-        <!-- <param name="enable-cond-yield" value="true"/> -->
-        <!-- <param name="enable-timer-matrix" value="true"/> -->
-        <!-- <param name="threaded-system-exec" value="true"/> -->
-        <!-- <param name="tipping-point" value="0"/> -->
-        <!-- <param name="timer-affinity" value="disabled"/> -->
-        <!-- NEEDS DOCUMENTATION -->
 
-        <!-- RTP port range -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         <param name="rtp-start-port" value="{{ .Values.freeswitch.rtp.min }}"/>
         <param name="rtp-end-port" value="{{ .Values.freeswitch.rtp.max }}"/>
 
-        <!-- Test each port to make sure it is not in use by some other process before allocating it to RTP -->
-        <!-- <param name="rtp-port-usage-robustness" value="true"/> -->
+
+
 
         <param name="rtp-enable-zrtp" value="false"/>
 
-        <!--
-      Store encryption keys for secure media in channel variables and call CDRs. Default: false.
-      WARNING: If true, anyone with CDR access can decrypt secure media!
-        -->
-        <!-- <param name="rtp-retain-crypto-keys" value="true"/> -->
 
-        <!--
-      Native PostgreSQL support was removed from the FreeSWITCH Core!
-      =================================
-      NOTICE: You MUST enable mod_pgsql        
-      =================================
-      According to https://www.postgresql.org/docs/9.6/libpq-connect.html#LIBPQ-CONNSTRING
-      There are two accepted formats for connection strings supported by the libpq library: 
-      * For plain keyword = value strings use pgsql://
-        pgsql://hostaddr=127.0.0.1 dbname=freeswitch user=freeswitch password='' options='-c client_min_messages=NOTICE'
-      * For RFC 3986 URIs use postgresql:// or postgres://
-        postgresql://
-        postgresql://localhost
-        postgresql://localhost:5433
-        postgresql://localhost/mydb
-        postgresql://user@localhost
-        postgresql://user:secret@localhost
-        postgresql://other@localhost/otherdb?connect_timeout=10&application_name=myapp
-        postgresql:///mydb?host=localhost&port=5433
-        -->
-        <!-- <param name="core-db-dsn" value="pgsql://hostaddr=127.0.0.1 dbname=freeswitch user=freeswitch password='' options='-c client_min_messages=NOTICE'" /> -->
-        <!-- <param name="core-db-dsn" value="postgresql://freeswitch:@127.0.0.1/freeswitch?options=-c%20client_min_messages%3DNOTICE" /> -->
-        <!-- <param name="core-db-dsn" value="mariadb://Server=localhost;Database=freeswitch;Uid=freeswitch;Pwd=pass;" /> -->
-        <!-- <param name="core-db-dsn" value="dsn:username:password" /> -->
 
-        <!-- <param name="odbc-skip-autocommit-flip" value="true" /> -->
 
-        <!-- 
-      Allow to specify the sqlite db at a different location (In this example, move it to ramdrive for
-      better performance on most linux distro (note, you loose the data if you reboot))
-        -->
-        <!-- <param name="core-db-name" value="/dev/shm/core.db" /> -->
 
-        <!-- The system will create all the db schemas automatically, set this to false to avoid this behaviour -->
-        <!-- <param name="auto-create-schemas" value="true"/> -->
-        <!-- <param name="auto-clear-sql" value="true"/> -->
-        <!-- <param name="enable-early-hangup" value="true"/> -->
 
-        <!-- <param name="core-dbtype" value="MSSQL"/> -->
 
-        <!-- Allow multiple registrations to the same account in the central registration table -->
-        <!-- <param name="multiple-registrations" value="true"/> -->
 
-        <!-- <param name="max-audio-channels" value="2"/> -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       </settings>
 
@@ -655,28 +537,24 @@ data:
   logfile.conf.xml: |
     <configuration name="logfile.conf" description="File Logging">
       <settings>
-      <!-- true to auto rotate on HUP, false to open/close -->
+
       <param name="rotate-on-hup" value="true"/>
       </settings>
       <profiles>
         <profile name="default">
           <settings>
-            <!-- File to log to -->
+
             <param name="logfile" value="/dev/stdout"/>
-            <!-- At this length in bytes rotate the log file (0 for never) -->
+
             <param name="rollover" value="0"/>
-        <!-- Maximum number of log files to keep before wrapping -->
-        <!-- If this parameter is enabled, the log filenames will not include a date stamp -->
+
+
         <param name="maximum-rotate" value="32"/>
-            <!-- Prefix all log lines by the session's uuid  -->
+
             <param name="uuid" value="true" />
           </settings>
           <mappings>
-      <!-- 
-          name can be a file name, function name or 'all' 
-          value is one or more of debug,info,notice,warning,err,crit,alert,all
-          Please see comments in console.conf.xml for more information
-      -->
+
       <map name="all" value="console,debug,info,notice,warning,err,crit,alert"/>
           </mappings>
         </profile>
@@ -686,30 +564,19 @@ data:
   acl.conf.xml: |
     <configuration name="acl.conf" description="Network Lists">
       <network-lists>
-        <!--
-      These ACL's are automatically created on startup.
-      rfc1918.auto  - RFC1918 Space
-      nat.auto      - RFC1918 Excluding your local lan.
-      localnet.auto - ACL for your local lan.
-      loopback.auto - ACL for your local lan.
-        -->
+
 
         <list name="lan" default="allow">
           <node type="deny" cidr="192.168.42.0/24"/>
           <node type="allow" cidr="192.168.42.42/32"/>
         </list>
 
-        <!--
-      This will traverse the directory adding all users
-      with the cidr= tag to this ACL, when this ACL matches
-      the users variables and params apply as if they
-      digest authenticated.
-        -->
+
         <list name="domains" default="deny">
-          <!-- domain= is special it scans the domain from the directory to build the ACL -->
+
           <node type="allow" domain="$${domain}"/>
-          <!-- use cidr= if you wish to allow ip ranges to this domains acl. -->
-          <!-- <node type="allow" cidr="192.168.0.0/24"/> -->
+
+
         </list>
 
         <list name="asterisk" default="deny">
@@ -726,25 +593,17 @@ data:
 
       <global_settings>
         <param name="log-level" value="0"/>
-        <!-- <param name="abort-on-empty-external-ip" value="true"/> -->
-        <!-- <param name="auto-restart" value="false"/> -->
+
+
         <param name="debug-presence" value="0"/>
-        <!-- <param name="capture-server" value="udp:homer.domain.com:5060"/> -->
-        
-        <!-- 
-          the new format for HEPv2/v3 and capture ID    
-      
-      protocol:host:port;hep=2;capture_id=200;
-        -->
-        
-        <!-- <param name="capture-server" value="udp:homer.domain.com:5060;hep=3;capture_id=100"/> -->
+
+
+
+
+
       </global_settings>
 
-      <!--
-          The rabbit hole goes deep.  This includes all the
-          profiles in the sip_profiles directory that is up
-          one level from this directory.
-      -->
+
       <profiles>
         <X-PRE-PROCESS cmd="include" data="../sip_profiles/*.xml"/>
       </profiles>
@@ -769,10 +628,7 @@ data:
           <param name="callback-context" value="default"/>
           <param name="play-new-messages-key" value="1"/>
           <param name="play-saved-messages-key" value="2"/>
-          <!-- play-new-messages-lifo and play-saved-messages-lifo default is false, playing oldest messages first
-        <param name="play-new-messages-lifo" value="false"/>
-        <param name="play-saved-messages-lifo" value="false"/>
-          -->
+
           <param name="login-keys" value="0"/>
           <param name="main-menu-key" value="0"/>
           <param name="config-menu-key" value="5"/>
@@ -800,29 +656,27 @@ data:
           <param name="web-template-file" value="web-vm.tpl"/>
           <param name="db-password-override" value="false"/>
           <param name="allow-empty-password-auth" value="true"/>
-          <!-- if you need to change the sample rate of the recorded files e.g. gmail voicemail player -->
-          <!--<param name="record-sample-rate" value="11025"/>-->
-          <!-- the next two both must be set for this to be enabled
-              the extension is in the format of <dest> [<dialplan>] [<context>]
-          -->
+
+
+
           <param name="operator-extension" value="operator XML default"/>
           <param name="operator-key" value="9"/>
           <param name="vmain-extension" value="vmain XML default"/>
           <param name="vmain-key" value="*"/>
-          <!-- playback created files as soon as they were recorded by default -->
-          <!--<param name="auto-playback-recordings" value="true"/>-->
+
+
           <email>
       <param name="template-file" value="voicemail.tpl"/>
       <param name="notify-template-file" value="notify-voicemail.tpl"/>
-      <!-- this is the format voicemail_time will have -->
+
             <param name="date-fmt" value="%A, %B %d %Y, %I %M %p"/>
             <param name="email-from" value="${voicemail_account}@${voicemail_domain}"/>
           </email>
-          <!--<param name="storage-dir" value="$${storage_dir}"/>-->
-          <!--<param name="odbc-dsn" value="dsn:user:pass"/>-->
-          <!--<param name="record-comment" value="Your Comment"/>-->
-          <!--<param name="record-title" value="Your Title"/>-->
-          <!--<param name="record-copyright" value="Your Copyright"/>-->
+
+
+
+
+
         </profile>
       </profiles>
     </configuration>
