@@ -9,6 +9,7 @@ metadata:
 data:
   asterisk.conf: |
     [options]
+    entityid={{ .Values.asterisk.entityID }}
 
   modules.conf: |
     [modules]

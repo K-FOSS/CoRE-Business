@@ -36,6 +36,9 @@ network:
 
 asterisk:
   enabled: false
+  # Stable locally administered Asterisk Entity ID; do not derive it from the
+  # pod network interface because pod MAC addresses are not deployment state.
+  entityID: '02:dc:1a:22:2a:01'
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk'
