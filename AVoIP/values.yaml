@@ -62,6 +62,9 @@ freeswitch:
     address: '66.165.222.101'
     sip:
       enabled: false
+  preBridgeAudio:
+    enabled: true
+    url: 'https://static.mylogin.space/black_alert.mp3'
   image:
     # renovate: datasource=docker depName=kristianfjones/freeswitch
     repository: 'kristianfjones/freeswitch'
