@@ -319,15 +319,8 @@ service:
       purelb.io/allow-shared-ip: main-gw.resolvemy.host
       purelb.io/service-group: main-public
       purelb.io/allow-local: 'true'
+      purelb.io/addresses: '{{ .Values.freeswitch.publicExposure.address }}'
     ports:
-      sip-udp:
-        port: 5060
-        targetPort: 5080
-        protocol: UDP
-      sip-tcp:
-        port: 5060
-        targetPort: 5080
-        protocol: TCP
       rtp:
         portRange:
           start: {{ .Values.freeswitch.rtp.min }}

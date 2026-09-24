@@ -58,6 +58,10 @@ freeswitch:
   enabled: false
   publicExposure:
     enabled: true
+    # PureLB address reserved for the public FreeSWITCH RTP service.
+    address: '66.165.222.103'
+    sip:
+      enabled: false
   image:
     # renovate: datasource=docker depName=kristianfjones/freeswitch
     repository: 'kristianfjones/freeswitch'
