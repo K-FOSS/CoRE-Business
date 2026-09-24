@@ -43,6 +43,10 @@ asterisk:
 freeswitch:
   enabled: false
   did: '18077893501'
+  flowroute:
+    signalingCIDRs:
+      - '34.210.91.112/28'
+      - '34.226.36.32/28'
   rtp:
     min: 11000
     max: 11050

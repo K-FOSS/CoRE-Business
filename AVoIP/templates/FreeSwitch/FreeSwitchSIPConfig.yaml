@@ -51,6 +51,7 @@ data:
 
         <param name="sip-trace" value="no"/>
         <param name="sip-capture" value="no"/>
+        <param name="apply-inbound-acl" value="flowroute"/>
         <param name="rfc2833-pt" value="101"/>
 
 

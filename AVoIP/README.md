@@ -55,6 +55,9 @@ metadata until its templates are changed.
 
 The complete current DID flow, SIP messaging path, registration behavior, and
 operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
+Inbound external SIP is restricted by the Flowroute signaling CIDRs configured
+under `freeswitch.flowroute.signalingCIDRs`; the public DID route does not
+accept arbitrary Internet SIP sources.
 
 The Asterisk and FreeSWITCH Deployments and Services are rendered through the
 pinned [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)

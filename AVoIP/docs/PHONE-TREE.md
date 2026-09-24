@@ -21,10 +21,12 @@ Inbound calls follow this path:
    [FreeSwitchUpstream.yaml](../templates/FreeSwitch/FreeSwitchUpstream.yaml)
    and [FreeSwitchUpstreamSync.yaml](../templates/FreeSwitch/FreeSwitchUpstreamSync.yaml).
 2. FreeSWITCH receives the call on the external Sofia profile.
-3. The public context matches only the configured DID.
-4. The call is delivered to the registered FreeSWITCH directory identity for
+3. The external profile applies the `flowroute` ACL and rejects sources that
+   are not in the configured Flowroute signaling CIDRs.
+4. The public context matches only the configured DID.
+5. The call is delivered to the registered FreeSWITCH directory identity for
    that DID using `user/<did>@<domain>`.
-5. If no matching directory registration exists, the bridge fails and the
+6. If no matching directory registration exists, the bridge fails and the
    call is released; there are no fallback sample routes.
 
 The public dialplan is in
@@ -63,6 +65,8 @@ The active SIP profiles are defined in
 ## Network and media
 
 - Gateway API routes expose TCP and UDP SIP through `main-gw`.
+- The external SIP profile only accepts signaling from the Flowroute PoP CIDRs
+  in `freeswitch.flowroute.signalingCIDRs`.
 - TLS uses `sip.resolvemy.host` and the configured certificate Secret.
 - PureLB exposes external SIP and RTP.
 - RTP uses the configured FreeSWITCH range `11000–11049`.
