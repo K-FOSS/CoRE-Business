@@ -36,15 +36,10 @@ controllers:
             printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-pjsip-auth.conf
             exec /usr/sbin/asterisk
         image:
-          # Built by the site-local Core-Docker project from the upstream
-          # andrius/asterisk image source.
-          # https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker
-          # Backups: https://github.com/K-FOSS/Core-Docker
-          #          https://slop.writemy.codes/CoRE/Core-Docker
-          # https://github.com/andrius/asterisk
-          repository: kristianfoss/newasterisk
-          tag: 'core'
-          pullPolicy: Always
+          repository: '{{ .Values.asterisk.image.repository }}'
+          tag: '{{ .Values.asterisk.image.tag }}'
+          digest: '{{ .Values.asterisk.image.digest }}'
+          pullPolicy: '{{ .Values.asterisk.image.pullPolicy }}'
         ports:
           - name: tcp-sip
             containerPort: 5060

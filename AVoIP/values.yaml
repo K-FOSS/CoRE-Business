@@ -36,6 +36,12 @@ network:
 
 asterisk:
   enabled: false
+  image:
+    # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk
+    repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk'
+    tag: '20'
+    digest: 'sha256:ea599c42f1ad4416cc65e2f5c04bad479ddbc09c9969f979ca3e1d1fbe2ada9d'
+    pullPolicy: 'IfNotPresent'
   rtp:
     min: 10000
     max: 10100
