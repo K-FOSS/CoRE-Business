@@ -19,6 +19,7 @@ spec:
       access_group: {{ .Values.synapse.oidc.accessGroup | quote }}
       issuer_base_url: {{ trimSuffix "/" .Values.synapse.oidc.issuerBaseUrl | quote }}
       external_url: {{ printf "https://%s" .Values.synapse.hostname | quote }}
+      element_url: {{ printf "https://%s" .Values.element.hostname | quote }}
       mas_external_url: {{ printf "https://%s" .Values.mas.hostname | quote }}
     module: |
       variable "cluster_name" { type = string }
@@ -28,6 +29,7 @@ spec:
       variable "access_group" { type = string }
       variable "issuer_base_url" { type = string }
       variable "external_url" { type = string }
+      variable "element_url" { type = string }
       variable "mas_external_url" { type = string }
       data "authentik_flow" "authorization" { slug = "default-provider-authorization-explicit-consent" }
       data "authentik_flow" "invalidation" { slug = "default-provider-invalidation-flow" }
@@ -60,7 +62,17 @@ spec:
         name = "Matrix Synapse"
         slug = "${var.application_slug}-${var.region}-${var.datacenter}-${var.cluster_name}"
         group = "${var.datacenter}-${var.cluster_name}"
+        meta_hide = true
         protocol_provider = authentik_provider_oauth2.synapse.id
+      }
+      resource "authentik_application" "element" {
+        name = "Element"
+        slug = "${var.application_slug}-element-${var.region}-${var.datacenter}-${var.cluster_name}"
+        group = "${var.datacenter}-${var.cluster_name}"
+        meta_launch_url = var.element_url
+        meta_description = "Matrix client"
+        meta_publisher = "Element"
+        open_in_new_tab = true
       }
       resource "authentik_group" "synapse_users" {
         name = var.access_group
@@ -68,6 +80,11 @@ spec:
       }
       resource "authentik_policy_binding" "application_access" {
         target = authentik_application.synapse.uuid
+        group = authentik_group.synapse_users.id
+        order = 0
+      }
+      resource "authentik_policy_binding" "element_access" {
+        target = authentik_application.element.uuid
         group = authentik_group.synapse_users.id
         order = 0
       }
