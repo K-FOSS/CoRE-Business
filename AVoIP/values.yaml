@@ -57,7 +57,7 @@ asterisk:
 freeswitch:
   enabled: false
   publicExposure:
-    enabled: false
+    enabled: true
   image:
     # renovate: datasource=docker depName=kristianfjones/freeswitch
     repository: 'kristianfjones/freeswitch'
