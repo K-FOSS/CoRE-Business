@@ -13,8 +13,8 @@ spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: main-gw
-      namespace: core-prod
+      name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Values.gateway.namespace }}
       sectionName: tls-sip
 
   hostnames:
