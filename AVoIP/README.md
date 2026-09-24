@@ -73,7 +73,7 @@ The chart defaults are intentionally mostly inactive:
 | Component | Chart behavior | User/API resources |
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
-| Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and External Secret-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. |
+| Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. |
 | FreeSWITCH | Disabled | When enabled, creates a service identity, SIP services/routes, and External Secret-backed configuration. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
@@ -173,10 +173,12 @@ Run `helm dependency build .` to resolve the pinned local dependency, then run
 same Lovely pipeline used by the owning ApplicationSet.
 
 Before enabling Asterisk or FreeSWITCH, inspect the chart’s External Secret
-references and the cluster’s SecretStore configuration. Do not put credentials
-or generated Secret data in this repository. Verify the resulting `User`, its
-`XUser`, the claim connection Secret key names, and downstream provider
-conditions. The current SSO platform documentation is the authoritative guide
+references and the cluster’s SecretStore configuration. Asterisk's static
+PJSIP configuration is a ConfigMap; only its generated `User` connection
+Secret contains runtime credentials. Do not put credentials or generated
+Secret data in this repository. Verify the resulting `User`, its `XUser`, the
+claim connection Secret key names, and downstream provider conditions. The
+current SSO platform documentation is the authoritative guide
 for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/README.md).
 
 Principal upstream projects:

@@ -86,8 +86,6 @@ controllers:
         fsGroup: 1000
         runAsGroup: 1000
         runAsUser: 1000
-      labels:
-        app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
     containers:
       freeswitch:
         image:
@@ -158,8 +156,6 @@ service:
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
     controller: freeswitch
-    extraSelectorLabels:
-      app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
     ports:
       tcp-sip:
         port: 5060
@@ -176,8 +172,6 @@ service:
   freeswitch-ext:
     forceRename: '{{ include "avoip.fullname" . }}-ext-freeswitch'
     controller: freeswitch
-    extraSelectorLabels:
-      app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
     ports:
       tcp-sip:
         port: 5060
@@ -200,8 +194,6 @@ service:
       purelb.io/allow-shared-ip: main-gw.resolvemy.host
       purelb.io/service-group: main-public
       purelb.io/allow-local: 'true'
-    extraSelectorLabels:
-      app.kubernetes.io/name: '{{ include "avoip.fullname" . }}-freeswitch'
     ports:
       sip-udp:
         port: 5060
@@ -236,9 +228,9 @@ persistence:
             subPath: modules.conf
           - path: /etc/asterisk/asterisk.conf
             subPath: asterisk.conf
-  asterisk-secret-config:
-    type: secret
-    name: '{{ include "avoip.fullname" . }}-asterisk-sip-config'
+  asterisk-pjsip-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-asterisk-config-tpl'
     advancedMounts:
       asterisk:
         asterisk:
