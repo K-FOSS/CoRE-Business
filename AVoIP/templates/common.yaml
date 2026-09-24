@@ -41,7 +41,7 @@ controllers:
             printf 'auth_type=userpass\n' >> /tmp/avoip-pjsip-auth.conf
             printf 'username=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-pjsip-auth.conf
             printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-pjsip-auth.conf
-            exec /usr/sbin/asterisk
+            exec /usr/sbin/asterisk -C /etc/asterisk/asterisk.conf
         image:
           repository: '{{ .Values.asterisk.image.repository }}'
           tag: '{{ .Values.asterisk.image.tag }}'
