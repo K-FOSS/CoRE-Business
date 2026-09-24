@@ -7,10 +7,11 @@ metadata:
   name: {{ $fullName }}-freeswitch
 
 spec:
-  name: FreeSwitch
+  name: 'FreeSwitch'
+  serviceAccount: true
   groups:
-    - LDAPService
+    - 'LDAPService'
 
   writeConnectionSecretToRef:
-    name: {{ $fullName }}-freeswitch
+    name: '{{ $fullName }}-freeswitch'
 {{- end }}

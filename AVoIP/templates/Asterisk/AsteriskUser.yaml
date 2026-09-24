@@ -7,10 +7,11 @@ metadata:
   name: {{ $fullName }}-asterisk
 
 spec:
-  name: Asterisk
+  name: 'Asterisk'
+  serviceAccount: true
   groups:
-    - LDAPService
+    - 'LDAPService'
 
   writeConnectionSecretToRef:
-    name: {{ $fullName }}-asterisk
+    name: '{{ $fullName }}-asterisk'
 {{- end }}

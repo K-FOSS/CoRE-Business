@@ -13,7 +13,7 @@ data:
       <binding name="directory">
         <!--%s is populated with the extension -->
         <!--filter example with custom objectClass -->
-        <param name="filter" value="(&(objectClass=user)(cn=%s))" bindings="directory"/>
+        <param name="filter" value="(&amp;(objectClass=user)(cn=%s))" bindings="directory"/>
         <!--basedn for the searches %s is replaced with domain-->
         <param name="basedn" value="ou=%s,ou=users,dc=ldap,dc=mylogin,dc=space" />
         <param name="url" value="ldaps://ldap.mylogin.space" />

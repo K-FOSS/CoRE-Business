@@ -1,11 +1,36 @@
+env: 'prod'
+
+datacenter: 'dc1'
+
+region: 'yxl'
+
+cluster:
+  name: 'dc1-k3s-node1'
+  # Supplied by the owning ApplicationSet for each selected cluster.
+  domain: 'cluster.local'
+  type: 'spoke'
+
+  hub:
+    cluster:
+      name: 'core-dc1-talos-prod'
+      datacenter: 'dc1'
+      region: 'yxl'
+
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
+
+jitsi:
+  domain: 'meet.mylogin.space'
+  tls:
+    secretName: 'myloginspace-default-certificates'
+
+network:
+  externalIP: '66.165.222.126'
+
 asterisk:
   enabled: false
-  stunServers:
-    - nat.mylogin.space:3478
-
-  turnServers:
-    - turn.mylogin.space:5478
-
   rtp:
     min: 10000
     max: 10100
@@ -15,10 +40,6 @@ freeswitch:
   rtp:
     min: 11000
     max: 11050
-
-ejabberd:
-  tls:
-    secretName: myloginspace-default-certificates
 
 jitsi-meet:
   # Default values for jitsi-meet.
@@ -129,8 +150,6 @@ jitsi-meet:
 
     xmpp:
       user: focus
-      password: s3cr37
-      componentSecret: s3cr37
 
     livenessProbe:
       tcpSocket:
@@ -158,7 +177,6 @@ jitsi-meet:
 
     xmpp:
       user: jvb
-      password: s3cr37
 
     stunServers: 'nat.ipaddr.network:3478'
 
@@ -268,12 +286,10 @@ jitsi-meet:
     ## jibri XMPP user credentials:
     xmpp:
       user: jibri
-      password: s3cr37
 
     ## recorder XMPP user credentials:
     recorder:
       user: recorder
-      password: s3cr37
 
     livenessProbe:
       exec:
@@ -322,7 +338,3 @@ jitsi-meet:
     image:
       repository: jitsi/prosody
       tag: 'stable'
-
-
-vosk:
-  enabled: false
