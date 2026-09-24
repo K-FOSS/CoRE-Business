@@ -5,6 +5,11 @@ with the [BJW-S Common library chart](https://bjw-s-labs.github.io/helm-charts/d
 It also deploys the [Element Web client](https://github.com/element-hq/element-web)
 at `element.mylogin.space`, preconfigured for the local Synapse server at
 `matrix.mylogin.space`.
+Synapse includes profile updates in `/sync` responses for Matrix user-status
+profile updates (MSC4429/MSC4262).
+Federation is advertised through Synapse's server well-known endpoint at
+`https://matrix.mylogin.space/.well-known/matrix/server`, with external traffic
+on port 443 routed by the Gateway to Synapse's internal port 8008.
 It creates a `mylogin.space/v1alpha1` `User` service account and a retained
 `synapse` database on the Backplane global PostgreSQL provider. The database
 endpoint is intentionally `psql-int...`, never the site-local `psql-local...`
@@ -22,6 +27,45 @@ Alternatively, set `mas.keyGeneration.enabled` to `false` and provide the
 existing Vault-backed Secret at `Social/Matrix/MAS`. Synapse delegates
 authentication to MAS and serves the `org.matrix.msc2965.authentication`
 advertisement from `/.well-known/matrix/client`.
+
+The Authentik `preferred_username` is mapped to the Matrix localpart. Existing
+MAS accounts are linked to this provider only when they do not already have a
+link for it (`on_conflict: set`); keep the Authentik username stable and unique.
+
+## Element Web optional features
+
+Element Web feature flags are configured under the `features` object in the
+generated `config.json`. The upstream [Labs feature list](https://github.com/element-hq/element-web/blob/develop/docs/labs.md)
+is non-exhaustive and varies by Element release; this chart pins Element Web
+`v1.12.29`. The following is the current inventory and the corresponding
+homeserver assessment for this chart:
+
+| Flag | Home-server status | Notes |
+| --- | --- | --- |
+| `feature_latex_maths` | Client-only | No additional Synapse setting is configured. |
+| `feature_pinning` | Client/room support | No additional Synapse setting is configured. |
+| `feature_jump_to_date` | Not enabled | Requires Synapse MSC3030 support; `msc3030_enabled` is not configured. |
+| `feature_mjolnir` | Client/room support | Requires ban-list rooms and compatible moderation tooling. |
+| `feature_dm_verification` | Client/room support | Uses MSC2241; compatibility should be tested with the deployed Synapse version. |
+| `feature_bridge_state` | Client/room support | Requires compatible `m.bridge` state from a bridge. |
+| `feature_location_share_live` | Client/room support | Requires compatible Matrix location-event support. |
+| `feature_video_rooms` | Client/room support | Persistent video rooms require compatible room and call support. |
+| `feature_element_call_video_rooms` | Conditional | Also requires `feature_video_rooms` and Element Call support. |
+| `feature_disable_call_per_sender_encryption` | Client/Call support | Disables per-participant encryption for embedded Element Call. |
+| `feature_notifications` | Client/room support | Element documents this as unreliable in encrypted rooms. |
+| `feature_ask_to_join` | Server-dependent | Requires room-knock support in the homeserver. |
+| `feature_exclude_insecure_devices` | Client/E2EE support | Changes which devices receive encrypted messages. |
+| `feature_msc4362_encrypted_state_events` | Not enabled | Requires MSC4362 support from the homeserver and compatible clients. |
+| `feature_notification_settings2` | Client/server-dependent | Replaces legacy push-rule settings; verify client-server compatibility. |
+| `feature_user_status` | Supported by pinned image | Element is enabled and Synapse `v1.161.0` supports the chart's `include_profile_updates_in_sync: true` setting for MSC4429/MSC4262. |
+| `feature_login_with_qr` | Not enabled | Requires the MSC4108 rendezvous endpoints; this chart does not configure them. |
+| `feature_msc4095_url_preview_bundle` | Not enabled | Requires MSC4095 support from the homeserver. |
+
+The current `feature_user_status` setting is paired with Synapse's
+`include_profile_updates_in_sync: true` server setting. Validate the advertised
+unstable features on the live homeserver before relying on it. See
+the [Synapse profile-update setting](https://element-hq.github.io/synapse/latest/usage/configuration/config_documentation.html#-include-profile-updates-in-sync)
+and [Element Web configuration reference](https://github.com/element-hq/element-web/blob/develop/docs/config.md).
 
 The bootstrap Job has only namespace-scoped `get` and `create` access to
 Secrets. It generates the RSA signing key as PKCS#8 PEM, which MAS accepts;
@@ -59,3 +103,12 @@ documents this as a compatibility override; the safest permanent remediation
 is to stop the service, dump the database, and recreate it with UTF-8,
 `LC_COLLATE=C`, `LC_CTYPE=C`, and `template0`, then restore it. Do not drop the
 database or change its locale in place without a tested backup.
+
+## Synapse to MAS migration
+
+The manually enabled, one-shot `syn2mas` Job and its check, disposable dry-run,
+maintenance, validation, and rollback procedure are in
+[docs/MAS-MIGRATION.md](docs/MAS-MIGRATION.md). It uses the existing pinned MAS
+`1.20.0` image and generated runtime configuration, preserves the
+`oidc-authentik` provider mapping, and is disabled during ordinary Argo CD
+synchronizations.

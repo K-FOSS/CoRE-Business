@@ -54,7 +54,7 @@ synapse:
   replicas: 1
   image:
     repository: 'ghcr.io/element-hq/synapse'
-    tag: 'v1.139.0'
+    tag: 'v1.161.0'
     pullPolicy: 'IfNotPresent'
   user:
     name: 'matrix-synapse'
