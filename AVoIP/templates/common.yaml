@@ -31,6 +31,23 @@ controllers:
           type: RuntimeDefault
       labels:
         app: '{{ include "avoip.fullname" . }}-asterisk'
+    initContainers:
+      asterisk-sounds:
+        image:
+          repository: '{{ .Values.asterisk.image.repository }}'
+          tag: '{{ .Values.asterisk.image.tag }}'
+          digest: '{{ .Values.asterisk.image.digest }}'
+          pullPolicy: '{{ .Values.asterisk.image.pullPolicy }}'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - cp -R /usr/share/asterisk/sounds/. /var/lib/asterisk/sounds/
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
     containers:
       asterisk:
         command:
@@ -361,6 +378,8 @@ persistence:
     type: emptyDir
     advancedMounts:
       asterisk:
+        asterisk-sounds:
+          - path: /var/lib/asterisk
         asterisk:
           - path: /var/run/asterisk
           - path: /var/lib/asterisk
