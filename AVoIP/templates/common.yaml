@@ -105,14 +105,10 @@ controllers:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
         securityContext:
+          allowPrivilegeEscalation: false
           capabilities:
-            add:
-              - IPC_LOCK
-              - NET_ADMIN
-              - NET_RAW
-              - NET_BROADCAST
-              - SYS_NICE
-              - SYS_RESOURCE
+            drop:
+              - ALL
         ports:
           - name: udp-sip
             containerPort: 5060
