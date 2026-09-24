@@ -48,6 +48,12 @@ asterisk:
 
 freeswitch:
   enabled: false
+  image:
+    # renovate: datasource=docker depName=kristianfjones/freeswitch
+    repository: 'kristianfjones/freeswitch'
+    tag: 'latest'
+    digest: ''
+    pullPolicy: 'Always'
   did: '18077893501'
   flowroute:
     signalingCIDRs:

@@ -73,7 +73,7 @@ The chart defaults are intentionally mostly inactive:
 | Component | Chart behavior | User/API resources |
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
-| Asterisk | Disabled | When enabled, creates a service identity and External Secret-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. |
+| Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and External Secret-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. |
 | FreeSWITCH | Disabled | When enabled, creates a service identity, SIP services/routes, and External Secret-backed configuration. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 

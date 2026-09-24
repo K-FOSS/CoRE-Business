@@ -19,6 +19,13 @@ controllers:
     serviceAccount:
       name: default
     pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       labels:
         app: '{{ include "avoip.fullname" . }}-asterisk'
     containers:
@@ -40,6 +47,12 @@ controllers:
           tag: '{{ .Values.asterisk.image.tag }}'
           digest: '{{ .Values.asterisk.image.digest }}'
           pullPolicy: '{{ .Values.asterisk.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
         ports:
           - name: tcp-sip
             containerPort: 5060
@@ -78,9 +91,10 @@ controllers:
     containers:
       freeswitch:
         image:
-          repository: kristianfjones/freeswitch
-          tag: 'latest'
-          pullPolicy: Always
+          repository: '{{ .Values.freeswitch.image.repository }}'
+          tag: '{{ .Values.freeswitch.image.tag }}'
+          digest: '{{ .Values.freeswitch.image.digest }}'
+          pullPolicy: '{{ .Values.freeswitch.image.pullPolicy }}'
         env:
           - name: USERNAME
             valueFrom:
@@ -240,6 +254,21 @@ persistence:
             subPath: username
           - path: /tmp/avoip-password
             subPath: password
+  asterisk-tmp:
+    type: emptyDir
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /tmp
+  asterisk-runtime:
+    type: emptyDir
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /var/run/asterisk
+          - path: /var/lib/asterisk
+          - path: /var/log/asterisk
+          - path: /var/spool/asterisk
 {{- end }}
 {{- if .Values.freeswitch.enabled }}
   freeswitch-config:
