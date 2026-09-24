@@ -7,6 +7,12 @@ metadata:
   name: {{ $fullName }}-freeswitch-sip-configs
 
 data:
+  internal.xml: |
+    <!-- The chart-managed asterisk profile owns the internal SIP port. -->
+  internal-ipv6.xml: |
+    <!-- Disable the image default IPv6 internal profile. -->
+  external-ipv6.xml: |
+    <!-- Disable the image default IPv6 external profile. -->
   asterisk.xml: |
     <profile name="asterisk">
         <gateways>

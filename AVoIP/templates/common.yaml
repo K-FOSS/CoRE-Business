@@ -421,6 +421,12 @@ persistence:
             subPath: external.xml
           - path: /etc/freeswitch/sip_profiles/asterisk.xml
             subPath: asterisk.xml
+          - path: /etc/freeswitch/sip_profiles/internal.xml
+            subPath: internal.xml
+          - path: /etc/freeswitch/sip_profiles/internal-ipv6.xml
+            subPath: internal-ipv6.xml
+          - path: /etc/freeswitch/sip_profiles/external-ipv6.xml
+            subPath: external-ipv6.xml
   freeswitch-upstream-config:
     type: secret
     name: '{{ include "avoip.fullname" . }}-freeswitch-upstream'
