@@ -91,7 +91,7 @@ spec:
         name              = "{{ $.Values.authentik.applications.adventurelog.displayName }}"
         slug              = "{{ $.Values.authentik.applications.adventurelog.slug }}"
         group             = "{{ $.Values.authentik.applications.adventurelog.group }}"
-        meta_hide         = true
+        meta_launch_url   = "blank://blank"
         protocol_provider = authentik_provider_proxy.adventurelog.id
       }
 
@@ -107,7 +107,7 @@ spec:
         name              = "{{ $.Values.authentik.applications.adventurelogApi.displayName }}"
         slug              = "{{ $.Values.authentik.applications.adventurelogApi.slug }}"
         group             = "{{ $.Values.authentik.applications.adventurelogApi.group }}"
-        meta_hide         = true
+        meta_launch_url   = "blank://blank"
         protocol_provider = authentik_provider_proxy.adventurelog_api.id
       }
 
@@ -123,7 +123,7 @@ spec:
         name              = "{{ $.Values.authentik.applications.trek.displayName }}"
         slug              = "{{ $.Values.authentik.applications.trek.slug }}"
         group             = "{{ $.Values.authentik.applications.trek.group }}"
-        meta_hide         = true
+        meta_launch_url   = "blank://blank"
         protocol_provider = authentik_provider_proxy.trek.id
       }
 
@@ -139,7 +139,7 @@ spec:
         name              = "{{ $.Values.authentik.applications.airtrail.displayName }}"
         slug              = "{{ $.Values.authentik.applications.airtrail.slug }}"
         group             = "{{ $.Values.authentik.applications.airtrail.group }}"
-        meta_hide         = true
+        meta_launch_url   = "blank://blank"
         protocol_provider = authentik_provider_proxy.airtrail.id
       }
 
