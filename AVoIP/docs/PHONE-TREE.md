@@ -8,6 +8,12 @@ The chart defaults Asterisk and FreeSWITCH to disabled. The current [AVoIP
 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml)
 enables both only on `core-dc1-talos-prod`.
 
+Public SIP exposure is currently disabled by default with
+`freeswitch.publicExposure.enabled: false`. This keeps the FreeSWITCH
+ClusterIP services and outbound Flowroute registration available without
+creating public TCP/UDP/TLS routes or a PureLB RTP LoadBalancer. Public
+exposure is an explicit later opt-in.
+
 ## Configured DID
 
 The configured DID is `freeswitch.did`, currently `18077893501` in
@@ -16,18 +22,23 @@ the single number accepted by the FreeSWITCH public context.
 
 Inbound calls follow this path:
 
-1. Flowroute registers through the `flowroute` gateway using the External
-   Secret-backed account credentials in
+1. FreeSWITCH registers through the `flowroute` gateway using the configured
+   DID as the SIP/From username and the External Secret-backed Flowroute SIP
+   username and password for digest authentication. The registration realm,
+   proxy, and transport are pinned to the configured Flowroute Oregon PoP. The
+   gateway configuration is in
    [FreeSwitchUpstream.yaml](../templates/FreeSwitch/FreeSwitchUpstream.yaml)
    and [FreeSwitchUpstreamSync.yaml](../templates/FreeSwitch/FreeSwitchUpstreamSync.yaml).
 2. FreeSWITCH receives the call on the external Sofia profile.
 3. The external profile applies the `flowroute` ACL and rejects sources that
    are not in the configured Flowroute signaling CIDRs.
 4. The public context matches only the configured DID.
-5. The call is delivered to the registered FreeSWITCH directory identity for
-   that DID using `user/<did>@<domain>`.
-6. If no matching directory registration exists, the bridge fails and the
-   call is released; there are no fallback sample routes.
+5. FreeSWITCH bridges the call through its internal `asterisk` gateway to the
+   Asterisk ClusterIP service. This path does not query LDAP or require a
+   directory registration for the DID.
+6. Asterisk receives the DID in its `from-external` context and handles the
+   application route. If the internal Asterisk peer is unavailable, the call
+   fails; there are no public fallback sample routes.
 
 The public dialplan is in
 [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
@@ -50,7 +61,8 @@ the Flowroute SMS module and the registered directory identity.
 FreeSWITCH loads the LDAP directory integration from
 [FreeSwitchMiscConfig.yaml](../templates/FreeSwitch/FreeSwitchMiscConfig.yaml).
 The directory maps the current mylogin.space user attributes for identity,
-password, dial string, number alias, call group, ACL, and caller ID fields.
+password, dial string, number alias, call group, ACL, and caller ID fields for
+authenticated internal SIP users.
 The FreeSWITCH `User` claim supplies the service identity credentials used by
 the container; production Secret values are intentionally not documented.
 
@@ -68,19 +80,33 @@ The active SIP profiles are defined in
 Outbound authorization therefore has two independent gates: the request must
 come from the internal Asterisk ACL, and its username/password must validate
 against the LDAP-backed FreeSWITCH directory. Flowroute traffic uses the
-separate external profile and source CIDR ACL; it is not given access to the
-internal application-authenticated profile.
+separate external profile and source CIDR ACL; inbound Flowroute calls are
+bridged to Asterisk without LDAP authentication.
 
 ## Network and media
 
-- Gateway API routes expose TCP and UDP SIP through `main-gw`.
+- Asterisk runs as an unprivileged UID/GID `1000`, with all Linux capabilities
+  dropped, privilege escalation disabled, and the Kubernetes RuntimeDefault
+  seccomp profile. Its root filesystem is read-only; runtime, spool, log, and
+  temporary files use ephemeral `emptyDir` mounts and are lost when the pod is
+  replaced.
+- Asterisk's global Entity ID is explicitly configured in `values.yaml`, so
+  startup does not need to read a hardware MAC address from the pod interface.
+- FreeSWITCH runs with `-nf -nc` so it remains a foreground Kubernetes process
+  without attaching an interactive console prompt to the container log stream.
+- When `freeswitch.publicExposure.enabled` is true, Gateway API routes expose
+  TCP, UDP, and TLS SIP through `main-gw`; they are not rendered by default.
 - The external SIP profile only accepts signaling from the Flowroute PoP CIDRs
   in `freeswitch.flowroute.signalingCIDRs`.
 - TLS uses `sip.resolvemy.host` and the configured certificate Secret.
-- PureLB exposes external SIP and RTP.
+- The certificate Secret is consumed at runtime as `tls.crt` and `tls.key`; a
+  rootless init container combines them into FreeSWITCH's required
+  `agent.pem` without storing a combined private-key file in Git.
+- When public exposure is enabled, PureLB exposes external SIP and RTP.
 - RTP uses the configured FreeSWITCH range `11000–11049`.
-- `network.externalIP` is used for advertised RTP; `network.egressIP` is used
-  for SIP NAT and the Cilium egress policy.
+- `network.externalIP` and `network.egressIP` currently use the live NAT
+  address `66.165.222.103`; the former stale `66.165.222.126` address is no
+  longer advertised.
 
 See [common.yaml](../templates/common.yaml),
 [FreeSwitchTCPRoute.yaml](../templates/FreeSwitch/FreeSwitchTCPRoute.yaml),

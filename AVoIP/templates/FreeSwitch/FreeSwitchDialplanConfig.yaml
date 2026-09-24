@@ -14,9 +14,8 @@ data:
       <context name="public">
         <extension name="flowroute-did">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.did }}$">
-            <action application="set" data="domain_name=$${domain}"/>
             <action application="set" data="outside_call=true"/>
-            <action application="bridge" data="user/${destination_number}@${domain_name}"/>
+            <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
           </condition>
         </extension>
       </context>
