@@ -56,6 +56,7 @@ data:
         <load module="mod_dptools"/>
         <load module="mod_shout"/>
         <load module="mod_commands"/>
+        <load module="mod_event_socket"/>
         <load module="mod_opus"/>
       </modules>
     </configuration>
@@ -106,6 +107,15 @@ data:
           </mappings>
         </profile>
       </profiles>
+    </configuration>
+
+  event_socket.conf.xml: |
+    <configuration name="event_socket.conf" description="Event Socket">
+      <settings>
+        <param name="listen-ip" value="127.0.0.1"/>
+        <param name="listen-port" value="8021"/>
+        <param name="password" value="$${password}"/>
+      </settings>
     </configuration>
 
   acl.conf.xml: |
