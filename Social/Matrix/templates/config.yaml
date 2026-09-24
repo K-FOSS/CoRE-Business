@@ -57,10 +57,7 @@ data:
       - {{ printf "turn:%s:%d?transport=udp" $.Values.turn.hostname (int .) | quote }}
       - {{ printf "turn:%s:%d?transport=tcp" $.Values.turn.hostname (int .) | quote }}
 {{- end }}
-{{- if and .Values.turn.username .Values.turn.password }}
-    turn_username: {{ .Values.turn.username | quote }}
-    turn_password: {{ .Values.turn.password | quote }}
-{{- end }}
+    turn_shared_secret_path: '/run/turn/TURN_SHARED_SECRET'
     turn_allow_guests: {{ .Values.turn.allowGuests }}
 {{- end }}
 {{- if and .Values.synapse.oidc.enabled (not .Values.mas.enabled) }}

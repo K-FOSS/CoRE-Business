@@ -15,6 +15,13 @@ turn:
   enabled: true
   hostname: 'nat.mylogin.space'
   ports: [3478]
+  secret:
+    name: 'matrix-turn-auth'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    remoteKey: 'Network/NATPuncher/yxl/dc1/core-dc1-talos-prod/TurnAuth'
+    remoteProperty: 'Secret'
   allowGuests: true
 
 element:

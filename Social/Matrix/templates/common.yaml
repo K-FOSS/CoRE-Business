@@ -30,6 +30,12 @@
 {{- $_ := required "mas.secretManagement.secretName is required when MAS key generation is disabled" .Values.mas.secretManagement.secretName -}}
 {{- end }}
 {{- end }}
+{{- if .Values.turn.enabled }}
+{{- $_ := required "turn.hostname is required" .Values.turn.hostname -}}
+{{- $_ := required "turn.secret.name is required" .Values.turn.secret.name -}}
+{{- $_ := required "turn.secret.remoteKey is required" .Values.turn.secret.remoteKey -}}
+{{- $_ := required "turn.secret.remoteProperty is required" .Values.turn.secret.remoteProperty -}}
+{{- end }}
 {{- define "app-template.hardcodedValues" -}}
 global:
   nameOverride: {{ .Release.Name | quote }}
@@ -486,6 +492,16 @@ persistence:
       synapse:
         synapse:
           - path: '/run/ldap'
+            readOnly: true
+{{- end }}
+{{- if .Values.turn.enabled }}
+  turn-auth:
+    type: 'secret'
+    name: {{ .Values.turn.secret.name | quote }}
+    advancedMounts:
+      synapse:
+        synapse:
+          - path: '/run/turn'
             readOnly: true
 {{- end }}
 
