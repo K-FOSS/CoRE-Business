@@ -13,7 +13,6 @@ data:
     memdbg=0
     memlog=0
     children=2
-    pid=/tmp/kamailio.pid
     auto_aliases=no
     enable_tls=yes
     # Envoy Gateway sends the original Flowroute address in PROXY v2 before

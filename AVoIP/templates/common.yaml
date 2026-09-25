@@ -160,7 +160,7 @@ controllers:
           - /bin/sh
           - -c
         args:
-          - exec /usr/sbin/kamailio -DD -E -f /etc/kamailio/kamailio.cfg
+          - exec /usr/sbin/kamailio -DD -E -P /tmp/kamailio.pid -f /etc/kamailio/kamailio.cfg
         image:
           repository: '{{ .Values.kamailio.image.repository }}'
           tag: '{{ .Values.kamailio.image.tag }}'
