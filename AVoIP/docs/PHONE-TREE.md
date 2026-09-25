@@ -71,6 +71,8 @@ The module is explicitly loaded in the reduced `modules.conf.xml` alongside
 Sofia, XML LDAP, XML dialplan, logging, command, DTMF/application, and Opus
 support. Messages are not sent through the voice dialplan; they are handled by
 the Flowroute SMS module and the registered directory identity.
+SMS is enabled by default through `freeswitch.sms.enabled`; disabling it omits
+both the SMS modules and the External Secret-backed Flowroute SMS configuration.
 
 ## Registration and directory
 

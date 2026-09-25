@@ -131,10 +131,10 @@ controllers:
           - name: 'tcp-{{ . }}'
             containerPort: {{ . }}
             protocol: TCP
-{{- end }}
-{{- end }}
-{{- if .Values.freeswitch.enabled }}
-{{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host -}}
+{{ end }}
+{{ end }}
+{{ if .Values.freeswitch.enabled }}
+{{ $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host }}
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
     strategy: RollingUpdate
@@ -315,7 +315,7 @@ controllers:
             containerPort: 5081
             protocol: TCP
 
-{{- end }}
+{{ end }}
 
 service:
 {{- if .Values.asterisk.enabled }}
@@ -469,6 +469,7 @@ persistence:
             subPath: freeswitch.xml
           - path: /etc/freeswitch/vars.xml
             subPath: vars.xml
+{{- if .Values.freeswitch.sms.enabled }}
   freeswitch-sms-config:
     type: secret
     name: '{{ include "avoip.fullname" . }}-freeswitch-sms'
@@ -477,6 +478,7 @@ persistence:
         freeswitch:
           - path: /etc/freeswitch/autoload_configs/sms_flowroute.conf.xml
             subPath: sms_flowroute.conf.xml
+{{- end }}
   freeswitch-misc-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-freeswitch-misc-configs'
@@ -545,5 +547,8 @@ persistence:
 {{- end }}
 {{- end }}
 
-{{- $_ := mergeOverwrite .Values (include "avoip.common.values" . | fromYaml) -}}
+{{- $commonValues := include "avoip.common.values" . | fromYaml -}}
+{{- $_ := set .Values "controllers" $commonValues.controllers -}}
+{{- $_ := set .Values "service" $commonValues.service -}}
+{{- $_ := set .Values "persistence" $commonValues.persistence -}}
 {{- include "bjw-s.common.loader.generate" . }}

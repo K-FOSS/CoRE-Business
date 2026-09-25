@@ -86,6 +86,9 @@ accept arbitrary Internet SIP sources.
 FreeSWITCH voice outbound is disabled: the public context has an explicit
 catch-all rejection after the configured DID route, while the Flowroute gateway
 registration remains only to receive inbound DID traffic.
+Flowroute SMS is enabled by default through `mod_sms` and
+`mod_sms_flowroute`; its API credentials are sourced from the existing
+External Secret and are not stored in chart values.
 
 The Asterisk and FreeSWITCH Deployments and Services are rendered through the
 pinned [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)

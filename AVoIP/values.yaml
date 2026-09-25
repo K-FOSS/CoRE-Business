@@ -4,6 +4,10 @@ global:
 
 env: 'prod'
 
+# The BJW-S loader reads this map during chart initialization; the local
+# common template populates it with the enabled Asterisk/FreeSWITCH controllers.
+controllers: {}
+
 datacenter: 'dc1'
 
 region: 'yxl'
@@ -65,6 +69,8 @@ freeswitch:
   preBridgeAudio:
     enabled: true
     url: 'https://static.mylogin.space/black_alert.mp3'
+  sms:
+    enabled: true
   sipLogging:
     # Sofia raw SIP request/response tracing is enabled by default for call
     # troubleshooting. It can be disabled when production trace volume or
@@ -75,8 +81,8 @@ freeswitch:
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'
     # Forgejo build tags are immutable; latest-build-64 is the successful build
     # for Core-Docker run 64, which includes the FreeSWITCH dependency fix.
-    tag: 'latest-build-64'
-    digest: ''
+    tag: 'latest'
+    digest: 'sha256:0355ade37781ac9e5f5ecfd29aa1d094d31f96a462c6f4d2f343268aaacefec1'
     pullPolicy: 'IfNotPresent'
   did: '18077893501'
   fax:

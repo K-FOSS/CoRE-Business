@@ -1,4 +1,4 @@
-{{- if .Values.freeswitch.enabled }}
+{{- if and .Values.freeswitch.enabled .Values.freeswitch.sms.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: external-secrets.io/v1
