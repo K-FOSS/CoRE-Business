@@ -1,5 +1,6 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -56,6 +57,9 @@ data:
         <load module="mod_dptools"/>
         <load module="mod_shout"/>
         <load module="mod_spandsp"/>
+{{- if $.Values.freeswitch.cdr.enabled }}
+        <load module="mod_cdr_pg_csv"/>
+{{- end }}
         <load module="mod_commands"/>
         <load module="mod_event_socket"/>
         <load module="mod_opus"/>
@@ -117,6 +121,36 @@ data:
         <param name="listen-port" value="8021"/>
         <param name="password" value="$${password}"/>
       </settings>
+    </configuration>
+
+  cdr_pg_csv.conf.xml: |
+    <configuration name="cdr_pg_csv.conf" description="PostgreSQL CDR Format">
+      <settings>
+        <param name="db-info" value="host={{ $cdrHost }} port={{ $.Values.freeswitch.cdr.port }} dbname=$${username} user=$${username} password=$${password} connect_timeout=10"/>
+        <param name="db-table" value="{{ $.Values.freeswitch.cdr.table }}"/>
+        <param name="legs" value="{{ $.Values.freeswitch.cdr.legs }}"/>
+        <param name="spool-dir" value="/var/log/freeswitch/cdr-pg-csv"/>
+        <param name="spool-format" value="csv"/>
+        <param name="rotate-on-hup" value="true"/>
+      </settings>
+      <schema>
+        <field var="local_ip_v4" column="local_ip_v4"/>
+        <field var="caller_id_name" column="caller_id_name"/>
+        <field var="caller_id_number" column="caller_id_number"/>
+        <field var="destination_number" column="destination_number"/>
+        <field var="context" column="context"/>
+        <field var="start_stamp" column="start_stamp"/>
+        <field var="answer_stamp" column="answer_stamp"/>
+        <field var="end_stamp" column="end_stamp"/>
+        <field var="duration" column="duration" quote="false"/>
+        <field var="billsec" column="billsec" quote="false"/>
+        <field var="hangup_cause" column="hangup_cause"/>
+        <field var="uuid" column="uuid"/>
+        <field var="bleg_uuid" column="bleg_uuid"/>
+        <field var="accountcode" column="accountcode"/>
+        <field var="read_codec" column="read_codec"/>
+        <field var="write_codec" column="write_codec"/>
+      </schema>
     </configuration>
 
   spandsp.conf.xml: |

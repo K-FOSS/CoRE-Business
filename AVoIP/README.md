@@ -52,6 +52,20 @@ from its [FreeSWITCH image definition](https://forge.core-dc1-talos-prod.dc1.yxl
 and consumed from the Forgejo container registry. The chart pins an immutable
 Forgejo build tag rather than the moving Docker Hub `latest` image.
 
+FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
+[CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
+provisions the service-account role and database; the chart uses the generated
+Secret's username and password through
+[mod_cdr_pg_csv](https://developer.signalwire.com/freeswitch/module-reference/event-handlers/mod_cdr_pg_csv/)
+for call-detail records. The PostgreSQL client init container creates the CDR
+table before FreeSWITCH starts. FreeSWITCH operational logs continue to stream
+to stdout for Kubernetes log collection.
+The User claim derives the site-local Terraform and Crossplane SQL provider
+names as `psql-<datacenter>-<region>`, and FreeSWITCH connects to
+`psql-local.<cluster>.<datacenter>.<region>.mylogin.space`. The init container is
+limited to application-table creation because the pinned SQL provider manages
+PostgreSQL roles, databases, and schemas, not tables.
+
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
 the chart’s Jitsi dependency still receives its detailed settings under

@@ -44,7 +44,11 @@ FreeSWITCH emits INFO log markers when the DID call is received and when fax
 processing completes. The receive implementation uses
 [`mod_spandsp`](https://developer.signalwire.com/freeswitch/applications/fax/)
 and its `rxfax` application. Received TIFFs are lost when the pod is replaced;
-durable storage and delivery are not configured yet.
+durable fax storage and delivery are not configured yet. Call-detail records are
+written to the service account's PostgreSQL database by
+[`mod_cdr_pg_csv`](https://developer.signalwire.com/freeswitch/module-reference/event-handlers/mod_cdr_pg_csv/);
+the chart creates its `cdr` table during pod initialization. Runtime logs remain
+stdout logs collected by Kubernetes rather than rows in PostgreSQL.
 
 The public dialplan is in
 [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).

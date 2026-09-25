@@ -1,5 +1,7 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $terraformProvider := default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.freeswitch.cdr.terraformProvider -}}
+{{- $crossplaneProvider := default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.freeswitch.cdr.crossplaneProvider -}}
 ---
 apiVersion: mylogin.space/v1alpha1
 kind: User
@@ -11,6 +13,13 @@ spec:
   serviceAccount: true
   groups:
     - 'LDAPService'
+{{- if .Values.freeswitch.cdr.enabled }}
+  psql:
+    enabled: true
+    crossplane:
+      terraformProvider: '{{ $terraformProvider }}'
+      crossplaneProvider: '{{ $crossplaneProvider }}'
+{{- end }}
 
   writeConnectionSecretToRef:
     name: '{{ $fullName }}-freeswitch'

@@ -79,6 +79,16 @@ freeswitch:
     spoolPath: '/var/spool/freeswitch'
     ident: 'AVoIP'
     header: 'AVoIP'
+  cdr:
+    enabled: true
+    # Defaults to the site-local endpoint for the rendered cluster.
+    host: ''
+    port: 5432
+    table: 'cdr'
+    legs: 'ab'
+    # Empty values derive psql-<datacenter>-<region> from the rendered site.
+    terraformProvider: ''
+    crossplaneProvider: ''
   flowroute:
     signalingCIDRs:
       - '34.210.91.112/28'

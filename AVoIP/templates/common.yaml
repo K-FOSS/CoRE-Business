@@ -134,6 +134,7 @@ controllers:
 {{- end }}
 {{- end }}
 {{- if .Values.freeswitch.enabled }}
+{{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host -}}
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
     strategy: RollingUpdate
@@ -153,6 +154,63 @@ controllers:
         seccompProfile:
           type: RuntimeDefault
     initContainers:
+{{- if .Values.freeswitch.cdr.enabled }}
+      cdr-schema:
+        image:
+          repository: 'postgres'
+          tag: '17-alpine'
+          digest: 'sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24'
+          pullPolicy: 'IfNotPresent'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            set -eu
+            export PGUSER="$USERNAME"
+            export PGPASSWORD="$PASSWORD"
+            export PGDATABASE="$USERNAME"
+            until psql -v ON_ERROR_STOP=1 -h '{{ $cdrHost }}' -p '{{ $.Values.freeswitch.cdr.port }}' -c 'SELECT 1' >/dev/null 2>&1; do
+              sleep 2
+            done
+            psql -v ON_ERROR_STOP=1 -h '{{ $cdrHost }}' -p '{{ $.Values.freeswitch.cdr.port }}' <<'SQL'
+            CREATE TABLE IF NOT EXISTS {{ $.Values.freeswitch.cdr.table }} (
+              id bigserial PRIMARY KEY,
+              local_ip_v4 text,
+              caller_id_name text,
+              caller_id_number text,
+              destination_number text NOT NULL,
+              context text NOT NULL,
+              start_stamp text,
+              answer_stamp text,
+              end_stamp text,
+              duration bigint,
+              billsec bigint,
+              hangup_cause text,
+              uuid text NOT NULL,
+              bleg_uuid text,
+              accountcode text,
+              read_codec text,
+              write_codec text
+            )
+            SQL
+        env:
+          - name: USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-freeswitch'
+                key: username
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-freeswitch'
+                key: password
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+{{- end }}
       tls-material:
         image:
           repository: '{{ .Values.freeswitch.image.repository }}'
@@ -425,7 +483,7 @@ persistence:
     advancedMounts:
       freeswitch:
         freeswitch:
-{{- range $file := list "ldap.conf.xml" "opus.conf.xml" "modules.conf.xml" "console.conf.xml" "switch.conf.xml" "logfile.conf.xml" "event_socket.conf.xml" "spandsp.conf.xml" "acl.conf.xml" "sofia.conf.xml" }}
+{{- range $file := list "ldap.conf.xml" "opus.conf.xml" "modules.conf.xml" "console.conf.xml" "switch.conf.xml" "logfile.conf.xml" "event_socket.conf.xml" "cdr_pg_csv.conf.xml" "spandsp.conf.xml" "acl.conf.xml" "sofia.conf.xml" }}
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}
