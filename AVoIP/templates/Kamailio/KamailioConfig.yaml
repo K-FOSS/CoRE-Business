@@ -16,12 +16,11 @@ data:
     memlog=4
     children=2
     auto_aliases=no
-    enable_tls=yes
-    # Envoy Gateway sends the original Flowroute address in PROXY v2 before
-    # the TLS ClientHello. Kamailio then exposes it as the source address.
+    # main-gw terminates public TLS and sends PROXY v2 before the plain SIP
+    # stream. Kamailio exposes the original Flowroute address as $si.
     tcp_accept_haproxy=yes
     listen=udp:0.0.0.0:5060
-    listen=tls:0.0.0.0:5061
+    listen=tcp:0.0.0.0:5061
 
     loadmodule "tm.so"
     loadmodule "sl.so"
@@ -32,9 +31,7 @@ data:
     loadmodule "siputils.so"
     loadmodule "textops.so"
     loadmodule "xlog.so"
-    loadmodule "tls.so"
 
-    modparam("tls", "config", "/etc/kamailio/tls.cfg")
     modparam("rr", "enable_full_lr", 1)
     modparam("sanity", "autodrop", 0)
     modparam("siputils", "rpid_avp", "$avp(s:rpid)")
@@ -114,11 +111,4 @@ data:
       xlog("L_WARN", "SIP reply status=$rs reason=$rr source=$si:$sp callid=$ci\n");
     }
 {{- end }}
-  tls.cfg: |
-    [server:default]
-    method = TLSv1.2+
-    verify_certificate = no
-    require_certificate = no
-    private_key = /etc/kamailio/tls/tls.key
-    certificate = /etc/kamailio/tls/tls.crt
 {{- end }}

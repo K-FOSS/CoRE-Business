@@ -213,7 +213,7 @@ controllers:
           - name: udp-sip
             containerPort: 5060
             protocol: UDP
-          - name: tls-sip
+          - name: tcp-sip
             containerPort: 5061
             protocol: TCP
 {{ end }}
@@ -431,9 +431,9 @@ service:
         port: 5060
         targetPort: udp-sip
         protocol: UDP
-      tls-sip:
+      tcp-sip:
         port: 5061
-        targetPort: tls-sip
+        targetPort: tcp-sip
         protocol: TCP
 {{- end }}
 {{- end }}
@@ -558,15 +558,6 @@ persistence:
         kamailio:
           - path: /etc/kamailio/kamailio.cfg
             subPath: kamailio.cfg
-          - path: /etc/kamailio/tls.cfg
-            subPath: tls.cfg
-  kamailio-tls:
-    type: secret
-    name: resolvemyhost-default-certificates
-    advancedMounts:
-      kamailio:
-        kamailio:
-          - path: /etc/kamailio/tls
   kamailio-tmp:
     type: emptyDir
     advancedMounts:

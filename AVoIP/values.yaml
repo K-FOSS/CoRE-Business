@@ -27,6 +27,9 @@ cluster:
 gateway:
   name: 'main-gw'
   namespace: 'core-prod'
+  # The owning Gateway must define tls-sip as protocol TLS with
+  # tls.mode: Terminate and the public certificate Secret. The TLSRoute then
+  # forwards the decrypted stream to Kamailio with PROXY protocol v2.
   sectionName: 'https-myloginspace'
 
 flowroute:
