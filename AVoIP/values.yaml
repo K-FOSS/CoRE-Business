@@ -95,6 +95,54 @@ diagnostics:
       digest: 'sha256:b09d9b21381f47a79b3cbcb30da25266dc17186ea00ae65e99fdc51396f48e70'
       pullPolicy: 'IfNotPresent'
 
+homer:
+  # Homer is enabled on the hub only. The owning ApplicationSet supplies the
+  # hub/spoke cluster type; keep this opt-in for standalone renders.
+  enabled: true
+  hostname: 'homer.mylogin.space'
+  capture:
+    image:
+      repository: 'ghcr.io/sipcapture/heplify-server'
+      tag: '1.60.9'
+      digest: 'sha256:9beb52592888cc62437ee11ab7d7f4e68bc2a41ca0b23542eb59800f54d8f3d2'
+      pullPolicy: 'IfNotPresent'
+    hepPort: 9060
+    hepTCPPort: 9061
+    metricsPort: 9096
+    retentionDays: 14
+  web:
+    image:
+      repository: 'ghcr.io/sipcapture/homer-app'
+      tag: '1.5.21'
+      digest: 'sha256:76a4bf3ad106ae8c7b6cced00eca31a6fd26f5d851eb0e1fe2b539c904e5d167'
+      pullPolicy: 'IfNotPresent'
+    port: 9080
+  database:
+    host: ''
+    port: 5432
+    userSecret: ''
+    username: 'homer'
+    dataDatabase: 'homer_data'
+    configDatabase: 'homer_config'
+    crossplaneProvider: ''
+    terraformProvider: ''
+  oidc:
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'avoip-homer'
+    accessGroup: 'Home Users'
+    displayName: 'AVoIP Homer'
+    workspaceName: 'avoip-homer-oidc'
+  forwardAuth:
+    providerConfigRef: 'authentik'
+    accessGroup: 'Home Users'
+    displayName: 'AVoIP Homer Forward Auth'
+    workspaceName: 'avoip-homer-forward-auth'
+  authentikOutpost:
+    name: 'aaa-myloginspace-proxy'
+    namespace: 'core-prod'
+    port: 80
+
 jitsi:
   domain: 'meet.mylogin.space'
   tls:
