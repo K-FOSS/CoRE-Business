@@ -153,7 +153,6 @@ spec:
         name              = var.display_name
         slug              = var.application_slug
         group             = "Tools"
-        meta_hide         = true
         protocol_provider = authentik_provider_proxy.homer.id
       }
 
