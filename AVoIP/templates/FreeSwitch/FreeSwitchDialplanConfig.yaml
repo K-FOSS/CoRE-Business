@@ -17,7 +17,6 @@ data:
             <action application="set" data="outside_call=true"/>
             <action application="log" data="INFO AVoIP DID ${destination_number}: received call"/>
 {{- if $.Values.freeswitch.fax.enabled }}
-            <action application="disable_ec"/>
             <action application="answer"/>
             <action application="playback" data="silence_stream://2000"/>
             <action application="rxfax" data="{{ $.Values.freeswitch.fax.spoolPath }}/${uuid}.tif"/>
