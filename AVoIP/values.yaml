@@ -180,7 +180,7 @@ freeswitch:
     testMode:
       # Enable for a deterministic public fax test. Roll back to false to
       # restore the shared voice/fax detection path.
-      enabled: true
+      enabled: false
       did: '18077893501'
     knownSenders:
       - '+18772333839'
