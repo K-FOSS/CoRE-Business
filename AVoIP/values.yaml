@@ -231,7 +231,7 @@ freeswitch:
     pullPolicy: 'IfNotPresent'
   did: '18077893501'
   fax:
-    enabled: false
+    enabled: true
     spoolPath: '/var/spool/freeswitch/fax'
     ident: 'AVoIP'
     header: 'AVoIP'
