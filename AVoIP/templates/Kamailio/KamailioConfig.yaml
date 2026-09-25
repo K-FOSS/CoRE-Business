@@ -16,11 +16,11 @@ data:
     memlog=4
     children=2
     auto_aliases=no
-    # main-gw terminates public TLS and sends PROXY v2 before the plain SIP
-    # stream. Kamailio exposes the original Flowroute address as $si.
+    # Envoy terminates public TLS and sends PROXY v2 before the decrypted SIP
+    # stream, so $si remains the carrier IP.
     tcp_accept_haproxy=yes
-    listen=udp:0.0.0.0:5060
-    listen=tcp:0.0.0.0:5061
+    listen=udp:0.0.0.0:5060 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedUDPPort }}
+    listen=tcp:0.0.0.0:5061 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedTLSPort }}
 
     loadmodule "tm.so"
     loadmodule "sl.so"
@@ -38,7 +38,7 @@ data:
 
     request_route {
 {{- if .Values.kamailio.sipLogging.enabled }}
-      xlog("L_WARN", "SIP request method=$rm source=$si:$sp ruri=$ru callid=$ci\n");
+      xlog("L_INFO", "SIP request proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp ruri=$ru route=$hdr(Route) callid=$ci\n");
 {{- end }}
       if (!sanity_check("1511", "7")) {
         xlog("L_WARN", "Kamailio rejected malformed SIP from $si:$sp\n");
@@ -51,6 +51,16 @@ data:
         route(FLOWROUTE_AUTHORIZED);
       }
 {{- end }}
+      # Permit only established dialogs arriving from the private backend.
+      # Initial requests from the backend remain unauthorized.
+      if (src_ip == {{ .Values.kamailio.backend.podCIDR }}) {
+        if (has_totag()) {
+          route(IN_DIALOG);
+          exit;
+        }
+        sl_send_reply("403", "Source Not Authorized");
+        exit;
+      }
 {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_WARN", "Kamailio rejected SIP source=$si:$sp method=$rm ruri=$ru callid=$ci\n");
 {{- end }}
@@ -69,13 +79,21 @@ data:
         exit;
       }
 
-      if (has_totag() && loose_route()) {
-        route(RELAY);
+      if (has_totag()) {
+        route(IN_DIALOG);
         exit;
       }
 
       if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
-        record_route();
+        # The first preset is the outbound/internal interface and the second
+        # is the inbound/public interface. TLS is terminated by the Gateway
+        # before the PROXY-v2 TCP stream reaches Kamailio.
+        if ($proto == "tcp") {
+          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls");
+        } else {
+          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedUDPPort }};transport=udp");
+        }
+        add_rr_param(";r2=on");
         route(RELAY);
         exit;
       }
@@ -89,13 +107,36 @@ data:
       exit;
     }
 
+    route[IN_DIALOG] {
+{{- if .Values.kamailio.sipLogging.enabled }}
+      xlog("L_INFO", "SIP in-dialog proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp callid=$ci route=$hdr(Route)\n");
+{{- end }}
+      if (!loose_route()) {
+{{- if .Values.kamailio.sipLogging.enabled }}
+        xlog("L_WARN", "SIP in-dialog loose_route=failed method=$rm source=$si:$sp ruri=$ru callid=$ci\n");
+{{- end }}
+        sl_send_reply("481", "Call Does Not Exist");
+        exit;
+      }
+{{- if .Values.kamailio.sipLogging.enabled }}
+      xlog("L_INFO", "SIP in-dialog loose_route=accepted method=$rm source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
+{{- end }}
+      route(RELAY);
+      exit;
+    }
+
     route[RELAY] {
-      $du = "sip:{{ $backendService }}.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.kamailio.backend.servicePort }};transport=udp";
+      # Preserve the next hop selected by loose_route() for backend-originated
+      # in-dialog traffic. Initial/public requests have no destination yet and
+      # are sent to the private FreeSWITCH SIP edge.
+      if ($du == $null || $du == "") {
+        $du = "sip:{{ $backendService }}.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.kamailio.backend.servicePort }};transport=udp";
+      }
 {{- if .Values.kamailio.sipLogging.enabled }}
       if (!is_method("ACK")) {
         t_on_reply("KAMAILIO_SIP_REPLY");
       }
-      xlog("L_WARN", "SIP relay method=$rm source=$si:$sp destination=$du callid=$ci\n");
+      xlog("L_INFO", "SIP relay proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp destination=$du callid=$ci\n");
 {{- end }}
       if (!t_relay()) {
 {{- if .Values.kamailio.sipLogging.enabled }}
@@ -108,7 +149,7 @@ data:
 
 {{- if .Values.kamailio.sipLogging.enabled }}
     onreply_route[KAMAILIO_SIP_REPLY] {
-      xlog("L_WARN", "SIP reply status=$rs reason=$rr source=$si:$sp callid=$ci\n");
+      xlog("L_INFO", "SIP reply proto=$proto recv=$Ri:$Rp status=$rs reason=$rr source=$si:$sp destination=$rpl(duri) via1=$hdr(Via[1]) via2=$hdr(Via[2]) callid=$ci\n");
     }
 {{- end }}
 {{- end }}

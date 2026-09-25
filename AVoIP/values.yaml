@@ -28,8 +28,8 @@ gateway:
   name: 'main-gw'
   namespace: 'core-prod'
   # The owning Gateway must define tls-sip as protocol TLS with
-  # tls.mode: Terminate and the public certificate Secret. The TCPRoute then
-  # forwards the decrypted stream to Kamailio with PROXY protocol v2.
+  # tls.mode: Terminate and forward the decrypted stream to Kamailio with
+  # PROXY protocol v2.
   sectionName: 'https-myloginspace'
 
 flowroute:
@@ -54,9 +54,8 @@ kamailio:
     # the backend side through Kamailio. Initial requests from this range remain
     # rejected and public carrier sources are still checked separately below.
     podCIDR: '172.16.0.0/12'
-  # The Gateway owns the public listener and terminates TLS before Kamailio.
-  # These addresses are used only in SIP Via/Record-Route headers; Kamailio
-  # itself receives the carrier TLS leg as plain TCP on service port 5061.
+  # These addresses are used in SIP Via/Contact/Record-Route headers and never
+  # come from the wildcard bind.
   advertisedHost: 'sip.resolvemy.host'
   advertisedUDPPort: 5060
   advertisedTLSPort: 5081
