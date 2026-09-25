@@ -2,7 +2,7 @@
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TLSRoute
+kind: TCPRoute
 metadata:
   name: {{ $fullName }}-kamailio
 
