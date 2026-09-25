@@ -25,6 +25,7 @@ data:
     loadmodule "rr.so"
     loadmodule "maxfwd.so"
     loadmodule "sanity.so"
+    loadmodule "siputils.so"
     loadmodule "textops.so"
     loadmodule "xlog.so"
     loadmodule "tls.so"
