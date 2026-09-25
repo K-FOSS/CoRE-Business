@@ -125,6 +125,10 @@ freeswitch:
     # troubleshooting. It can be disabled when production trace volume or
     # signaling metadata exposure is not acceptable.
     enabled: true
+  media:
+    # Snapshot per-call RTP statistics only when explicitly enabled.
+    diagnostics:
+      enabled: false
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'

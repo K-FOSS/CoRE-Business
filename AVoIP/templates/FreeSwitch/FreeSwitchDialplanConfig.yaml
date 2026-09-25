@@ -60,6 +60,10 @@ data:
             <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
             <action application="answer"/>
             <action application="rxfax" data="{{ $.Values.freeswitch.fax.spoolPath }}/${uuid}.tif"/>
+{{- if $.Values.freeswitch.media.diagnostics.enabled }}
+            <action application="set_media_stats"/>
+            <action application="log" data="INFO AVoIP RTP stats uuid=${uuid} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} codec=${rtp_use_codec_string} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
+{{- end }}
             <action application="log" data="INFO AVoIP fax result caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid} success=${fax_success} result_code=${fax_result_code} result=${fax_result_text} pages=${fax_document_transferred_pages} total_pages=${fax_document_total_pages} rate=${fax_transfer_rate} remote_station=${fax_remote_station_id} local_station=${fax_local_station_id} file=${fax_filename}"/>
             <action application="hangup"/>
           </condition>
