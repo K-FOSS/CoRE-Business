@@ -60,6 +60,7 @@ data:
             <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
 {{- if $.Values.freeswitch.media.diagnostics.enabled }}
             <action application="set" data="log_audio_stats_on_hangup=true"/>
+            <action application="set" data="execute_on_media=log INFO AVoIP RTP media established"/>
 {{- end }}
             <action application="answer"/>
 {{- if $.Values.freeswitch.media.diagnostics.enabled }}
