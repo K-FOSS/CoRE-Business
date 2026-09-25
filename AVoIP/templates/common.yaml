@@ -668,8 +668,9 @@ controllers:
         app: '{{ include "avoip.fullname" . }}-homer-heplify'
     containers:
       heplify:
+        # The upstream image sets WORKDIR /root and stores the binary there.
         command:
-          - /heplify-server
+          - ./heplify-server
         image:
           repository: '{{ .Values.homer.capture.image.repository }}'
           tag: '{{ .Values.homer.capture.image.tag }}'
