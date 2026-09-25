@@ -90,6 +90,8 @@ freeswitch:
     # PureLB address reserved for the public FreeSWITCH RTP service.
     address: '66.165.222.101'
     sip:
+      # Retained for compatibility with injected values; public SIP routes
+      # terminate at Kamailio and are never rendered for FreeSWITCH.
       enabled: true
       tcpEnabled: false
       udpEnabled: false

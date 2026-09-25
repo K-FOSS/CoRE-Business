@@ -210,6 +210,9 @@ controllers:
               timeoutSeconds: 3
               failureThreshold: 3
         ports:
+          - name: udp-sip
+            containerPort: 5060
+            protocol: UDP
           - name: tls-sip
             containerPort: 5061
             protocol: TCP
@@ -424,6 +427,10 @@ service:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio'
     controller: kamailio
     ports:
+      udp-sip:
+        port: 5060
+        targetPort: udp-sip
+        protocol: UDP
       tls-sip:
         port: 5061
         targetPort: tls-sip
@@ -450,22 +457,6 @@ service:
       tls-sips:
         port: 5061
         targetPort: tls-sips
-        protocol: TCP
-  freeswitch-ext:
-    forceRename: '{{ include "avoip.fullname" . }}-ext-freeswitch'
-    controller: freeswitch
-    ports:
-      tcp-sip:
-        port: 5060
-        targetPort: tcp-sipext
-        protocol: TCP
-      udp-sip:
-        port: 5060
-        targetPort: udp-sipext
-        protocol: UDP
-      tls-sips:
-        port: 5061
-        targetPort: tls-sipext
         protocol: TCP
 {{- if .Values.freeswitch.publicExposure.enabled }}
   freeswitch-rtp:
@@ -647,14 +638,6 @@ persistence:
             subPath: internal-ipv6.xml
           - path: /etc/freeswitch/sip_profiles/external-ipv6.xml
             subPath: external-ipv6.xml
-  freeswitch-upstream-config:
-    type: secret
-    name: '{{ include "avoip.fullname" . }}-freeswitch-upstream'
-    advancedMounts:
-      freeswitch:
-        freeswitch:
-          - path: /etc/freeswitch/sip_profiles/external/flowroute.xml
-            subPath: flowroute.xml
   freeswitch-dialplan-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'

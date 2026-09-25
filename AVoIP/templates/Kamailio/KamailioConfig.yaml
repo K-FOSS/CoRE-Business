@@ -20,6 +20,7 @@ data:
     # Envoy Gateway sends the original Flowroute address in PROXY v2 before
     # the TLS ClientHello. Kamailio then exposes it as the source address.
     tcp_accept_haproxy=yes
+    listen=udp:0.0.0.0:5060
     listen=tls:0.0.0.0:5061
 
     loadmodule "tm.so"

@@ -1,11 +1,14 @@
-{{- if and .Values.freeswitch.enabled .Values.freeswitch.publicExposure.enabled .Values.freeswitch.publicExposure.sip.enabled .Values.freeswitch.publicExposure.sip.udpEnabled }}
+{{- if and .Values.kamailio.enabled .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: UDPRoute
 metadata:
-  name: {{ $fullName }}-freeswitch
+  name: {{ $fullName }}-kamailio-udp
 
+  labels:
+    wan-mode: public
+    lan-mode: private
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io
@@ -16,6 +19,9 @@ spec:
 
   rules:
     - backendRefs:
-      - name: {{ $fullName }}-freeswitch
-        port: 5060
+        - group: ""
+          kind: Service
+          name: {{ $fullName }}-kamailio
+          port: 5060
+          weight: 1
 {{- end }}
