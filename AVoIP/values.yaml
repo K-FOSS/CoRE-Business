@@ -65,6 +65,11 @@ freeswitch:
   preBridgeAudio:
     enabled: true
     url: 'https://static.mylogin.space/black_alert.mp3'
+  sipLogging:
+    # Sofia raw SIP request/response tracing is enabled by default for call
+    # troubleshooting. It can be disabled when production trace volume or
+    # signaling metadata exposure is not acceptable.
+    enabled: true
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'

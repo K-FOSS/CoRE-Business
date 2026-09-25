@@ -30,6 +30,7 @@ data:
         <settings>
             <param name="apply-inbound-acl" value="asterisk"/>
             <param name="auth-calls" value="true"/>
+            <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
             <param name="context" value="public"/>
             <param name="rtp-ip" value="0.0.0.0"/>
             <param name="sip-ip" value="0.0.0.0"/>
@@ -55,7 +56,7 @@ data:
         <param name="debug" value="0"/>
 
 
-        <param name="sip-trace" value="no"/>
+        <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-capture" value="no"/>
         <param name="apply-inbound-acl" value="flowroute"/>
         <param name="rfc2833-pt" value="101"/>
