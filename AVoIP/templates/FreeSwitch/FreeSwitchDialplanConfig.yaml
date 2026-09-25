@@ -12,6 +12,28 @@ data:
   public.xml: |
     <include>
       <context name="public">
+{{- if and $.Values.freeswitch.fax.enabled $.Values.freeswitch.fax.testMode.enabled }}
+        <extension name="fax-test-did">
+          <condition field="destination_number" expression="^{{ $.Values.freeswitch.fax.testMode.did }}$">
+            <action application="set" data="fax_original_destination=${destination_number}"/>
+            <action application="log" data="INFO AVoIP fax test mode: direct fax receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
+            <action application="transfer" data="fax-receive XML public"/>
+          </condition>
+        </extension>
+{{- end }}
+{{- if and $.Values.freeswitch.fax.enabled (not $.Values.freeswitch.fax.testMode.enabled) }}
+{{- range $sender := $.Values.freeswitch.fax.knownSenders }}
+        <extension name="fax-known-{{ trimPrefix "+" $sender }}">
+          <condition field="destination_number" expression="^{{ $.Values.freeswitch.did }}$">
+            <condition field="caller_id_number" expression="^\+{{ trimPrefix "+" $sender }}$">
+              <action application="set" data="fax_original_destination=${destination_number}"/>
+              <action application="log" data="INFO AVoIP known fax sender: direct fax receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
+              <action application="transfer" data="fax-receive XML public"/>
+            </condition>
+          </condition>
+        </extension>
+{{- end }}
+{{- end }}
         <extension name="flowroute-did">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.did }}$">
             <action application="set" data="outside_call=true"/>
@@ -32,11 +54,14 @@ data:
 {{- if $.Values.freeswitch.fax.enabled }}
         <extension name="fax-receive">
           <condition field="destination_number" expression="^fax-receive$">
-            <action application="log" data="INFO AVoIP DID ${destination_number}: fax tone detected"/>
+            <action application="log" data="INFO AVoIP fax receive start caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid}"/>
+            <action application="set" data="fax_enable_t38=true"/>
+            <action application="set" data="fax_enable_t38_request=true"/>
+            <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
             <action application="answer"/>
-            <action application="playback" data="silence_stream://2000"/>
+            <action application="playback" data="silence_stream://1000"/>
             <action application="rxfax" data="{{ $.Values.freeswitch.fax.spoolPath }}/${uuid}.tif"/>
-            <action application="log" data="INFO AVoIP DID ${destination_number}: fax result=${fax_result_text} pages=${fax_document_transferred_pages} file=${fax_filename}"/>
+            <action application="log" data="INFO AVoIP fax result caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid} success=${fax_success} result_code=${fax_result_code} result=${fax_result_text} pages=${fax_document_transferred_pages} total_pages=${fax_document_total_pages} rate=${fax_transfer_rate} remote_station=${fax_remote_station_id} local_station=${fax_local_station_id} file=${fax_filename}"/>
             <action application="hangup"/>
           </condition>
         </extension>

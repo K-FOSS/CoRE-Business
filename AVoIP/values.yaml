@@ -136,9 +136,23 @@ freeswitch:
   did: '18077893501'
   fax:
     enabled: true
-    spoolPath: '/var/spool/freeswitch'
+    spoolPath: '/var/spool/freeswitch/fax'
     ident: 'AVoIP'
     header: 'AVoIP'
+    testMode:
+      # Enable for a deterministic public fax test. Roll back to false to
+      # restore the shared voice/fax detection path.
+      enabled: true
+      did: '18077893501'
+    knownSenders:
+      - '+18772333839'
+      - '+13072199333'
+    persistence:
+      enabled: true
+      storageClass: 'longhorn'
+      accessMode: 'ReadWriteOnce'
+      size: '1Gi'
+      retain: true
   cdr:
     enabled: true
     # Defaults to the site-local endpoint for the rendered cluster.

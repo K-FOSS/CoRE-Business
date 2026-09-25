@@ -726,11 +726,21 @@ persistence:
           - path: /etc/freeswitch/dialplan/public.xml
             subPath: public.xml
   freeswitch-fax-spool:
+{{- if .Values.freeswitch.fax.persistence.enabled }}
+    type: persistentVolumeClaim
+    storageClass: '{{ .Values.freeswitch.fax.persistence.storageClass }}'
+    accessMode: '{{ .Values.freeswitch.fax.persistence.accessMode }}'
+    size: '{{ .Values.freeswitch.fax.persistence.size }}'
+    retain: {{ .Values.freeswitch.fax.persistence.retain }}
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+{{- else }}
     type: emptyDir
+{{- end }}
     advancedMounts:
       freeswitch:
         freeswitch:
-          - path: /var/spool/freeswitch
+          - path: {{ .Values.freeswitch.fax.spoolPath }}
 {{- end }}
 {{- end }}
 
