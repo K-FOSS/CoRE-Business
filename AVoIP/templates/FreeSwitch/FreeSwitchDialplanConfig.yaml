@@ -20,7 +20,6 @@ data:
             <action application="set" data="fax_enable_t38=true"/>
             <action application="set" data="fax_enable_t38_request=true"/>
             <action application="export" data="execute_on_fax_detect=execute_extension fax-receive XML public"/>
-            <action application="disable_ec"/>
             <action application="answer"/>
             <action application="fax_detect"/>
 {{- end }}
@@ -36,7 +35,6 @@ data:
         <extension name="fax-receive">
           <condition field="destination_number" expression="^fax-receive$">
             <action application="log" data="INFO AVoIP DID ${destination_number}: fax tone detected"/>
-            <action application="disable_ec"/>
             <action application="answer"/>
             <action application="playback" data="silence_stream://2000"/>
             <action application="rxfax" data="{{ $.Values.freeswitch.fax.spoolPath }}/${uuid}.tif"/>
