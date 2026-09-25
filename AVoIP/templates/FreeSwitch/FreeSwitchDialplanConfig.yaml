@@ -37,6 +37,10 @@ data:
         <extension name="flowroute-did">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.did }}$">
             <action application="set" data="outside_call=true"/>
+{{- if $.Values.freeswitch.preBridgeAudio.enabled }}
+            <action application="answer"/>
+            <action application="playback" data="shouts://{{ trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url }}"/>
+{{- end }}
             <action application="log" data="INFO AVoIP DID ${destination_number}: received call"/>
 {{- if $.Values.freeswitch.fax.enabled }}
             <action application="set" data="fax_enable_t38=true"/>
