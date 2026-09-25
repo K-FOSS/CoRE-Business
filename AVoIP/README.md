@@ -84,10 +84,10 @@ names as `psql-<datacenter>-<region>`, and FreeSWITCH connects to
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space`. The init container is
 limited to application-table creation because the pinned SQL provider manages
 PostgreSQL roles, databases, and schemas, not tables.
-Sofia raw SIP tracing is enabled by default on the managed Asterisk and external
-profiles for troubleshooting; it records signaling and SDP metadata in the
-FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled` when that exposure
-or log volume is not appropriate.
+Sofia raw SIP tracing is enabled by default on the managed Asterisk, external,
+and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
+SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`
+when that exposure or log volume is not appropriate.
 
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
@@ -131,7 +131,7 @@ The chart defaults are intentionally mostly inactive:
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
 | Kamailio | Independently enabled | When enabled, Kamailio receives public UDP SIP and Gateway-terminated SIP/TLS, consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
-| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID accepts voice calls bridged to Asterisk and fax calls detected by SpanDSP/T.38 into an ephemeral TIFF spool. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; FreeSWITCH has no public SIP routes. Kamailio owns public UDP SIP and TLS SIP. |
+| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID accepts voice calls bridged to Asterisk and supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; FreeSWITCH has no public SIP routes. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public UDP SIP and TLS SIP. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim
