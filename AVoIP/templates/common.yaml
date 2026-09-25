@@ -537,13 +537,10 @@ service:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
     controller: freeswitch
     type: LoadBalancer
-    loadBalancerClass: purelb.io/purelbv2
     # Preserve carrier RTP source addresses and avoid cross-node kube-proxy
     # SNAT for the public media socket.
     externalTrafficPolicy: Local
     annotations:
-      purelb.io/allow-shared-ip: voip-gw.resolvemy.host
-      purelb.io/service-group: core-public
       purelb.io/allow-local: 'true'
       purelb.io/addresses: '{{ .Values.freeswitch.publicExposure.address }}'
     ports:
