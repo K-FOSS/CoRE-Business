@@ -118,9 +118,6 @@ freeswitch:
       backendPort: 5090
       # Kamailio's pod source range as seen by the private FreeSWITCH profile.
       podCIDR: '172.16.0.0/12'
-  preBridgeAudio:
-    enabled: true
-    url: 'https://static.mylogin.space/black_alert.mp3'
   sms:
     enabled: true
   sipLogging:

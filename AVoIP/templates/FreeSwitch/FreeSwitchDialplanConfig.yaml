@@ -22,6 +22,8 @@ data:
             <action application="export" data="execute_on_fax_detect=execute_extension fax-receive XML public"/>
             <action application="answer"/>
             <action application="fax_detect"/>
+            <action application="sleep" data="10000"/>
+            <action application="log" data="INFO AVoIP DID ${destination_number}: fax detection window completed"/>
 {{- end }}
             <action application="log" data="INFO AVoIP DID ${destination_number}: bridging to Asterisk"/>
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>

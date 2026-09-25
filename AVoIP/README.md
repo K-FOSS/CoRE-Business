@@ -55,7 +55,7 @@ Forgejo build tag rather than the moving Docker Hub `latest` image.
 When Kamailio is enabled, the chart deploys the official
 [Kamailio SIP server](https://www.kamailio.org/) from its
 [official container images](https://github.com/kamailio/kamailio-docker),
-with public TLS termination delegated to the `main-gw` `tls-sip` listener.
+with public TLS terminated by the `main-gw` `tls-sip` listener.
 Envoy Gateway's
 [BackendTrafficPolicy](https://gateway.envoyproxy.io/docs/concepts/gateway_api_extensions/backend-traffic-policy/)
 sends PROXY protocol v2 to Kamailio, and Kamailio's
@@ -176,7 +176,7 @@ resource inventory is only:
 - Service `dc1-k3s-node1-business-avoip-avoip-mycroft-mimic`, ClusterIP port
   `80` targeting the `http` port.
 
-No Asterisk, FreeSWITCH, Jitsi, `User`, HTTPRoute, TCPRoute, or UDPRoute
+No Asterisk, FreeSWITCH, Jitsi, `User`, HTTPRoute, TLSRoute, or UDPRoute
 resource is currently part of this Argo application. The live speech
 resources are scaled to zero, matching the chart’s replica settings.
 
