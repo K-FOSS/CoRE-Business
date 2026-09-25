@@ -319,7 +319,7 @@ controllers:
           - -c
         args:
           - >-
-            exec /usr/sbin/rtpengine
+            exec /usr/local/bin/rtpengine
             --table=-1
             --interface=internal/${POD_IP}
             --interface=external/${POD_IP}!{{ .Values.rtpengine.media.address }}
@@ -344,9 +344,6 @@ controllers:
           capabilities:
             drop:
               - ALL
-            add:
-              - NET_ADMIN
-              - SYS_NICE
         probes:
           startup:
             enabled: true
