@@ -27,6 +27,7 @@ data:
     loadmodule "rr.so"
     loadmodule "maxfwd.so"
     loadmodule "sanity.so"
+    loadmodule "pv.so"
     loadmodule "siputils.so"
     loadmodule "textops.so"
     loadmodule "xlog.so"
@@ -35,7 +36,7 @@ data:
     modparam("tls", "config", "/etc/kamailio/tls.cfg")
     modparam("rr", "enable_full_lr", 1)
     modparam("sanity", "autodrop", 0)
-    modparam("siputils", "rpid_avp", "$avp(rpid)")
+    modparam("siputils", "rpid_avp", "$avp(s:rpid)")
 
     request_route {
       if (!sanity_check("1511", "7")) {
