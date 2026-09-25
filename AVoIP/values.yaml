@@ -84,9 +84,10 @@ rtpengine:
     address: '66.165.222.103'
     min: 11000
     max: 11050
-  diagnostics:
-    # Keep a network troubleshooting shell in the RTPEngine pod. The sidecar
-    # shares the pod network namespace but remains rootless and unprivileged.
+
+diagnostics:
+  netshoot:
+    # Keep a network troubleshooting shell in each enabled AVoIP service pod.
     enabled: true
     image:
       repository: 'nicolaka/netshoot'

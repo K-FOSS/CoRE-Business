@@ -206,6 +206,21 @@ controllers:
             containerPort: {{ . }}
             protocol: TCP
 {{ end }}
+{{- if .Values.diagnostics.netshoot.enabled }}
+      netshoot:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - sleep infinity
+        image:
+          repository: '{{ .Values.diagnostics.netshoot.image.repository }}'
+          tag: '{{ .Values.diagnostics.netshoot.image.tag }}'
+          digest: '{{ .Values.diagnostics.netshoot.image.digest }}'
+          pullPolicy: '{{ .Values.diagnostics.netshoot.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+{{- end }}
 {{ end }}
 {{ if .Values.kamailio.enabled }}
   kamailio:
@@ -290,6 +305,21 @@ controllers:
           - name: tcp-sip
             containerPort: 5061
             protocol: TCP
+{{- if .Values.diagnostics.netshoot.enabled }}
+      netshoot:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - sleep infinity
+        image:
+          repository: '{{ .Values.diagnostics.netshoot.image.repository }}'
+          tag: '{{ .Values.diagnostics.netshoot.image.tag }}'
+          digest: '{{ .Values.diagnostics.netshoot.image.digest }}'
+          pullPolicy: '{{ .Values.diagnostics.netshoot.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+{{- end }}
 {{ end }}
 {{- if and .Values.rtpengine.enabled .Values.kamailio.enabled .Values.freeswitch.enabled }}
   rtpengine:
@@ -385,7 +415,7 @@ controllers:
           - name: control
             containerPort: {{ .Values.rtpengine.controlPort }}
             protocol: UDP
-{{- if .Values.rtpengine.diagnostics.enabled }}
+{{- if .Values.diagnostics.netshoot.enabled }}
       netshoot:
         command:
           - /bin/sh
@@ -393,10 +423,10 @@ controllers:
         args:
           - sleep infinity
         image:
-          repository: '{{ .Values.rtpengine.diagnostics.image.repository }}'
-          tag: '{{ .Values.rtpengine.diagnostics.image.tag }}'
-          digest: '{{ .Values.rtpengine.diagnostics.image.digest }}'
-          pullPolicy: '{{ .Values.rtpengine.diagnostics.image.pullPolicy }}'
+          repository: '{{ .Values.diagnostics.netshoot.image.repository }}'
+          tag: '{{ .Values.diagnostics.netshoot.image.tag }}'
+          digest: '{{ .Values.diagnostics.netshoot.image.digest }}'
+          pullPolicy: '{{ .Values.diagnostics.netshoot.image.pullPolicy }}'
         securityContext:
           allowPrivilegeEscalation: false
 {{- end }}
@@ -585,6 +615,21 @@ controllers:
           - name: udp-sip-edge
             containerPort: 5090
             protocol: UDP
+{{- if .Values.diagnostics.netshoot.enabled }}
+      netshoot:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - sleep infinity
+        image:
+          repository: '{{ .Values.diagnostics.netshoot.image.repository }}'
+          tag: '{{ .Values.diagnostics.netshoot.image.tag }}'
+          digest: '{{ .Values.diagnostics.netshoot.image.digest }}'
+          pullPolicy: '{{ .Values.diagnostics.netshoot.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+{{- end }}
 
 {{ end }}
 
