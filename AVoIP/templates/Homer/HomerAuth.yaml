@@ -63,7 +63,7 @@ spec:
 
       resource "authentik_provider_oauth2" "homer" {
         name                 = var.display_name
-        client_id            = "${var.application_slug}-${var.access_group}"
+        client_id            = var.application_slug
         client_secret        = random_password.client_secret.result
         authorization_flow   = data.authentik_flow.authorization.id
         invalidation_flow    = data.authentik_flow.invalidation.id
