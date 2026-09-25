@@ -54,7 +54,7 @@ data:
         "profile_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/{{ $oidcSlug }}/userinfo/",
         "redirect_uri": "https://{{ .Values.homer.hostname }}/api/v3/oauth2/auth",
         "provider_name": "authentik",
-        "service_redirect": "/",
+        "service_redirect": "/api/v3/oauth2/redirect",
         "service_root": "/",
         "scope": ["openid", "email", "profile"],
         "auto_redirect": true
