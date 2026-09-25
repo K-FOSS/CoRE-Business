@@ -399,9 +399,6 @@ controllers:
           pullPolicy: '{{ .Values.rtpengine.diagnostics.image.pullPolicy }}'
         securityContext:
           allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
 {{- end }}
 {{- end }}
 {{ if .Values.freeswitch.enabled }}
