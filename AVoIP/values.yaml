@@ -128,7 +128,7 @@ freeswitch:
   media:
     # Snapshot per-call RTP statistics only when explicitly enabled.
     diagnostics:
-      enabled: false
+      enabled: true
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'
