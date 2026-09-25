@@ -291,6 +291,104 @@ controllers:
             containerPort: 5061
             protocol: TCP
 {{ end }}
+{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled .Values.freeswitch.enabled }}
+  rtpengine:
+    forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
+    strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    replicas: 1
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: default
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      labels:
+        app: '{{ include "avoip.fullname" . }}-rtpengine'
+    containers:
+      rtpengine:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - >-
+            exec /usr/sbin/rtpengine
+            --table=-1
+            --interface=internal/${POD_IP}
+            --interface=external/${POD_IP}!{{ .Values.rtpengine.media.address }}
+            --listen-ng=0.0.0.0:{{ .Values.rtpengine.controlPort }}
+            --port-min={{ .Values.rtpengine.media.min }}
+            --port-max={{ sub (.Values.rtpengine.media.max | int) 1 }}
+            --foreground
+            --log-stderr
+            --log-level=6
+        image:
+          repository: '{{ .Values.rtpengine.image.repository }}'
+          tag: '{{ .Values.rtpengine.image.tag }}'
+          digest: '{{ .Values.rtpengine.image.digest }}'
+          pullPolicy: '{{ .Values.rtpengine.image.pullPolicy }}'
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - NET_ADMIN
+              - SYS_NICE
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - kill -0 1
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 24
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - kill -0 1
+              periodSeconds: 10
+              timeoutSeconds: 3
+              failureThreshold: 3
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - kill -0 1
+              periodSeconds: 30
+              timeoutSeconds: 3
+              failureThreshold: 3
+        ports:
+          - name: control
+            containerPort: {{ .Values.rtpengine.controlPort }}
+            protocol: UDP
+{{- end }}
 {{ if .Values.freeswitch.enabled }}
 {{ $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host }}
   freeswitch:
@@ -532,7 +630,7 @@ service:
         port: 5061
         targetPort: tls-sips
         protocol: TCP
-{{- if .Values.freeswitch.publicExposure.enabled }}
+{{- if and .Values.freeswitch.publicExposure.enabled (or (not .Values.rtpengine.enabled) (not .Values.kamailio.enabled)) }}
   freeswitch-rtp:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
     controller: freeswitch
@@ -552,6 +650,32 @@ service:
           end: {{ sub (.Values.freeswitch.rtp.max | int) 1 }}
         protocol: UDP
 {{- end }}
+{{- end }}
+{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled .Values.freeswitch.enabled }}
+  rtpengine:
+    forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
+    controller: rtpengine
+    ports:
+      control:
+        port: {{ .Values.rtpengine.controlPort }}
+        targetPort: control
+        protocol: UDP
+  rtpengine-media:
+    forceRename: '{{ include "avoip.fullname" . }}-rtpengine-media'
+    controller: rtpengine
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    annotations:
+      purelb.io/allow-shared-ip: voip-gw.resolvemy.host
+      purelb.io/service-group: core-public
+      purelb.io/allow-local: 'true'
+      purelb.io/addresses: '{{ .Values.rtpengine.media.address }}'
+    ports:
+      rtp:
+        portRange:
+          start: {{ .Values.rtpengine.media.min }}
+          end: {{ sub (.Values.rtpengine.media.max | int) 1 }}
+        protocol: UDP
 {{- end }}
 
 persistence:

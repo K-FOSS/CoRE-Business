@@ -15,7 +15,9 @@ spec:
   selectors:
     - podSelector:
         matchLabels:
-          app.kubernetes.io/name: {{ $fullName }}-freeswitch
+          app.kubernetes.io/controller: 'freeswitch'
+          app.kubernetes.io/instance: {{ $fullName }}
+          app.kubernetes.io/name: '{{ $.Chart.Name }}'
           
 
   # Specify which destination CIDR(s) this policy applies to.

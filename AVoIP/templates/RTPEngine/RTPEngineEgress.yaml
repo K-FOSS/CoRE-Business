@@ -1,0 +1,24 @@
+{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled .Values.freeswitch.enabled }}
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: {{ $fullName }}-rtpengine
+  labels:
+    app.kubernetes.io/name: '{{ $.Chart.Name }}-rtpengine'
+spec:
+  selectors:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/controller: 'rtpengine'
+          app.kubernetes.io/instance: '{{ $fullName }}'
+          app.kubernetes.io/name: '{{ $.Chart.Name }}'
+  destinationCIDRs:
+    - '0.0.0.0/0'
+  egressGateway:
+    nodeSelector:
+      matchLabels:
+        resolvemy.host/machinetype: 'vm'
+    egressIP: '{{ $.Values.network.egressIP }}'
+{{- end }}

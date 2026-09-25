@@ -71,6 +71,20 @@ kamailio:
     digest: 'sha256:c54f770ab74ae64588cc174e206aa337108cc777b6162d738189d1cb0c32d116'
     pullPolicy: 'IfNotPresent'
 
+rtpengine:
+  # Proxy carrier media at the SIP edge instead of exposing FreeSWITCH RTP.
+  enabled: true
+  controlPort: 22222
+  image:
+    repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/rtpengine'
+    tag: 'mr13.5.1.27-build-70'
+    digest: 'sha256:49a4a0ab99ecbea4efe350601d39aac8279388291434c261466cd7b84cd66bbe'
+    pullPolicy: 'IfNotPresent'
+  media:
+    address: '66.165.222.103'
+    min: 11000
+    max: 11050
+
 jitsi:
   domain: 'meet.mylogin.space'
   tls:

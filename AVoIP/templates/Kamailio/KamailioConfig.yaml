@@ -31,6 +31,9 @@ data:
     loadmodule "siputils.so"
     loadmodule "textops.so"
     loadmodule "xlog.so"
+{{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
+    loadmodule "rtpengine.so"
+{{- end }}
 
     modparam("rr", "enable_full_lr", 1)
     # Preserve the actual local socket across the private UDP/public TCP
@@ -38,6 +41,30 @@ data:
     modparam("rr", "sockname_mode", 1)
     modparam("sanity", "autodrop", 0)
     modparam("siputils", "rpid_avp", "$avp(s:rpid)")
+{{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
+    modparam("rtpengine", "rtpengine_sock", "udp:{{ $fullName }}-rtpengine.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.rtpengine.controlPort }}")
+
+    route[MEDIA_INITIAL] {
+      if (!has_body("application/sdp")) {
+        return;
+      }
+      if (!rtpengine_manage("replace-origin replace-session-connection external internal")) {
+        xlog("L_ERR", "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
+      } else {
+        xlog("L_INFO", "RTPEngine initial SDP handled callid=$ci method=$rm source=$si:$sp\n");
+      }
+    }
+
+    route[MEDIA_DIALOG] {
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("replace-origin replace-session-connection")) {
+          xlog("L_ERR", "RTPEngine dialog SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
+        }
+      } else if (is_method("BYE|CANCEL")) {
+        rtpengine_manage();
+      }
+    }
+{{- end }}
 
     request_route {
 {{- if .Values.kamailio.sipLogging.enabled }}
@@ -115,6 +142,9 @@ data:
           record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp;sn=private_udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedUDPPort }};transport=udp;sn=private_udp");
         }
         add_rr_param(";r2=on");
+{{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
+        route(MEDIA_INITIAL);
+{{- end }}
         route(RELAY);
         exit;
       }
@@ -144,6 +174,9 @@ data:
 {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
       xlog("L_INFO", "SIP diagnostic in-dialog decision=relay proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
 {{- end }}
+{{- end }}
+{{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
+      route(MEDIA_DIALOG);
 {{- end }}
       route(RELAY);
       exit;
@@ -175,11 +208,22 @@ data:
       exit;
     }
 
-{{- if .Values.kamailio.sipLogging.enabled }}
+{{- if or .Values.kamailio.sipLogging.enabled (and .Values.rtpengine.enabled .Values.freeswitch.enabled) }}
     onreply_route[KAMAILIO_SIP_REPLY] {
+{{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("replace-origin replace-session-connection")) {
+          xlog("L_ERR", "RTPEngine reply SDP handling failed callid=$ci status=$rs\n");
+        }
+      } else if ($rs =~ "[3-6][0-9][0-9]") {
+        rtpengine_manage();
+      }
+{{- end }}
+{{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP reply proto=$proto recv=$Ri:$Rp status=$rs reason=$rr source=$si:$sp destination=$rpl(duri) via=$hdr(Via) callid=$ci\n");
 {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
       xlog("L_INFO", "SIP diagnostic reply socket=$Ri:$Rp proto=$proto status=$rs reason=$rr source=$si:$sp destination=$rpl(duri) ruri=$ru cseq=$hdr(CSeq) route=$hdr(Route) via=$hdr(Via) callid=$ci\n");
+{{- end }}
 {{- end }}
     }
 {{- end }}
