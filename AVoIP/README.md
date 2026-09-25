@@ -55,7 +55,8 @@ Forgejo build tag rather than the moving Docker Hub `latest` image.
 When Kamailio is enabled, the chart deploys the official
 [Kamailio SIP server](https://www.kamailio.org/) from its
 [official container images](https://github.com/kamailio/kamailio-docker),
-with TLS configured from the existing certificate Secret. Envoy Gateway's
+with public TLS termination delegated to the `main-gw` `tls-sip` listener.
+Envoy Gateway's
 [BackendTrafficPolicy](https://gateway.envoyproxy.io/docs/concepts/gateway_api_extensions/backend-traffic-policy/)
 sends PROXY protocol v2 to Kamailio, and Kamailio's
 [HAProxy PROXY-protocol support](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#tcp_accept_haproxy)
@@ -98,10 +99,10 @@ Inbound external SIP is restricted by the Flowroute signaling CIDRs configured
 under `flowroute.signalingCIDRs`; the public DID route does not
 accept arbitrary Internet SIP sources.
 FreeSWITCH voice outbound is disabled: the public context has an explicit
-catch-all rejection after the configured DID route, while the Flowroute gateway
-registration remains only to receive inbound DID traffic.
+catch-all rejection after the configured DID route. FreeSWITCH does not
+register to Flowroute; carrier signaling is accepted through Kamailio.
 Flowroute SMS is enabled by default through `mod_sms` and
-`mod_sms_flowroute`; its API credentials are sourced from the existing
+`mod_sms_flowroute`; its API credentials are sourced from the separate SMS
 External Secret and are not stored in chart values.
 
 The Asterisk and FreeSWITCH Deployments and Services are rendered through the
@@ -125,8 +126,8 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. Unused Asterisk LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, CDR/CEL, and IAX2 modules are disabled; LDAP remains a FreeSWITCH internal-peer concern. |
-| Kamailio | Independently enabled | When enabled, Kamailio terminates Flowroute SIP/TLS, consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
-| FreeSWITCH | Disabled | When enabled, creates internal SIP services and External Secret-backed configuration. The configured DID accepts voice calls bridged to Asterisk and fax calls detected by SpanDSP/T.38 into an ephemeral TIFF spool. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; public SIP/TCP/UDP remains disabled unless explicitly enabled, while the TLS route terminates at Kamailio. |
+| Kamailio | Independently enabled | When enabled, Kamailio receives public UDP SIP and Gateway-terminated SIP/TLS, consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
+| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID accepts voice calls bridged to Asterisk and fax calls detected by SpanDSP/T.38 into an ephemeral TIFF spool. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; FreeSWITCH has no public SIP routes. Kamailio owns public UDP SIP and TLS SIP. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim
@@ -171,8 +172,8 @@ resource inventory is only:
 - Service `dc1-k3s-node1-business-avoip-avoip-mycroft-mimic`, ClusterIP port
   `80` targeting the `http` port.
 
-No Asterisk, FreeSWITCH, Jitsi, `User`, HTTPRoute, TCPRoute, UDPRoute, or
-TLSRoute resource is currently part of this Argo application. The live speech
+No Asterisk, FreeSWITCH, Jitsi, `User`, HTTPRoute, TCPRoute, or UDPRoute
+resource is currently part of this Argo application. The live speech
 resources are scaled to zero, matching the chart’s replica settings.
 
 These speech resources are legacy remnants. The chart no longer renders them;

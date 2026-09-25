@@ -538,6 +538,14 @@ persistence:
           - path: /var/lib/asterisk
         asterisk:
           - path: /var/lib/asterisk
+  asterisk-sounds:
+    type: emptyDir
+    advancedMounts:
+      asterisk:
+        asterisk-sounds:
+          - path: /var/lib/asterisk/sounds
+        asterisk:
+          - path: /var/lib/asterisk/sounds
   asterisk-log:
     type: emptyDir
     advancedMounts:
