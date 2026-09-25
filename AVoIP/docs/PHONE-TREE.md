@@ -4,15 +4,18 @@ The AVoIP voice configuration is intentionally minimal. It no longer ships
 the upstream FreeSWITCH demonstration dialplan, sample extensions, conference
 codes, parking codes, fax tests, voicemail routes, or demo IVR.
 
-The chart defaults Asterisk and FreeSWITCH to disabled. The current [AVoIP
+The chart defaults Asterisk and FreeSWITCH to disabled. Kamailio has its own
+enablement flag. The current [AVoIP
 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml)
 enables both only on `core-dc1-talos-prod`.
 
 Public SIP exposure is disabled by default with
-`freeswitch.publicExposure.sip.enabled: false`. FreeSWITCH keeps its internal
-ClusterIP services and outbound Flowroute registration, while the optional
-PureLB LoadBalancer exposes RTP only at the requested
-`freeswitch.publicExposure.address`.
+`freeswitch.publicExposure.sip.enabled: false`. When enabled, the TLS route
+terminates at Kamailio. Envoy sends PROXY protocol v2 so Kamailio can verify
+the original Flowroute source address before forwarding SIP over the private
+cluster network to FreeSWITCH. FreeSWITCH keeps its internal ClusterIP
+services and outbound Flowroute registration, while the optional PureLB
+LoadBalancer exposes RTP only at the requested `freeswitch.publicExposure.address`.
 
 ## Configured DID
 
@@ -29,15 +32,17 @@ Inbound calls follow this path:
    gateway configuration is in
    [FreeSwitchUpstream.yaml](../templates/FreeSwitch/FreeSwitchUpstream.yaml)
    and [FreeSwitchUpstreamSync.yaml](../templates/FreeSwitch/FreeSwitchUpstreamSync.yaml).
-2. FreeSWITCH receives the call on the external Sofia profile.
-3. The external profile applies the `flowroute` ACL and rejects sources that
-   are not in the configured Flowroute signaling CIDRs.
-4. The public context matches only the configured DID.
-5. With fax handling enabled, FreeSWITCH answers the carrier leg, starts
+2. Envoy Gateway sends the TLS connection to Kamailio with a PROXY v2 header.
+3. Kamailio validates the original source against the configured Flowroute
+   signaling CIDRs and rejects all other sources.
+4. Kamailio forwards accepted SIP to FreeSWITCH's private `kamailio` Sofia
+   profile.
+5. The public context matches only the configured DID.
+6. With fax handling enabled, FreeSWITCH answers the carrier leg, starts
    SpanDSP fax-tone detection, and plays the optional pre-bridge audio. Voice
    calls then bridge to Asterisk; when a fax tone is detected, the call is
    diverted to SpanDSP `rxfax` with T.38 negotiation enabled instead.
-6. FreeSWITCH writes a received TIFF to its ephemeral fax spool and logs the
+7. FreeSWITCH writes a received TIFF to its ephemeral fax spool and logs the
    fax result, then hangs up. The same DID therefore accepts both voice and fax
    calls, subject to the carrier's fax-tone timing.
 
@@ -137,12 +142,12 @@ bridged to Asterisk without LDAP authentication.
 - Sofia raw SIP tracing is enabled by default on the Asterisk and external
   profiles through `freeswitch.sipLogging.enabled`. It is intended for call
   troubleshooting and includes signaling/SDP metadata in the pod logs.
-- Public TCP/UDP SIP Gateway API routes are not rendered unless
-  `freeswitch.publicExposure.sip.enabled` is explicitly enabled. The existing
-  TLS SIP route remains attached to the configured `core-prod/main-gw`
-  Gateway.
-- The external SIP profile only accepts signaling from the Flowroute PoP CIDRs
-  in `freeswitch.flowroute.signalingCIDRs`.
+- Public TCP/UDP SIP Gateway API routes are disabled. The TLS SIP route remains
+  attached to the configured `core-prod/main-gw` Gateway and targets Kamailio;
+  its Envoy `BackendTrafficPolicy` enables PROXY protocol v2.
+- Kamailio accepts public signaling only from the Flowroute PoP CIDRs in
+  `flowroute.signalingCIDRs`; the private FreeSWITCH Kamailio
+  profile only accepts traffic from the configured Kamailio pod CIDR.
 - TLS uses `sip.resolvemy.host` and the configured certificate Secret.
 - The certificate Secret is consumed at runtime as `tls.crt` and `tls.key`; a
   rootless init container combines them into FreeSWITCH's required

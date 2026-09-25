@@ -126,4 +126,21 @@ data:
         <param name="tls-ciphers" value="$${sip_tls_ciphers}"/>
       </settings>
     </profile>
+  kamailio.xml: |
+    <profile name="kamailio">
+      <settings>
+        <param name="sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
+        <param name="dialplan" value="XML"/>
+        <param name="context" value="public"/>
+        <param name="auth-calls" value="false"/>
+        <param name="apply-inbound-acl" value="kamailio"/>
+        <param name="sip-ip" value="$${local_ip_v4}"/>
+        <param name="rtp-ip" value="$${local_ip_v4}"/>
+        <param name="ext-sip-ip" value="$${external_sip_ip}"/>
+        <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
+        <param name="inbound-late-negotiation" value="true"/>
+        <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
+        <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
+      </settings>
+    </profile>
 {{- end }}

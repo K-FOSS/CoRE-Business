@@ -133,6 +133,87 @@ controllers:
             protocol: TCP
 {{ end }}
 {{ end }}
+{{ if .Values.kamailio.enabled }}
+  kamailio:
+    forceRename: '{{ include "avoip.fullname" . }}-kamailio'
+    strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    replicas: 1
+    minReadySeconds: 5
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: default
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      labels:
+        app: '{{ include "avoip.fullname" . }}-kamailio'
+    containers:
+      kamailio:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - exec /usr/sbin/kamailio -DD -E -f /etc/kamailio/kamailio.cfg
+        image:
+          repository: '{{ .Values.kamailio.image.repository }}'
+          tag: '{{ .Values.kamailio.image.tag }}'
+          digest: '{{ .Values.kamailio.image.digest }}'
+          pullPolicy: '{{ .Values.kamailio.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - kill -0 1 && test -r /etc/kamailio/kamailio.cfg
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 18
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - kill -0 1 && test -r /etc/kamailio/kamailio.cfg
+              periodSeconds: 10
+              timeoutSeconds: 3
+              failureThreshold: 3
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - kill -0 1
+              periodSeconds: 30
+              timeoutSeconds: 3
+              failureThreshold: 3
+        ports:
+          - name: tls-sip
+            containerPort: 5061
+            protocol: TCP
+{{ end }}
 {{ if .Values.freeswitch.enabled }}
 {{ $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host }}
   freeswitch:
@@ -314,6 +395,9 @@ controllers:
           - name: tls-sipext
             containerPort: 5081
             protocol: TCP
+          - name: udp-sip-edge
+            containerPort: 5090
+            protocol: UDP
 
 {{ end }}
 
@@ -334,6 +418,18 @@ service:
         targetPort: udp-sip
         protocol: UDP
 {{- end }}
+{{- if .Values.kamailio.enabled }}
+{{- if .Values.kamailio.publicExposure.enabled }}
+  kamailio:
+    forceRename: '{{ include "avoip.fullname" . }}-kamailio'
+    controller: kamailio
+    ports:
+      tls-sip:
+        port: 5061
+        targetPort: tls-sip
+        protocol: TCP
+{{- end }}
+{{- end }}
 {{- if .Values.freeswitch.enabled }}
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
@@ -346,6 +442,10 @@ service:
       udp-sip:
         port: 5060
         targetPort: udp-sip
+        protocol: UDP
+      udp-sip-edge:
+        port: 5090
+        targetPort: udp-sip-edge
         protocol: UDP
       tls-sips:
         port: 5061
@@ -458,6 +558,31 @@ persistence:
         asterisk:
           - path: /var/spool/asterisk
 {{- end }}
+{{- if .Values.kamailio.enabled }}
+  kamailio-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-kamailio-config'
+    advancedMounts:
+      kamailio:
+        kamailio:
+          - path: /etc/kamailio/kamailio.cfg
+            subPath: kamailio.cfg
+          - path: /etc/kamailio/tls.cfg
+            subPath: tls.cfg
+  kamailio-tls:
+    type: secret
+    name: resolvemyhost-default-certificates
+    advancedMounts:
+      kamailio:
+        kamailio:
+          - path: /etc/kamailio/tls
+  kamailio-tmp:
+    type: emptyDir
+    advancedMounts:
+      kamailio:
+        kamailio:
+          - path: /tmp
+{{- end }}
 {{- if .Values.freeswitch.enabled }}
   freeswitch-config:
     type: configMap
@@ -514,6 +639,8 @@ persistence:
             subPath: external.xml
           - path: /etc/freeswitch/sip_profiles/asterisk.xml
             subPath: asterisk.xml
+          - path: /etc/freeswitch/sip_profiles/kamailio.xml
+            subPath: kamailio.xml
           - path: /etc/freeswitch/sip_profiles/internal.xml
             subPath: internal.xml
           - path: /etc/freeswitch/sip_profiles/internal-ipv6.xml

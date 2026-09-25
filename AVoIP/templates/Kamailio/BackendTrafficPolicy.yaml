@@ -1,0 +1,15 @@
+{{- if and .Values.kamailio.enabled .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ $fullName }}-kamailio-tls-proxy-protocol
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: TLSRoute
+      name: {{ $fullName }}-kamailio
+  proxyProtocol:
+    version: V2
+{{- end }}

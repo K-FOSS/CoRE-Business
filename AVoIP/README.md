@@ -22,8 +22,8 @@ uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
 `ServerSideApply=true`, and injects the following Helm merge values:
 
 - `env`, `datacenter`, `region`, and `cluster` identity/type/domain metadata.
-- `asterisk.enabled`, `freeswitch.enabled`, and FreeSWITCH public exposure per
-  cluster.
+- `asterisk.enabled`, `kamailio.enabled`, `freeswitch.enabled`, and public
+  exposure settings per cluster.
 - `hub` metadata for spoke clusters.
 - `gateway.name`, `gateway.namespace`, and `gateway.sectionName`.
 - `jitsi.domain` and `jitsi.tls.secretName`.
@@ -51,6 +51,18 @@ The deployed FreeSWITCH image is built by the site-local
 from its [FreeSWITCH image definition](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker/src/branch/main/Images/FreeSwitch)
 and consumed from the Forgejo container registry. The chart pins an immutable
 Forgejo build tag rather than the moving Docker Hub `latest` image.
+
+When Kamailio is enabled, the chart deploys the official
+[Kamailio SIP server](https://www.kamailio.org/) from its
+[official container images](https://github.com/kamailio/kamailio-docker),
+with TLS configured from the existing certificate Secret. Envoy Gateway's
+[BackendTrafficPolicy](https://gateway.envoyproxy.io/docs/concepts/gateway_api_extensions/backend-traffic-policy/)
+sends PROXY protocol v2 to Kamailio, and Kamailio's
+[HAProxy PROXY-protocol support](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#tcp_accept_haproxy)
+verifies the original Flowroute source before forwarding SIP to the configured
+private backend. Kamailio and FreeSWITCH can be enabled independently; when
+both are enabled, the default Kamailio backend is FreeSWITCH's private SIP
+profile.
 
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
 [CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
@@ -81,7 +93,7 @@ metadata until its templates are changed.
 The complete current DID flow, SIP messaging path, registration behavior, and
 operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
 Inbound external SIP is restricted by the Flowroute signaling CIDRs configured
-under `freeswitch.flowroute.signalingCIDRs`; the public DID route does not
+under `flowroute.signalingCIDRs`; the public DID route does not
 accept arbitrary Internet SIP sources.
 FreeSWITCH voice outbound is disabled: the public context has an explicit
 catch-all rejection after the configured DID route, while the Flowroute gateway
@@ -111,7 +123,8 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH. Unused Asterisk LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, CDR/CEL, and IAX2 modules are disabled; LDAP remains a FreeSWITCH internal-peer concern. |
-| FreeSWITCH | Disabled | When enabled, creates internal SIP services and External Secret-backed configuration. The configured DID accepts voice calls bridged to Asterisk and fax calls detected by SpanDSP/T.38 into an ephemeral TIFF spool. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; public SIP/TCP/UDP remains disabled unless `freeswitch.publicExposure.sip.enabled` is explicitly enabled, while the TLS route remains available. |
+| Kamailio | Independently enabled | When enabled, Kamailio terminates Flowroute SIP/TLS, consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
+| FreeSWITCH | Disabled | When enabled, creates internal SIP services and External Secret-backed configuration. The configured DID accepts voice calls bridged to Asterisk and fax calls detected by SpanDSP/T.38 into an ephemeral TIFF spool. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; public SIP/TCP/UDP remains disabled unless explicitly enabled, while the TLS route terminates at Kamailio. |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim

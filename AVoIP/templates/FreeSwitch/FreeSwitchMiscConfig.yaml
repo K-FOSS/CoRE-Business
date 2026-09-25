@@ -176,11 +176,14 @@ data:
         <list name="asterisk" default="deny">
           <node type="allow" cidr="10.0.0.0/8"/>
         </list>
-        <list name="flowroute" default="deny">
-{{- range $.Values.freeswitch.flowroute.signalingCIDRs }}
-          <node type="allow" cidr="{{ . }}"/>
+      <list name="flowroute" default="deny">
+{{- range $.Values.flowroute.signalingCIDRs }}
+        <node type="allow" cidr="{{ . }}"/>
 {{- end }}
-        </list>
+      </list>
+      <list name="kamailio" default="deny">
+        <node type="allow" cidr="{{ $.Values.freeswitch.publicExposure.kamailio.podCIDR }}"/>
+      </list>
       </network-lists>
     </configuration>
 
