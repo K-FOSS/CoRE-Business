@@ -44,6 +44,10 @@ controllers:
         args:
           - |
             set -eu
+            ls -lah /usr/share/asterisk/sounds/en/
+            ls -lah /usr/share/asterisk
+            ls -lah /var/lib/asterisk
+            ls -lah /var/lib/asterisk/sounds
             mkdir -p /var/lib/asterisk/sounds/en /var/log/asterisk/cdr-csv
             cp -R /usr/share/asterisk/sounds/en/. /var/lib/asterisk/sounds/en/
             test -f /var/lib/asterisk/sounds/en/demo-congrats.gsm
