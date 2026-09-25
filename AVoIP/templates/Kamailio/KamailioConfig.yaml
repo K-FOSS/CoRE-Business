@@ -20,8 +20,8 @@ data:
     tcp_accept_haproxy=yes
     listen=tls:0.0.0.0:5061
 
-    loadmodule "sl.so"
     loadmodule "tm.so"
+    loadmodule "sl.so"
     loadmodule "rr.so"
     loadmodule "maxfwd.so"
     loadmodule "sanity.so"
@@ -33,6 +33,7 @@ data:
     modparam("tls", "config", "/etc/kamailio/tls.cfg")
     modparam("rr", "enable_full_lr", 1)
     modparam("sanity", "autodrop", 0)
+    modparam("siputils", "rpid_avp", "$avp(rpid)")
 
     request_route {
       if (!sanity_check("1511", "7")) {
