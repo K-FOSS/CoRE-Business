@@ -46,7 +46,9 @@ data:
     modparam("siputils", "rpid_avp", "$avp(s:rpid)")
 {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
     modparam("siptrace", "trace_on", 1)
-    modparam("siptrace", "trace_mode", 4)
+    # Mirror core SIP events as HEP to the configured Homer capture endpoint.
+    # Mode 4 forwards the duplicate URI as plain SIP/UDP on this Kamailio build.
+    modparam("siptrace", "trace_mode", 1)
     modparam("siptrace", "trace_to_database", 0)
     modparam("siptrace", "duplicate_uri", "sip:{{ $fullName }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}")
     modparam("siptrace", "hep_mode_on", 1)
