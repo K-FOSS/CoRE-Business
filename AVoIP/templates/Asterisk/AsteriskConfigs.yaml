@@ -1,5 +1,6 @@
 {{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -30,7 +31,12 @@ data:
     noload => res_phoneprov.so
     noload => res_musiconhold.so
     noload => res_smdi.so
+{{- if .Values.asterisk.cdr.enabled }}
+    require = cdr_pgsql.so
+{{- else }}
     noload => cdr_pgsql.so
+{{- end }}
+    noload => cdr_csv.so
     noload => cdr_custom.so
     noload => cdr_sqlite3_custom.so
     noload => cel_custom.so
@@ -52,6 +58,15 @@ data:
     [logfiles]
     console => notice,warning,error,verbose,debug
     messages.log => notice,warning,error
+
+  cdr.conf: |
+    [general]
+    enable=yes
+    batch=yes
+    safeshutdown=yes
+
+  cdr_pgsql.conf: |
+    #include /tmp/avoip-cdr_pgsql.conf
 
   rtp.conf: |
     [general]

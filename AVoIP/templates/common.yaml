@@ -1,6 +1,7 @@
 {{- include "bjw-s.common.loader.init" . }}
 
 {{- define "avoip.common.values" -}}
+{{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
 global:
   nameOverride: '{{ .Release.Name }}'
   createDefaultServiceAccount: false
@@ -32,6 +33,65 @@ controllers:
       labels:
         app: '{{ include "avoip.fullname" . }}-asterisk'
     initContainers:
+{{- if .Values.asterisk.cdr.enabled }}
+      cdr-schema:
+        image:
+          repository: 'postgres'
+          tag: '17-alpine'
+          digest: 'sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24'
+          pullPolicy: 'IfNotPresent'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            set -eu
+            export PGUSER="$USERNAME"
+            export PGPASSWORD="$PASSWORD"
+            export PGDATABASE="$USERNAME"
+            until psql -v ON_ERROR_STOP=1 -h '{{ $asteriskCdrHost }}' -p '{{ $.Values.asterisk.cdr.port }}' -c 'SELECT 1' >/dev/null 2>&1; do
+              sleep 2
+            done
+            psql -v ON_ERROR_STOP=1 -h '{{ $asteriskCdrHost }}' -p '{{ $.Values.asterisk.cdr.port }}' <<'SQL'
+            CREATE TABLE IF NOT EXISTS {{ $.Values.asterisk.cdr.table }} (
+              calldate timestamp NOT NULL,
+              clid varchar(80) NOT NULL,
+              src varchar(80) NOT NULL,
+              dst varchar(80) NOT NULL,
+              dcontext varchar(80) NOT NULL,
+              channel varchar(80) NOT NULL,
+              dstchannel varchar(80) NOT NULL,
+              lastapp varchar(80) NOT NULL,
+              lastdata varchar(80) NOT NULL,
+              duration integer NOT NULL,
+              billsec integer NOT NULL,
+              disposition varchar(45) NOT NULL,
+              amaflags integer NOT NULL,
+              accountcode varchar(20) NOT NULL,
+              uniqueid varchar(150) NOT NULL,
+              userfield varchar(255) NOT NULL,
+              peeraccount varchar(20),
+              linkedid varchar(150),
+              sequence integer
+            )
+            SQL
+        env:
+          - name: USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-asterisk'
+                key: username
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-asterisk'
+                key: password
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+{{- end }}
       asterisk-sounds:
         image:
           repository: '{{ .Values.asterisk.image.repository }}'
@@ -48,7 +108,7 @@ controllers:
             ls -lah /usr/share/asterisk
             ls -lah /var/lib/asterisk
             ls -lah /var/lib/asterisk/sounds
-            mkdir -p /var/lib/asterisk/sounds/en /var/log/asterisk/cdr-csv
+            mkdir -p /var/lib/asterisk/sounds/en
             cp -R /usr/share/asterisk/sounds/en/. /var/lib/asterisk/sounds/en/
             test -f /var/lib/asterisk/sounds/en/demo-congrats.gsm
         securityContext:
@@ -69,6 +129,15 @@ controllers:
             printf 'auth_type=userpass\n' >> /tmp/avoip-pjsip-auth.conf
             printf 'username=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-pjsip-auth.conf
             printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-pjsip-auth.conf
+{{- if .Values.asterisk.cdr.enabled }}
+            printf '[global]\n' > /tmp/avoip-cdr_pgsql.conf
+            printf 'hostname={{ $asteriskCdrHost }}\n' >> /tmp/avoip-cdr_pgsql.conf
+            printf 'port={{ .Values.asterisk.cdr.port }}\n' >> /tmp/avoip-cdr_pgsql.conf
+            printf 'dbname=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-cdr_pgsql.conf
+            printf 'user=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-cdr_pgsql.conf
+            printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-cdr_pgsql.conf
+            printf 'table={{ .Values.asterisk.cdr.table }}\n' >> /tmp/avoip-cdr_pgsql.conf
+{{- end }}
             exec /usr/sbin/asterisk -f -C /etc/asterisk/asterisk.conf
         image:
           repository: '{{ .Values.asterisk.image.repository }}'
@@ -496,6 +565,10 @@ persistence:
             subPath: extensions.conf
           - path: /etc/asterisk/logger.conf
             subPath: logger.conf
+          - path: /etc/asterisk/cdr.conf
+            subPath: cdr.conf
+          - path: /etc/asterisk/cdr_pgsql.conf
+            subPath: cdr_pgsql.conf
           - path: /etc/asterisk/modules.conf
             subPath: modules.conf
           - path: /etc/asterisk/asterisk.conf

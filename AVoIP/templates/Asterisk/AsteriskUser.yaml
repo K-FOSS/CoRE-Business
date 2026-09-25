@@ -1,5 +1,7 @@
 {{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $terraformProvider := default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.asterisk.cdr.terraformProvider -}}
+{{- $crossplaneProvider := default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.asterisk.cdr.crossplaneProvider -}}
 ---
 apiVersion: mylogin.space/v1alpha1
 kind: User
@@ -11,6 +13,13 @@ spec:
   serviceAccount: true
   groups:
     - 'LDAPService'
+{{- if .Values.asterisk.cdr.enabled }}
+  psql:
+    enabled: true
+    crossplane:
+      terraformProvider: '{{ $terraformProvider }}'
+      crossplaneProvider: '{{ $crossplaneProvider }}'
+{{- end }}
 
   writeConnectionSecretToRef:
     name: '{{ $fullName }}-asterisk'
