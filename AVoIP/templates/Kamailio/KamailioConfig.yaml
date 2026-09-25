@@ -39,6 +39,9 @@ data:
     modparam("siputils", "rpid_avp", "$avp(s:rpid)")
 
     request_route {
+{{- if .Values.kamailio.sipLogging.enabled }}
+      xlog("L_WARN", "SIP request method=$rm source=$si:$sp ruri=$ru callid=$ci\n");
+{{- end }}
       if (!sanity_check("1511", "7")) {
         xlog("L_WARN", "Kamailio rejected malformed SIP from $si:$sp\n");
         exit;
@@ -49,6 +52,9 @@ data:
       if (src_ip == {{ . }}) {
         route(FLOWROUTE_AUTHORIZED);
       }
+{{- end }}
+{{- if .Values.kamailio.sipLogging.enabled }}
+      xlog("L_WARN", "Kamailio rejected SIP source=$si:$sp method=$rm ruri=$ru callid=$ci\n");
 {{- end }}
       sl_send_reply("403", "Source Not Authorized");
       exit;
@@ -87,11 +93,26 @@ data:
 
     route[RELAY] {
       $du = "sip:{{ $backendService }}.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.kamailio.backend.servicePort }};transport=udp";
+{{- if .Values.kamailio.sipLogging.enabled }}
+      if (!is_method("ACK")) {
+        t_on_reply("KAMAILIO_SIP_REPLY");
+      }
+      xlog("L_WARN", "SIP relay method=$rm source=$si:$sp destination=$du callid=$ci\n");
+{{- end }}
       if (!t_relay()) {
+{{- if .Values.kamailio.sipLogging.enabled }}
+        xlog("L_ERR", "SIP relay failed method=$rm source=$si:$sp destination=$du callid=$ci\n");
+{{- end }}
         sl_reply_error();
       }
       exit;
     }
+
+{{- if .Values.kamailio.sipLogging.enabled }}
+    onreply_route[KAMAILIO_SIP_REPLY] {
+      xlog("L_WARN", "SIP reply status=$rs reason=$rr source=$si:$sp callid=$ci\n");
+    }
+{{- end }}
   tls.cfg: |
     [server:default]
     method = TLSv1.2+

@@ -62,7 +62,9 @@ sends PROXY protocol v2 to Kamailio, and Kamailio's
 verifies the original Flowroute source before forwarding SIP to the configured
 private backend. Kamailio and FreeSWITCH can be enabled independently; when
 both are enabled, the default Kamailio backend is FreeSWITCH's private SIP
-profile.
+profile. Compact Kamailio request, relay, response, and rejection markers are
+enabled by default through `kamailio.sipLogging.enabled`; the logging avoids
+full SIP/SDP dumps and can be disabled for quieter production logs.
 
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
 [CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)

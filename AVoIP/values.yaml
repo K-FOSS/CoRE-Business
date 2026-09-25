@@ -36,6 +36,9 @@ flowroute:
 
 kamailio:
   enabled: true
+  sipLogging:
+    # Compact SIP request, relay, response, and rejection markers only.
+    enabled: true
   publicExposure:
     enabled: true
     sip:

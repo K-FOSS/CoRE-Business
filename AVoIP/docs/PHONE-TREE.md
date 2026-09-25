@@ -139,6 +139,11 @@ bridged to Asterisk without LDAP authentication.
 - FreeSWITCH's Event Socket is enabled on loopback TCP `8021` for local control
   and diagnostics. It is not exposed through a Service or public route, and its
   password comes from the existing Secret-backed FreeSWITCH credential.
+- Kamailio emits compact markers for inbound SIP requests, backend relay
+  attempts, backend replies, relay failures, and source rejections when
+  `kamailio.sipLogging.enabled` is true. It records method, source,
+  destination, status, request URI, and Call-ID without dumping full SIP
+  messages or SDP bodies.
 - Sofia raw SIP tracing is enabled by default on the Asterisk and external
   profiles through `freeswitch.sipLogging.enabled`. It is intended for call
   troubleshooting and includes signaling/SDP metadata in the pod logs.
