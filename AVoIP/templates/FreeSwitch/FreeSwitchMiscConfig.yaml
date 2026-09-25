@@ -186,7 +186,7 @@ data:
 {{- end }}
       </list>
       <list name="kamailio" default="deny">
-        <node type="allow" cidr="{{ $.Values.freeswitch.publicExposure.kamailio.podCIDR }}"/>
+        <node type="allow" cidr="{{ $.Values.freeswitch.publicExposure.podCIDR }}"/>
       </list>
       </network-lists>
     </configuration>
