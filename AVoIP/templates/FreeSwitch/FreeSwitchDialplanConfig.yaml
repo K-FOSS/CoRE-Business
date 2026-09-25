@@ -59,7 +59,6 @@ data:
             <action application="set" data="fax_enable_t38_request=true"/>
             <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
             <action application="answer"/>
-            <action application="playback" data="silence_stream://1000"/>
             <action application="rxfax" data="{{ $.Values.freeswitch.fax.spoolPath }}/${uuid}.tif"/>
             <action application="log" data="INFO AVoIP fax result caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid} success=${fax_success} result_code=${fax_result_code} result=${fax_result_text} pages=${fax_document_transferred_pages} total_pages=${fax_document_total_pages} rate=${fax_transfer_rate} remote_station=${fax_remote_station_id} local_station=${fax_local_station_id} file=${fax_filename}"/>
             <action application="hangup"/>
