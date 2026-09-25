@@ -63,7 +63,11 @@ sends PROXY protocol v2 to Kamailio, and Kamailio's
 verifies the original Flowroute source before forwarding SIP to the configured
 private backend. Kamailio and FreeSWITCH can be enabled independently; when
 both are enabled, the default Kamailio backend is FreeSWITCH's private SIP
-profile. Compact Kamailio request, relay, response, and rejection markers are
+profile. Kamailio uses an explicit two-sided Record-Route preset for the
+asymmetric edge: the internal route is the private UDP Kamailio Service and the
+external TLS route is `sip.resolvemy.host:5081`. This prevents wildcard bind
+addresses such as `0.0.0.0` from being advertised in dialog routing. Compact
+Kamailio request, relay, response, rejection, and loose-route markers are
 enabled by default through `kamailio.sipLogging.enabled`; the logging avoids
 full SIP/SDP dumps and can be disabled for quieter production logs.
 

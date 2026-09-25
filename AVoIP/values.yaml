@@ -50,6 +50,16 @@ kamailio:
     # The default backend is the chart's FreeSWITCH service when both are enabled.
     serviceName: ''
     servicePort: 5090
+    # Only this private source range may send established-dialog requests from
+    # the backend side through Kamailio. Initial requests from this range remain
+    # rejected and public carrier sources are still checked separately below.
+    podCIDR: '172.16.0.0/12'
+  # The Gateway owns the public listener and terminates TLS before Kamailio.
+  # These addresses are used only in SIP Via/Record-Route headers; Kamailio
+  # itself receives the carrier TLS leg as plain TCP on service port 5061.
+  advertisedHost: 'sip.resolvemy.host'
+  advertisedUDPPort: 5060
+  advertisedTLSPort: 5081
   image:
     # renovate: datasource=docker depName=ghcr.io/kamailio/kamailio
     repository: 'ghcr.io/kamailio/kamailio'

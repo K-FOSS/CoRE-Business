@@ -10,12 +10,14 @@ ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business
 enables both only on `core-dc1-talos-prod`.
 
 Public SIP exposure is disabled by default with
-`freeswitch.publicExposure.sip.enabled: false`. When enabled, the TLS route
-terminates at Kamailio. Envoy sends PROXY protocol v2 so Kamailio can verify
-the original Flowroute source address before forwarding SIP over the private
-cluster network to FreeSWITCH. FreeSWITCH keeps its internal ClusterIP
-services and outbound Flowroute registration, while the optional PureLB
-LoadBalancer exposes RTP only at the requested `freeswitch.publicExposure.address`.
+`kamailio.publicExposure.sip.enabled: false`. When enabled, Kamailio owns the
+public UDP SIP route on port 5060 and the TLS route on port 5061. `main-gw`
+terminates TLS using its `tls-sip` listener and forwards the decrypted SIP
+stream with PROXY protocol v2; Kamailio verifies the original Flowroute source
+address before forwarding SIP over the private cluster network to FreeSWITCH.
+FreeSWITCH has no direct public SIP routes;
+the optional PureLB LoadBalancer exposes RTP only at the requested
+`freeswitch.publicExposure.address`.
 
 ## Configured DID
 
@@ -23,26 +25,26 @@ The configured DID is `freeswitch.did`, currently `18077893501` in
 [values.yaml](../values.yaml). The value is used by the public dialplan and is
 the single number accepted by the FreeSWITCH public context.
 
-Inbound calls follow this path:
+Inbound calls over either public SIP transport follow this path:
 
-1. FreeSWITCH registers through the `flowroute` gateway using the configured
-   DID as the SIP/From username and the External Secret-backed Flowroute SIP
-   username and password for digest authentication. The registration realm,
-   proxy, and transport are pinned to the configured Flowroute Oregon PoP. The
-   gateway configuration is in
-   [FreeSwitchUpstream.yaml](../templates/FreeSwitch/FreeSwitchUpstream.yaml)
-   and [FreeSwitchUpstreamSync.yaml](../templates/FreeSwitch/FreeSwitchUpstreamSync.yaml).
-2. Envoy Gateway sends the TLS connection to Kamailio with a PROXY v2 header.
-3. Kamailio validates the original source against the configured Flowroute
+1. The Gateway sends UDP SIP directly to Kamailio, or terminates TLS on the
+   `main-gw` `tls-sip` listener and sends the decrypted TCP stream with a
+   PROXY v2 header.
+2. Kamailio validates the source against the configured Flowroute
    signaling CIDRs and rejects all other sources.
-4. Kamailio forwards accepted SIP to FreeSWITCH's private `kamailio` Sofia
-   profile.
-5. The public context matches only the configured DID.
-6. With fax handling enabled, FreeSWITCH answers the carrier leg, starts
+3. Kamailio forwards accepted SIP to FreeSWITCH's private `kamailio` Sofia
+   profile and inserts a two-sided Record-Route set: private UDP toward
+   FreeSWITCH and `sip.resolvemy.host:5081;transport=tls` toward Flowroute for
+   the Gateway-terminated TLS leg. In-dialog requests are processed with
+   `loose_route()` before relay; the selected route destination is preserved.
+4. The public context matches only the configured DID.
+5. With fax handling enabled, FreeSWITCH answers the carrier leg, starts
    SpanDSP fax-tone detection, and plays the optional pre-bridge audio. Voice
    calls then bridge to Asterisk; when a fax tone is detected, the call is
-   diverted to SpanDSP `rxfax` with T.38 negotiation enabled instead.
-7. FreeSWITCH writes a received TIFF to its ephemeral fax spool and logs the
+   diverted to SpanDSP `rxfax` with T.38 negotiation enabled instead. The
+   deployed FreeSWITCH image does not expose the optional `disable_ec`
+   dialplan application, so the chart does not invoke it.
+6. FreeSWITCH writes a received TIFF to its ephemeral fax spool and logs the
    fax result, then hangs up. The same DID therefore accepts both voice and fax
    calls, subject to the carrier's fax-tone timing.
 
@@ -63,8 +65,8 @@ The default context is deliberately empty.
 FreeSWITCH voice outbound is disabled. The public context contains an explicit
 catch-all rejection after the configured DID route, so authenticated internal
 SIP callers and permitted carrier sources cannot use FreeSWITCH to place an
-unmatched outbound call. The Flowroute gateway registration remains for inbound
-DID delivery only.
+unmatched outbound call. FreeSWITCH does not register to Flowroute; carrier
+signaling is accepted only through Kamailio.
 
 ## SIP messaging
 
@@ -122,9 +124,14 @@ bridged to Asterisk without LDAP authentication.
   or signaling override configured, Asterisk advertises its pod address for
   the internal SIP/RTP leg; the Asterisk ClusterIP Service remains the SIP
   rendezvous point.
+- Asterisk CDRs use the PostgreSQL database provisioned by its `User` claim and
+  the site-local PostgreSQL provider. A startup init container creates the CDR
+  table, while runtime credentials generate `cdr_pgsql.conf` in `emptyDir`;
+  Asterisk does not use local CDR CSV or SQLite storage.
 - The Asterisk init container copies packaged sounds from the image's
-  `/usr/share/asterisk/sounds` into the writable library volume at
-  `/var/lib/asterisk/sounds`, which is the normal `Playback()` search path.
+  `/usr/share/asterisk/sounds` into the dedicated `asterisk-sounds` `emptyDir`
+  mounted at `/var/lib/asterisk/sounds`, which is the normal `Playback()` search
+  path. The sounds are lost when the pod is replaced.
 - Asterisk's global Entity ID is explicitly configured in `values.yaml`, so
   startup does not need to read a hardware MAC address from the pod interface.
 - Asterisk startup, readiness, and liveness use `asterisk -rx 'core show
@@ -140,23 +147,27 @@ bridged to Asterisk without LDAP authentication.
   and diagnostics. It is not exposed through a Service or public route, and its
   password comes from the existing Secret-backed FreeSWITCH credential.
 - Kamailio emits compact markers for inbound SIP requests, backend relay
-  attempts, backend replies, relay failures, and source rejections when
-  `kamailio.sipLogging.enabled` is true. It records method, source,
-  destination, status, request URI, and Call-ID without dumping full SIP
-  messages or SDP bodies.
+  attempts, backend replies, relay failures, source rejections, and
+  in-dialog loose-route decisions when `kamailio.sipLogging.enabled` is true.
+  It records method, source, destination, route URI, request URI, and Call-ID
+  without dumping full SIP messages or SDP bodies.
 - Sofia raw SIP tracing is enabled by default on the Asterisk and external
   profiles through `freeswitch.sipLogging.enabled`. It is intended for call
   troubleshooting and includes signaling/SDP metadata in the pod logs.
-- Public TCP/UDP SIP Gateway API routes are disabled. The TLS SIP route remains
-  attached to the configured `core-prod/main-gw` Gateway and targets Kamailio;
-  its Envoy `BackendTrafficPolicy` enables PROXY protocol v2.
+- Public FreeSWITCH TCP/UDP SIP Gateway API routes are removed. The UDP SIP and
+  TLS SIP routes attach to the configured `core-prod/main-gw` Gateway and target
+  Kamailio. The `tls-sip` Gateway listener must use `TLS` with `tls.mode:
+  Terminate`; its Envoy `BackendTrafficPolicy` enables PROXY protocol v2 for
+  the resulting plain TCP stream.
 - Kamailio accepts public signaling only from the Flowroute PoP CIDRs in
   `flowroute.signalingCIDRs`; the private FreeSWITCH Kamailio
   profile only accepts traffic from the configured Kamailio pod CIDR.
-- TLS uses `sip.resolvemy.host` and the configured certificate Secret.
-- The certificate Secret is consumed at runtime as `tls.crt` and `tls.key`; a
-  rootless init container combines them into FreeSWITCH's required
-  `agent.pem` without storing a combined private-key file in Git.
+- TLS uses `sip.resolvemy.host` and the configured certificate Secret on the
+  `main-gw` listener. Kamailio receives plain TCP on its backend port 5061 and
+  does not consume the public certificate.
+- The certificate Secret is consumed at runtime by the Gateway and by
+  FreeSWITCH's private TLS material; no combined private-key file is stored in
+  Git.
 - When public RTP exposure is enabled, PureLB exposes RTP only at the requested
   `freeswitch.publicExposure.address`.
 - RTP uses the configured FreeSWITCH range `11000–11049`.
@@ -166,9 +177,8 @@ bridged to Asterisk without LDAP authentication.
   stale `66.165.222.126` addresses are no longer used.
 
 See [common.yaml](../templates/common.yaml),
-[FreeSwitchTCPRoute.yaml](../templates/FreeSwitch/FreeSwitchTCPRoute.yaml),
-[FreeSwitchUDPRoute.yaml](../templates/FreeSwitch/FreeSwitchUDPRoute.yaml),
-[TLSRoute.yaml](../templates/FreeSwitch/TLSRoute.yaml), and
+[UDPRoute.yaml](../templates/Kamailio/UDPRoute.yaml),
+[TCPRoute.yaml](../templates/Kamailio/TCPRoute.yaml), and
 [FreeSwitchEgress.yaml](../templates/FreeSwitch/FreeSwitchEgress.yaml).
 
 ## Explicitly removed behavior
@@ -193,18 +203,17 @@ where Wyoming, GPUStack, and Speaches are deployed.
 
 Before enabling the hub:
 
-1. Confirm the Flowroute ExternalSecret is ready and the gateway registers.
-2. Confirm the DID identity exists in the current mylogin.space directory and
+1. Confirm the DID identity exists in the current mylogin.space directory and
    can register.
-3. Confirm the Asterisk `User` claim produces its connection Secret and that
+2. Confirm the Asterisk `User` claim produces its connection Secret and that
    Asterisk starts with the generated PJSIP auth object (without printing the
    Secret values).
-4. Send a SIP MESSAGE to the DID and verify delivery through
+3. Send a SIP MESSAGE to the DID and verify delivery through
    `mod_sms_flowroute`.
-5. Place an inbound call and verify the registered DID endpoint receives it.
-6. Place an outbound call through Asterisk and verify FreeSWITCH rejects an
+4. Place an inbound call and verify the configured DID endpoint receives it.
+5. Place an outbound call through Asterisk and verify FreeSWITCH rejects an
    invalid credential or non-internal source.
-7. Verify RTP, DTMF, TLS certificate validation, and provider failure behavior.
+6. Verify RTP, DTMF, TLS certificate validation, and provider failure behavior.
 
 FreeSWITCH references: [official documentation](https://developer.signalwire.com/freeswitch/)
 and the [XML dialplan documentation](https://developer.signalwire.com/freeswitch/FreeSWITCH-Explained/Configuration/Dialplan/).
