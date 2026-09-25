@@ -33,12 +33,13 @@ Inbound calls follow this path:
 3. The external profile applies the `flowroute` ACL and rejects sources that
    are not in the configured Flowroute signaling CIDRs.
 4. The public context matches only the configured DID.
-5. With fax handling enabled, FreeSWITCH answers the carrier leg, disables echo
-   cancellation, waits two seconds for fax tone stabilization, and runs
-   SpanDSP `rxfax` with T.38 negotiation enabled.
-6. FreeSWITCH writes the received TIFF to its ephemeral fax spool and logs the
-   fax result, then hangs up. The DID does not bridge to Asterisk while fax
-   handling is enabled.
+5. With fax handling enabled, FreeSWITCH answers the carrier leg, starts
+   SpanDSP fax-tone detection, and plays the optional pre-bridge audio. Voice
+   calls then bridge to Asterisk; when a fax tone is detected, the call is
+   diverted to SpanDSP `rxfax` with T.38 negotiation enabled instead.
+6. FreeSWITCH writes a received TIFF to its ephemeral fax spool and logs the
+   fax result, then hangs up. The same DID therefore accepts both voice and fax
+   calls, subject to the carrier's fax-tone timing.
 
 FreeSWITCH emits INFO log markers when the DID call is received and when fax
 processing completes. The receive implementation uses
