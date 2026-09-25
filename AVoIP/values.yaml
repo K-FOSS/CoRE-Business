@@ -45,6 +45,8 @@ kamailio:
     # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
     diagnostics:
       enabled: true
+      # Kamailio core debug level used only while diagnostics are enabled.
+      coreDebug: 2
   publicExposure:
     enabled: true
     sip:
