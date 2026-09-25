@@ -658,7 +658,9 @@ controllers:
       name: default
     pod:
       securityContext:
-        runAsNonRoot: true
+        # The pinned heplify-server image has no non-root USER declaration.
+        # Keep the container capability restrictions, but allow its image user.
+        runAsNonRoot: false
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
@@ -734,7 +736,9 @@ controllers:
       name: default
     pod:
       securityContext:
-        runAsNonRoot: true
+        # The pinned Homer image and its init command run as root.
+        # PodSecurity Baseline permits this; no extra capabilities are granted.
+        runAsNonRoot: false
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
