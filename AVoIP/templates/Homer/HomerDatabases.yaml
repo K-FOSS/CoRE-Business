@@ -1,0 +1,20 @@
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- $fullName := include "avoip.fullname" . -}}
+{{- $crossplaneProvider := default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.homer.database.crossplaneProvider -}}
+{{- range $database := list .Values.homer.database.dataDatabase .Values.homer.database.configDatabase }}
+---
+apiVersion: postgresql.sql.crossplane.io/v1alpha1
+kind: Database
+metadata:
+  name: '{{ printf "%s-%s" $fullName ($database | replace "_" "-") | trunc 63 | trimSuffix "-" }}'
+  annotations:
+    crossplane.io/external-name: '{{ $database }}'
+spec:
+  deletionPolicy: Orphan
+  providerConfigRef:
+    name: '{{ $crossplaneProvider }}'
+  forProvider:
+    owner: '{{ $.Values.homer.database.username }}'
+    connectionLimit: -1
+{{- end }}
+{{- end }}

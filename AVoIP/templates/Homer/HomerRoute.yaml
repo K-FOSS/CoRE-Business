@@ -1,0 +1,68 @@
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ include "avoip.fullname" . }}-homer-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ include "avoip.fullname" . }}-homer'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-*'
+        - 'authorization'
+        - 'Content-Type'
+        - 'Location'
+      backendSettings:
+        loadBalancer:
+          type: 'ConsistentHash'
+          consistentHash:
+            type: 'SourceIP'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ .Values.homer.authentikOutpost.namespace }}'
+          name: '{{ .Values.homer.authentikOutpost.name }}'
+          port: {{ .Values.homer.authentikOutpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: '{{ include "avoip.fullname" . }}-homer'
+spec:
+  parentRefs:
+    - kind: 'Gateway'
+      name: '{{ .Values.gateway.name }}'
+      namespace: '{{ .Values.gateway.namespace }}'
+      sectionName: '{{ .Values.gateway.sectionName }}'
+  hostnames:
+    - '{{ .Values.homer.hostname }}'
+  rules:
+    - matches:
+        - path:
+            type: 'PathPrefix'
+            value: '/outpost.goauthentik.io'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ .Values.homer.authentikOutpost.name }}'
+          namespace: '{{ .Values.homer.authentikOutpost.namespace }}'
+          port: {{ .Values.homer.authentikOutpost.port }}
+    - backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ include "avoip.fullname" . }}-homer-web'
+          port: 80
+{{- end }}

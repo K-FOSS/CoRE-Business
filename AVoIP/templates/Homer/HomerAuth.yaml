@@ -1,0 +1,176 @@
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- $oidc := .Values.homer.oidc -}}
+{{- $forwardAuth := .Values.homer.forwardAuth -}}
+{{- $oidcSlug := printf "%s-%s-%s-%s" $oidc.applicationSlug $.Values.region $.Values.datacenter $.Values.cluster.name -}}
+{{- $_ := required "homer.oidc.providerConfigRef is required" $oidc.providerConfigRef -}}
+{{- $_ := required "homer.forwardAuth.providerConfigRef is required" $forwardAuth.providerConfigRef -}}
+---
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $oidc.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $oidc.providerConfigRef }}'
+  writeConnectionSecretToRef:
+    namespace: '{{ $.Release.Namespace }}'
+    name: '{{ $oidc.workspaceName }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      application_slug: '{{ $oidc.applicationSlug }}'
+      access_group: '{{ $oidc.accessGroup }}'
+      issuer_base_url: '{{ trimSuffix "/" $oidc.issuerBaseUrl }}'
+      external_url: 'https://{{ $.Values.homer.hostname }}'
+      display_name: '{{ $oidc.displayName }}'
+    module: |
+      variable "application_slug" { type = string }
+      variable "access_group" { type = string }
+      variable "issuer_base_url" { type = string }
+      variable "external_url" { type = string }
+      variable "display_name" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_certificate_key_pair" "signing_key" {
+        name = "authentik Self-signed Certificate"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 48
+        special = false
+      }
+
+      resource "authentik_provider_oauth2" "homer" {
+        name                 = var.display_name
+        client_id            = "${var.application_slug}-${var.access_group}"
+        client_secret        = random_password.client_secret.result
+        authorization_flow   = data.authentik_flow.authorization.id
+        invalidation_flow    = data.authentik_flow.invalidation.id
+        issuer_mode          = "per_provider"
+        signing_key          = data.authentik_certificate_key_pair.signing_key.id
+        allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/api/v3/oauth2/auth/authentik" }]
+        property_mappings    = data.authentik_property_mapping_provider_scope.scopes.ids
+      }
+
+      resource "authentik_application" "homer" {
+        name              = var.display_name
+        slug              = "{{ $oidcSlug }}"
+        group             = "Tools"
+        protocol_provider = authentik_provider_oauth2.homer.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-{{ $oidcSlug }}"
+        application = authentik_application.homer.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.homer.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.homer.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }
+---
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $forwardAuth.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $forwardAuth.providerConfigRef }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      access_group: '{{ $forwardAuth.accessGroup }}'
+      display_name: '{{ $forwardAuth.displayName }}'
+      external_host: 'https://{{ $.Values.homer.hostname }}'
+      application_slug: 'avoip-homer-forward-auth'
+    module: |
+      variable "access_group" { type = string }
+      variable "display_name" { type = string }
+      variable "external_host" { type = string }
+      variable "application_slug" { type = string }
+
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-implicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_group" "access" {
+        name = var.access_group
+      }
+
+      resource "authentik_provider_proxy" "homer" {
+        name               = var.display_name
+        mode               = "forward_single"
+        external_host      = var.external_host
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "homer" {
+        name              = var.display_name
+        slug              = var.application_slug
+        group             = "Tools"
+        meta_hide         = true
+        protocol_provider = authentik_provider_proxy.homer.id
+      }
+
+      resource "authentik_application_entitlement" "access" {
+        name        = "${data.authentik_group.access.id}-${var.application_slug}"
+        application = authentik_application.homer.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.access.id
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.homer.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+{{- end }}

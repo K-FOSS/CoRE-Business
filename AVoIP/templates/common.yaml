@@ -2,6 +2,7 @@
 
 {{- define "avoip.common.values" -}}
 {{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
+{{- $homerDbHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.homer.database.host -}}
 global:
   nameOverride: '{{ .Release.Name }}'
   createDefaultServiceAccount: false
@@ -356,9 +357,21 @@ controllers:
             --listen-ng=0.0.0.0:{{ .Values.rtpengine.controlPort }}
             --port-min={{ .Values.rtpengine.media.min }}
             --port-max={{ sub (.Values.rtpengine.media.max | int) 1 }}
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
+            --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}
+            --homer-id=102
+            --homer-enable-ng
+{{- end }}
             --foreground
             --log-stderr
+{{- if .Values.rtpengine.logging.enabled }}
+            --log-level={{ .Values.rtpengine.logging.level }}
+            --log-level-control={{ .Values.rtpengine.logging.controlLevel }}
+            --log-level-spandsp={{ .Values.rtpengine.logging.spandspLevel }}
+            --log-level-rtcp={{ .Values.rtpengine.logging.rtcpLevel }}
+{{- else }}
             --log-level=6
+{{- end }}
         image:
           repository: '{{ .Values.rtpengine.image.repository }}'
           tag: '{{ .Values.rtpengine.image.tag }}'
@@ -632,6 +645,172 @@ controllers:
 {{- end }}
 
 {{ end }}
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+  homer-heplify:
+    forceRename: '{{ include "avoip.fullname" . }}-homer-heplify'
+    strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    replicas: 1
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: default
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      labels:
+        app: '{{ include "avoip.fullname" . }}-homer-heplify'
+    containers:
+      heplify:
+        command:
+          - /heplify-server
+        image:
+          repository: '{{ .Values.homer.capture.image.repository }}'
+          tag: '{{ .Values.homer.capture.image.tag }}'
+          digest: '{{ .Values.homer.capture.image.digest }}'
+          pullPolicy: '{{ .Values.homer.capture.image.pullPolicy }}'
+        env:
+          - name: HEPLIFYSERVER_HEPADDR
+            value: '0.0.0.0:{{ .Values.homer.capture.hepPort }}'
+          - name: HEPLIFYSERVER_HEPTCPADDR
+            value: '0.0.0.0:{{ .Values.homer.capture.hepTCPPort }}'
+          - name: HEPLIFYSERVER_DBSHEMA
+            value: 'homer7'
+          - name: HEPLIFYSERVER_DBDRIVER
+            value: 'postgres'
+          - name: HEPLIFYSERVER_DBADDR
+            value: '{{ $homerDbHost }}:{{ .Values.homer.database.port }}'
+          - name: HEPLIFYSERVER_DBUSER
+            valueFrom:
+              secretKeyRef:
+                name: '{{ default (printf "%s-homer" (include "avoip.fullname" .)) .Values.homer.database.userSecret }}'
+                key: username
+          - name: HEPLIFYSERVER_DBPASS
+            valueFrom:
+              secretKeyRef:
+                name: '{{ default (printf "%s-homer" (include "avoip.fullname" .)) .Values.homer.database.userSecret }}'
+                key: password
+          - name: HEPLIFYSERVER_DBDATATABLE
+            value: '{{ .Values.homer.database.dataDatabase }}'
+          - name: HEPLIFYSERVER_DBCONFTABLE
+            value: '{{ .Values.homer.database.configDatabase }}'
+          - name: HEPLIFYSERVER_DBROTATE
+            value: 'true'
+          - name: HEPLIFYSERVER_DBDROPDAYS
+            value: '{{ .Values.homer.capture.retentionDays }}'
+          - name: HEPLIFYSERVER_LOGSTD
+            value: 'true'
+          - name: HEPLIFYSERVER_PROMADDR
+            value: '0.0.0.0:{{ .Values.homer.capture.metricsPort }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        ports:
+          - name: hep
+            containerPort: {{ .Values.homer.capture.hepPort }}
+            protocol: UDP
+          - name: hep-tcp
+            containerPort: {{ .Values.homer.capture.hepTCPPort }}
+            protocol: TCP
+          - name: metrics
+            containerPort: {{ .Values.homer.capture.metricsPort }}
+            protocol: TCP
+  homer-web:
+    forceRename: '{{ include "avoip.fullname" . }}-homer-web'
+    strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    replicas: 1
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: default
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      labels:
+        app: '{{ include "avoip.fullname" . }}-homer-web'
+    initContainers:
+      homer-init:
+        image:
+          repository: '{{ .Values.homer.web.image.repository }}'
+          tag: '{{ .Values.homer.web.image.tag }}'
+          digest: '{{ .Values.homer.web.image.digest }}'
+          pullPolicy: '{{ .Values.homer.web.image.pullPolicy }}'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            set -eu
+            cp /config-template/webapp_config.json /usr/local/homer/etc/webapp_config.json
+            sed -i "s|__DB_HOST__|${DB_HOST}|g; s|__DB_PORT__|${DB_PORT}|g; s|__DB_USER__|${DB_USER}|g; s|__DB_PASS__|${DB_PASS}|g; s|__OIDC_CLIENT_ID__|${OIDC_CLIENT_ID}|g; s|__OIDC_CLIENT_SECRET__|${OIDC_CLIENT_SECRET}|g" /usr/local/homer/etc/webapp_config.json
+            until /homer-app -create-table-db-config -webapp-config-path=/usr/local/homer/etc -database-ssl-mode=disable; do
+              sleep 5
+            done
+            /homer-app -populate-table-db-config -webapp-config-path=/usr/local/homer/etc -database-ssl-mode=disable -force-populate
+        env:
+          - name: DB_HOST
+            value: '{{ $homerDbHost }}'
+          - name: DB_PORT
+            value: '{{ .Values.homer.database.port }}'
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: '{{ default (printf "%s-homer" (include "avoip.fullname" .)) .Values.homer.database.userSecret }}'
+                key: username
+          - name: DB_PASS
+            valueFrom:
+              secretKeyRef:
+                name: '{{ default (printf "%s-homer" (include "avoip.fullname" .)) .Values.homer.database.userSecret }}'
+                key: password
+          - name: OIDC_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.homer.oidc.workspaceName }}'
+                key: OIDC_CLIENT_ID
+          - name: OIDC_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.homer.oidc.workspaceName }}'
+                key: OIDC_CLIENT_SECRET
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    containers:
+      homer:
+        command:
+          - /homer-app
+        args:
+          - -webapp-config-path=/usr/local/homer/etc
+        image:
+          repository: '{{ .Values.homer.web.image.repository }}'
+          tag: '{{ .Values.homer.web.image.tag }}'
+          digest: '{{ .Values.homer.web.image.digest }}'
+          pullPolicy: '{{ .Values.homer.web.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        ports:
+          - name: http
+            containerPort: {{ .Values.homer.web.port }}
+            protocol: TCP
+{{- end }}
 
 service:
 {{- if .Values.asterisk.enabled }}
@@ -733,6 +912,32 @@ service:
           start: {{ .Values.rtpengine.media.min }}
           end: {{ sub (.Values.rtpengine.media.max | int) 1 }}
         protocol: UDP
+{{- end }}
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+  homer-heplify:
+    forceRename: '{{ include "avoip.fullname" . }}-homer-heplify'
+    controller: homer-heplify
+    ports:
+      hep:
+        port: {{ .Values.homer.capture.hepPort }}
+        targetPort: hep
+        protocol: UDP
+      hep-tcp:
+        port: {{ .Values.homer.capture.hepTCPPort }}
+        targetPort: hep-tcp
+        protocol: TCP
+      metrics:
+        port: {{ .Values.homer.capture.metricsPort }}
+        targetPort: metrics
+        protocol: TCP
+  homer-web:
+    forceRename: '{{ include "avoip.fullname" . }}-homer-web'
+    controller: homer-web
+    ports:
+      http:
+        port: 80
+        targetPort: http
+        protocol: TCP
 {{- end }}
 
 persistence:
@@ -924,6 +1129,25 @@ persistence:
       freeswitch:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
+{{- end }}
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+  homer-web-config-template:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-homer-web-config'
+    advancedMounts:
+      homer-web:
+        homer-init:
+          - path: /config-template
+        homer:
+          - path: /config-template
+  homer-web-config:
+    type: emptyDir
+    advancedMounts:
+      homer-web:
+        homer-init:
+          - path: /usr/local/homer/etc
+        homer:
+          - path: /usr/local/homer/etc
 {{- end }}
 {{- end }}
 

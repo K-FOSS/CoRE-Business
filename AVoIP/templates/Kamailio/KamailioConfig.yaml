@@ -31,6 +31,9 @@ data:
     loadmodule "siputils.so"
     loadmodule "textops.so"
     loadmodule "xlog.so"
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
+    loadmodule "siptrace.so"
+{{- end }}
 {{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
     loadmodule "rtpengine.so"
 {{- end }}
@@ -41,6 +44,15 @@ data:
     modparam("rr", "sockname_mode", 1)
     modparam("sanity", "autodrop", 0)
     modparam("siputils", "rpid_avp", "$avp(s:rpid)")
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
+    modparam("siptrace", "trace_on", 1)
+    modparam("siptrace", "trace_mode", 4)
+    modparam("siptrace", "trace_to_database", 0)
+    modparam("siptrace", "duplicate_uri", "sip:{{ $fullName }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}")
+    modparam("siptrace", "hep_mode_on", 1)
+    modparam("siptrace", "hep_version", 3)
+    modparam("siptrace", "hep_capture_id", 101)
+{{- end }}
 {{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
     modparam("rtpengine", "rtpengine_sock", "udp:{{ $fullName }}-rtpengine.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.rtpengine.controlPort }}")
 

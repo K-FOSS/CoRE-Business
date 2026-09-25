@@ -1,0 +1,63 @@
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- $fullName := include "avoip.fullname" . -}}
+{{- $homerDbHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.homer.database.host -}}
+{{- $oidcSlug := printf "%s-%s-%s-%s" .Values.homer.oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: '{{ $fullName }}-homer-web-config'
+data:
+  webapp_config.json: |
+    {
+      "database_data": {
+        "LocalNode": {
+          "node": "LocalNode",
+          "user": "__DB_USER__",
+          "pass": "__DB_PASS__",
+          "name": "{{ .Values.homer.database.dataDatabase }}",
+          "host": "{{ $homerDbHost }}",
+          "port": "__DB_PORT__"
+        }
+      },
+      "database_config": {
+        "node": "LocalConfig",
+        "user": "__DB_USER__",
+        "pass": "__DB_PASS__",
+        "name": "{{ .Values.homer.database.configDatabase }}",
+        "host": "{{ $homerDbHost }}",
+        "port": "__DB_PORT__"
+      },
+      "http_settings": {
+        "host": "0.0.0.0",
+        "port": {{ .Values.homer.web.port }},
+        "root": "/usr/local/homer/dist",
+        "gzip": true,
+        "debug": false
+      },
+      "system_settings": {
+        "logpath": "/tmp",
+        "logname": "homer-app.log",
+        "loglevel": "info",
+        "logstdout": true
+      },
+      "auth_settings": {
+        "type": "internal"
+      },
+      "oauth2": {
+        "enable": true,
+        "client_id": "__OIDC_CLIENT_ID__",
+        "client_secret": "__OIDC_CLIENT_SECRET__",
+        "project_id": "AVoIP Homer",
+        "auth_uri": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/{{ $oidcSlug }}/authorize/",
+        "token_uri": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/{{ $oidcSlug }}/token/",
+        "profile_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/{{ $oidcSlug }}/userinfo/",
+        "redirect_uri": "https://{{ .Values.homer.hostname }}/api/v3/oauth2/auth",
+        "provider_name": "authentik",
+        "service_redirect": "/",
+        "service_root": "/",
+        "scope": ["openid", "email", "profile"],
+        "auto_redirect": true
+      }
+    }
+{{- end }}
