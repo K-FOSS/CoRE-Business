@@ -17,9 +17,6 @@ spec:
       namespace: {{ $.Values.gateway.namespace }}
       sectionName: tls-sip
 
-  hostnames:
-    - sip.resolvemy.host
-
   rules:
     - backendRefs:
         - group: ""
