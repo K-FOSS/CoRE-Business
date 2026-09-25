@@ -65,6 +65,10 @@ names as `psql-<datacenter>-<region>`, and FreeSWITCH connects to
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space`. The init container is
 limited to application-table creation because the pinned SQL provider manages
 PostgreSQL roles, databases, and schemas, not tables.
+Sofia raw SIP tracing is enabled by default on the managed Asterisk and external
+profiles for troubleshooting; it records signaling and SDP metadata in the
+FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled` when that exposure
+or log volume is not appropriate.
 
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
@@ -79,6 +83,9 @@ operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
 Inbound external SIP is restricted by the Flowroute signaling CIDRs configured
 under `freeswitch.flowroute.signalingCIDRs`; the public DID route does not
 accept arbitrary Internet SIP sources.
+FreeSWITCH voice outbound is disabled: the public context has an explicit
+catch-all rejection after the configured DID route, while the Flowroute gateway
+registration remains only to receive inbound DID traffic.
 
 The Asterisk and FreeSWITCH Deployments and Services are rendered through the
 pinned [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)

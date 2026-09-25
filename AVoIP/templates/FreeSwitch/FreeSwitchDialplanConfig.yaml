@@ -34,6 +34,12 @@ data:
 {{- end }}
           </condition>
         </extension>
+        <extension name="reject-unmatched-public-destination">
+          <condition field="destination_number" expression="^.+$">
+            <action application="log" data="WARNING AVoIP rejecting unmatched public destination ${destination_number}; outbound FreeSWITCH calling is disabled"/>
+            <action application="hangup" data="CALL_REJECTED"/>
+          </condition>
+        </extension>
       </context>
     </include>
 

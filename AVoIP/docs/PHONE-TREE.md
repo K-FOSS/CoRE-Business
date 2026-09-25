@@ -54,6 +54,12 @@ The public dialplan is in
 [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
 The default context is deliberately empty.
 
+FreeSWITCH voice outbound is disabled. The public context contains an explicit
+catch-all rejection after the configured DID route, so authenticated internal
+SIP callers and permitted carrier sources cannot use FreeSWITCH to place an
+unmatched outbound call. The Flowroute gateway registration remains for inbound
+DID delivery only.
+
 ## SIP messaging
 
 Flowroute SMS/SIP MESSAGE handling is provided by the
@@ -125,6 +131,9 @@ bridged to Asterisk without LDAP authentication.
 - FreeSWITCH's Event Socket is enabled on loopback TCP `8021` for local control
   and diagnostics. It is not exposed through a Service or public route, and its
   password comes from the existing Secret-backed FreeSWITCH credential.
+- Sofia raw SIP tracing is enabled by default on the Asterisk and external
+  profiles through `freeswitch.sipLogging.enabled`. It is intended for call
+  troubleshooting and includes signaling/SDP metadata in the pod logs.
 - Public TCP/UDP SIP Gateway API routes are not rendered unless
   `freeswitch.publicExposure.sip.enabled` is explicitly enabled. The existing
   TLS SIP route remains attached to the configured `core-prod/main-gw`
