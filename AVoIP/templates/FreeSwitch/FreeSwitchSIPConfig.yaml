@@ -134,6 +134,7 @@ data:
         <param name="context" value="public"/>
         <param name="auth-calls" value="false"/>
         <param name="apply-inbound-acl" value="kamailio"/>
+        <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
         <param name="rtp-ip" value="$${local_ip_v4}"/>
         <param name="ext-sip-ip" value="$${external_sip_ip}"/>
