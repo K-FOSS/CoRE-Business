@@ -23,10 +23,6 @@ data:
             <action application="answer"/>
             <action application="fax_detect"/>
 {{- end }}
-{{- if $.Values.freeswitch.preBridgeAudio.enabled }}
-            <action application="playback" data="shouts://{{ trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url }}"/>
-            <action application="log" data="INFO AVoIP DID ${destination_number}: pre-bridge audio completed"/>
-{{- end }}
             <action application="log" data="INFO AVoIP DID ${destination_number}: bridging to Asterisk"/>
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
           </condition>
