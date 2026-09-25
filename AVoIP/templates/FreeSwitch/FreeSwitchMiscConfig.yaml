@@ -1,5 +1,9 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $freeswitchRtpEnd := .Values.freeswitch.rtp.max -}}
+{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled }}
+{{- $freeswitchRtpEnd = sub (.Values.rtpengine.media.max | int) 1 -}}
+{{- end }}
 {{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host -}}
 ---
 apiVersion: v1
@@ -93,7 +97,7 @@ data:
         <param name="sessions-per-second" value="30"/>
         <param name="loglevel" value="info"/>
         <param name="rtp-start-port" value="{{ .Values.freeswitch.rtp.min }}"/>
-        <param name="rtp-end-port" value="{{ .Values.freeswitch.rtp.max }}"/>
+        <param name="rtp-end-port" value="{{ $freeswitchRtpEnd }}"/>
         <param name="rtp-enable-zrtp" value="false"/>
       </settings>
     </configuration>

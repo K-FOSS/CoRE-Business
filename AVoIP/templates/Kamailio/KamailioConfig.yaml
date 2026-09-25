@@ -48,7 +48,7 @@ data:
       if (!has_body("application/sdp")) {
         return;
       }
-      if (!rtpengine_manage("replace-origin replace-session-connection external internal")) {
+      if (!rtpengine_manage("replace-origin external internal")) {
         xlog("L_ERR", "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
       } else {
         xlog("L_INFO", "RTPEngine initial SDP handled callid=$ci method=$rm source=$si:$sp\n");
@@ -57,7 +57,7 @@ data:
 
     route[MEDIA_DIALOG] {
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("replace-origin replace-session-connection")) {
+        if (!rtpengine_manage("replace-origin")) {
           xlog("L_ERR", "RTPEngine dialog SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
         }
       } else if (is_method("BYE|CANCEL")) {
@@ -212,7 +212,7 @@ data:
     onreply_route[KAMAILIO_SIP_REPLY] {
 {{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("replace-origin replace-session-connection")) {
+        if (!rtpengine_manage("replace-origin")) {
           xlog("L_ERR", "RTPEngine reply SDP handling failed callid=$ci status=$rs\n");
         }
       } else if ($rs =~ "[3-6][0-9][0-9]") {

@@ -1,5 +1,9 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $freeswitchRtpEnd := .Values.freeswitch.rtp.max -}}
+{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled }}
+{{- $freeswitchRtpEnd = sub (.Values.rtpengine.media.max | int) 1 -}}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -45,7 +49,7 @@ data:
       <X-PRE-PROCESS cmd="set" data="sip_tls_version=tlsv1.2"/>
       <X-PRE-PROCESS cmd="set" data="sip_tls_ciphers=ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH"/>
       <X-PRE-PROCESS cmd="set" data="rtp-start-port={{ $.Values.freeswitch.rtp.min }}"/>
-      <X-PRE-PROCESS cmd="set" data="rtp-end-port={{ $.Values.freeswitch.rtp.max }}"/>
+      <X-PRE-PROCESS cmd="set" data="rtp-end-port={{ $freeswitchRtpEnd }}"/>
       <X-PRE-PROCESS cmd="set" data="rtp_sdes_suites=AEAD_AES_256_GCM_8|AEAD_AES_128_GCM_8|AES_CM_128_HMAC_SHA1_80"/>
       <X-PRE-PROCESS cmd="set" data="console_loglevel=info"/>
       <X-PRE-PROCESS cmd="set" data="hold_music=silence_stream://2000"/>
