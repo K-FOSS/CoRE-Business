@@ -1,4 +1,4 @@
-{{- if .Values.freeswitch.enabled }}
+{{- if and .Values.network.ciliumEgressGateway.enabled .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: cilium.io/v2

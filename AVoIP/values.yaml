@@ -84,6 +84,15 @@ rtpengine:
     address: '66.165.222.103'
     min: 11000
     max: 11050
+  diagnostics:
+    # Keep a network troubleshooting shell in the RTPEngine pod. The sidecar
+    # shares the pod network namespace but remains rootless and unprivileged.
+    enabled: true
+    image:
+      repository: 'nicolaka/netshoot'
+      tag: 'v0.16'
+      digest: 'sha256:b09d9b21381f47a79b3cbcb30da25266dc17186ea00ae65e99fdc51396f48e70'
+      pullPolicy: 'IfNotPresent'
 
 jitsi:
   domain: 'meet.mylogin.space'
@@ -93,6 +102,11 @@ jitsi:
 network:
   externalIP: '66.165.222.101'
   egressIP: '66.165.222.101'
+  # Leave Cilium egress pinning disabled unless the cluster has a working
+  # CiliumEgressGatewayPolicy path. Normal node/NAT egress may use 66.165.222.98
+  # or 66.165.222.99 at the site edge.
+  ciliumEgressGateway:
+    enabled: false
 
 asterisk:
   enabled: false
