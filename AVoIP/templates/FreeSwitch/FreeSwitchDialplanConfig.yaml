@@ -58,6 +58,9 @@ data:
             <action application="set" data="fax_enable_t38=true"/>
             <action application="set" data="fax_enable_t38_request=true"/>
             <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
+{{- if $.Values.freeswitch.media.diagnostics.enabled }}
+            <action application="set" data="execute_on_hangup=log INFO AVoIP RTP hangup uuid=${uuid} call_id=${sip_call_id} hangup_cause=${hangup_cause} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} negotiated_codec=${rtp_use_codec_string} t38=${fax_t38_status} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
+{{- end }}
             <action application="answer"/>
 {{- if $.Values.freeswitch.media.diagnostics.enabled }}
             <action application="set_media_stats"/>
