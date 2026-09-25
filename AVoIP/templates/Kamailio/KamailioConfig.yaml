@@ -149,7 +149,7 @@ data:
 
 {{- if .Values.kamailio.sipLogging.enabled }}
     onreply_route[KAMAILIO_SIP_REPLY] {
-      xlog("L_INFO", "SIP reply proto=$proto recv=$Ri:$Rp status=$rs reason=$rr source=$si:$sp destination=$rpl(duri) via1=$hdr(Via[1]) via2=$hdr(Via[2]) callid=$ci\n");
+      xlog("L_INFO", "SIP reply proto=$proto recv=$Ri:$Rp status=$rs reason=$rr source=$si:$sp destination=$rpl(duri) via=$hdr(Via) callid=$ci\n");
     }
 {{- end }}
 {{- end }}
