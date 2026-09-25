@@ -8,10 +8,12 @@ metadata:
   name: {{ $fullName }}-kamailio-config
 data:
   kamailio.cfg: |
-    debug=2
+    debug=0
+    corelog=-1
     log_stderror=yes
-    memdbg=0
-    memlog=0
+    # Keep allocator diagnostics disabled in the production foreground log.
+    memdbg=4
+    memlog=4
     children=2
     auto_aliases=no
     enable_tls=yes
