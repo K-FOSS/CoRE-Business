@@ -19,8 +19,8 @@ data:
     # Envoy terminates public TLS and sends PROXY v2 before the decrypted SIP
     # stream, so $si remains the carrier IP.
     tcp_accept_haproxy=yes
-    listen=udp:0.0.0.0:5060 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedUDPPort }}
-    listen=tcp:0.0.0.0:5061 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedTLSPort }}
+    listen=udp:0.0.0.0:5060 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedUDPPort }} name "private_udp"
+    listen=tcp:0.0.0.0:5061 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"
 
     loadmodule "tm.so"
     loadmodule "sl.so"
@@ -33,6 +33,9 @@ data:
     loadmodule "xlog.so"
 
     modparam("rr", "enable_full_lr", 1)
+    # Preserve the actual local socket across the private UDP/public TCP
+    # double-Record-Route used by the FreeSWITCH leg and the carrier leg.
+    modparam("rr", "sockname_mode", 1)
     modparam("sanity", "autodrop", 0)
     modparam("siputils", "rpid_avp", "$avp(s:rpid)")
 
@@ -89,9 +92,9 @@ data:
         # is the inbound/public interface. TLS is terminated by the Gateway
         # before the PROXY-v2 TCP stream reaches Kamailio.
         if ($proto == "tcp") {
-          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls");
+          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp;sn=private_udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tcp");
         } else {
-          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedUDPPort }};transport=udp");
+          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp;sn=private_udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedUDPPort }};transport=udp;sn=private_udp");
         }
         add_rr_param(";r2=on");
         route(RELAY);
