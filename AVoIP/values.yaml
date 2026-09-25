@@ -42,6 +42,9 @@ kamailio:
   sipLogging:
     # Compact SIP request, relay, response, and rejection markers only.
     enabled: true
+    # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
+    diagnostics:
+      enabled: true
   publicExposure:
     enabled: true
     sip:

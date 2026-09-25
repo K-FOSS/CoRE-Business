@@ -42,6 +42,9 @@ data:
     request_route {
 {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP request proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp ruri=$ru route=$hdr(Route) callid=$ci\n");
+{{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+      xlog("L_INFO", "SIP diagnostic ingress socket=$Ri:$Rp proto=$proto method=$rm cseq=$hdr(CSeq) source=$si:$sp ruri=$ru route=$hdr(Route) via=$hdr(Via) callid=$ci\n");
+{{- end }}
 {{- end }}
       if (!sanity_check("1511", "7")) {
         xlog("L_WARN", "Kamailio rejected malformed SIP from $si:$sp\n");
@@ -51,6 +54,9 @@ data:
       # Only Flowroute signaling sources may use the public DID termination.
 {{- range .Values.flowroute.signalingCIDRs }}
       if (src_ip == {{ . }}) {
+{{- if $.Values.kamailio.sipLogging.diagnostics.enabled }}
+        xlog("L_INFO", "SIP diagnostic ACL=flowroute source=$si:$sp method=$rm callid=$ci\n");
+{{- end }}
         route(FLOWROUTE_AUTHORIZED);
       }
 {{- end }}
@@ -58,6 +64,9 @@ data:
       # Initial requests from the backend remain unauthorized.
       if (src_ip == {{ .Values.kamailio.backend.podCIDR }}) {
         if (has_totag()) {
+{{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+          xlog("L_INFO", "SIP diagnostic ACL=backend-established source=$si:$sp method=$rm callid=$ci\n");
+{{- end }}
           route(IN_DIALOG);
           exit;
         }
@@ -123,6 +132,9 @@ data:
       }
 {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP in-dialog loose_route=accepted method=$rm source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
+{{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+      xlog("L_INFO", "SIP diagnostic in-dialog decision=relay proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
+{{- end }}
 {{- end }}
       route(RELAY);
       exit;
@@ -146,6 +158,10 @@ data:
         xlog("L_ERR", "SIP relay failed method=$rm source=$si:$sp destination=$du callid=$ci\n");
 {{- end }}
         sl_reply_error();
+      } else {
+{{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+        xlog("L_INFO", "SIP diagnostic relay=queued proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru callid=$ci\n");
+{{- end }}
       }
       exit;
     }
@@ -153,6 +169,9 @@ data:
 {{- if .Values.kamailio.sipLogging.enabled }}
     onreply_route[KAMAILIO_SIP_REPLY] {
       xlog("L_INFO", "SIP reply proto=$proto recv=$Ri:$Rp status=$rs reason=$rr source=$si:$sp destination=$rpl(duri) via=$hdr(Via) callid=$ci\n");
+{{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+      xlog("L_INFO", "SIP diagnostic reply socket=$Ri:$Rp proto=$proto status=$rs reason=$rr source=$si:$sp destination=$rpl(duri) ruri=$ru cseq=$hdr(CSeq) route=$hdr(Route) via=$hdr(Via) callid=$ci\n");
+{{- end }}
     }
 {{- end }}
 {{- end }}
