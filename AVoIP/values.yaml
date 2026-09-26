@@ -222,6 +222,11 @@ freeswitch:
     # Snapshot per-call RTP statistics only when explicitly enabled.
     diagnostics:
       enabled: true
+      # Temporary inbound-call recording for fax-tone/T.38 troubleshooting.
+      # Disable after the capture is complete because recordings contain call audio.
+      callRecording:
+        enabled: true
+        path: '/var/spool/freeswitch/fax'
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'

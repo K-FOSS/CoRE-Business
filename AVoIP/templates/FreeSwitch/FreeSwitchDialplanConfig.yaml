@@ -49,9 +49,13 @@ data:
             <action application="set" data="fax_enable_t38_request=true"/>
             <action application="export" data="execute_on_fax_detect=execute_extension fax-receive XML public"/>
             <action application="answer"/>
+{{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+            <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
+            <action application="set" data="avoip_audio_recording_started=true"/>
+{{- end }}
             <action application="fax_detect"/>
-            <!-- FreeSWITCH interprets sleep() here as seconds; 10 keeps the
-                 fax-detection window short enough for normal voice calls to bridge. -->
+            <!-- The deployed FreeSWITCH build treats this configured value as
+                 the established roughly 10-second fax-detection window. -->
             <action application="sleep" data="10"/>
             <action application="log" data="INFO AVoIP DID ${destination_number}: fax detection window completed"/>
 {{- end }}
@@ -75,6 +79,12 @@ data:
             <action application="set" data="fax_use_ecm={{ $.Values.freeswitch.fax.t38.useEcm }}"/>
             <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
             <action application="set" data="log_audio_stats_on_hangup=true"/>
+{{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+            <condition field="avoip_audio_recording_started" expression="^$">
+              <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
+              <action application="set" data="avoip_audio_recording_started=true"/>
+            </condition>
+{{- end }}
             <action application="set" data="execute_on_media=log INFO AVoIP RTP media established"/>
             <action application="log" data="INFO AVoIP fax parameters uuid=${uuid} call_id=${sip_call_id} caller=${caller_id_number} did=${fax_original_destination} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} t38=${fax_t38_status} rx_reinvite_packets=${fax_t38_rx_reinvite_packet_count} enable_t38=${fax_enable_t38} enable_t38_request=${fax_enable_t38_request} disable_v17=${fax_disable_v17} use_ecm=${fax_use_ecm}"/>
             <action application="answer"/>
