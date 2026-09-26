@@ -82,8 +82,12 @@ data:
     clearglobalvars=no
 
     [from-external]
-    exten => 18077893501,1,Answer()
-      same => n,Playback(hello)
+    exten => 18077893501,1,Progress()
+      same => n,Playback(hello,noanswer)
+      same => n,Playback(hello,noanswer)
+      same => n,Playback(hello,noanswer)
+      same => n,Playback(hello,noanswer)
+      same => n,Answer()
       same => n,Echo()
       same => n,Hangup()
 {{- end }}
