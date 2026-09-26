@@ -1,4 +1,4 @@
-{{- if and .Values.network.ciliumEgressGateway.enabled .Values.rtpengine.enabled .Values.kamailio.enabled .Values.freeswitch.enabled }}
+{{- if and .Values.network.ciliumEgressGateway.enabled .Values.rtpengine.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: cilium.io/v2

@@ -1,11 +1,54 @@
 # AVoIP
 
-This chart is the desired state for the legacy AVoIP stack in `core-prod`. It
+This chart is the desired state for the AVoIP stack in `core-prod` while it
+moves from legacy ownership toward WIP production status. It is not yet a
+production-certified replacement: the live hub is the active validation
+environment, and the legacy ApplicationSet remains the deployment owner until
+the production-readiness gates below are closed. It
 contains optional Asterisk and FreeSWITCH workloads plus an optional Jitsi Meet
 dependency. Speech recognition and synthesis are provided by the existing
 [CoRE AI stack](https://github.com/K-FOSS/CoRE-Business/tree/main/AI), not by
 workloads duplicated in this chart. It does not currently expose a public HTTP
 route from this chart.
+
+## Lifecycle status: legacy to WIP production
+
+The stack is in a controlled WIP-production transition. `core-dc1-talos-prod`
+is the active hub validation environment; the other ApplicationSet targets are
+spokes and do not currently run the telephony components. The deployed owner is
+still the [legacy AVoIP ApplicationSet in CoRE-Backplane](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml),
+so “WIP production” describes the maturity target, not a completed ownership
+migration.
+
+Current transition state:
+
+- Desired voice path: Flowroute → Kamailio → RTPEngine → FreeSWITCH →
+  Asterisk for ordinary calls.
+- Fax validation is in progress with FreeSWITCH `mod_spandsp`, G.711 fallback,
+  T.38 passthrough, and Homer capture available on the hub.
+- Configuration changes roll out through Git, Argo CD, and Reloader-backed
+  Deployment updates. Direct cluster changes are incident diagnostics only and
+  must not become the lasting source of truth.
+- The legacy `dc1-k3s` speech remnants are retirement candidates and are not a
+  supported telephony backend.
+
+The following gates remain before treating the stack as production-ready:
+
+1. Complete real Flowroute fax tests, including a FreeSWITCH T.38 re-INVITE,
+   Flowroute acceptance, a received TIFF, and a successful result.
+2. Demonstrate that ordinary inbound voice calls continue to bridge to
+   Asterisk during and after fax testing.
+3. Resolve the Kamailio UDP worker stability issue. The current evidence shows
+   `recvfrom(): [103] Software caused connection abort`, worker exit status 255,
+   and parent shutdown. This occurred during a burst of thousands of SIP
+   messages and has not been proven to originate from T.38 signaling.
+4. Reduce or account for the high-volume internal REGISTER/INVITE traffic and
+   verify the node/Cilium/conntrack path during a recurrence.
+5. Reconcile the desired multi-cluster ApplicationSet and confirm the rendered
+   Lovely output, operator conditions, routes, persistence, and rollback path.
+
+Until these gates are closed, changes should be described as WIP production
+validation and not as a stable general-purpose AVoIP release.
 
 ## Deployment ownership
 
@@ -22,8 +65,10 @@ uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
 `ServerSideApply=true`, and injects the following Helm merge values:
 
 - `env`, `datacenter`, `region`, and `cluster` identity/type/domain metadata.
-- `asterisk.enabled`, `kamailio.enabled`, `freeswitch.enabled`, and public
-  exposure settings per cluster.
+- `asterisk.enabled`, `kamailio.enabled`, `freeswitch.enabled`,
+  `rtpengine.enabled`, and public exposure settings per cluster. RTPEngine is
+  independently deployable; media integration is conditional on the relevant
+  SIP workloads also being enabled.
 - `hub` metadata for spoke clusters.
 - `gateway.name`, `gateway.namespace`, and `gateway.sectionName`.
 - `jitsi.domain` and `jitsi.tls.secretName`.
@@ -71,6 +116,15 @@ Kamailio request, relay, response, rejection, and loose-route markers are
 enabled by default through `kamailio.sipLogging.enabled`; the logging avoids
 full SIP/SDP dumps and can be disabled for quieter production logs.
 
+RTPEngine has its own enablement toggle and can run independently of Kamailio
+and FreeSWITCH. When all three components are enabled, the site-local
+[RTPEngine image](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/-/packages/container/core-docker%2Frtpengine/mr13.5.1.27-build-70)
+and Kamailio's [RTPEngine module](https://www.kamailio.org/docs/modules/stable/modules/rtpengine.html)
+form the carrier-media proxy path. Kamailio rewrites carrier SDP through
+RTPEngine's `external` and `internal` interfaces. RTPEngine owns the PureLB
+public RTP Service whenever `rtpengine.enabled` is true; the FreeSWITCH public
+RTP Service is omitted only when both Kamailio and RTPEngine are enabled.
+
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
 [CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
 provisions the service-account role and database; the chart uses the generated
@@ -88,6 +142,11 @@ Sofia raw SIP tracing is enabled by default on the managed Asterisk, external,
 and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
 SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`
 when that exposure or log volume is not appropriate.
+
+The hub can also deploy the internal [Homer SIP monitoring](docs/HOMER.md)
+stack. Kamailio forwards HEPv3 signaling to heplify-server, while RTPEngine
+forwards RTCP/NG diagnostics. The Homer UI is protected by Authentik OIDC and
+Gateway Forward Auth; its HEP ports are not publicly exposed.
 
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
@@ -131,7 +190,9 @@ The chart defaults are intentionally mostly inactive:
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
 | Kamailio | Independently enabled | When enabled, Kamailio receives public UDP SIP and Gateway-terminated SIP/TLS, consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
-| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID accepts voice calls bridged to Asterisk and supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public RTP uses a PureLB LoadBalancer with the requested `freeswitch.publicExposure.address`; FreeSWITCH has no public SIP routes. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public UDP SIP and TLS SIP. |
+| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID plays the values-controlled black alert audio before bridging voice calls to Asterisk and supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public media is proxied by RTPEngine; FreeSWITCH has no public SIP or RTP Service in proxy mode. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public UDP SIP and TLS SIP. |
+| RTPEngine | Independent toggle | Runs the pinned site-local userspace media proxy, exposes the configured UDP media range through PureLB, and receives Kamailio NG control traffic over a private ClusterIP Service. Kamailio uses it only when Kamailio, FreeSWITCH, and RTPEngine are all enabled. |
+| Homer | Hub-only opt-in | Runs heplify-server and Homer UI with site-local PostgreSQL `homer_data`/`homer_config` databases, Kamailio HEPv3 capture, RTPEngine RTCP/NG capture, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim
@@ -250,6 +311,8 @@ Principal upstream projects:
   [slop.writemy.codes](https://slop.writemy.codes/CoRE/Core-Docker).
 - [FreeSWITCH](https://signalwire.com/freeswitch) and its
   [source repository](https://github.com/signalwire/freeswitch)
+- [Sipwise RTPEngine](https://github.com/sipwise/rtpengine) and its
+  [configuration documentation](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md)
 - [Wyoming OpenAI adapter](https://github.com/roryeckel/wyoming_openai)
 - [GPUStack website](https://gpustack.ai/) and
   [documentation](https://docs.gpustack.ai/)

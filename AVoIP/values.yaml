@@ -72,7 +72,9 @@ kamailio:
     pullPolicy: 'IfNotPresent'
 
 rtpengine:
-  # Proxy carrier media at the SIP edge instead of exposing FreeSWITCH RTP.
+  # Deploy RTPEngine independently. Kamailio/FreeSWITCH integration is enabled
+  # only when those components are also enabled; this toggle controls the
+  # RTPEngine workload, control Service, and public media Service itself.
   enabled: true
   controlPort: 22222
   image:

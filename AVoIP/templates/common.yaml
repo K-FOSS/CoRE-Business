@@ -328,7 +328,7 @@ controllers:
           allowPrivilegeEscalation: false
 {{- end }}
 {{ end }}
-{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled .Values.freeswitch.enabled }}
+{{- if .Values.rtpengine.enabled }}
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     strategy: RollingUpdate
@@ -363,7 +363,7 @@ controllers:
             --listen-ng=0.0.0.0:{{ .Values.rtpengine.controlPort }}
             --port-min={{ .Values.rtpengine.media.min }}
             --port-max={{ sub (.Values.rtpengine.media.max | int) 1 }}
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
+{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
             --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}
             --homer-id=102
             --homer-enable-ng
@@ -906,7 +906,7 @@ service:
         protocol: UDP
 {{- end }}
 {{- end }}
-{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled .Values.freeswitch.enabled }}
+{{- if .Values.rtpengine.enabled }}
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     controller: rtpengine
