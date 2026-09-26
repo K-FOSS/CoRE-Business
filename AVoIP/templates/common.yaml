@@ -33,6 +33,12 @@ controllers:
           type: RuntimeDefault
       labels:
         app: '{{ include "avoip.fullname" . }}-asterisk'
+      annotations:
+        # Reloader restarts Asterisk when its file-backed configuration changes.
+        # The credentials are rendered into startup-only files, so include the
+        # mounted Secret as well when the generated connection changes.
+        configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk'
     initContainers:
 {{- if .Values.asterisk.cdr.enabled }}
       cdr-schema:
@@ -464,6 +470,14 @@ controllers:
         runAsUser: 1000
         seccompProfile:
           type: RuntimeDefault
+      annotations:
+        # Flowroute/fax, Sofia, dialplan, and core XML are mounted as separate
+        # ConfigMaps. Roll the pod so FreeSWITCH reloads the complete set
+        # consistently instead of retaining a mixed in-memory configuration.
+        configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
+{{- if .Values.freeswitch.sms.enabled }}
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms'
+{{- end }}
     initContainers:
 {{- if .Values.freeswitch.cdr.enabled }}
       cdr-schema:
