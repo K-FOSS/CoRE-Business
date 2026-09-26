@@ -42,7 +42,6 @@ data:
             <action application="set" data="outside_call=true"/>
 {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
             <action application="answer"/>
-            <action application="playback" data="shouts://{{ trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url }}"/>
 {{- end }}
             <action application="log" data="INFO AVoIP DID ${destination_number}: received call"/>
 {{- if $.Values.freeswitch.fax.enabled }}
@@ -53,6 +52,9 @@ data:
             <action application="fax_detect"/>
             <action application="sleep" data="10000"/>
             <action application="log" data="INFO AVoIP DID ${destination_number}: fax detection window completed"/>
+{{- end }}
+{{- if $.Values.freeswitch.preBridgeAudio.enabled }}
+            <action application="playback" data="shouts://{{ trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url }}"/>
 {{- end }}
             <action application="log" data="INFO AVoIP DID ${destination_number}: bridging to Asterisk"/>
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
