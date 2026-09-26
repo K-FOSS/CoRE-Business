@@ -105,36 +105,30 @@ diagnostics:
       pullPolicy: 'IfNotPresent'
 
 homer:
-  # Homer is enabled on the hub only. The owning ApplicationSet supplies the
-  # hub/spoke cluster type; keep this opt-in for standalone renders.
+  # Homer 11 is enabled on the hub only. The owning ApplicationSet supplies
+  # the hub/spoke cluster type; keep this opt-in for standalone renders.
   enabled: true
   hostname: 'homer.mylogin.space'
   capture:
-    image:
-      repository: 'ghcr.io/sipcapture/heplify-server'
-      tag: '1.60.9'
-      digest: 'sha256:9beb52592888cc62437ee11ab7d7f4e68bc2a41ca0b23542eb59800f54d8f3d2'
-      pullPolicy: 'IfNotPresent'
     hepPort: 9060
     hepTCPPort: 9061
     metricsPort: 9096
     retentionDays: 14
   web:
     image:
-      repository: 'ghcr.io/sipcapture/homer-app'
-      tag: '1.5.21'
-      digest: 'sha256:76a4bf3ad106ae8c7b6cced00eca31a6fd26f5d851eb0e1fe2b539c904e5d167'
+      repository: 'ghcr.io/sipcapture/homer'
+      tag: '11.0.350'
+      digest: 'sha256:aff429f3eb826eac36b45bfc9cc6d230c24042ba722012b868f2f5fd1aa19b13'
       pullPolicy: 'IfNotPresent'
     port: 9080
-  database:
-    host: ''
-    port: 5432
-    userSecret: ''
-    username: 'homer'
-    dataDatabase: 'homer_data'
-    configDatabase: 'homer_config'
-    crossplaneProvider: ''
-    terraformProvider: ''
+  storage:
+    persistence:
+      enabled: true
+      storageClass: 'longhorn'
+      accessMode: 'ReadWriteOnce'
+      size: '10Gi'
+      retain: true
+    retentionDays: 14
   oidc:
     providerConfigRef: 'authentik'
     issuerBaseUrl: 'https://idp.mylogin.space'
@@ -212,7 +206,7 @@ freeswitch:
     podCIDR: '172.16.0.0/12'
   preBridgeAudio:
     enabled: true
-    url: 'https://static.mylogin.space/black_alert.mp3'
+    url: 'http://66.165.222.101/Sounds/gg-sound-effect.mp3'
   sms:
     enabled: true
   sipLogging:

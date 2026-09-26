@@ -143,10 +143,11 @@ and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
 SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`
 when that exposure or log volume is not appropriate.
 
-The hub can also deploy the internal [Homer SIP monitoring](docs/HOMER.md)
-stack. Kamailio forwards HEPv3 signaling to heplify-server, while RTPEngine
-forwards RTCP/NG diagnostics. The Homer UI is protected by Authentik OIDC and
-Gateway Forward Auth; its HEP ports are not publicly exposed.
+The hub can also deploy the internal [Homer 11 SIP monitoring](docs/HOMER.md)
+stack. Kamailio forwards HEPv3 signaling directly to the Homer 11 ingest
+listener, while RTPEngine forwards RTCP/NG diagnostics. The Homer UI is
+protected by Authentik OIDC and Gateway Forward Auth; its HEP ports are not
+publicly exposed.
 
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
@@ -192,7 +193,7 @@ The chart defaults are intentionally mostly inactive:
 | Kamailio | Independently enabled | When enabled, Kamailio receives public UDP SIP and Gateway-terminated SIP/TLS, consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
 | FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID plays the values-controlled black alert audio before bridging voice calls to Asterisk and supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public media is proxied by RTPEngine; FreeSWITCH has no public SIP or RTP Service in proxy mode. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public UDP SIP and TLS SIP. |
 | RTPEngine | Independent toggle | Runs the pinned site-local userspace media proxy, exposes the configured UDP media range through PureLB, and receives Kamailio NG control traffic over a private ClusterIP Service. Kamailio uses it only when Kamailio, FreeSWITCH, and RTPEngine are all enabled. |
-| Homer | Hub-only opt-in | Runs heplify-server and Homer UI with site-local PostgreSQL `homer_data`/`homer_config` databases, Kamailio HEPv3 capture, RTPEngine RTCP/NG capture, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
+| Homer 11 | Hub-only opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, Kamailio HEPv3 capture, RTPEngine RTCP/NG capture, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim

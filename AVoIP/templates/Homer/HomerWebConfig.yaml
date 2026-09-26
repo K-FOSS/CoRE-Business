@@ -1,63 +1,66 @@
 {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
-{{- $homerDbHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.homer.database.host -}}
-{{- $oidcSlug := printf "%s-%s-%s-%s" .Values.homer.oidc.applicationSlug .Values.region .Values.datacenter .Values.cluster.name -}}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: '{{ $fullName }}-homer-web-config'
+  name: '{{ $fullName }}-homer-config'
 data:
-  webapp_config.json: |
+  homer.json: |
     {
-      "database_data": {
-        "LocalNode": {
-          "node": "LocalNode",
-          "user": "__DB_USER__",
-          "pass": "__DB_PASS__",
-          "name": "{{ .Values.homer.database.dataDatabase }}",
-          "host": "{{ $homerDbHost }}",
-          "port": "__DB_PORT__"
+      "ingest": {
+        "enable": true,
+        "udp": { "enable": true, "host": "0.0.0.0", "port": {{ .Values.homer.capture.hepPort }}, "multicore": true },
+        "tcp": { "enable": true, "host": "0.0.0.0", "port": {{ .Values.homer.capture.hepTCPPort }}, "multicore": true },
+        "tls": { "enable": false },
+        "http": { "enable": true, "host": "0.0.0.0", "port": {{ .Values.homer.web.port }} },
+        "hep": { "hepv2_enable": true, "hepv3_enable": true, "protobuf_enable": true, "deduplicate": false }
+      },
+      "storage": {
+        "enable": true,
+        "ducklake": {
+          "catalog_type": "sqlite",
+          "catalog_path": "/data/homer/homer_catalog.sqlite",
+          "data_path": "/data/homer/parquet",
+          "lake_name": "homer_lake",
+          "batch_size": 10000,
+          "flush_interval_sec": 30,
+          "compaction": { "enable": true, "retention_days": {{ .Values.homer.storage.retentionDays }}, "retention_unit": "days" }
         }
       },
-      "database_config": {
-        "node": "LocalConfig",
-        "user": "__DB_USER__",
-        "pass": "__DB_PASS__",
-        "name": "{{ .Values.homer.database.configDatabase }}",
-        "host": "{{ $homerDbHost }}",
-        "port": "__DB_PORT__"
-      },
-      "http_settings": {
-        "host": "0.0.0.0",
-        "port": {{ .Values.homer.web.port }},
-        "root": "/usr/local/homer/dist",
-        "gzip": true,
-        "debug": false
-      },
-      "system_settings": {
-        "logpath": "/tmp",
-        "logname": "homer-app.log",
-        "loglevel": "info",
-        "logstdout": true
-      },
-      "auth_settings": {
-        "type": "internal"
-      },
-      "oauth2": {
+      "node": {
         "enable": true,
-        "client_id": "__OIDC_CLIENT_ID__",
-        "client_secret": "__OIDC_CLIENT_SECRET__",
-        "project_id": "AVoIP Homer",
-        "auth_uri": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/{{ $oidcSlug }}/authorize/",
-        "token_uri": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/{{ $oidcSlug }}/token/",
-        "profile_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/{{ $oidcSlug }}/userinfo/",
-        "redirect_uri": "https://{{ .Values.homer.hostname }}/api/v3/oauth2/auth",
-        "provider_name": "authentik",
-        "service_redirect": "/api/v3/oauth2/redirect",
-        "service_root": "/",
-        "scope": ["openid", "email", "profile"],
-        "auto_redirect": true
-      }
+        "flight_server": { "host": "0.0.0.0", "port": 50051, "auth_token": "__JWT_SECRET__" },
+        "ducklake": {
+          "lake_name": "homer_lake",
+          "volumes": [{ "name": "default", "type": "local", "catalog_type": "sqlite", "catalog_path": "/data/homer/homer_catalog.sqlite", "path": "/data/homer/parquet" }]
+        }
+      },
+      "coordinator": {
+        "enable": true,
+        "http_server": { "enable": true, "host": "0.0.0.0", "port": 8080, "static_path": "/usr/local/homer-core/dist" },
+        "nodes": [{ "name": "local", "host": "127.0.0.1", "port": 50051, "flightsql_port": 0, "use_tls": false, "token": "__JWT_SECRET__", "priority": 1 }],
+        "settings_db_path": "/data/homer/homer_settings.duckdb",
+        "jwt": { "secret": "__JWT_SECRET__", "expire_hours": 24 },
+        "auth": { "type": "internal", "disable_password_login": true },
+        "oauth2_provider": {
+          "enable": true,
+          "name": "authentik",
+          "type": "oauth2",
+          "provider_name": "Authentik",
+          "client_id": "__OIDC_CLIENT_ID__",
+          "client_secret": "__OIDC_CLIENT_SECRET__",
+          "auth_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/authorize/",
+          "token_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/token/",
+          "redirect_url": "https://{{ .Values.homer.hostname }}/api/v4/auth/oauth2/authentik/callback",
+          "profile_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/userinfo/",
+          "scopes": ["openid", "email", "profile"],
+          "use_pkce": true,
+          "callback_url": "https://{{ .Values.homer.hostname }}/",
+          "auto_redirect": true
+        }
+      },
+      "log": { "level": "info", "json": false, "output": ["stdout"] },
+      "prometheus": { "enable": true, "host": "0.0.0.0", "port": {{ .Values.homer.capture.metricsPort }}, "path": "/metrics", "agent_label": "node_id" }
     }
 {{- end }}

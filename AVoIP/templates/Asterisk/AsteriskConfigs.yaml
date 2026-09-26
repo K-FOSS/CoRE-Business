@@ -31,11 +31,11 @@ data:
     noload => res_phoneprov.so
     noload => res_musiconhold.so
     noload => res_smdi.so
-{{- if .Values.asterisk.cdr.enabled }}
+    {{- if .Values.asterisk.cdr.enabled }}
     require = cdr_pgsql.so
-{{- else }}
+    {{- else }}
     noload => cdr_pgsql.so
-{{- end }}
+    {{- end }}
     noload => cdr_csv.so
     noload => cdr_custom.so
     noload => cdr_sqlite3_custom.so
@@ -83,8 +83,6 @@ data:
 
     [from-external]
     exten => 18077893501,1,Answer()
-      same => n,Playback(demo-congrats)
-      same => n,Playback(demo-instruct)
       same => n,Playback(demo-echodone)
       same => n,Echo()
       same => n,Hangup()
