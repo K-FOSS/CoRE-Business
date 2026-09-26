@@ -83,7 +83,7 @@ data:
 
     [from-external]
     exten => 18077893501,1,Answer()
-      same => n,Playback(demo-echodone)
+      same => n,Playback(hello)
       same => n,Echo()
       same => n,Hangup()
 {{- end }}
