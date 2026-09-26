@@ -19,7 +19,7 @@ data:
     # Envoy terminates public TLS and sends PROXY v2 before the decrypted SIP
     # stream, so $si remains the carrier IP.
     tcp_accept_haproxy=yes
-    listen=udp:0.0.0.0:5060 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedUDPPort }} name "private_udp"
+    listen=udp:0.0.0.0:5060 advertise "{{ .Values.kamailio.advertisedUDPHost }}":{{ .Values.kamailio.advertisedUDPPort }} name "private_udp"
     listen=tcp:0.0.0.0:5061 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"
 
     loadmodule "tm.so"
@@ -151,9 +151,9 @@ data:
           record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp;sn=private_udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tcp");
         } else {
 {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-          xlog("L_INFO", "SIP diagnostic initial-route transport=udp public_route=udp:{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedUDPPort }} internal_route=udp callid=$ci\n");
+      xlog("L_INFO", "SIP diagnostic initial-route transport=udp public_route=udp:{{ .Values.kamailio.advertisedUDPHost }}:{{ .Values.kamailio.advertisedUDPPort }} internal_route=udp callid=$ci\n");
 {{- end }}
-          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp;sn=private_udp", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedUDPPort }};transport=udp;sn=private_udp");
+          record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5060;transport=udp;sn=private_udp", "{{ .Values.kamailio.advertisedUDPHost }}:{{ .Values.kamailio.advertisedUDPPort }};transport=udp;sn=private_udp");
         }
         add_rr_param(";r2=on");
 {{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}

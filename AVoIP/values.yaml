@@ -51,10 +51,12 @@ kamailio:
     enabled: true
     sip:
       enabled: true
-      # On the hub, expose UDP/5060 directly through the PureLB Service.
-      # TLS SIP continues to use the Gateway TCPRoute.
+      # Public inbound SIP is TLS-only. Kamailio's UDP socket remains available
+      # for the private FreeSWITCH leg, but no public UDP route is rendered.
       directService:
-        enabled: true
+        enabled: false
+      udpRoute:
+        enabled: false
   backend:
     # The default backend is the chart's FreeSWITCH service when both are enabled.
     serviceName: ''
@@ -63,8 +65,9 @@ kamailio:
     # the backend side through Kamailio. Initial requests from this range remain
     # rejected and public carrier sources are still checked separately below.
     podCIDR: '172.16.0.0/12'
-  # These addresses are used in SIP Via/Contact/Record-Route headers and never
-  # come from the wildcard bind.
+  # The UDP leg is advertised at the direct PureLB SIP address. The TLS leg
+  # retains the hostname used by the Gateway certificate and TCP route.
+  advertisedUDPHost: '66.165.222.103'
   advertisedHost: 'sip.resolvemy.host'
   advertisedUDPPort: 5060
   advertisedTLSPort: 5081
