@@ -5,6 +5,8 @@ apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
   name: {{ $fullName }}-kamailio
+  annotations:
+    external-dns.kubernetes.io/hostname: '{{ .Values.kamailio.advertisedHost }}'
 
   labels:
     wan-mode: public
