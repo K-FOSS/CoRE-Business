@@ -38,30 +38,20 @@ data:
     </profile>
   external.xml: |
     <profile name="external">
-
-
       <gateways>
         <X-PRE-PROCESS cmd="include" data="external/*.xml"/>
       </gateways>
-
       <aliases>
-
       </aliases>
-
       <domains>
         <domain name="all" alias="false" parse="true"/>
       </domains>
-
       <settings>
         <param name="debug" value="0"/>
-
-
         <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-capture" value="no"/>
         <param name="apply-inbound-acl" value="flowroute"/>
         <param name="rfc2833-pt" value="101"/>
-
-
         <param name="sip-port" value="$${external_sip_port}"/>
         <param name="dialplan" value="XML"/>
         <param name="context" value="public"/>
@@ -70,59 +60,29 @@ data:
         <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
         <param name="hold-music" value="$${hold_music}"/>
         <param name="rtp-timer-name" value="soft"/>
-
-
-
         <param name="local-network-acl" value="localnet.auto"/>
         <param name="manage-presence" value="false"/>
-
-
-
-
-
-
-
-
-
-
-
         <param name="inbound-codec-negotiation" value="generous"/>
         <param name="nonce-ttl" value="60"/>
         <param name="auth-calls" value="false"/>
         <param name="inbound-late-negotiation" value="true"/>
-
         <param name="rtp-ip" value="$${local_ip_v4}"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
         <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
         <param name="ext-sip-ip" value="$${external_sip_ip}"/>
         <param name="rtp-timeout-sec" value="300"/>
         <param name="rtp-hold-timeout-sec" value="1800"/>
-
-
-
         <param name="tls" value="$${external_ssl_enable}"/>
-
         <param name="tls-only" value="false"/>
-
         <param name="tls-bind-params" value="transport=tls"/>
-
         <param name="tls-sip-port" value="$${external_tls_port}"/>
-
         <param name="tls-cert-dir" value="/etc/freeswitch/tls" />
-
         <param name="tls-passphrase" value=""/>
-
         <param name="tls-verify-date" value="true"/>
-
-
         <param name="tls-verify-policy" value="none"/>
-
         <param name="tls-verify-depth" value="2"/>
-
         <param name="tls-verify-in-subjects" value=""/>
-
         <param name="tls-version" value="$${sip_tls_version}"/>
-
         <param name="tls-ciphers" value="$${sip_tls_ciphers}"/>
       </settings>
     </profile>
@@ -130,6 +90,17 @@ data:
     <profile name="kamailio">
       <settings>
         <param name="sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
+        <!-- Kamailio signaling is TLS-only; tls-only suppresses the plain
+             UDP/TCP sip-port and binds only the TLS port. -->
+        <param name="tls" value="true"/>
+        <param name="tls-only" value="true"/>
+        <param name="tls-bind-params" value="transport=tls"/>
+        <param name="tls-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
+        <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
+        <param name="tls-verify-date" value="true"/>
+        <param name="tls-verify-policy" value="none"/>
+        <param name="tls-version" value="$${sip_tls_version}"/>
+        <param name="tls-ciphers" value="$${sip_tls_ciphers}"/>
         <param name="dialplan" value="XML"/>
         <param name="context" value="public"/>
         <param name="auth-calls" value="false"/>

@@ -322,11 +322,11 @@ controllers:
               timeoutSeconds: 3
               failureThreshold: 3
         ports:
-          - name: udp-sip
-            containerPort: 5060
-            protocol: UDP
           - name: tcp-sip
             containerPort: 5061
+            protocol: TCP
+          - name: tls-sip
+            containerPort: 5062
             protocol: TCP
 {{- if .Values.diagnostics.netshoot.enabled }}
       netshoot:
@@ -793,15 +793,15 @@ service:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio'
     controller: kamailio
     ports:
-      udp-sip:
-        port: 5060
-        targetPort: udp-sip
-        protocol: UDP
       tcp-sip:
         port: 5061
         targetPort: tcp-sip
         protocol: TCP
-{{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.directService.enabled (eq .Values.cluster.type "hub") }}
+      tls-sip:
+        port: 5062
+        targetPort: tls-sip
+        protocol: TCP
+{{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.directService.enabled (eq .Values.cluster.type "hub") }}
   kamailio-udp:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio-udp'
     controller: kamailio
@@ -1008,6 +1008,15 @@ persistence:
         kamailio:
           - path: /etc/kamailio/kamailio.cfg
             subPath: kamailio.cfg
+          - path: /etc/kamailio/tls.cfg
+            subPath: tls.cfg
+  kamailio-tls:
+    type: secret
+    name: resolvemyhost-default-certificates
+    advancedMounts:
+      kamailio:
+        kamailio:
+          - path: /etc/kamailio/tls
   kamailio-tmp:
     type: emptyDir
     advancedMounts:

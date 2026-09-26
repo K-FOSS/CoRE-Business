@@ -51,8 +51,9 @@ kamailio:
     enabled: true
     sip:
       enabled: true
-      # Public inbound SIP is TLS-only. Kamailio's UDP socket remains available
-      # for the private FreeSWITCH leg, but no public UDP route is rendered.
+      # SIP signaling is TCP/TLS-only. RTPEngine's separate UDP media and
+      # control sockets are unaffected by this setting.
+      udpEnabled: false
       directService:
         enabled: false
       udpRoute:
@@ -60,13 +61,15 @@ kamailio:
   backend:
     # The default backend is the chart's FreeSWITCH service when both are enabled.
     serviceName: ''
-    servicePort: 5090
+    # FreeSWITCH's kamailio profile is TLS-only on the private service port.
+    servicePort: 5061
     # Only this private source range may send established-dialog requests from
     # the backend side through Kamailio. Initial requests from this range remain
     # rejected and public carrier sources are still checked separately below.
     podCIDR: '172.16.0.0/12'
-  # The UDP leg is advertised at the direct PureLB SIP address. The TLS leg
-  # retains the hostname used by the Gateway certificate and TCP route.
+  # The public TLS leg retains the hostname used by the Gateway certificate and
+  # TCP route. The old UDP advertisement remains only for overlay compatibility;
+  # no UDP listener or Service is rendered.
   advertisedUDPHost: '66.165.222.103'
   advertisedHost: 'sip.resolvemy.host'
   advertisedUDPPort: 5060
@@ -208,7 +211,8 @@ freeswitch:
       tcpEnabled: false
       udpEnabled: false
     kamailio:
-      backendPort: 5090
+      # Private Kamailio-to-FreeSWITCH SIP is TLS-only on 5061.
+      backendPort: 5061
     # Kamailio's pod source range as seen by the private FreeSWITCH profile.
     podCIDR: '172.16.0.0/12'
   preBridgeAudio:
