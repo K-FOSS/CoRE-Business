@@ -66,17 +66,30 @@ data:
       if (!has_body("application/sdp")) {
         return;
       }
-      if (!rtpengine_manage("replace-origin external internal")) {
+{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+      xlog("L_INFO", "SIP media before RTPEngine phase=initial callid=$ci source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) set=private-control flags=external,internal sdp=$rb\n");
+{{- end }}
+      if (!rtpengine_manage("replace-origin replace-session-connection replace-connection external internal")) {
         xlog("L_ERR", "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
       } else {
         xlog("L_INFO", "RTPEngine initial SDP handled callid=$ci method=$rm source=$si:$sp\n");
+{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+        xlog("L_INFO", "SIP media after RTPEngine phase=initial callid=$ci source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
+{{- end }}
       }
     }
 
     route[MEDIA_DIALOG] {
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("replace-origin")) {
+{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+        xlog("L_INFO", "SIP media before RTPEngine phase=dialog callid=$ci method=$rm source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
+{{- end }}
+        if (!rtpengine_manage("replace-origin replace-session-connection replace-connection")) {
           xlog("L_ERR", "RTPEngine dialog SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
+        } else {
+{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+          xlog("L_INFO", "SIP media after RTPEngine phase=dialog callid=$ci method=$rm source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
+{{- end }}
         }
       } else if (is_method("BYE|CANCEL")) {
         rtpengine_manage();
@@ -222,8 +235,15 @@ data:
     onreply_route[KAMAILIO_SIP_REPLY] {
 {{- if and .Values.rtpengine.enabled .Values.freeswitch.enabled }}
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("replace-origin")) {
+{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+        xlog("L_INFO", "SIP media before RTPEngine phase=reply callid=$ci status=$rs source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
+{{- end }}
+        if (!rtpengine_manage("replace-origin replace-session-connection replace-connection")) {
           xlog("L_ERR", "RTPEngine reply SDP handling failed callid=$ci status=$rs\n");
+        } else {
+{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+          xlog("L_INFO", "SIP media after RTPEngine phase=reply callid=$ci status=$rs source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
+{{- end }}
         }
       } else if ($rs =~ "[3-6][0-9][0-9]") {
         rtpengine_manage();

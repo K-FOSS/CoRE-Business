@@ -87,14 +87,25 @@ data:
         <extension name="fax-receive">
           <condition field="destination_number" expression="^fax-receive$">
             <action application="log" data="INFO AVoIP fax receive start caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid}"/>
-            <!-- Flowroute starts fax calls as G.711; request T.38 after the
-                 configured non-zero packet count, while retaining G.711 fallback. -->
+            <!-- Flowroute starts fax calls as G.711. g711Only is a temporary,
+                 values-controlled diagnostic mode; it proves initial PCMU
+                 delivery without changing the normal T.38 fallback path. -->
+{{- if $.Values.freeswitch.fax.g711Only.enabled }}
+            <action application="set" data="fax_enable_t38=false"/>
+            <action application="set" data="fax_enable_t38_request=false"/>
+            <action application="set" data="fax_verbose=true"/>
+{{- else }}
             <action application="set" data="fax_enable_t38=true"/>
             <action application="set" data="fax_enable_t38_request=true"/>
+{{- end }}
             <action application="set" data="fax_t38_rx_reinvite_packet_count={{ $.Values.freeswitch.fax.t38.rxReinvitePacketCount }}"/>
             <action application="set" data="fax_disable_v17={{ $.Values.freeswitch.fax.t38.disableV17 }}"/>
             <action application="set" data="fax_use_ecm={{ $.Values.freeswitch.fax.t38.useEcm }}"/>
+{{- if $.Values.freeswitch.fax.g711Only.enabled }}
+            <action application="set" data="absolute_codec_string=PCMU"/>
+{{- else }}
             <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
+{{- end }}
             <action application="set" data="log_audio_stats_on_hangup=true"/>
 {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
             <condition field="avoip_audio_recording_started" expression="^$">

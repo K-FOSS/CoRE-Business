@@ -47,6 +47,10 @@ kamailio:
       enabled: true
       # Kamailio core debug level used only while diagnostics are enabled.
       coreDebug: 2
+      # Log sanitized SIP routing metadata and SDP before/after RTPEngine.
+      # Disable after the media investigation because SDP can expose endpoint
+      # addresses and codec details.
+      sdp: true
   publicExposure:
     enabled: true
     sip:
@@ -255,6 +259,10 @@ freeswitch:
       # The current Flowroute fax path is validated only through 9600 bps.
       disableV17: true
       useEcm: false
+    # Controlled bring-up mode for proving the initial G.711 path. Keep false
+    # in normal operation; it disables the T.38 request only for fax-receive.
+    g711Only:
+      enabled: false
     detection:
       # Temporary diagnostics for the generic fax-tone detector.
       verbose: true
