@@ -46,11 +46,11 @@ data:
         <extension name="flowroute-did">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.did }}$">
             <action application="set" data="outside_call=true"/>
-{{- if $.Values.freeswitch.preBridgeAudio.enabled }}
+            {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
             <action application="answer"/>
-{{- end }}
+            {{- end }}
             <action application="log" data="INFO AVoIP DID ${destination_number}: received call"/>
-{{- if $.Values.freeswitch.fax.enabled }}
+            {{- if $.Values.freeswitch.fax.enabled }}
             <action application="set" data="fax_enable_t38=true"/>
             <action application="set" data="fax_enable_t38_request=true"/>
             <action application="set" data="fax_verbose={{ $.Values.freeswitch.fax.detection.verbose }}"/>
@@ -58,16 +58,16 @@ data:
             <action application="set" data="fax_tone_detect_sleep={{ $.Values.freeswitch.fax.detection.sleep }}"/>
             <action application="export" data="execute_on_fax_detect=execute_extension fax-receive XML public"/>
             <action application="answer"/>
-{{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+            {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
             <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
             <action application="set" data="avoip_audio_recording_started=true"/>
-{{- end }}
+            {{- end }}
             <action application="fax_detect"/>
             <!-- The deployed FreeSWITCH build treats this configured value as
                  the established roughly 10-second fax-detection window. -->
             <action application="sleep" data="10"/>
             <action application="log" data="INFO AVoIP DID ${destination_number}: fax detection window completed"/>
-{{- end }}
+            {{- end }}
 {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
             <action application="playback" data="shouts://{{ trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url }}"/>
 {{- end }}

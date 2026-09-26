@@ -205,7 +205,7 @@ freeswitch:
     # Kamailio's pod source range as seen by the private FreeSWITCH profile.
     podCIDR: '172.16.0.0/12'
   preBridgeAudio:
-    enabled: true
+    enabled: false
     url: 'http://66.165.222.101/Sounds/gg-sound-effect.mp3'
   sms:
     enabled: true
