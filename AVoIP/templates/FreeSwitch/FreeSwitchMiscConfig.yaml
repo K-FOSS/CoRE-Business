@@ -63,6 +63,8 @@ data:
         <load module="mod_dialplan_xml"/>
         <load module="mod_dptools"/>
         <load module="mod_shout"/>
+        <!-- Required by the temporary inbound-call WAV capture. -->
+        <load module="mod_sndfile"/>
         <load module="mod_spandsp"/>
 {{- if $.Values.freeswitch.cdr.enabled }}
         <load module="mod_cdr_pg_csv"/>
