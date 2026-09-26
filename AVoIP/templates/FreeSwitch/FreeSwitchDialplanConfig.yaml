@@ -50,7 +50,9 @@ data:
             <action application="export" data="execute_on_fax_detect=execute_extension fax-receive XML public"/>
             <action application="answer"/>
             <action application="fax_detect"/>
-            <action application="sleep" data="10000"/>
+            <!-- FreeSWITCH interprets sleep() here as seconds; 10 keeps the
+                 fax-detection window short enough for normal voice calls to bridge. -->
+            <action application="sleep" data="10"/>
             <action application="log" data="INFO AVoIP DID ${destination_number}: fax detection window completed"/>
 {{- end }}
 {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
