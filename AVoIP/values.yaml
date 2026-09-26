@@ -248,6 +248,11 @@ freeswitch:
       # The current Flowroute fax path is validated only through 9600 bps.
       disableV17: true
       useEcm: false
+    detection:
+      # Temporary diagnostics for the generic fax-tone detector.
+      verbose: true
+      expires: 10
+      sleep: 0
     testMode:
       # Enable for a deterministic public fax test. Roll back to false to
       # restore the shared voice/fax detection path.

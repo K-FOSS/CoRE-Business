@@ -53,6 +53,9 @@ data:
 {{- if $.Values.freeswitch.fax.enabled }}
             <action application="set" data="fax_enable_t38=true"/>
             <action application="set" data="fax_enable_t38_request=true"/>
+            <action application="set" data="fax_verbose={{ $.Values.freeswitch.fax.detection.verbose }}"/>
+            <action application="set" data="fax_tone_detect_expires={{ $.Values.freeswitch.fax.detection.expires }}"/>
+            <action application="set" data="fax_tone_detect_sleep={{ $.Values.freeswitch.fax.detection.sleep }}"/>
             <action application="export" data="execute_on_fax_detect=execute_extension fax-receive XML public"/>
             <action application="answer"/>
 {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
