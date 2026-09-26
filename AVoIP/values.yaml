@@ -51,6 +51,10 @@ kamailio:
     enabled: true
     sip:
       enabled: true
+      # On the hub, expose UDP/5060 directly through the PureLB Service.
+      # TLS SIP continues to use the Gateway TCPRoute.
+      directService:
+        enabled: true
   backend:
     # The default backend is the chart's FreeSWITCH service when both are enabled.
     serviceName: ''

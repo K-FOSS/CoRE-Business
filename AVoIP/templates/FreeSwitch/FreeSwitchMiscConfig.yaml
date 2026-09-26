@@ -56,19 +56,19 @@ data:
         <load module="mod_logfile"/>
         <load module="mod_sofia"/>
         <load module="mod_xml_ldap"/>
-{{- if $.Values.freeswitch.sms.enabled }}
+        {{- if $.Values.freeswitch.sms.enabled }}
         <load module="mod_sms"/>
         <load module="mod_sms_flowroute"/>
-{{- end }}
+        {{- end }}
         <load module="mod_dialplan_xml"/>
         <load module="mod_dptools"/>
         <load module="mod_shout"/>
         <!-- Required by the temporary inbound-call WAV capture. -->
         <load module="mod_sndfile"/>
         <load module="mod_spandsp"/>
-{{- if $.Values.freeswitch.cdr.enabled }}
+        {{- if $.Values.freeswitch.cdr.enabled }}
         <load module="mod_cdr_pg_csv"/>
-{{- end }}
+        {{- end }}
         <load module="mod_commands"/>
         <load module="mod_event_socket"/>
         <load module="mod_opus"/>
@@ -183,9 +183,9 @@ data:
           <node type="allow" cidr="10.0.0.0/8"/>
         </list>
       <list name="flowroute" default="deny">
-{{- range $.Values.flowroute.signalingCIDRs }}
+        {{- range $.Values.flowroute.signalingCIDRs }}
         <node type="allow" cidr="{{ . }}"/>
-{{- end }}
+        {{- end }}
       </list>
       <list name="kamailio" default="deny">
         <node type="allow" cidr="{{ $.Values.freeswitch.publicExposure.podCIDR }}"/>

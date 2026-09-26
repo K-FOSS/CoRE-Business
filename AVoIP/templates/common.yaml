@@ -249,6 +249,18 @@ controllers:
           type: RuntimeDefault
       labels:
         app: '{{ include "avoip.fullname" . }}-kamailio'
+{{- if .Values.rtpengine.enabled }}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - '{{ include "avoip.fullname" . }}-rtpengine'
+              topologyKey: kubernetes.io/hostname
+{{- end }}
     containers:
       kamailio:
         command:
@@ -348,6 +360,18 @@ controllers:
           type: RuntimeDefault
       labels:
         app: '{{ include "avoip.fullname" . }}-rtpengine'
+{{- if .Values.kamailio.enabled }}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - '{{ include "avoip.fullname" . }}-kamailio'
+              topologyKey: kubernetes.io/hostname
+{{- end }}
     containers:
       rtpengine:
         command:
@@ -764,6 +788,24 @@ service:
         port: 5061
         targetPort: tcp-sip
         protocol: TCP
+{{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.directService.enabled (eq .Values.cluster.type "hub") }}
+  kamailio-udp:
+    forceRename: '{{ include "avoip.fullname" . }}-kamailio-udp'
+    controller: kamailio
+    type: LoadBalancer
+    # Preserve Flowroute source addresses and avoid cross-node kube-proxy SNAT.
+    externalTrafficPolicy: Local
+    annotations:
+      purelb.io/allow-shared-ip: voip-gw.resolvemy.host
+      purelb.io/service-group: core-public
+      purelb.io/allow-local: 'true'
+      purelb.io/addresses: '{{ .Values.rtpengine.media.address }}'
+    ports:
+      udp-sip:
+        port: 5060
+        targetPort: udp-sip
+        protocol: UDP
+{{- end }}
 {{- end }}
 {{- end }}
 {{- if .Values.freeswitch.enabled }}
