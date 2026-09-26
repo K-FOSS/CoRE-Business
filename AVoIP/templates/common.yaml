@@ -254,6 +254,11 @@ controllers:
       annotations:
         kubectl.kubernetes.io/default-container: 'kamailio'
         kubectl.kubernetes.io/default-logs-container: 'kamailio'
+        # Restart Kamailio when its generated routing/TLS configuration or the
+        # shared certificate material changes so listeners and media routes are
+        # loaded from one consistent configuration set.
+        configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-config'
+        secret.reloader.stakater.com/reload: 'resolvemyhost-default-certificates'
 {{- if .Values.rtpengine.enabled }}
       affinity:
         podAffinity:
