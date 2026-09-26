@@ -1,5 +1,8 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- if and .Values.freeswitch.fax.enabled (le (int .Values.freeswitch.fax.t38.rxReinvitePacketCount) 0) }}
+{{- fail "freeswitch.fax.t38.rxReinvitePacketCount must be greater than zero" }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -59,24 +62,25 @@ data:
         <extension name="fax-receive">
           <condition field="destination_number" expression="^fax-receive$">
             <action application="log" data="INFO AVoIP fax receive start caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid}"/>
+            <!-- Flowroute starts fax calls as G.711; request T.38 after the
+                 configured non-zero packet count, while retaining G.711 fallback. -->
             <action application="set" data="fax_enable_t38=true"/>
             <action application="set" data="fax_enable_t38_request=true"/>
+            <action application="set" data="fax_t38_rx_reinvite_packet_count={{ $.Values.freeswitch.fax.t38.rxReinvitePacketCount }}"/>
+            <action application="set" data="fax_disable_v17={{ $.Values.freeswitch.fax.t38.disableV17 }}"/>
+            <action application="set" data="fax_use_ecm={{ $.Values.freeswitch.fax.t38.useEcm }}"/>
             <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
-{{- if $.Values.freeswitch.media.diagnostics.enabled }}
             <action application="set" data="log_audio_stats_on_hangup=true"/>
             <action application="set" data="execute_on_media=log INFO AVoIP RTP media established"/>
-{{- end }}
+            <action application="log" data="INFO AVoIP fax parameters uuid=${uuid} call_id=${sip_call_id} caller=${caller_id_number} did=${fax_original_destination} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} t38=${fax_t38_status} rx_reinvite_packets=${fax_t38_rx_reinvite_packet_count} enable_t38=${fax_enable_t38} enable_t38_request=${fax_enable_t38_request} disable_v17=${fax_disable_v17} use_ecm=${fax_use_ecm}"/>
             <action application="answer"/>
-{{- if $.Values.freeswitch.media.diagnostics.enabled }}
+            <action application="disable_ec"/>
             <action application="set_media_stats"/>
             <action application="log" data="INFO AVoIP RTP before rxfax uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} negotiated_codec=${rtp_use_codec_string} t38=${fax_t38_status} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
-{{- end }}
             <action application="rxfax" data="{{ $.Values.freeswitch.fax.spoolPath }}/${uuid}.tif"/>
-{{- if $.Values.freeswitch.media.diagnostics.enabled }}
             <action application="set_media_stats"/>
             <action application="log" data="INFO AVoIP RTP after rxfax uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} negotiated_codec=${rtp_use_codec_string} t38=${fax_t38_status} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
-{{- end }}
-            <action application="log" data="INFO AVoIP fax result caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid} success=${fax_success} result_code=${fax_result_code} result=${fax_result_text} pages=${fax_document_transferred_pages} total_pages=${fax_document_total_pages} rate=${fax_transfer_rate} remote_station=${fax_remote_station_id} local_station=${fax_local_station_id} file=${fax_filename}"/>
+            <action application="log" data="INFO AVoIP fax result uuid=${uuid} call_id=${sip_call_id} caller=${caller_id_number} did=${fax_original_destination} success=${fax_success} result_code=${fax_result_code} result=${fax_result_text} t38=${fax_t38_status} ecm=${fax_ecm_status} pages=${fax_document_transferred_pages} total_pages=${fax_document_total_pages} remote_station=${fax_remote_station_id} rate=${fax_transfer_rate} resolution=${fax_image_resolution} file={{ $.Values.freeswitch.fax.spoolPath }}/${uuid}.tif fax_filename=${fax_filename} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
             <action application="hangup"/>
           </condition>
         </extension>

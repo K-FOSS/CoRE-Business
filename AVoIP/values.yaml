@@ -137,6 +137,7 @@ homer:
     providerConfigRef: 'authentik'
     issuerBaseUrl: 'https://idp.mylogin.space'
     applicationSlug: 'avoip-homer'
+    clientId: 'avoip-homer'
     accessGroup: 'Home Users'
     displayName: 'AVoIP Homer'
     workspaceName: 'avoip-homer-oidc'
@@ -235,6 +236,13 @@ freeswitch:
     spoolPath: '/var/spool/freeswitch/fax'
     ident: 'AVoIP'
     header: 'AVoIP'
+    t38:
+      # Flowroute initially sends G.711 fax audio. Request T.38 after this
+      # many 20 ms packets; keep it non-zero (0 is not "immediate").
+      rxReinvitePacketCount: 20
+      # The current Flowroute fax path is validated only through 9600 bps.
+      disableV17: true
+      useEcm: false
     testMode:
       # Enable for a deterministic public fax test. Roll back to false to
       # restore the shared voice/fax detection path.
