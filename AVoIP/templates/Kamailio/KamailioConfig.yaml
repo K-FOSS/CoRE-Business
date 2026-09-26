@@ -19,6 +19,8 @@ data:
     # Envoy terminates public TLS and sends PROXY v2 before the decrypted SIP
     # stream, so $si remains the carrier IP.
     tcp_accept_haproxy=yes
+    # Required for both the private TLS listener and TLS relays to FreeSWITCH.
+    enable_tls=1
     listen=tcp:0.0.0.0:5061 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"
     listen=tls:0.0.0.0:5062 advertise "{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}":5062 name "private_tls"
 
@@ -49,10 +51,10 @@ data:
 {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
     modparam("siptrace", "trace_on", 1)
     # Mirror core SIP events as HEP to the configured Homer capture endpoint.
-    # Mode 4 forwards the duplicate URI as plain SIP/UDP on this Kamailio build.
+    # Use the Homer TCP HEP listener because Kamailio has no UDP SIP socket.
     modparam("siptrace", "trace_mode", 1)
     modparam("siptrace", "trace_to_database", 0)
-    modparam("siptrace", "duplicate_uri", "sip:{{ $fullName }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}")
+    modparam("siptrace", "duplicate_uri", "sip:{{ $fullName }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepTCPPort }};transport=tcp")
     modparam("siptrace", "hep_mode_on", 1)
     modparam("siptrace", "hep_version", 3)
     modparam("siptrace", "hep_capture_id", 101)
