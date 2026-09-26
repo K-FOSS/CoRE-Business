@@ -124,6 +124,14 @@ form the carrier-media proxy path. Kamailio rewrites carrier SDP through
 RTPEngine's `external` and `internal` interfaces. RTPEngine owns the PureLB
 public RTP Service whenever `rtpengine.enabled` is true; the FreeSWITCH public
 RTP Service is omitted only when both Kamailio and RTPEngine are enabled.
+When Kamailio and RTPEngine are both enabled, required pod affinity places
+their pods on the same Kubernetes node. The RTPEngine control Service remains
+cluster-routable; only the public RTPEngine media Service uses
+`externalTrafficPolicy: Local`.
+Public inbound signaling is TLS-only; Flowroute must target
+`sip.resolvemy.host:5081;transport=tls`. Kamailio's UDP listener remains
+private for the FreeSWITCH leg and is not exposed through a LoadBalancer or
+UDPRoute.
 
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
 [CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
@@ -190,8 +198,8 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
-| Kamailio | Independently enabled | When enabled, Kamailio receives public UDP SIP and Gateway-terminated SIP/TLS, consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
-| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID plays the values-controlled black alert audio before bridging voice calls to Asterisk and supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public media is proxied by RTPEngine; FreeSWITCH has no public SIP or RTP Service in proxy mode. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public UDP SIP and TLS SIP. |
+| Kamailio | Independently enabled | When enabled on the hub, Kamailio receives inbound public SIP through Gateway-terminated TLS on `sip.resolvemy.host:5081`; public UDP SIP is disabled. It consumes Envoy PROXY protocol v2 for TLS, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
+| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID stays in ringing state while FreeSWITCH bridges to Asterisk; after Asterisk answers, the values-controlled black alert audio and generic fax detection run. It also supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public media is proxied by RTPEngine; FreeSWITCH has no public SIP or RTP Service in proxy mode. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public UDP SIP and TLS SIP. |
 | RTPEngine | Independent toggle | Runs the pinned site-local userspace media proxy, exposes the configured UDP media range through PureLB, and receives Kamailio NG control traffic over a private ClusterIP Service. Kamailio uses it only when Kamailio, FreeSWITCH, and RTPEngine are all enabled. |
 | Homer 11 | Hub-only opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, Kamailio HEPv3 capture, RTPEngine RTCP/NG capture, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
