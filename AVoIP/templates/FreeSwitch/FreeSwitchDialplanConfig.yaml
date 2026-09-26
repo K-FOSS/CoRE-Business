@@ -20,6 +20,9 @@ data:
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.fax.testMode.did }}$">
             <action application="set" data="fax_original_destination=${destination_number}"/>
             <action application="log" data="INFO AVoIP fax test mode: direct fax receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
+{{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+            <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
+{{- end }}
             <action application="transfer" data="fax-receive XML public"/>
           </condition>
         </extension>
@@ -31,6 +34,9 @@ data:
             <condition field="caller_id_number" expression="^\+{{ trimPrefix "+" $sender }}$">
               <action application="set" data="fax_original_destination=${destination_number}"/>
               <action application="log" data="INFO AVoIP known fax sender: direct fax receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
+{{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+              <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
+{{- end }}
               <action application="transfer" data="fax-receive XML public"/>
             </condition>
           </condition>
