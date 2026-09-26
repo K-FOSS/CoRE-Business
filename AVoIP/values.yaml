@@ -168,12 +168,12 @@ jitsi:
 
 network:
   externalIP: '66.165.222.101'
-  egressIP: '66.165.222.101'
+  egressIP: '66.165.222.120'
   # Leave Cilium egress pinning disabled unless the cluster has a working
   # CiliumEgressGatewayPolicy path. Normal node/NAT egress may use 66.165.222.98
   # or 66.165.222.99 at the site edge.
   ciliumEgressGateway:
-    enabled: false
+    enabled: true
 
 asterisk:
   enabled: false

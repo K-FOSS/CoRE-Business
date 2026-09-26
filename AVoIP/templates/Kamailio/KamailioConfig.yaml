@@ -69,7 +69,7 @@ data:
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
       xlog("L_INFO", "SIP media before RTPEngine phase=initial callid=$ci source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) set=private-control flags=external,internal sdp=$rb\n");
 {{- end }}
-      if (!rtpengine_manage("replace-origin replace-session-connection replace-connection external internal")) {
+      if (!rtpengine_manage("replace-origin replace-session-connection external internal")) {
         xlog("L_ERR", "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
       } else {
         xlog("L_INFO", "RTPEngine initial SDP handled callid=$ci method=$rm source=$si:$sp\n");
@@ -84,7 +84,7 @@ data:
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
         xlog("L_INFO", "SIP media before RTPEngine phase=dialog callid=$ci method=$rm source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
 {{- end }}
-        if (!rtpengine_manage("replace-origin replace-session-connection replace-connection")) {
+        if (!rtpengine_manage("replace-origin replace-session-connection")) {
           xlog("L_ERR", "RTPEngine dialog SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
         } else {
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
@@ -238,7 +238,7 @@ data:
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
         xlog("L_INFO", "SIP media before RTPEngine phase=reply callid=$ci status=$rs source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
 {{- end }}
-        if (!rtpengine_manage("replace-origin replace-session-connection replace-connection")) {
+        if (!rtpengine_manage("replace-origin replace-session-connection")) {
           xlog("L_ERR", "RTPEngine reply SDP handling failed callid=$ci status=$rs\n");
         } else {
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
