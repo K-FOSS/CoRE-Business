@@ -92,23 +92,6 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   Che authentication prompt must be reconnected. Never claim a push succeeded
   until Git exits successfully and the local branch is no longer ahead of its
   upstream.
-- The long-term Che/Forgejo target is a user-approved browser flow: Git opens
-  an OAuth authorization flow in the active Che workspace; Forgejo
-  authenticates the user through Authentik and issues its OAuth access token
-  for Git HTTP. Evaluate Forgejo's documented OIDC authentication source and
-  OAuth client support, including its pre-registered `git-credential-oauth`
-  application; do not treat an Authentik ID token as a Git push credential.
-  Keep this as a design target until the Che and Forgejo deployment owners
-  implement and verify the flow. The relevant upstream references are
-  [Forgejo authentication](https://forgejo.org/docs/latest/user/authentication/)
-  and its
-  [OAuth2 configuration](https://forgejo.org/docs/v16.0/admin/config-cheat-sheet/).
-- Forgejo is the authoritative receive remote for this workflow. Fan-out to
-  public forges must happen only after Forgejo accepts the push, through
-  explicitly configured push mirrors or automation with separate, narrowly
-  scoped credentials for each destination. Never forward Authentik tokens,
-  Forgejo browser cookies or the Che askpass credential to public remotes. See
-  [Forgejo repository mirrors](https://forgejo.org/docs/v15.0/user/repo-mirror/).
 - Reconcile the reviewed, published commit through the owning Argo CD layers.
   Select only the necessary parent ApplicationSet resources and affected child
   applications. Inspect sync hooks and dependency ordering before choosing
