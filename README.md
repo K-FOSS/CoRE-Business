@@ -114,6 +114,22 @@ Charts assume infrastructure supplied by CoRE Backplane, including:
 Secret references in Git are not secret values. Still review templates and
 rendered manifests for literal passwords, tokens or deployable defaults.
 
+## Agent and commit workflow
+
+[Agent guidance](AGENTS.md) combines this repository's rules with the current
+[CoRE Backplane guidance](https://github.com/K-FOSS/CoRE-Backplane/blob/main/AGENTS.md).
+Requested implementation work includes validation, narrowly scoped commits and
+normal pushes to the confirmed intended branch unless the user requests review
+only, uncommitted changes or a PR. Deployment requests also include scoped Argo
+CD reconciliation and downstream verification. Preserve unrelated work and
+inspect the full outgoing commit range before publishing.
+
+Use `type(scope): Summary` commit subjects, with a lowercase type, the component's
+established capitalization and a sentence-case summary; for example,
+`fix(AVoIP.Kamailio): Correct SIP routing`. Follow the
+[repository procedure](docs/REPOSITORY.md#agent-git-and-reconciliation-workflow)
+for publishing and deployment. Documentation-only changes need no cluster sync.
+
 ## Working with a chart
 
 Before editing a path:

@@ -3,6 +3,12 @@
 This file applies to the entire repository. A more specific `AGENTS.md` may add
 rules for its subtree but must not weaken these repository-wide requirements.
 
+The shared workflow is adapted from [CoRE Backplane agent guidance](https://github.com/K-FOSS/CoRE-Backplane/blob/main/AGENTS.md)
+and its [Git and Argo CD operating procedure](https://github.com/K-FOSS/CoRE-Backplane/blob/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
+The combined rules below retain CoRE Business's application-specific requirements.
+Refresh the upstream guidance before changing this policy; the source reviewed
+for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
+
 ## Repository and deployment model
 
 - Treat this repository as live, site-specific desired state for CoRE business
@@ -52,6 +58,79 @@ rules for its subtree but must not weaken these repository-wide requirements.
   result; standalone `helm template` or `kustomize build` output is only a
   partial check.
 
+## Standing Git and reconciliation authorization
+
+- This repository adopts the Backplane workflow authorized by the repository
+  owner on 2026-09-26 after the Valkey operator deployment. For requested
+  implementation work, agents may validate,
+  create narrowly scoped commits, and push them to the repository's intended
+  branch without asking again. For deployment requests, continue through
+  scoped Argo CD reconciliation and downstream verification. Do not default
+  to handing Git operations back to the user. A request to review only, leave
+  changes uncommitted, use a PR, or defer deployment overrides this allowance.
+- Apply this authorization only to the requested task. Preserve unrelated
+  staged and unstaged edits, untracked files, and unpublished commits. Inspect
+  the index and outgoing commit range before publishing; use an isolated
+  worktree when needed to avoid including unrelated work. Never use blanket
+  staging, force-push, or rewrite another author's history under this allowance.
+- Confirm the intended remote and branch, fetch before publishing, review the
+  exact outgoing diff, and use a normal fast-forward push. Respect branch
+  protections and required checks; use the required PR workflow when applicable.
+- Reconcile the reviewed, published commit through the owning Argo CD layers.
+  Select only the necessary parent ApplicationSet resources and affected child
+  applications. Inspect sync hooks and dependency ordering before choosing
+  resource-selective sync; it skips hooks. Do not broadly resync the fleet or
+  enable automated sync as an incidental change.
+- Requesting an Argo CD refresh or sync through its CLI/API or an Application
+  `operation` using kubectl is permitted normal reconciliation. It is distinct
+  from directly applying or modifying the managed workloads. Read-only cluster
+  checks and non-persistent server dry runs are also permitted without a new
+  user confirmation; existing secret-handling rules still apply.
+- Diagnose failed reconciliation before retrying. A scoped retry of the same
+  reviewed commit is permitted when the cause is understood and replay is safe.
+  This does not authorize unidentified provisioning retries, destructive data
+  actions, force/replacement syncs, bypassing protections, or broader incident
+  mutations. Obtain specific authorization for actions outside the requested
+  scope after preparing the concrete change and explaining its effects.
+- Report the published commit, affected targets, actual verification results,
+  material limitations, and any remaining blockers. Documentation-only changes
+  do not require a cluster sync. Follow the detailed
+  [Git and Argo CD operating procedure](https://github.com/K-FOSS/CoRE-Backplane/blob/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
+
+## Commit message conventions
+
+- Write new commit subjects in Conventional Commit form:
+  `type(scope): Summary`. Standard types include `feat`, `chore`, `fix`,
+  `docs` and `test`. Use a lowercase
+  standard type that describes the change. Do not copy historical typos or
+  nonstandard types such as `ffix`, `temp`, or `debug`.
+- Apply casing by field: keep the type lowercase; preserve the established
+  capitalization of scope components; write the summary in sentence case,
+  starting with an uppercase word and preserving normal product names and
+  acronyms. For example:
+  `fix(AVoIP.Kamailio): Correct SIP routing`. Do not lowercase the scope or
+  force the summary to start lowercase.
+- Include a useful summary after the colon that says what changed. Keep it
+  concise and specific; summaries may use the repository's natural sentence
+  style, but avoid placeholders such as `Fix`, `Tidy up`, or `Work on things`
+  without the thing or outcome being identified. A commit body is optional;
+  the subject must still make sense on its own. Add a body when rationale,
+  operational impact, or other context needs more room.
+- Use a scope that identifies the primary CoRE Business component, preserving
+  its path capitalization. Use `AVoIP.Kamailio` for changes under
+  `AVoIP/templates/Kamailio/`, `Social.Matrix` for `Social/Matrix/`, and
+  `Repository` for repository-wide guidance. Backplane ApplicationSet changes
+  belong in that repository with its own deployment-layer scope.
+- When one cohesive change intentionally spans components, list their scopes
+  separated by commas, for example
+  `feat(Mail, Office): Coordinate database connection settings`.
+  Keep the scope list limited to
+  components actually changed. A primary scope is sufficient for routine
+  coordinated edits when it clearly identifies the change.
+- Use one subject for one cohesive change. Do not leave the type or scope out,
+  and avoid bare subjects such as `fix` or `test` even though they appear in
+  older history.
+
 ## Documentation
 
 - Keep `README.md`, `docs/REPOSITORY.md`, and the nearest component README in
@@ -86,6 +165,41 @@ rules for its subtree but must not weaken these repository-wide requirements.
   Gateway API routes/policies, OIDC redirects and entitlements as one access
   path. Coordinated changes can cause privilege expansion or lockout.
 
+## Shared application data services
+
+- Treat the infrastructure PostgreSQL, MySQL, MongoDB, and site-local
+  `dragonfly-core` deployments as shared platform services used by deployed
+  applications, not as chart-private dependencies. Start changes at their
+  fleet owners in [PostgreSQL](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
+  [MySQL](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Database/MySQL.yaml),
+  [MongoDB](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Database/MongoDB.yaml), and
+  [Dragonfly](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml) ApplicationSets, then trace every application consumer.
+- Every deployed application service identity must be declared with the
+  namespaced `User.mylogin.space/v1alpha1` claim provided by the `sso-user`
+  Composition in [Backplane’s SSO User implementation](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Operations/SSO/User); do not create an unrelated database
+  password or parallel identity path in an application chart. Keep the claim
+  beside the consuming application, use its stable connection Secret, and
+  review identity, database grants, buckets, and secret publication as one
+  lifecycle.
+- Do not infer database provisioning from fields merely accepted by the
+  `User` XRD. The current Composition implements Authentik identity plus
+  optional PostgreSQL and S3 resources; `spec.mysql` and `spec.mongodb` are
+  currently schema-only. Extend and validate the Composition before relying
+  on it to provision MySQL or MongoDB resources, and document current behavior
+  separately from the intended shared model.
+- Treat the [Backplane Dragonfly allocation registry](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Storage/Dragonfly/CoRE/README.md) as the allocation registry for
+  shared Dragonfly logical databases. Every application that uses
+  `dragonfly-core` must declare an explicit, unused database number where the
+  client supports one and add or update the registry in the same change.
+  Database `0` is legacy shared space, not the default allocation for a new
+  consumer. Use a separate Dragonfly instance when credentials, capacity,
+  lifecycle, recovery, or failure isolation must be independent.
+- For application onboarding, changes, and removal, verify the `User` claim
+  and composite, downstream provider resources, stable connection Secret,
+  effective database grants, and any Dragonfly allocation. Removing a claim
+  is not proof that external roles, databases, grants, buckets, or persisted
+  Dragonfly data were deleted; inspect orphan and deletion policies explicitly.
+
 ## Dependencies and generated files
 
 - Pin Helm dependencies, images and remote resources to immutable versions or
@@ -109,9 +223,13 @@ rules for its subtree but must not weaken these repository-wide requirements.
   writing a Kubernetes resource template directly, verify whether the pinned
   BJW-S version can express it. Keep direct templates or `rawResources` for
   unsupported APIs or behavior, and document why the exception is necessary.
-- Follow the local style in existing files. For new or touched YAML, prefer
-  single quotes for string scalars; leave Kubernetes `apiVersion` and `kind`
-  unquoted. Quote numeric-looking identifiers so they remain strings.
+- Follow the local style in existing files. For new or touched YAML, use
+  single quotes for string scalars, including flow sequences and mappings.
+  Use double quotes when escape processing is required or single quotes would
+  be materially less clear. Leave Kubernetes `apiVersion` and `kind` unquoted.
+  In `Chart.yaml`, also leave `apiVersion`, `type: application`, chart `version`
+  and dependency `version` values unquoted. Quote numeric-looking identifiers
+  so they remain strings across templates and generated JSON.
 - Prefer values-driven templates for cluster, environment, hostname, gateway,
   namespace and secret-store differences.
 - For every `Landing`/Forecastle-exposed service, add a
@@ -125,6 +243,13 @@ rules for its subtree but must not weaken these repository-wide requirements.
   `forecastle.stakater.com/group` when the service belongs in a dashboard
   group such as `Tools` or `Security`; keep the route hostname and Gateway
   attachment valid as well.
+- Routes intended to receive public DNS records must include
+  `wan-mode: 'public'`; site ExternalDNS selects records using that label.
+  Keep it off private Authentik-only routes.
+- Review ownership references, finalizers, deletion policies, Argo CD preserve
+  behavior, sync waves and replacement semantics before resource renames or
+  lifecycle changes. Preserve recovery access and dependency ordering across
+  identity, secrets, storage and site failures.
 - Validate every parser boundary touched by a change: Helm, Kustomize, YAML,
   embedded Terraform, shell/config fragments and Kubernetes custom resources.
 - For Helm/Lovely changes, resolve dependencies locally, run `helm lint`,
@@ -134,7 +259,8 @@ rules for its subtree but must not weaken these repository-wide requirements.
 - Validate API versions and CRDs against the operators installed by Backplane.
   In particular, this repository uses Gateway API, External Secrets and CoRE
   Crossplane APIs that are not provided by a stock Kubernetes cluster.
-- Run `git diff --check` on the final change and review the diff/render for
+- Run `git diff --check` scoped to task files on the final change and
+  review the diff/render for
   credentials, namespaces, selectors, public exposure, privileges, persistent
   data, deletion behavior and cross-site impact.
 - After Argo CD reconciliation, follow downstream operator/Crossplane

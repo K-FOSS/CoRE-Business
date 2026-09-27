@@ -346,3 +346,49 @@ Before completion, review both source and rendered output for:
 After reconciliation, check Argo CD and every downstream controller, then test
 the actual user workflow. `Synced`, accepted YAML and ready pods are supporting
 signals rather than the complete health model.
+
+## Agent Git and reconciliation workflow
+
+Follow the combined [agent guidance](../AGENTS.md), adapted from
+[Backplane agent guidance](https://github.com/K-FOSS/CoRE-Backplane/blob/main/AGENTS.md)
+and the [Backplane operating procedure](https://github.com/K-FOSS/CoRE-Backplane/blob/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
+User requests to review only, leave changes uncommitted, use a PR or defer
+deployment override the standing commit/push and reconciliation allowance.
+
+1. Inspect the worktree, index, remote, branch and unpublished commits. Identify
+   task paths and hunks; preserve unrelated edits and commits. Use an isolated
+   worktree based on the intended remote branch when the shared index or outgoing
+   history contains unrelated work.
+2. Complete the applicable rendering, parser, API and lifecycle checks above.
+   Review the task diff and run `git diff --check` scoped to the changed files.
+3. Write a Conventional Commit subject: `type(scope): Summary`. Keep the type
+   lowercase, preserve scope capitalization and start the summary uppercase.
+   Use component scopes such as `AVoIP.Kamailio`, `Social.Matrix` or `Repository`.
+   Use commas for multiple scopes only when one cohesive change spans them.
+   Add a body when rationale or operational impact needs explanation.
+4. Confirm the intended remote and destination branch, fetch it, stage only task
+   paths or hunks and review the exact outgoing diff and complete commit range.
+   Publish with a normal fast-forward push; follow required PRs and checks.
+   Do not force-push, blanket-stage or rewrite another author's history.
+5. For requested deployments, reconcile the full published revision through only
+   the necessary owning Backplane parents and affected child applications. Check
+   active operations, hooks and waves first; resource-selective sync skips hooks.
+   Leave pruning disabled unless removal is explicitly part of the reviewed task.
+   Argo CD CLI/API refresh and sync requests or an Application `operation` through
+   kubectl are normal reconciliation; direct workload mutation is an incident
+   action. Follow the Backplane procedure for operation-state and resource-filter
+   handling rather than copying a stale operation patch.
+6. Follow downstream conditions and test the user-facing workflow. Diagnose a
+   failed reconciliation before a scoped, safe retry of the same reviewed commit.
+   This allowance does not cover destructive data actions, force/replacement syncs
+   or broader incident mutations. Report the commit, affected targets, actual
+   validation results and remaining blockers. Documentation-only updates do not
+   require cluster reconciliation.
+
+Application data-service changes also follow the shared-service rules in
+[agent guidance](../AGENTS.md#shared-application-data-services): use the platform
+`User` claim and stable connection Secret, verify implemented Composition behavior,
+and coordinate explicit Dragonfly database allocations with the
+[Backplane allocation registry](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Storage/Dragonfly/CoRE/README.md).
+Removal requires checking external resources and orphan/deletion policies; deleting
+a claim does not establish that its data or grants were removed.
