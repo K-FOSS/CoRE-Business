@@ -1,7 +1,7 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $freeswitchRtpEnd := .Values.freeswitch.rtp.max -}}
-{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled }}
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.kamailio.enabled }}
 {{- $freeswitchRtpEnd = sub (.Values.rtpengine.media.max | int) 1 -}}
 {{- end }}
 ---
@@ -37,7 +37,7 @@ data:
       <X-PRE-PROCESS cmd="set" data="domain=$${local_ip_v4}"/>
       <X-PRE-PROCESS cmd="set" data="domain_name=$${domain}"/>
       <X-PRE-PROCESS cmd="set" data="use_profile=external"/>
-      <X-PRE-PROCESS cmd="set" data="external_rtp_ip={{ if and $.Values.rtpengine.enabled $.Values.kamailio.enabled }}$${local_ip_v4}{{ else if $.Values.freeswitch.publicExposure.enabled }}{{ $.Values.freeswitch.publicExposure.address }}{{ else }}{{ $.Values.network.externalIP }}{{ end }}"/>
+      <X-PRE-PROCESS cmd="set" data="external_rtp_ip={{ if and (include "avoip.rtpengine.enabled" $ | trim) $.Values.kamailio.enabled }}$${local_ip_v4}{{ else if $.Values.freeswitch.publicExposure.enabled }}{{ $.Values.freeswitch.publicExposure.address }}{{ else }}{{ $.Values.network.externalIP }}{{ end }}"/>
       <X-PRE-PROCESS cmd="set" data="external_sip_ip={{ $.Values.network.egressIP }}"/>
       <X-PRE-PROCESS cmd="set" data="global_codec_prefs=OPUS,G722,PCMU,PCMA"/>
       <X-PRE-PROCESS cmd="set" data="outbound_codec_prefs=OPUS,G722,PCMU,PCMA"/>

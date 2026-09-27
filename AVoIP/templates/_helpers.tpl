@@ -22,3 +22,8 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/* RTPEngine owns public media on the active hub only. */}}
+{{- define "avoip.rtpengine.enabled" -}}
+{{- if and .Values.rtpengine.enabled (eq .Values.cluster.type "hub") -}}true{{- end -}}
+{{- end -}}

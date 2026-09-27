@@ -1,7 +1,7 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $freeswitchRtpEnd := .Values.freeswitch.rtp.max -}}
-{{- if and .Values.rtpengine.enabled .Values.kamailio.enabled }}
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.kamailio.enabled }}
 {{- $freeswitchRtpEnd = sub (.Values.rtpengine.media.max | int) 1 -}}
 {{- end }}
 {{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host -}}

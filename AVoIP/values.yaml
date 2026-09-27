@@ -8,6 +8,16 @@ env: 'prod'
 # common template populates it with the enabled Asterisk/FreeSWITCH controllers.
 controllers: {}
 
+# Additional independent workloads (PBXs, organization services, voice workers).
+# Each entry has name, enabled, controller (BJW-S controller values), services,
+# configMaps, persistence, and networking. See docs/NETWORKING.md.
+functions: []
+
+# Per-controller interface/placement controls for every enabled workload.
+# Keys: asterisk, freeswitch, kamailio, rtpengine, homer-web, or function names.
+# Empty defaults preserve the cluster CNI and existing workload configuration.
+workloadNetworking: {}
+
 datacenter: 'dc1'
 
 region: 'yxl'
@@ -86,11 +96,52 @@ kamailio:
     pullPolicy: 'IfNotPresent'
 
 rtpengine:
-  # Deploy RTPEngine independently. Kamailio/FreeSWITCH integration is enabled
-  # only when those components are also enabled; this toggle controls the
-  # RTPEngine workload, control Service, and public media Service itself.
+  # Enable the RTPEngine workload on the hub. The chart gates it off on spokes
+  # because its media Service owns the hub's public PureLB address.
   enabled: true
+  # Two media proxies are spread across nodes. The Valkey proxy supplies the
+  # primary-only Redis endpoint required for shared call-state failover.
+  replicas: 2
   controlPort: 22222
+  valkey:
+    # The ValkeyCluster is watched by the Backplane-installed operator in
+    # valkey-operator-system. HAProxy selects its current primary for RTPEngine.
+    enabled: true
+    namespace: 'valkey-operator-system'
+    clusterName: 'avoip-rtpengine'
+    clusterHost: 'valkey-avoip-rtpengine.valkey-operator-system.svc.cluster.local'
+    host: ''
+    port: 6379
+    proxy:
+      replicas: 2
+      port: 6379
+      healthPort: 8404
+      image:
+        repository: 'docker.io/library/haproxy'
+        tag: '3.2.12-alpine'
+        digest: 'sha256:15ef8657ec12e7b19d5b6b6b6fcf6839a0e3cdae85d275be6c867e8a2690f33f'
+        pullPolicy: 'IfNotPresent'
+    database: 0
+    secretName: 'avoip-rtpengine-valkey'
+    passwordKey: 'password'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    remoteRef:
+      key: ''
+      property: 'Password'
+    shards: 1
+    replicas: 2
+    clusterNodeTimeout: '5000'
+    spreadMode: 'Required'
+    persistence:
+      storageClass: 'longhorn'
+      size: '1Gi'
+      reclaimPolicy: 'Retain'
+    subscribeKeyspace: 0
+    # Valkey's default disables notifications required for RTPEngine switchover.
+    notifyKeyspaceEvents: 'KEA'
+    activeSwitchover: true
   image:
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/rtpengine'
     tag: 'mr13.5.1.27-build-70'

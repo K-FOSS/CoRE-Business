@@ -1,0 +1,75 @@
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
+{{- $valkey := .Values.rtpengine.valkey }}
+{{- $remoteKey := default (printf "Storage/Valkey/CoRE/%s/%s/%s/Creds" .Values.region .Values.datacenter .Values.cluster.name) $valkey.remoteRef.key }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ $valkey.secretName }}'
+  namespace: '{{ $valkey.namespace }}'
+spec:
+  refreshInterval: '1h'
+  secretStoreRef:
+    kind: '{{ $valkey.secretStoreRef.kind }}'
+    name: '{{ $valkey.secretStoreRef.name }}'
+  target:
+    name: '{{ $valkey.secretName }}'
+    creationPolicy: 'Owner'
+    deletionPolicy: 'Retain'
+  data:
+    - secretKey: '{{ $valkey.passwordKey }}'
+      remoteRef:
+        key: '{{ $remoteKey }}'
+        property: '{{ $valkey.remoteRef.property }}'
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ $valkey.secretName }}'
+  namespace: '{{ $.Release.Namespace }}'
+spec:
+  refreshInterval: '1h'
+  secretStoreRef:
+    kind: '{{ $valkey.secretStoreRef.kind }}'
+    name: '{{ $valkey.secretStoreRef.name }}'
+  target:
+    name: '{{ $valkey.secretName }}'
+    creationPolicy: 'Owner'
+    deletionPolicy: 'Retain'
+  data:
+    - secretKey: '{{ $valkey.passwordKey }}'
+      remoteRef:
+        key: '{{ $remoteKey }}'
+        property: '{{ $valkey.remoteRef.property }}'
+---
+apiVersion: valkey.io/v1alpha1
+kind: ValkeyCluster
+metadata:
+  name: '{{ $valkey.clusterName }}'
+  namespace: '{{ $valkey.namespace }}'
+spec:
+  shards: {{ $valkey.shards }}
+  replicas: {{ $valkey.replicas }}
+  config:
+    cluster-node-timeout: '{{ $valkey.clusterNodeTimeout }}'
+    notify-keyspace-events: '{{ $valkey.notifyKeyspaceEvents }}'
+  podDisruptionBudget:
+    mode: 'Cluster'
+  persistence:
+    size: '{{ $valkey.persistence.size }}'
+    storageClassName: '{{ $valkey.persistence.storageClass }}'
+    reclaimPolicy: '{{ $valkey.persistence.reclaimPolicy }}'
+  scheduling:
+    node:
+      spread:
+        shard:
+          mode: '{{ $valkey.spreadMode }}'
+  users:
+    - name: 'default'
+      enabled: true
+      passwordSecret:
+        name: '{{ $valkey.secretName }}'
+        keys:
+          - '{{ $valkey.passwordKey }}'
+      permissions: '+@all ~* &*'
+{{- end }}

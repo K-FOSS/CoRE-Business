@@ -10,6 +10,56 @@ defaultPodOptions:
   labels:
     logs: loki-myloginspace
 
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
+{{- if ne (int .Values.rtpengine.valkey.shards) 1 }}{{- fail "RTPEngine Valkey proxy requires exactly one Valkey shard" }}{{- end }}
+{{- if ne (int .Values.rtpengine.valkey.database) 0 }}{{- fail "Valkey Cluster requires RTPEngine database 0" }}{{- end }}
+configMaps:
+  rtpengine-valkey-proxy:
+    forceRename: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    includeChecksumInControllers:
+      - 'rtpengine-valkey-proxy'
+    data:
+      haproxy.cfg: |
+        global
+          log stdout format raw local0
+          maxconn 4096
+
+        defaults
+          log global
+          mode tcp
+          timeout connect 2s
+          timeout client 1h
+          timeout server 1h
+
+        resolvers kubernetes
+          parse-resolv-conf
+          resolve_retries 3
+          timeout resolve 1s
+          hold valid 2s
+
+        frontend valkey_clients
+          bind :{{ .Values.rtpengine.valkey.proxy.port }}
+          default_backend valkey_primary
+
+        backend valkey_primary
+          option tcp-check
+          tcp-check connect
+          tcp-check send "AUTH default ${VALKEY_PASSWORD}\r\n"
+          tcp-check expect string +OK
+          tcp-check send "INFO replication\r\n"
+          tcp-check expect string role:master
+{{- $nodeCount := int (mul (int .Values.rtpengine.valkey.shards) (add 1 (int .Values.rtpengine.valkey.replicas))) }}
+{{- range $node := until $nodeCount }}
+          server valkey-{{ $node }} valkey-{{ $.Values.rtpengine.valkey.clusterName }}-0-{{ $node }}-0.{{ $.Values.rtpengine.valkey.clusterHost }}:{{ $.Values.rtpengine.valkey.port }} check inter 1s fall 1 rise 1 on-marked-down shutdown-sessions resolvers kubernetes init-addr libc,none
+{{- end }}
+
+        frontend health
+          mode http
+          bind :{{ .Values.rtpengine.valkey.proxy.healthPort }}
+          monitor-uri /healthz
+          monitor fail if { nbsrv(valkey_primary) lt 1 }
+{{- end }}
+
 controllers:
 {{- if .Values.asterisk.enabled }}
   asterisk:
@@ -259,7 +309,7 @@ controllers:
         # loaded from one consistent configuration set.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-config'
         secret.reloader.stakater.com/reload: 'resolvemyhost-default-certificates'
-{{- if .Values.rtpengine.enabled }}
+{{- if (include "avoip.rtpengine.enabled" . | trim) }}
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -349,14 +399,14 @@ controllers:
           allowPrivilegeEscalation: false
 {{- end }}
 {{ end }}
-{{- if .Values.rtpengine.enabled }}
+{{- if (include "avoip.rtpengine.enabled" . | trim) }}
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     strategy: RollingUpdate
     rollingUpdate:
       surge: 1
       unavailable: '0'
-    replicas: 1
+    replicas: {{ .Values.rtpengine.replicas }}
     revisionHistoryLimit: 3
     serviceAccount:
       name: default
@@ -373,6 +423,10 @@ controllers:
       annotations:
         kubectl.kubernetes.io/default-container: 'rtpengine'
         kubectl.kubernetes.io/default-logs-container: 'rtpengine'
+        # RTPEngine configuration is rendered into the pod command line. Any
+        # values change therefore changes the pod template and rolls the
+        # workload through Argo CD; there are no mounted RTPEngine configmaps
+        # for a live-reload annotation to watch.
 {{- if .Values.kamailio.enabled }}
       affinity:
         podAffinity:
@@ -385,6 +439,12 @@ controllers:
                       - '{{ include "avoip.fullname" . }}-kamailio'
               topologyKey: kubernetes.io/hostname
 {{- end }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: '{{ include "avoip.fullname" . }}-rtpengine'
+              topologyKey: kubernetes.io/hostname
     containers:
       rtpengine:
         command:
@@ -399,6 +459,15 @@ controllers:
             --listen-ng=0.0.0.0:{{ .Values.rtpengine.controlPort }}
             --port-min={{ .Values.rtpengine.media.min }}
             --port-max={{ sub (.Values.rtpengine.media.max | int) 1 }}
+{{- if .Values.rtpengine.valkey.enabled }}
+            --redis=${RTPENGINE_REDIS_HOST}:{{ .Values.rtpengine.valkey.proxy.port }}/{{ .Values.rtpengine.valkey.database }}
+            --redis-subscribe=${RTPENGINE_REDIS_HOST}:{{ .Values.rtpengine.valkey.proxy.port }}/{{ .Values.rtpengine.valkey.subscribeKeyspace }}
+            --subscribe-keyspace={{ .Values.rtpengine.valkey.subscribeKeyspace }}
+            --redis-resolve-on-reconnect
+{{- if .Values.rtpengine.valkey.activeSwitchover }}
+            --active-switchover
+{{- end }}
+{{- end }}
 {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
             --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}
             --homer-id=102
@@ -424,6 +493,20 @@ controllers:
             valueFrom:
               fieldRef:
                 fieldPath: status.podIP
+{{- if .Values.rtpengine.valkey.enabled }}
+          - name: RTPENGINE_REDIS_HOST
+            value: '{{ default (printf "%s-rtpengine-valkey-proxy.%s.svc.%s" (include "avoip.fullname" .) .Release.Namespace (default "cluster.local" .Values.cluster.domain)) .Values.rtpengine.valkey.host }}'
+          - name: RTPENGINE_REDIS_AUTH_PW
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.rtpengine.valkey.secretName }}'
+                key: '{{ .Values.rtpengine.valkey.passwordKey }}'
+          - name: RTPENGINE_REDIS_SUBSCRIBE_AUTH_PW
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.rtpengine.valkey.secretName }}'
+                key: '{{ .Values.rtpengine.valkey.passwordKey }}'
+{{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -485,6 +568,98 @@ controllers:
         securityContext:
           allowPrivilegeEscalation: false
 {{- end }}
+{{- end }}
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
+  rtpengine-valkey-proxy:
+    forceRename: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    replicas: {{ .Values.rtpengine.valkey.proxy.replicas }}
+    revisionHistoryLimit: 3
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 99
+        runAsGroup: 99
+        seccompProfile:
+          type: RuntimeDefault
+      labels:
+        app: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+              topologyKey: kubernetes.io/hostname
+    containers:
+      haproxy:
+        command:
+          - /usr/local/sbin/haproxy
+        args:
+          - '-W'
+          - '-db'
+          - '-f'
+          - /usr/local/etc/haproxy/haproxy.cfg
+        image:
+          repository: '{{ .Values.rtpengine.valkey.proxy.image.repository }}'
+          tag: '{{ .Values.rtpengine.valkey.proxy.image.tag }}'
+          digest: '{{ .Values.rtpengine.valkey.proxy.image.digest }}'
+          pullPolicy: '{{ .Values.rtpengine.valkey.proxy.image.pullPolicy }}'
+        env:
+          - name: VALKEY_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.rtpengine.valkey.secretName }}'
+                key: '{{ .Values.rtpengine.valkey.passwordKey }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet:
+                path: /healthz
+                port: health
+              periodSeconds: 5
+              timeoutSeconds: 2
+              failureThreshold: 120
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet:
+                path: /healthz
+                port: health
+              periodSeconds: 5
+              timeoutSeconds: 2
+              failureThreshold: 2
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - kill -0 1
+              periodSeconds: 30
+              timeoutSeconds: 2
+              failureThreshold: 3
+        ports:
+          - name: redis
+            containerPort: {{ .Values.rtpengine.valkey.proxy.port }}
+            protocol: TCP
+          - name: health
+            containerPort: {{ .Values.rtpengine.valkey.proxy.healthPort }}
+            protocol: TCP
 {{- end }}
 {{ if .Values.freeswitch.enabled }}
 {{ $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host }}
@@ -847,7 +1022,7 @@ service:
         port: 5061
         targetPort: tls-sips
         protocol: TCP
-{{- if and .Values.freeswitch.publicExposure.enabled (or (not .Values.rtpengine.enabled) (not .Values.kamailio.enabled)) }}
+{{- if and .Values.freeswitch.publicExposure.enabled (or (not (include "avoip.rtpengine.enabled" . | trim)) (not .Values.kamailio.enabled)) }}
   freeswitch-rtp:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
     controller: freeswitch
@@ -868,7 +1043,7 @@ service:
         protocol: UDP
 {{- end }}
 {{- end }}
-{{- if .Values.rtpengine.enabled }}
+{{- if (include "avoip.rtpengine.enabled" . | trim) }}
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     controller: rtpengine
@@ -893,6 +1068,20 @@ service:
           start: {{ .Values.rtpengine.media.min }}
           end: {{ sub (.Values.rtpengine.media.max | int) 1 }}
         protocol: UDP
+{{- end }}
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
+  rtpengine-valkey-proxy:
+    forceRename: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    controller: rtpengine-valkey-proxy
+    ports:
+      redis:
+        port: {{ .Values.rtpengine.valkey.proxy.port }}
+        targetPort: redis
+        protocol: TCP
+      health:
+        port: {{ .Values.rtpengine.valkey.proxy.healthPort }}
+        targetPort: health
+        protocol: TCP
 {{- end }}
 {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
   homer-heplify:
@@ -922,6 +1111,16 @@ service:
 {{- end }}
 
 persistence:
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
+  rtpengine-valkey-proxy-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    advancedMounts:
+      rtpengine-valkey-proxy:
+        haproxy:
+          - path: /usr/local/etc/haproxy/haproxy.cfg
+            subPath: haproxy.cfg
+{{- end }}
 {{- if .Values.asterisk.enabled }}
   asterisk-config:
     type: configMap
@@ -1151,4 +1350,6 @@ persistence:
 {{- $_ := set .Values "controllers" $commonValues.controllers -}}
 {{- $_ := set .Values "service" $commonValues.service -}}
 {{- $_ := set .Values "persistence" $commonValues.persistence -}}
+{{- $_ := set .Values "configMaps" (mergeOverwrite (default dict .Values.configMaps) (default dict $commonValues.configMaps)) -}}
+{{- include "avoip.networking.apply" . -}}
 {{- include "bjw-s.common.loader.generate" . }}
