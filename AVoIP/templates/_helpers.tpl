@@ -27,3 +27,8 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- define "avoip.rtpengine.enabled" -}}
 {{- if and .Values.rtpengine.enabled (eq .Values.cluster.type "hub") -}}true{{- end -}}
 {{- end -}}
+
+{{/* Keep the primary-aware Valkey proxy's generated resources within DNS limits. */}}
+{{- define "avoip.rtpengine.valkeyProxyName" -}}
+{{- printf "%s-rtp-valkey" (include "avoip.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}

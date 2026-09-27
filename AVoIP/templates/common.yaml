@@ -15,7 +15,7 @@ defaultPodOptions:
 {{- if ne (int .Values.rtpengine.valkey.database) 0 }}{{- fail "Valkey Cluster requires RTPEngine database 0" }}{{- end }}
 configMaps:
   rtpengine-valkey-proxy:
-    forceRename: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    forceRename: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
     includeChecksumInControllers:
       - 'rtpengine-valkey-proxy'
     data:
@@ -495,7 +495,7 @@ controllers:
                 fieldPath: status.podIP
 {{- if .Values.rtpengine.valkey.enabled }}
           - name: RTPENGINE_REDIS_HOST
-            value: '{{ default (printf "%s-rtpengine-valkey-proxy.%s.svc.%s" (include "avoip.fullname" .) .Release.Namespace (default "cluster.local" .Values.cluster.domain)) .Values.rtpengine.valkey.host }}'
+            value: '{{ default (printf "%s.%s.svc.%s" (include "avoip.rtpengine.valkeyProxyName" .) .Release.Namespace (default "cluster.local" .Values.cluster.domain)) .Values.rtpengine.valkey.host }}'
           - name: RTPENGINE_REDIS_AUTH_PW
             valueFrom:
               secretKeyRef:
@@ -571,7 +571,7 @@ controllers:
 {{- end }}
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
   rtpengine-valkey-proxy:
-    forceRename: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    forceRename: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
     strategy: RollingUpdate
     rollingUpdate:
       surge: 1
@@ -586,13 +586,13 @@ controllers:
         seccompProfile:
           type: RuntimeDefault
       labels:
-        app: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+        app: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchLabels:
-                  app: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+                  app: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
               topologyKey: kubernetes.io/hostname
     containers:
       haproxy:
@@ -1071,7 +1071,7 @@ service:
 {{- end }}
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
   rtpengine-valkey-proxy:
-    forceRename: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    forceRename: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
     controller: rtpengine-valkey-proxy
     ports:
       redis:
@@ -1114,7 +1114,7 @@ persistence:
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
   rtpengine-valkey-proxy-config:
     type: configMap
-    name: '{{ include "avoip.fullname" . }}-rtpengine-valkey-proxy'
+    name: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
     advancedMounts:
       rtpengine-valkey-proxy:
         haproxy:
