@@ -124,6 +124,8 @@ rtpengine:
     database: 0
     secretName: 'avoip-rtpengine-valkey'
     passwordKey: 'password'
+    generatorName: 'avoip-rtpengine-valkey-generator'
+    bootstrapSecretName: 'avoip-rtpengine-valkey-bootstrap'
     secretStoreRef:
       kind: 'ClusterSecretStore'
       name: 'corevault-rootsecrets'

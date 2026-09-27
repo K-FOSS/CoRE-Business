@@ -2,6 +2,66 @@
 {{- $valkey := .Values.rtpengine.valkey }}
 {{- $remoteKey := default (printf "Storage/Valkey/CoRE/%s/%s/%s/Creds" .Values.region .Values.datacenter .Values.cluster.name) $valkey.remoteRef.key }}
 ---
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: '{{ $valkey.generatorName }}'
+  namespace: '{{ $valkey.namespace }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-10'
+spec:
+  length: 64
+  digits: 0
+  symbols: 0
+  allowRepeat: true
+  encoding: 'hex'
+  secretKeys:
+    - 'Password'
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ $valkey.bootstrapSecretName }}-generate'
+  namespace: '{{ $valkey.namespace }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-9'
+spec:
+  refreshPolicy: 'CreatedOnce'
+  target:
+    name: '{{ $valkey.bootstrapSecretName }}'
+    creationPolicy: 'Owner'
+    deletionPolicy: 'Retain'
+  dataFrom:
+    - sourceRef:
+        generatorRef:
+          apiVersion: generators.external-secrets.io/v1alpha1
+          kind: 'Password'
+          name: '{{ $valkey.generatorName }}'
+---
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: '{{ $valkey.secretName }}-push'
+  namespace: '{{ $valkey.namespace }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-8'
+spec:
+  refreshInterval: '1h'
+  updatePolicy: 'Replace'
+  deletionPolicy: 'None'
+  secretStoreRefs:
+    - kind: '{{ $valkey.secretStoreRef.kind }}'
+      name: '{{ $valkey.secretStoreRef.name }}'
+  selector:
+    secret:
+      name: '{{ $valkey.bootstrapSecretName }}'
+  data:
+    - match:
+        secretKey: 'Password'
+        remoteRef:
+          remoteKey: '{{ $remoteKey }}'
+          property: '{{ $valkey.remoteRef.property }}'
+---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:

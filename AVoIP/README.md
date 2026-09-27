@@ -52,7 +52,11 @@ validation and not as a stable general-purpose AVoIP release.
 
 ## Deployment ownership
 
-The owner is the [legacy AVoIP ApplicationSet in CoRE-Backplane](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml).
+Optional interface profiles for every enabled workload and the named YAML
+`functions` array are documented in [NETWORKING.md](docs/NETWORKING.md).
+They support Multus/CNI configuration, placement, DNS, and NIC init containers.
+
+The owner is the [AVoIP ApplicationSet in CoRE-Backplane](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 Its current desired state uses a merged generator for three production
 clusters: `core-dc1-talos-prod`, `core-home1-talos-prod`, and
 `dc1-k3s-node1`. It deploys the `AVoIP` path from the
@@ -107,14 +111,20 @@ sends PROXY protocol v2 to Kamailio, and Kamailio's
 [HAProxy PROXY-protocol support](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#tcp_accept_haproxy)
 verifies the original Flowroute source before forwarding SIP to the configured
 private backend. Kamailio and FreeSWITCH can be enabled independently; when
-both are enabled, the default Kamailio backend is FreeSWITCH's private SIP
-profile. Kamailio uses an explicit two-sided Record-Route preset for the
-asymmetric edge: the internal route is the private UDP Kamailio Service and the
-external TLS route is `sip.resolvemy.host:5081`. This prevents wildcard bind
+both are enabled, the default Kamailio backend is FreeSWITCH's private TLS-only
+SIP profile on port 5061. Kamailio uses an explicit two-sided Record-Route
+preset for the asymmetric edge: the internal route is Kamailio's private TLS
+Service on port 5062 and the external TLS route is `sip.resolvemy.host:5081`.
+This prevents wildcard bind
 addresses such as `0.0.0.0` from being advertised in dialog routing. Compact
 Kamailio request, relay, response, rejection, and loose-route markers are
 enabled by default through `kamailio.sipLogging.enabled`; the logging avoids
 full SIP/SDP dumps and can be disabled for quieter production logs.
+The private TLS listener/client behavior follows Kamailio's
+[TLS module configuration](https://www.kamailio.org/docs/modules/stable/modules/tls.html),
+and the FreeSWITCH profile uses Sofia's
+[`tls-only` setting](https://developer.signalwire.com/freeswitch/users-and-endpoints/sip-profiles/)
+to suppress its plain SIP socket.
 
 RTPEngine has its own enablement toggle and can run independently of Kamailio
 and FreeSWITCH. When all three components are enabled, the site-local
@@ -122,12 +132,32 @@ and FreeSWITCH. When all three components are enabled, the site-local
 and Kamailio's [RTPEngine module](https://www.kamailio.org/docs/modules/stable/modules/rtpengine.html)
 form the carrier-media proxy path. Kamailio rewrites carrier SDP through
 RTPEngine's `external` and `internal` interfaces. RTPEngine owns the PureLB
-public RTP Service whenever `rtpengine.enabled` is true; the FreeSWITCH public
+public RTP Service on the hub when `rtpengine.enabled` is true; the FreeSWITCH
 RTP Service is omitted only when both Kamailio and RTPEngine are enabled.
 When Kamailio and RTPEngine are both enabled, required pod affinity places
-their pods on the same Kubernetes node. The RTPEngine control Service remains
-cluster-routable; only the public RTPEngine media Service uses
-`externalTrafficPolicy: Local`.
+their pods on the same Kubernetes node, while RTPEngine replicas are spread
+across nodes. The RTPEngine control Service remains cluster-routable; only the
+public RTPEngine media Service uses `externalTrafficPolicy: Local`.
+The chart currently creates a one-shard, two-replica `ValkeyCluster` through the
+[official Valkey operator](https://github.com/valkey-io/valkey-operator/tree/v0.7.0),
+which is installed by the [Backplane Valkey operator ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Valkey/Operator.yaml).
+External Secrets generates the Valkey ACL password once in the operator
+namespace, pushes it to the site-specific Vault path, then mirrors that Vault
+value into `valkey-operator-system` and `core-prod`; this keeps Valkey and
+RTPEngine on the same credential across reconciliations. The generated source
+secret is retained so routine chart updates do not rotate the password. The
+flow uses the [External Secrets Password generator](https://external-secrets.io/latest/api/generator/password/)
+and [PushSecret](https://external-secrets.io/latest/api/pushsecret/). It also
+configures Valkey keyspace notifications. Two internal
+[HAProxy](https://www.haproxy.org/) replicas use its
+[Redis TCP health-check sequence](https://docs.haproxy.org/3.2/configuration.html#5.2-tcp-check)
+to check each Valkey node with authenticated `INFO replication` and route
+new Redis connections only to the node reporting `role:master`, and close
+existing sessions when a node loses primary status. This adapts the
+operator's all-node headless Service for RTPEngine's direct Redis client, which
+does not follow Redis Cluster redirects. Call-state restoration and switchover
+still require live verification after reconciliation, including RTPEngine and
+Valkey node failures.
 Public inbound signaling is TLS-only; Flowroute must target
 `sip.resolvemy.host:5081;transport=tls`. Kamailio's UDP listener remains
 private for the FreeSWITCH leg and is not exposed through a LoadBalancer or
@@ -198,9 +228,9 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
-| Kamailio | Independently enabled | When enabled on the hub, Kamailio receives inbound public SIP through Gateway-terminated TLS on `sip.resolvemy.host:5081`; public UDP SIP is disabled. It consumes Envoy PROXY protocol v2 for TLS, verifies the original Flowroute source CIDR, and forwards accepted SIP to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's private SIP edge. |
-| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID stays in ringing state while FreeSWITCH bridges to Asterisk; after Asterisk answers, the values-controlled black alert audio and generic fax detection run. It also supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public media is proxied by RTPEngine; FreeSWITCH has no public SIP or RTP Service in proxy mode. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public UDP SIP and TLS SIP. |
-| RTPEngine | Independent toggle | Runs the pinned site-local userspace media proxy, exposes the configured UDP media range through PureLB, and receives Kamailio NG control traffic over a private ClusterIP Service. Kamailio uses it only when Kamailio, FreeSWITCH, and RTPEngine are all enabled. |
+| Kamailio | Independently enabled | When enabled on the hub, Kamailio receives inbound public SIP through Gateway-terminated TLS on `sip.resolvemy.host:5081`; Kamailio has no UDP SIP listener or Service. It consumes Envoy PROXY protocol v2 for TLS, verifies the original Flowroute source CIDR, and forwards accepted SIP over TLS to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
+| FreeSWITCH | Disabled | When enabled, creates private SIP services and External Secret-backed configuration. The configured DID stays in ringing state while FreeSWITCH bridges to Asterisk; after Asterisk answers, the values-controlled black alert audio and generic fax detection run. It also supports a values-controlled direct fax-test route through SpanDSP/T.38 with TIFFs stored on the configured PVC. Public media is proxied by RTPEngine; FreeSWITCH has no public SIP or RTP Service in proxy mode. The values-driven range and packet-capture runbook are in [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). Kamailio owns public TLS SIP and its private FreeSWITCH hop is TLS-only. |
+| RTPEngine | Hub-only toggle | Runs two pinned userspace media proxies, exposes the configured UDP range through PureLB, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
 | Homer 11 | Hub-only opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, Kamailio HEPv3 capture, RTPEngine RTCP/NG capture, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
