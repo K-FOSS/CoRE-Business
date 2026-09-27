@@ -942,6 +942,9 @@ controllers:
           - name: hep-tcp
             containerPort: {{ .Values.homer.capture.hepTCPPort }}
             protocol: TCP
+          - name: ingest-http
+            containerPort: {{ .Values.homer.capture.httpPort }}
+            protocol: TCP
           - name: metrics
             containerPort: {{ .Values.homer.capture.metricsPort }}
             protocol: TCP

@@ -179,6 +179,7 @@ homer:
   capture:
     hepPort: 9060
     hepTCPPort: 9061
+    httpPort: 9080
     metricsPort: 9096
     retentionDays: 14
   web:
@@ -187,7 +188,9 @@ homer:
       tag: '11.0.350'
       digest: 'sha256:aff429f3eb826eac36b45bfc9cc6d230c24042ba722012b868f2f5fd1aa19b13'
       pullPolicy: 'IfNotPresent'
-    port: 9080
+    # Homer coordinator serves the UI and v4 API on 8080. The separate ingest
+    # HTTP listener remains on homer.capture.httpPort.
+    port: 8080
   storage:
     persistence:
       enabled: true
