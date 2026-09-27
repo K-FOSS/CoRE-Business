@@ -76,6 +76,22 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 - Confirm the intended remote and branch, fetch before publishing, review the
   exact outgoing diff, and use a normal fast-forward push. Respect branch
   protections and required checks; use the required PR workflow when applicable.
+- Keep published history immutable. Before creating a commit, refresh the
+  upstream and base new commits on its current tip. Never amend or rebase a
+  commit once it may have reached the remote; make corrections as follow-up
+  commits. Before pushing, confirm the upstream is an ancestor of `HEAD` and
+  the outgoing range contains only this task's commits. If the branch is both
+  ahead and behind, reconcile the local unpublished commits with the fetched
+  upstream first; do not leave the user with a non-fast-forward push.
+- Push from the active workspace Git integration so its Che/IDE authentication
+  prompt can answer Git's configured askpass helper. Do not print, read, copy,
+  or replace stored credentials, disable askpass, or switch to a different
+  credential helper to work around a missing prompt. If Git reports an
+  unavailable askpass IPC socket (for example `ECONNREFUSED`), stop retrying,
+  keep the outgoing commits intact and fast-forwardable, and report that the
+  Che authentication prompt must be reconnected. Never claim a push succeeded
+  until Git exits successfully and the local branch is no longer ahead of its
+  upstream.
 - Reconcile the reviewed, published commit through the owning Argo CD layers.
   Select only the necessary parent ApplicationSet resources and affected child
   applications. Inspect sync hooks and dependency ordering before choosing
