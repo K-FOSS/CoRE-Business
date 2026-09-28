@@ -228,7 +228,7 @@ homer:
   forwardAuth:
     providerConfigRef: 'authentik'
     accessGroup: 'Home Users'
-    displayName: 'Phone Debug Forward Auth'
+    displayName: ''
     workspaceName: 'avoip-homer-forward-auth'
   authentikOutpost:
     name: 'aaa-myloginspace-proxy'
