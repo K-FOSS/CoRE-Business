@@ -1,4 +1,4 @@
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy

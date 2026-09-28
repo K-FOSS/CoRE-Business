@@ -25,7 +25,7 @@ Current transition state:
 - Desired voice path: Flowroute → Kamailio → RTPEngine → FreeSWITCH →
   Asterisk for ordinary calls.
 - Fax validation is in progress with FreeSWITCH `mod_spandsp`, G.711 fallback,
-  T.38 passthrough, and Homer capture available on the hub.
+  T.38 passthrough, and per-cluster Homer capture.
 - Configuration changes roll out through Git, Argo CD, and Reloader-backed
   Deployment updates. Direct cluster changes are incident diagnostics only and
   must not become the lasting source of truth.
@@ -198,7 +198,7 @@ and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
 SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`
 when that exposure or log volume is not appropriate.
 
-The hub can also deploy the internal [Homer 11 SIP monitoring](docs/HOMER.md)
+Each Kamailio-enabled cluster can deploy the internal [Homer 11 SIP monitoring](docs/HOMER.md)
 stack. Kamailio forwards HEPv3 signaling directly to the Homer 11 ingest
 listener, while RTPEngine forwards RTCP/NG diagnostics. The Homer UI is
 protected by Authentik OIDC and Gateway Forward Auth; its HEP ports are not
@@ -245,10 +245,10 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
-| Kamailio | Independently enabled | When enabled on the hub, Kamailio receives inbound public SIP through Gateway-terminated TLS on `sip.resolvemy.host:5081`; Kamailio has no UDP SIP listener or Service. It consumes Envoy PROXY protocol v2 for TLS, verifies the original Flowroute source CIDR, and forwards accepted SIP over TLS to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
+| Kamailio | Independently enabled | When enabled on a cluster, Kamailio receives inbound public SIP through Gateway-terminated TLS on `sip.resolvemy.host:5081`; Kamailio has no UDP SIP listener or Service. It consumes Envoy PROXY protocol v2 for TLS, verifies the original Flowroute source CIDR, and forwards accepted SIP over TLS to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
 | FreeSWITCH | Disabled | When enabled, creates private TLS SIP services and External Secret-backed configuration. The `avoip.did` voice route remains ringing until Asterisk answers and has no fax detector. A separate `fax.did` transfers directly to SpanDSP `rxfax` with TIFFs stored on the configured PVC; the DID must be supplied by the site. Public media is proxied by RTPEngine. See [SIP identity and fax routing](docs/SIP-IDENTITY.md) and [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). |
 | RTPEngine | Hub-only toggle | Runs two pinned userspace media proxies, exposes the configured UDP range through PureLB, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
-| Homer 11 | Hub-only opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, Kamailio HEPv3 capture, RTPEngine RTCP/NG capture, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
+| Homer 11 | Per-cluster opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, local Kamailio HEPv3 capture, RTPEngine RTCP/NG capture when local RTPEngine is enabled, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
 The Asterisk and FreeSWITCH `User` claims use the current supported claim

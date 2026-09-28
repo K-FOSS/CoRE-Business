@@ -189,8 +189,9 @@ diagnostics:
       pullPolicy: 'IfNotPresent'
 
 homer:
-  # Homer 11 is enabled on the hub only. The owning ApplicationSet supplies
-  # the hub/spoke cluster type; keep this opt-in for standalone renders.
+  # Homer 11 is enabled per cluster when Kamailio is enabled. The owning
+  # ApplicationSet can override this for clusters that should not retain local
+  # SIP capture.
   enabled: true
   hostname: 'homer.mylogin.space'
   capture:

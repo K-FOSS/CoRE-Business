@@ -1,4 +1,4 @@
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1

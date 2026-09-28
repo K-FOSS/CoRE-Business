@@ -445,7 +445,7 @@ controllers:
             --active-switchover
 {{- end }}
 {{- end }}
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
             --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepTCPPort }}
             --homer-protocol=tcp
             --homer-id=102
@@ -852,7 +852,7 @@ controllers:
 {{- end }}
 
 {{ end }}
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
   homer-web:
     forceRename: '{{ include "avoip.fullname" . }}-homer-web'
     strategy: RollingUpdate
@@ -1088,7 +1088,7 @@ service:
         targetPort: health
         protocol: TCP
 {{- end }}
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
   homer-heplify:
     forceRename: '{{ include "avoip.fullname" . }}-homer-heplify'
     controller: homer-web
@@ -1331,7 +1331,7 @@ persistence:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
 {{- end }}
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
   homer-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-homer-config'

@@ -1,4 +1,4 @@
-{{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
 {{- $oidc := .Values.homer.oidc -}}
 {{- $forwardAuth := .Values.homer.forwardAuth -}}
 {{- $oidcSlug := printf "%s-%s-%s-%s" $oidc.applicationSlug $.Values.region $.Values.datacenter $.Values.cluster.name -}}

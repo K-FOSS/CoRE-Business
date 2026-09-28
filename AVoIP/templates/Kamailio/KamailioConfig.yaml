@@ -45,7 +45,7 @@ data:
     loadmodule "tls.so"
     modparam("tls", "config", "/etc/kamailio/tls.cfg")
     modparam("tls", "xavp_cfg", "tls")
-    {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
+    {{- if .Values.homer.enabled }}
     loadmodule "siptrace.so"
     {{- end }}
     {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
@@ -59,7 +59,7 @@ data:
     modparam("rr", "sockname_mode", 1)
     modparam("sanity", "autodrop", 0)
     modparam("siputils", "rpid_avp", "$avp(s:rpid)")
-    {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
+    {{- if .Values.homer.enabled }}
     modparam("siptrace", "trace_on", 1)
     # Mirror core SIP events as HEP to the configured Homer capture endpoint.
     # Use the Homer TCP HEP listener because Kamailio has no UDP SIP socket.
