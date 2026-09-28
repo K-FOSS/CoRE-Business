@@ -855,15 +855,6 @@ controllers:
           - name: tls-sips
             containerPort: 5061
             protocol: TCP
-          - name: udp-sipext
-            containerPort: 5080
-            protocol: UDP
-          - name: tcp-sipext
-            containerPort: 5080
-            protocol: TCP
-          - name: tls-sipext
-            containerPort: 5081
-            protocol: TCP
           - name: udp-sip-edge
             containerPort: 5090
             protocol: UDP
