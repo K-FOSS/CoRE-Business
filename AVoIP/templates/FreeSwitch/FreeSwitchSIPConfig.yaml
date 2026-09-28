@@ -48,6 +48,9 @@ data:
         </settings>
     </profile>
   external.xml: |
+  {{- if .Values.kamailio.enabled }}
+    <!-- Public SIP terminates at Kamailio; do not start a second edge profile. -->
+  {{- else }}
     <profile name="external">
       <gateways>
         <X-PRE-PROCESS cmd="include" data="external/*.xml"/>
@@ -97,6 +100,7 @@ data:
         <param name="tls-ciphers" value="$${sip_tls_ciphers}"/>
       </settings>
     </profile>
+  {{- end }}
   kamailio.xml: |
     <profile name="kamailio">
       <settings>
