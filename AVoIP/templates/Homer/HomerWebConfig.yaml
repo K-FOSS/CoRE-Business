@@ -52,11 +52,11 @@ data:
           "client_secret": "__OIDC_CLIENT_SECRET__",
           "auth_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/authorize/",
           "token_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/token/",
-          "redirect_url": "https://{{ .Values.homer.hostname }}/api/v4/auth/oauth2/authentik/callback",
+          "redirect_url": "https://{{ include "avoip.homer.hostname" . }}/api/v4/auth/oauth2/authentik/callback",
           "profile_url": "{{ trimSuffix "/" .Values.homer.oidc.issuerBaseUrl }}/application/o/userinfo/",
           "scopes": ["openid", "email", "profile"],
           "use_pkce": true,
-          "callback_url": "https://{{ .Values.homer.hostname }}/",
+          "callback_url": "https://{{ include "avoip.homer.hostname" . }}/",
           "auto_redirect": true
         }
       },

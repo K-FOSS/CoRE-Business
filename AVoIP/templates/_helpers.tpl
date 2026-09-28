@@ -44,3 +44,8 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $override := index (index $root.Values $component) "sip" "serviceHost" -}}
 {{- default (printf "%s-%s.%s.svc.%s" (include "avoip.fullname" $root) $component $root.Release.Namespace (required "cluster.domain is required for SIP service identities" $root.Values.cluster.domain)) $override -}}
 {{- end -}}
+
+{{- define "avoip.homer.hostname" -}}
+{{- $override := .Values.homer.hostname -}}
+{{- default (printf "homer.%s.%s.%s.resolvemy.host" .Values.cluster.name .Values.datacenter .Values.region) $override -}}
+{{- end -}}

@@ -193,7 +193,7 @@ homer:
   # ApplicationSet can override this for clusters that should not retain local
   # SIP capture.
   enabled: true
-  hostname: 'homer.mylogin.space'
+  hostname: ''
   capture:
     hepPort: 9060
     hepTCPPort: 9061

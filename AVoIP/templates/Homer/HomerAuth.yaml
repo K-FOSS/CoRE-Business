@@ -23,7 +23,7 @@ spec:
       application_slug: '{{ $oidc.applicationSlug }}'
       access_group: '{{ $oidc.accessGroup }}'
       issuer_base_url: '{{ trimSuffix "/" $oidc.issuerBaseUrl }}'
-      external_url: 'https://{{ $.Values.homer.hostname }}'
+      external_url: 'https://{{ include "avoip.homer.hostname" $ }}'
       display_name: '{{ $oidc.displayName }}'
     module: |
       variable "application_slug" { type = string }
@@ -131,7 +131,7 @@ spec:
     varmap:
       access_group: '{{ $forwardAuth.accessGroup }}'
       display_name: '{{ $forwardAuth.displayName }}'
-      external_host: 'https://{{ $.Values.homer.hostname }}'
+      external_host: 'https://{{ include "avoip.homer.hostname" $ }}'
       application_slug: 'avoip-homer-forward-auth'
     module: |
       variable "access_group" { type = string }
