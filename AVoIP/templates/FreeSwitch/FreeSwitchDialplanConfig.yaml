@@ -94,7 +94,6 @@ data:
             <action application="ring_ready"/>
             <action application="sleep" data="2000"/>
             <action application="answer"/>
-            <action application="disable_ec"/>
             <!-- Send the fax called-station tone so human callers hear the endpoint is ready. -->
             <action application="playback" data="tone_stream://%(3000,0,2100)"/>
             <action application="set_media_stats"/>

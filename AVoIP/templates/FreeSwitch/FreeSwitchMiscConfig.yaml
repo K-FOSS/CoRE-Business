@@ -62,6 +62,7 @@ data:
         {{- end }}
         <load module="mod_dialplan_xml"/>
         <load module="mod_dptools"/>
+        <load module="mod_tone_stream"/>
         <load module="mod_shout"/>
         <!-- Required by the temporary inbound-call WAV capture. -->
         <load module="mod_sndfile"/>
