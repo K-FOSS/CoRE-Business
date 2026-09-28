@@ -125,7 +125,7 @@ data:
         <param name="rtp-ip" value="$${local_ip_v4}"/>
         <param name="sip-domain" value="$${external_sip_ip}"/>
         <param name="ext-sip-ip" value="host:$${external_sip_ip}"/>
-        <param name="ext-sip-port" value="{{ $.Values.kamailio.advertisedTLSPort }}"/>
+        <param name="ext-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
         <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
         <param name="inbound-late-negotiation" value="true"/>
         <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
