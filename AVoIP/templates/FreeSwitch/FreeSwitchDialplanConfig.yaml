@@ -107,11 +107,11 @@ data:
                  user; route the DID carried in the To URI into the normal
                  voice or dedicated fax extension. -->
             {{- if and $.Values.freeswitch.fax.enabled $.Values.fax.did }}
-            <condition field="sip_to_user" expression="^[+]?{{ $.Values.fax.did }}$">
+            <condition field="${sip_to_user}" expression="^[+]?{{ $.Values.fax.did }}$">
               <action application="transfer" data="{{ $.Values.fax.did }} XML public"/>
             </condition>
             {{- end }}
-            <condition field="sip_to_user" expression="^[+]?{{ $.Values.avoip.did }}$">
+            <condition field="${sip_to_user}" expression="^[+]?{{ $.Values.avoip.did }}$">
               <action application="transfer" data="{{ $.Values.avoip.did }} XML public"/>
             </condition>
             <action application="log" data="WARNING AVoIP rejecting Flowroute rendezvous with unsupported To user ${sip_to_user}"/>
