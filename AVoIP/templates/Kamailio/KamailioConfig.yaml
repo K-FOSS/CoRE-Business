@@ -71,12 +71,15 @@ data:
 {{- end }}
       if (!rtpengine_manage("replace-origin replace-session-connection external internal")) {
         xlog("L_ERR", "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
-      } else {
-        xlog("L_INFO", "RTPEngine initial SDP handled callid=$ci method=$rm source=$si:$sp\n");
+        # Do not send an offer to FreeSWITCH if it cannot be anchored. Any
+        # answer could otherwise expose FreeSWITCH's private pod address.
+        sl_send_reply("503", "Media Relay Unavailable");
+        exit;
+      }
+      xlog("L_INFO", "RTPEngine initial SDP handled callid=$ci method=$rm source=$si:$sp\n");
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
         xlog("L_INFO", "SIP media after RTPEngine phase=initial callid=$ci source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
 {{- end }}
-      }
     }
 
     route[MEDIA_DIALOG] {
@@ -86,11 +89,14 @@ data:
 {{- end }}
         if (!rtpengine_manage("replace-origin replace-session-connection")) {
           xlog("L_ERR", "RTPEngine dialog SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
-        } else {
+          if (!is_method("ACK")) {
+            sl_send_reply("488", "Media Relay Unavailable");
+          }
+          exit;
+        }
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
           xlog("L_INFO", "SIP media after RTPEngine phase=dialog callid=$ci method=$rm source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
 {{- end }}
-        }
       } else if (is_method("BYE|CANCEL")) {
         rtpengine_manage();
       }
@@ -212,10 +218,10 @@ data:
       if ($du == $null || $du == "") {
         $du = "sip:{{ $backendService }}.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.kamailio.backend.servicePort }};transport=tls";
       }
-{{- if .Values.kamailio.sipLogging.enabled }}
       if (!is_method("ACK")) {
         t_on_reply("KAMAILIO_SIP_REPLY");
       }
+{{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP relay proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp destination=$du callid=$ci\n");
 {{- end }}
       if (!t_relay()) {
@@ -240,11 +246,13 @@ data:
 {{- end }}
         if (!rtpengine_manage("replace-origin replace-session-connection")) {
           xlog("L_ERR", "RTPEngine reply SDP handling failed callid=$ci status=$rs\n");
-        } else {
+          # Dropping the SDP-bearing reply is fail-closed: never forward a
+          # FreeSWITCH pod address to the carrier when rewriting failed.
+          drop;
+        }
 {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
           xlog("L_INFO", "SIP media after RTPEngine phase=reply callid=$ci status=$rs source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
 {{- end }}
-        }
       } else if ($rs =~ "[3-6][0-9][0-9]") {
         rtpengine_manage();
       }

@@ -138,6 +138,9 @@ When Kamailio and RTPEngine are both enabled, their pods can run on separate
 Kubernetes nodes. RTPEngine replicas remain spread across nodes by required
 pod anti-affinity. The RTPEngine control Service remains cluster-routable; only
 the public RTPEngine media Service uses `externalTrafficPolicy: Local`.
+Kamailio fails media-bearing requests closed when RTPEngine is unavailable and
+drops SDP-bearing FreeSWITCH replies if rewriting fails, so a private
+FreeSWITCH pod address is never forwarded to the carrier as a fallback.
 The chart currently creates a one-shard, two-replica `ValkeyCluster` through the
 [official Valkey operator](https://github.com/valkey-io/valkey-operator/tree/v0.7.0),
 which is installed by the [Backplane Valkey operator ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Valkey/Operator.yaml).
