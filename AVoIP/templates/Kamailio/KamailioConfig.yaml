@@ -220,6 +220,14 @@ data:
         sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
+      # loose_route() can leave the next dialog hop in the Request-URI while
+      # leaving $du empty.  Do not let the initial-request backend fallback in
+      # RELAY send that established request back to FreeSWITCH.  The Contact
+      # selected by the route set is the destination for this hop, including
+      # backend-originated BYE and carrier ACK requests.
+      if ($du == $null || $du == "") {
+        $du = $ru;
+      }
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP in-dialog loose_route=accepted method=$rm source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
