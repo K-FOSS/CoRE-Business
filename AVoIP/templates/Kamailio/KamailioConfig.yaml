@@ -335,7 +335,7 @@ data:
     method = TLSv1.2+
     verify_certificate = yes
     require_certificate = no
-    ca_list = /etc/ssl/certs/ca-certificates.crt
+    ca_list = {{ if .Values.freeswitch.enabled }}/etc/kamailio/tls-ca/ca-certificates.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 {{- end }}
