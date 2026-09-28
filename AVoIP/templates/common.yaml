@@ -741,7 +741,14 @@ controllers:
         args:
           - |
             umask 077
-            cat /tls-input/tls.crt /tls-input/tls.key > /tls-output/agent.pem
+            # Sofia expects the leaf certificate, private key, then any
+            # intermediates. cert-manager stores the chain as leaf followed by
+            # intermediates in tls.crt; placing the key between them makes the
+            # full chain available to TLS clients instead of serving only the
+            # leaf certificate.
+            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n == 1 { print }' /tls-input/tls.crt > /tls-output/agent.pem
+            cat /tls-input/tls.key >> /tls-output/agent.pem
+            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-input/tls.crt >> /tls-output/agent.pem
             cp /etc/ssl/certs/ca-certificates.crt /tls-output/cafile.pem
         securityContext:
           allowPrivilegeEscalation: false
