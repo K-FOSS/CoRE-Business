@@ -14,9 +14,6 @@ data:
     debug={{ if .Values.kamailio.sipLogging.diagnostics.enabled }}{{ .Values.kamailio.sipLogging.diagnostics.coreDebug }}{{ else }}0{{ end }}
     corelog=-1
     log_stderror=yes
-    # Keep allocator diagnostics disabled in the production foreground log.
-    memdbg=4
-    memlog=4
     children=2
     auto_aliases=no
     {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
@@ -36,6 +33,7 @@ data:
     loadmodule "tm.so"
     loadmodule "sl.so"
     loadmodule "rr.so"
+    loadmodule "maxfwd.so"
     loadmodule "sanity.so"
     loadmodule "pv.so"
     loadmodule "siputils.so"
@@ -52,7 +50,6 @@ data:
     loadmodule "textopsx.so"
     {{- end }}
 
-    modparam("rr", "enable_full_lr", 1)
     # Preserve the actual local socket across the private TLS/public TCP
     # double-Record-Route used by the FreeSWITCH leg and the carrier leg.
     modparam("rr", "sockname_mode", 1)
@@ -121,6 +118,12 @@ data:
       {{- end }}
       if (!sanity_check("1511", "7")) {
         xlog("L_WARN", "Kamailio rejected malformed SIP from $si:$sp\n");
+        exit;
+      }
+      if (!mf_process_maxfwd_header("10")) {
+        if (!is_method("ACK")) {
+          sl_send_reply("483", "Too Many Hops");
+        }
         exit;
       }
 
