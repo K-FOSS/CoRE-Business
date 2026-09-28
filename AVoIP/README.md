@@ -141,6 +141,19 @@ the public RTPEngine media Service uses `externalTrafficPolicy: Local`.
 Kamailio fails media-bearing requests closed when RTPEngine is unavailable and
 drops SDP-bearing FreeSWITCH replies if rewriting fails, so a private
 FreeSWITCH pod address is never forwarded to the carrier as a fallback.
+SDP reply handling runs in Kamailio's core `reply_route`, before transaction
+matching and stateless forwarding. This includes late `200 OK` retransmissions
+after their transaction ends. The route applies RTPEngine's body edits before
+logging the rewritten SDP; a named `t_on_reply` callback alone misses those
+late replies and normally cannot discard final responses. See Kamailio's
+[reply routing](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#reply_route)
+and [body-edit application](https://www.kamailio.org/docs/modules/6.1.x/modules/textopsx.html#textopsx.f.msg_apply_changes)
+documentation. The isolated [reply regression test](tests/README.md) checks
+the actual received SIP bodies, including repeated answers and rewrite errors.
+With `kamailio.sipLogging.diagnostics.sdp` enabled, `SIP wire SDP answer`
+records the destination and SDP connection/media lines from `$snd(buf)` in
+`onsend_route`. This observes the serialized outgoing response for comparison
+across retransmissions without logging SIP authentication headers.
 The chart currently creates a one-shard, two-replica `ValkeyCluster` through the
 [official Valkey operator](https://github.com/valkey-io/valkey-operator/tree/v0.7.0),
 which is installed by the [Backplane Valkey operator ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Valkey/Operator.yaml).

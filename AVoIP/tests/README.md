@@ -1,0 +1,36 @@
+# Kamailio reply regression
+
+`kamailio_reply_retransmissions.py` runs a separate instance of the deployed
+Kamailio binary with the rendered chart configuration. It substitutes loopback
+listeners, a local SIP backend, an authorized loopback caller and a mock
+RTPEngine NG endpoint. It does not change the production process or place calls.
+It requires the chart's `kamailio` and Python-capable `netshoot` containers.
+
+Render with the current `LOVELY_HELM_MERGE` from the owning
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
+then extract the configuration:
+
+```sh
+helm template avoip . -n core-prod -f /tmp/avoip-site-values.yaml > /tmp/avoip-render.yaml
+yq -r 'select(.kind == "ConfigMap" and (.metadata.name | endswith("-kamailio-config"))) | .data."kamailio.cfg"' /tmp/avoip-render.yaml > /tmp/avoip-kamailio.cfg
+python3 tests/kamailio_reply_retransmissions.py \
+  --config /tmp/avoip-kamailio.cfg \
+  --context core-dc1-talos-prod \
+  --namespace core-prod \
+  --deployment core-dc1-talos-prod-business-avoip-prod-avoip-kamailio
+```
+
+The fixture sends an initial SDP offer and repeats the same backend `200 OK`
+immediately and after transaction expiry. It checks the bytes received by the
+caller, including Content-Length framing: every answer must have the same
+public connection address, allocated media port and complete body. It then
+injects an NG answer failure and checks that the final response is dropped.
+The mock's public address and port are test constants, not allocated live media.
+
+Temporary listeners bind only to `127.0.0.1` on TCP 15061, 15062 and 16061,
+and UDP 12223. Do not run multiple copies in one pod concurrently. The runner
+stops its separate Kamailio process and removes its temporary configuration;
+it writes the test process log next to the input configuration as `.test.log`.
+Repeat with SIP logging disabled to check that logging does not control media
+rewriting. A production carrier capture or live fax remains necessary to verify
+provider interoperability and actual RTP/UDPTL delivery.
