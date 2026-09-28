@@ -283,14 +283,24 @@ data:
       return(1);
     }
 {{- end }}
-{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+{{- if or .Values.kamailio.sipLogging.diagnostics.enabled .Values.kamailio.sipLogging.diagnostics.sdp }}
     # Observe the serialized response buffer, not the original $rb. Emit only
-    # SDP address/port lines, never the full SIP headers or authentication.
+    # ACK routing metadata and SDP address/port lines, never full SIP headers
+    # or authentication.
     onsend_route {
+{{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+      # ACKs are logged at the serialized send boundary so a packet capture can
+      # be matched with Kamailio's selected destination and the same Call-ID.
+      if ($snd(buf) =~ "^ACK ") {
+        xlog("L_INFO", "SIP wire ACK callid=$ci cseq=$hdr(CSeq) destination=$snd(ip):$snd(port) ruri=$ru route=$hdr(Route)\n");
+      }
+{{- end }}
+{{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
       if ($snd(buf) =~ "^SIP/2.0 200 " &&
           $snd(buf) =~ "\r\nc=IN IP" && $snd(buf) =~ "\r\nm=") {
         xlog("L_INFO", "SIP wire SDP answer callid=$ci cseq=$hdr(CSeq) destination=$snd(ip):$snd(port) connection=$(snd(buf){re.subst,/.*\r\n(c=[^\r\n]+)\r\n.*/\\1/s}) media=$(snd(buf){re.subst,/.*\r\n(m=[^\r\n]+)\r\n.*/\\1/s})\n");
       }
+{{- end }}
     }
 {{- end }}
   tls.cfg: |
