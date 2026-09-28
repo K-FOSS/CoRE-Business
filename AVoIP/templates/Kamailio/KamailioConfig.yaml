@@ -36,7 +36,6 @@ data:
     loadmodule "tm.so"
     loadmodule "sl.so"
     loadmodule "rr.so"
-    loadmodule "maxfwd.so"
     loadmodule "sanity.so"
     loadmodule "pv.so"
     loadmodule "siputils.so"
@@ -58,7 +57,6 @@ data:
     # double-Record-Route used by the FreeSWITCH leg and the carrier leg.
     modparam("rr", "sockname_mode", 1)
     modparam("sanity", "autodrop", 0)
-    modparam("siputils", "rpid_avp", "$avp(s:rpid)")
     {{- if .Values.homer.enabled }}
     modparam("siptrace", "trace_on", 1)
     # Mirror core SIP events as HEP to the configured Homer capture endpoint.
@@ -344,6 +342,4 @@ data:
     verify_certificate = yes
     require_certificate = no
     ca_list = {{ if .Values.freeswitch.enabled }}/etc/kamailio/tls-ca/ca-certificates.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
-    private_key = /etc/kamailio/tls/tls.key
-    certificate = /etc/kamailio/tls/tls.crt
 {{- end }}
