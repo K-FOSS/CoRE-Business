@@ -7,6 +7,8 @@ metadata:
   name: {{ $fullName }}-kamailio
   annotations:
     external-dns.kubernetes.io/hostname: '{{ .Values.kamailio.advertisedHost }}'
+    # TODO: Remove the legacy ExternalDNS annotation after all controllers use v0.22.0+.
+    external-dns.alpha.kubernetes.io/hostname: '{{ .Values.kamailio.advertisedHost }}'
 
   labels:
     wan-mode: public
