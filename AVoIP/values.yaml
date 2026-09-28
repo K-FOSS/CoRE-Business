@@ -223,12 +223,12 @@ homer:
     applicationSlug: 'avoip-homer'
     clientId: 'avoip-homer'
     accessGroup: 'Home Users'
-    displayName: 'AVoIP Homer'
+    displayName: ''
     workspaceName: 'avoip-homer-oidc'
   forwardAuth:
     providerConfigRef: 'authentik'
     accessGroup: 'Home Users'
-    displayName: 'AVoIP Homer Forward Auth'
+    displayName: ''
     workspaceName: 'avoip-homer-forward-auth'
   authentikOutpost:
     name: 'aaa-myloginspace-proxy'

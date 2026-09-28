@@ -2,6 +2,9 @@
 {{- $oidc := .Values.homer.oidc -}}
 {{- $forwardAuth := .Values.homer.forwardAuth -}}
 {{- $oidcSlug := printf "%s-%s-%s-%s" $oidc.applicationSlug $.Values.region $.Values.datacenter $.Values.cluster.name -}}
+{{- $forwardAuthSlug := printf "%s-%s-%s-%s" "avoip-homer-forward-auth" $.Values.region $.Values.datacenter $.Values.cluster.name -}}
+{{- $oidcDisplayName := default (printf "AVoIP Homer %s" $.Values.cluster.name) $oidc.displayName -}}
+{{- $forwardAuthDisplayName := default (printf "AVoIP Homer Forward Auth %s" $.Values.cluster.name) $forwardAuth.displayName -}}
 {{- $_ := required "homer.oidc.providerConfigRef is required" $oidc.providerConfigRef -}}
 {{- $_ := required "homer.forwardAuth.providerConfigRef is required" $forwardAuth.providerConfigRef -}}
 ---
@@ -20,11 +23,11 @@ spec:
   forProvider:
     source: 'Inline'
     varmap:
-      application_slug: '{{ $oidc.applicationSlug }}'
+      application_slug: '{{ $oidcSlug }}'
       access_group: '{{ $oidc.accessGroup }}'
       issuer_base_url: '{{ trimSuffix "/" $oidc.issuerBaseUrl }}'
       external_url: 'https://{{ include "avoip.homer.hostname" $ }}'
-      display_name: '{{ $oidc.displayName }}'
+      display_name: '{{ $oidcDisplayName }}'
     module: |
       variable "application_slug" { type = string }
       variable "access_group" { type = string }
@@ -130,9 +133,9 @@ spec:
     source: 'Inline'
     varmap:
       access_group: '{{ $forwardAuth.accessGroup }}'
-      display_name: '{{ $forwardAuth.displayName }}'
+      display_name: '{{ $forwardAuthDisplayName }}'
       external_host: 'https://{{ include "avoip.homer.hostname" $ }}'
-      application_slug: 'avoip-homer-forward-auth'
+      application_slug: '{{ $forwardAuthSlug }}'
     module: |
       variable "access_group" { type = string }
       variable "display_name" { type = string }
