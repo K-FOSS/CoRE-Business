@@ -134,10 +134,10 @@ form the carrier-media proxy path. Kamailio rewrites carrier SDP through
 RTPEngine's `external` and `internal` interfaces. RTPEngine owns the PureLB
 public RTP Service on the hub when `rtpengine.enabled` is true; the FreeSWITCH
 RTP Service is omitted only when both Kamailio and RTPEngine are enabled.
-When Kamailio and RTPEngine are both enabled, required pod affinity places
-their pods on the same Kubernetes node, while RTPEngine replicas are spread
-across nodes. The RTPEngine control Service remains cluster-routable; only the
-public RTPEngine media Service uses `externalTrafficPolicy: Local`.
+When Kamailio and RTPEngine are both enabled, their pods can run on separate
+Kubernetes nodes. RTPEngine replicas remain spread across nodes by required
+pod anti-affinity. The RTPEngine control Service remains cluster-routable; only
+the public RTPEngine media Service uses `externalTrafficPolicy: Local`.
 The chart currently creates a one-shard, two-replica `ValkeyCluster` through the
 [official Valkey operator](https://github.com/valkey-io/valkey-operator/tree/v0.7.0),
 which is installed by the [Backplane Valkey operator ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Valkey/Operator.yaml).
