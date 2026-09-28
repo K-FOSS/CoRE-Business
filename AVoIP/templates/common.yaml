@@ -447,6 +447,7 @@ controllers:
 {{- end }}
 {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
             --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}
+            --homer-protocol=tcp
             --homer-id=102
             --homer-enable-ng
 {{- end }}
