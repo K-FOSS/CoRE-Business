@@ -101,7 +101,7 @@ rtpengine:
   enabled: true
   # Two media proxies are spread across nodes. The Valkey proxy supplies the
   # primary-only Redis endpoint required for shared call-state failover.
-  replicas: 2
+  replicas: 1
   controlPort: 22222
   valkey:
     # The ValkeyCluster is watched by the Backplane-installed operator in
@@ -229,7 +229,7 @@ network:
   # CiliumEgressGatewayPolicy path. Normal node/NAT egress may use 66.165.222.98
   # or 66.165.222.99 at the site edge.
   ciliumEgressGateway:
-    enabled: true
+    enabled: false
 
 asterisk:
   enabled: false
@@ -327,7 +327,7 @@ freeswitch:
     testMode:
       # Enable for a deterministic public fax test. Roll back to false to
       # restore the shared voice/fax detection path.
-      enabled: true
+      enabled: false
       did: '16047572053'
     knownSenders:
       - '+18772333839'
