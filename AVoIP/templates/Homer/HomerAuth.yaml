@@ -162,6 +162,7 @@ spec:
       resource "authentik_application" "homer" {
         name              = var.display_name
         slug              = var.application_slug
+        meta_launch_url   = "blank://blank"
         group             = "Tools"
         protocol_provider = authentik_provider_proxy.homer.id
       }
