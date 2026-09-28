@@ -163,6 +163,17 @@ data:
 {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
         xlog("L_INFO", "SIP diagnostic dialog-entry proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp ruri=$ru route=$hdr(Route) callid=$ci\n");
 {{- end }}
+        # Flowroute may send a 2xx ACK to the public Request-URI without a
+        # Route header. It is already restricted by the Flowroute source ACL;
+        # relay this ACK to the private FreeSWITCH edge so the UAS can match the
+        # established dialog instead of rejecting it as an unroutable request.
+        if (is_method("ACK") && !has_hf("Route")) {
+{{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+          xlog("L_WARN", "SIP diagnostic ACK fallback=no-route source=$si:$sp ruri=$ru callid=$ci\n");
+{{- end }}
+          route(RELAY);
+          exit;
+        }
         route(IN_DIALOG);
         exit;
       }
