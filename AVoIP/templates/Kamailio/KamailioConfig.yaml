@@ -267,11 +267,17 @@ data:
       exit;
     }
 
-    {{- if or .Values.kamailio.sipLogging.enabled (and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled) }}
+    {{- if or .Values.freeswitch.enabled .Values.kamailio.sipLogging.enabled }}
     # Core reply processing also covers late 2xx retransmissions forwarded
     # statelessly after TM has removed the transaction. A named t_on_reply
     # callback alone misses those replies and cannot reliably drop final ones.
     reply_route {
+      # Public SIP is TLS-only. FreeSWITCH can return a plain SIP Contact for
+      # an inbound SIPS dialog, so preserve the Contact target while marking
+      # its URI secure before forwarding every final 2xx response.
+      if ($rs =~ "^2[0-9][0-9]$" && is_present_hf("Contact")) {
+        subst_hf("Contact", "/<sip:/<sips:/g", "a");
+      }
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
       # Recover offer/answer context when the transaction still exists.
       # Without it, rtpengine_manage treats an SDP reply as an answer.

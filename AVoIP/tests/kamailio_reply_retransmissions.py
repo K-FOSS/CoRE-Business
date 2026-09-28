@@ -72,7 +72,7 @@ class SipStream:
         for _ in range(10):
             headers, body = self.read()
             if headers.startswith('SIP/2.0 200'):
-                return body
+                return headers, body
         raise AssertionError('No 200 OK received')
 
 
@@ -139,7 +139,7 @@ def harness():
         if line.lower().startswith(('via:', 'from:', 'to:', 'call-id:', 'cseq:', 'record-route:')):
             response_headers.append(line + (';tag=fixture-to' if line.lower().startswith('to:') else ''))
     private_body = body.replace('192.0.2.10', '172.20.50.82').replace('18000', '11000')
-    response_headers += ['Contact: <sip:fax@127.0.0.1:16061;transport=tcp>',
+    response_headers += ['Contact: <sip:fax@127.0.0.1:16061;transport=tls>',
                          'Content-Type: application/sdp', f'Content-Length: {len(private_body)}']
     response = ('\r\n'.join(response_headers) + '\r\n\r\n' + private_body).encode()
     upstream = SipStream(caller)
@@ -147,10 +147,14 @@ def harness():
     for delay in (0, 0.2, 2, 4):
         time.sleep(delay)
         downstream.sendall(response)
-        received = upstream.final()
+        response_headers, received = upstream.final()
+        contact = re.search(r'(?im)^Contact:\s*<([^>]+)>', response_headers)
+        assert contact, 'Contact missing from a forwarded 200 OK'
         print(json.dumps({'reply': len(outputs) + 1,
+                          'contact': contact[1],
                           'connection': re.search(r'(?m)^c=([^\r\n]+)', received)[1],
                           'media': re.search(r'(?m)^m=([^\r\n]+)', received)[1]}), flush=True)
+        assert contact[1].startswith('sips:'), 'Insecure SIP Contact escaped in a 200 OK'
         assert f'c=IN IP4 {PUBLIC}\r\n' in received, 'Unrewritten address escaped in a 200 OK'
         assert f'm=audio {PUBLIC_PORT} ' in received, 'Unrewritten RTP port escaped in a 200 OK'
         assert '172.20.50.82' not in re.search(r'(?m)^c=.*', received)[0]
