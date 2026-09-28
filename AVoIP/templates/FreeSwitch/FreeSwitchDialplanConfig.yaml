@@ -106,14 +106,10 @@ data:
             <!-- Flowroute uses flowroute@sip.resolvemy.host as the rendezvous
                  user; route the DID carried in the To URI into the normal
                  voice or dedicated fax extension. -->
-            {{- if and $.Values.freeswitch.fax.enabled $.Values.fax.did }}
-            <condition field="${sip_to_user}" expression="^[+]?{{ $.Values.fax.did }}$">
-              <action application="transfer" data="{{ $.Values.fax.did }} XML public"/>
-            </condition>
-            {{- end }}
-            <condition field="${sip_to_user}" expression="^[+]?{{ $.Values.avoip.did }}$">
-              <action application="transfer" data="{{ $.Values.avoip.did }} XML public"/>
-            </condition>
+            <action application="set" data="called_did=${sip_to_user}"/>
+            <action application="set" data="called_did=${regex(${called_did}|^\+?([0-9]+)$|%1)}"/>
+            <action application="log" data="INFO Flowroute called DID normalized to ${called_did}"/>
+            <action application="transfer" data="${called_did} XML public"/>
             <action application="log" data="WARNING AVoIP rejecting Flowroute rendezvous with unsupported To user ${sip_to_user}"/>
             <action application="hangup" data="CALL_REJECTED"/>
           </condition>
