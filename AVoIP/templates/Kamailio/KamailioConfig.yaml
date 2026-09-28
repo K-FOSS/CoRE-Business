@@ -167,7 +167,7 @@ data:
         # Route header. It is already restricted by the Flowroute source ACL;
         # relay this ACK to the private FreeSWITCH edge so the UAS can match the
         # established dialog instead of rejecting it as an unroutable request.
-        if (is_method("ACK") && !has_hf("Route")) {
+        if (is_method("ACK") && !is_present_hf("Route")) {
           {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
           xlog("L_WARN", "SIP diagnostic ACK fallback=no-route source=$si:$sp ruri=$ru callid=$ci\n");
           {{- end }}
