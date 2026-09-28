@@ -100,7 +100,7 @@ data:
   kamailio.xml: |
     <profile name="kamailio">
       <settings>
-        <param name="sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
+        <param name="sip-port" value="5060"/>
         <!-- Kamailio signaling is TLS-only; tls-only suppresses the plain
              UDP/TCP sip-port and binds only the TLS port. -->
         <param name="tls" value="true"/>
