@@ -37,7 +37,7 @@ data:
             <action application="log" data="INFO AVoIP inbound media answer uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
             {{- end }}
             {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
-            <action application="playback" data="shout://{{ trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url }}"/>
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
             {{- end }}
           </condition>
         </extension>
