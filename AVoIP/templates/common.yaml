@@ -1105,6 +1105,11 @@ service:
           start: {{ .Values.rtpengine.media.min }}
           end: {{ sub (.Values.rtpengine.media.max | int) 1 }}
         protocol: UDP
+      rtp-tcp:
+        portRange:
+          start: {{ .Values.rtpengine.media.min }}
+          end: {{ sub (.Values.rtpengine.media.max | int) 1 }}
+        protocol: TCP
 {{- end }}
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
   rtpengine-valkey-proxy:
