@@ -318,7 +318,7 @@ freeswitch:
     # Controlled bring-up mode for proving the initial G.711 path. Keep false
     # in normal operation; it disables the T.38 request only for fax-receive.
     g711Only:
-      enabled: false
+      enabled: true
     detection:
       # Temporary diagnostics for the generic fax-tone detector.
       verbose: true
