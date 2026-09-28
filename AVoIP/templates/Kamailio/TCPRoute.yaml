@@ -6,9 +6,9 @@ kind: TCPRoute
 metadata:
   name: {{ $fullName }}-kamailio
   annotations:
-    external-dns.kubernetes.io/hostname: '{{ .Values.kamailio.advertisedHost }}'
+    external-dns.kubernetes.io/hostname: '{{ .Values.sip.globalHost }},{{ include "avoip.sip.siteHost" . }}'
     # TODO: Remove the legacy ExternalDNS annotation after all controllers use v0.22.0+.
-    external-dns.alpha.kubernetes.io/hostname: '{{ .Values.kamailio.advertisedHost }}'
+    external-dns.alpha.kubernetes.io/hostname: '{{ .Values.sip.globalHost }},{{ include "avoip.sip.siteHost" . }}'
 
   labels:
     wan-mode: public

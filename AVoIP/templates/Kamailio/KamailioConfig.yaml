@@ -1,6 +1,9 @@
 {{- if .Values.kamailio.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $backendService := default (printf "%s-freeswitch" $fullName) .Values.kamailio.backend.serviceName -}}
+{{- $siteHost := include "avoip.sip.siteHost" . -}}
+{{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") -}}
+{{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -24,8 +27,11 @@ data:
     tcp_accept_haproxy=yes
     # Required for both the private TLS listener and TLS relays to FreeSWITCH.
     enable_tls=1
-    listen=tcp:0.0.0.0:5061 advertise "{{ .Values.kamailio.advertisedHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"
-    listen=tls:0.0.0.0:5062 advertise "{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}":5062 name "private_tls"
+    listen=tcp:0.0.0.0:5061 advertise "{{ $siteHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"
+    listen=tls:0.0.0.0:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
+    alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
+    alias="{{ $siteHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
+    alias="{{ $kamailioHost }}:5062"
 
     loadmodule "tm.so"
     loadmodule "sl.so"
@@ -38,6 +44,7 @@ data:
     loadmodule "xlog.so"
     loadmodule "tls.so"
     modparam("tls", "config", "/etc/kamailio/tls.cfg")
+    modparam("tls", "xavp_cfg", "tls")
     {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") }}
     loadmodule "siptrace.so"
     {{- end }}
@@ -182,9 +189,9 @@ data:
         # TLS is terminated by the Gateway before the PROXY-v2 TCP stream
         # reaches Kamailio; the private dialog leg remains TLS end-to-end.
         {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-        xlog("L_INFO", "SIP diagnostic initial-route transport=tcp public_route=tls:{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedTLSPort }} internal_route=tls:5062 callid=$ci\n");
+        xlog("L_INFO", "SIP diagnostic initial-route transport=tcp public_route=tls:{{ $siteHost }}:{{ .Values.kamailio.advertisedTLSPort }} internal_route=tls:5062 callid=$ci\n");
         {{- end }}
-        record_route_preset("{{ $fullName }}-kamailio.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:5062;transport=tls;sn=private_tls", "{{ .Values.kamailio.advertisedHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tcp");
+        record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $siteHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tcp");
         add_rr_param(";r2=on");
         {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
         route(MEDIA_INITIAL);
@@ -231,7 +238,8 @@ data:
       # in-dialog traffic. Initial/public requests have no destination yet and
       # are sent to the private FreeSWITCH SIP edge.
       if ($du == $null || $du == "") {
-        $du = "sip:{{ $backendService }}.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.kamailio.backend.servicePort }};transport=tls";
+        $du = "sip:{{ $freeswitchHost }}:{{ $.Values.kamailio.backend.servicePort }};transport=tls";
+        $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
       }
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP relay proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp destination=$du callid=$ci\n");
@@ -315,8 +323,7 @@ data:
     }
     {{- end }}
   tls.cfg: |
-    # Private Kamailio TLS listener and FreeSWITCH TLS client profile. The
-    # pod-network hop does not require client-certificate verification.
+    # Private Kamailio TLS listener and verified FreeSWITCH TLS client.
     [server:default]
     method = TLSv1.2+
     verify_certificate = no
@@ -326,8 +333,9 @@ data:
 
     [client:default]
     method = TLSv1.2+
-    verify_certificate = no
+    verify_certificate = yes
     require_certificate = no
+    ca_list = /etc/ssl/certs/ca-certificates.crt
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 {{- end }}

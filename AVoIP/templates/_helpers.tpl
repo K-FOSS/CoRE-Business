@@ -32,3 +32,15 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- define "avoip.rtpengine.valkeyProxyName" -}}
 {{- printf "%s-rtp-valkey" (include "avoip.fullname" .) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{- define "avoip.sip.siteHost" -}}
+{{- $derived := printf "sip.%s.%s.%s.resolvemy.host" .Values.cluster.name .Values.datacenter .Values.region -}}
+{{- default (default $derived .Values.kamailio.advertisedHost) .Values.sip.siteHost -}}
+{{- end -}}
+
+{{- define "avoip.sip.serviceHost" -}}
+{{- $root := .root -}}
+{{- $component := .component -}}
+{{- $override := index (index $root.Values $component) "sip" "serviceHost" -}}
+{{- default (printf "%s-%s.%s.svc.%s" (include "avoip.fullname" $root) $component $root.Release.Namespace (required "cluster.domain is required for SIP service identities" $root.Values.cluster.domain)) $override -}}
+{{- end -}}

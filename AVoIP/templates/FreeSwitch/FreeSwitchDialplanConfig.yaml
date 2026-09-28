@@ -3,6 +3,9 @@
 {{- if and .Values.freeswitch.fax.enabled (le (int .Values.freeswitch.fax.t38.rxReinvitePacketCount) 0) }}
 {{- fail "freeswitch.fax.t38.rxReinvitePacketCount must be greater than zero" }}
 {{- end }}
+{{- if and .Values.freeswitch.fax.enabled .Values.fax.did (eq (toString .Values.fax.did) (toString .Values.avoip.did)) }}
+{{- fail "fax.did must differ from avoip.did" }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -15,62 +18,23 @@ data:
   public.xml: |
     <include>
       <context name="public">
-        {{- if and $.Values.freeswitch.fax.enabled $.Values.freeswitch.fax.testMode.enabled }}
-        <extension name="fax-test-did">
-          <condition field="destination_number" expression="^{{ $.Values.freeswitch.fax.testMode.did }}$">
+        {{- if and $.Values.freeswitch.fax.enabled $.Values.fax.did }}
+        <extension name="dedicated-fax-did">
+          <condition field="destination_number" expression="^{{ $.Values.fax.did }}$">
             <action application="set" data="fax_original_destination=${destination_number}"/>
-            <action application="log" data="INFO AVoIP fax test mode: direct fax receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
-            {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
-            <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
-            {{- end }}
+            <action application="log" data="INFO AVoIP dedicated fax DID: direct receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
             <action application="transfer" data="fax-receive XML public"/>
           </condition>
         </extension>
         {{- end }}
-        {{- if and $.Values.freeswitch.fax.enabled (not $.Values.freeswitch.fax.testMode.enabled) }}
-        {{- range $sender := $.Values.freeswitch.fax.knownSenders }}
-        <extension name="fax-known-{{ trimPrefix "+" $sender }}">
-          <condition field="destination_number" expression="^{{ $.Values.freeswitch.did }}$">
-            <condition field="caller_id_number" expression="^\+{{ trimPrefix "+" $sender }}$">
-              <action application="set" data="fax_original_destination=${destination_number}"/>
-              <action application="log" data="INFO AVoIP known fax sender: direct fax receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
-            {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
-              <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
-            {{- end }}
-              <action application="transfer" data="fax-receive XML public"/>
-            </condition>
-          </condition>
-        </extension>
-        {{- end }}
-        {{- end }}
-        {{- if or $.Values.freeswitch.fax.enabled $.Values.freeswitch.preBridgeAudio.enabled }}
+        {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled }}
         <extension name="did-post-answer">
           <condition field="destination_number" expression="^did-post-answer$">
             {{- if $.Values.freeswitch.media.diagnostics.enabled }}
-            <!-- Capture the answered inbound leg before fax detection or
-                 application media changes it. The hangup hook remains active
-                 for both phone and fax calls. -->
+            <!-- Capture the answered inbound voice leg. -->
             <action application="set" data="log_audio_stats_on_hangup=true"/>
             <action application="set_media_stats"/>
             <action application="log" data="INFO AVoIP inbound media answer uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
-            {{- end }}
-            {{- if $.Values.freeswitch.fax.enabled }}
-            <!-- The inbound leg stays in ringing state until Asterisk answers.
-                 Fax detection therefore starts only after the bridge answers. -->
-            <action application="set" data="fax_enable_t38=true"/>
-            <action application="set" data="fax_enable_t38_request=true"/>
-            <action application="set" data="fax_verbose={{ $.Values.freeswitch.fax.detection.verbose }}"/>
-            <action application="set" data="fax_tone_detect_expires={{ $.Values.freeswitch.fax.detection.expires }}"/>
-            <action application="set" data="fax_tone_detect_sleep={{ $.Values.freeswitch.fax.detection.sleep }}"/>
-            <action application="export" data="execute_on_fax_detect=execute_extension fax-receive XML public"/>
-            {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
-            <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
-            <action application="set" data="avoip_audio_recording_started=true"/>
-            {{- end }}
-            <action application="fax_detect"/>
-            <!-- Preserve the established roughly 10-second detection window. -->
-            <action application="sleep" data="10"/>
-            <action application="log" data="INFO AVoIP DID ${destination_number}: post-answer fax detection window completed"/>
             {{- end }}
             {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
             <action application="playback" data="shouts://{{ trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url }}"/>
@@ -79,14 +43,14 @@ data:
         </extension>
         {{- end }}
         <extension name="flowroute-did">
-          <condition field="destination_number" expression="^{{ $.Values.freeswitch.did }}$">
+          <condition field="destination_number" expression="^{{ $.Values.avoip.did }}$">
             <action application="set" data="outside_call=true"/>
             <action application="log" data="INFO AVoIP DID ${destination_number}: received call"/>
             {{- if $.Values.freeswitch.media.diagnostics.enabled }}
             <action application="set" data="log_audio_stats_on_hangup=true"/>
             <action application="set" data="execute_on_media=log INFO AVoIP inbound media established uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec}"/>
             {{- end }}
-            {{- if or $.Values.freeswitch.fax.enabled $.Values.freeswitch.preBridgeAudio.enabled }}
+            {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled }}
             <action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>
             {{- end }}
             <!-- Keep the carrier leg ringing until Asterisk returns 200 OK. -->
@@ -99,9 +63,7 @@ data:
         <extension name="fax-receive">
           <condition field="destination_number" expression="^fax-receive$">
             <action application="log" data="INFO AVoIP fax receive start caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid}"/>
-            <!-- Flowroute starts fax calls as G.711. g711Only is a temporary,
-                 values-controlled diagnostic mode; it proves initial PCMU
-                 delivery without changing the normal T.38 fallback path. -->
+            <!-- The dedicated DID starts with G.711 and may negotiate T.38. -->
             {{- if $.Values.freeswitch.fax.g711Only.enabled }}
             <action application="set" data="fax_enable_t38=false"/>
             <action application="set" data="fax_enable_t38_request=false"/>
@@ -110,6 +72,7 @@ data:
             <action application="set" data="fax_enable_t38=true"/>
             <action application="set" data="fax_enable_t38_request=true"/>
             {{- end }}
+            <action application="set" data="fax_verbose=true"/>
             <action application="set" data="fax_t38_rx_reinvite_packet_count={{ $.Values.freeswitch.fax.t38.rxReinvitePacketCount }}"/>
             <action application="set" data="fax_disable_v17={{ $.Values.freeswitch.fax.t38.disableV17 }}"/>
             <action application="set" data="fax_use_ecm={{ $.Values.freeswitch.fax.t38.useEcm }}"/>

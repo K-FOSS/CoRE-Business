@@ -89,7 +89,7 @@ controllers:
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls'
     initContainers:
 {{- if .Values.asterisk.cdr.enabled }}
       cdr-schema:
@@ -308,7 +308,7 @@ controllers:
         # shared certificate material changes so listeners and media routes are
         # loaded from one consistent configuration set.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-config'
-        secret.reloader.stakater.com/reload: 'resolvemyhost-default-certificates'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
     containers:
       kamailio:
         command:
@@ -446,7 +446,7 @@ controllers:
 {{- end }}
 {{- end }}
 {{- if and .Values.homer.enabled (eq .Values.cluster.type "hub") .Values.kamailio.enabled }}
-            --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepPort }}
+            --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepTCPPort }}
             --homer-protocol=tcp
             --homer-id=102
             --homer-enable-ng
@@ -667,7 +667,9 @@ controllers:
         # consistently instead of retaining a mixed in-memory configuration.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
 {{- if .Values.freeswitch.sms.enabled }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
+{{- else }}
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
 {{- end }}
     initContainers:
 {{- if .Values.freeswitch.cdr.enabled }}
@@ -740,7 +742,7 @@ controllers:
           - |
             umask 077
             cat /tls-input/tls.crt /tls-input/tls.key > /tls-output/agent.pem
-            cp /tls-input/tls.crt /tls-output/cafile.pem
+            cp /etc/ssl/certs/ca-certificates.crt /tls-output/cafile.pem
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -936,6 +938,12 @@ service:
   asterisk:
     forceRename: '{{ include "avoip.fullname" . }}-asterisk'
     controller: asterisk
+    annotations:
+      external-dns.kubernetes.io/hostname: '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}'
+      external-dns.alpha.kubernetes.io/hostname: '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
     extraSelectorLabels:
       app: '{{ include "avoip.fullname" . }}-asterisk'
     ports:
@@ -947,12 +955,22 @@ service:
         port: 5060
         targetPort: udp-sip
         protocol: UDP
+      tls-sips:
+        port: 5061
+        targetPort: tls-sips
+        protocol: TCP
 {{- end }}
 {{- if .Values.kamailio.enabled }}
 {{- if .Values.kamailio.publicExposure.enabled }}
   kamailio:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio'
     controller: kamailio
+    annotations:
+      external-dns.kubernetes.io/hostname: '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") }}'
+      external-dns.alpha.kubernetes.io/hostname: '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") }}'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
     ports:
       tcp-sip:
         port: 5061
@@ -986,6 +1004,12 @@ service:
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
     controller: freeswitch
+    annotations:
+      external-dns.kubernetes.io/hostname: '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
+      external-dns.alpha.kubernetes.io/hostname: '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
     ports:
       tcp-sip:
         port: 5060
@@ -1141,6 +1165,13 @@ persistence:
             subPath: username
           - path: /tmp/avoip-password
             subPath: password
+  asterisk-sip-tls:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-asterisk-sip-tls'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /etc/asterisk/tls
   asterisk-tmp:
     type: emptyDir
     advancedMounts:
@@ -1197,7 +1228,7 @@ persistence:
             subPath: tls.cfg
   kamailio-tls:
     type: secret
-    name: resolvemyhost-default-certificates
+    name: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
     advancedMounts:
       kamailio:
         kamailio:
@@ -1242,7 +1273,7 @@ persistence:
 {{- end }}
   freeswitch-tls-source:
     type: secret
-    name: resolvemyhost-default-certificates
+    name: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
     advancedMounts:
       freeswitch:
         tls-material:

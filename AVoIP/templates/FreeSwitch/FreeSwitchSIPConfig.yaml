@@ -18,22 +18,33 @@ data:
         <gateways>
           <gateway name="asterisk">
             <param name="username" value="freeswitch"/>
-            <param name="realm" value="{{ $.Values.network.externalIP }}"/>
-            <param name="password" value="unused-but-required-field"/>
-            <param name="from-domain" value="{{ $.Values.network.externalIP }}"/>
-            <param name="proxy" value="{{ $fullName }}-asterisk.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}"/>
+            <param name="realm" value="{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}"/>
+            <param name="from-domain" value="{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}"/>
+            <param name="proxy" value="{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}:5061;transport=tls"/>
+            <param name="register-transport" value="tls"/>
             <param name="register" value="false"/>
             <param name="cid-type" value="pid"/>
             <param name="rfc-5626" value="true"/>
           </gateway>
         </gateways>
         <settings>
+            <param name="sip-port" value="5060"/>
+            <param name="tls" value="true"/>
+            <param name="tls-only" value="true"/>
+            <param name="tls-sip-port" value="5062"/>
+            <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
+            <param name="tls-verify-date" value="true"/>
+            <param name="tls-verify-policy" value="subjects_out"/>
+            <param name="tls-verify-depth" value="3"/>
             <param name="apply-inbound-acl" value="asterisk"/>
             <param name="auth-calls" value="true"/>
             <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
             <param name="context" value="public"/>
-            <param name="rtp-ip" value="0.0.0.0"/>
-            <param name="sip-ip" value="0.0.0.0"/>
+            <param name="rtp-ip" value="$${local_ip_v4}"/>
+            <param name="sip-ip" value="$${local_ip_v4}"/>
+            <param name="sip-domain" value="$${private_sip_host}"/>
+            <param name="ext-sip-ip" value="host:$${private_sip_host}"/>
+            <param name="ext-sip-port" value="5062"/>
         </settings>
     </profile>
   external.xml: |
@@ -69,7 +80,7 @@ data:
         <param name="rtp-ip" value="$${local_ip_v4}"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
         <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
-        <param name="ext-sip-ip" value="$${external_sip_ip}"/>
+        <param name="ext-sip-ip" value="host:$${external_sip_ip}"/>
         <param name="rtp-timeout-sec" value="300"/>
         <param name="rtp-hold-timeout-sec" value="1800"/>
         <param name="tls" value="$${external_ssl_enable}"/>
@@ -79,7 +90,7 @@ data:
         <param name="tls-cert-dir" value="/etc/freeswitch/tls" />
         <param name="tls-passphrase" value=""/>
         <param name="tls-verify-date" value="true"/>
-        <param name="tls-verify-policy" value="none"/>
+        <param name="tls-verify-policy" value="subjects_out"/>
         <param name="tls-verify-depth" value="2"/>
         <param name="tls-verify-in-subjects" value=""/>
         <param name="tls-version" value="$${sip_tls_version}"/>
@@ -98,7 +109,7 @@ data:
         <param name="tls-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
         <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
         <param name="tls-verify-date" value="true"/>
-        <param name="tls-verify-policy" value="none"/>
+        <param name="tls-verify-policy" value="subjects_out"/>
         <param name="tls-version" value="$${sip_tls_version}"/>
         <param name="tls-ciphers" value="$${sip_tls_ciphers}"/>
         <param name="dialplan" value="XML"/>
@@ -108,7 +119,9 @@ data:
         <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
         <param name="rtp-ip" value="$${local_ip_v4}"/>
-        <param name="ext-sip-ip" value="$${external_sip_ip}"/>
+        <param name="sip-domain" value="$${external_sip_ip}"/>
+        <param name="ext-sip-ip" value="host:$${external_sip_ip}"/>
+        <param name="ext-sip-port" value="{{ $.Values.kamailio.advertisedTLSPort }}"/>
         <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
         <param name="inbound-late-negotiation" value="true"/>
         <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>

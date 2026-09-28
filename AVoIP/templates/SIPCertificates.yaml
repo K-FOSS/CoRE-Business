@@ -1,0 +1,42 @@
+{{- if .Values.kamailio.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
+spec:
+  secretName: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
+  dnsNames:
+    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") }}'
+  issuerRef:
+    kind: ClusterIssuer
+    name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
+{{- end }}
+{{- if .Values.freeswitch.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
+spec:
+  secretName: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
+  dnsNames:
+    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
+  issuerRef:
+    kind: ClusterIssuer
+    name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
+{{- end }}
+{{- if .Values.asterisk.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: '{{ include "avoip.fullname" . }}-asterisk-sip-tls'
+spec:
+  secretName: '{{ include "avoip.fullname" . }}-asterisk-sip-tls'
+  dnsNames:
+    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}'
+  issuerRef:
+    kind: ClusterIssuer
+    name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
+{{- end }}

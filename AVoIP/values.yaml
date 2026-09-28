@@ -47,8 +47,24 @@ flowroute:
     - '34.210.91.112/28'
     - '34.226.36.32/28'
 
+sip:
+  globalHost: 'sip.resolvemy.host'
+  # Empty derives sip.<cluster>.<datacenter>.<region>.resolvemy.host.
+  siteHost: ''
+  tls:
+    issuerName: 'kjdev-cluster'
+
+avoip:
+  did: '18077893501'
+
+fax:
+  # Supplied by the owning Backplane ApplicationSet at each site.
+  did: ''
+
 kamailio:
   enabled: true
+  sip:
+    serviceHost: ''
   sipLogging:
     # Compact SIP request, relay, response, and rejection markers only.
     enabled: true
@@ -84,8 +100,9 @@ kamailio:
   # The public TLS leg retains the hostname used by the Gateway certificate and
   # TCP route. The old UDP advertisement remains only for overlay compatibility;
   # no UDP listener or Service is rendered.
-  advertisedUDPHost: '66.165.222.103'
-  advertisedHost: 'sip.resolvemy.host'
+  advertisedUDPHost: ''
+  # Legacy override; leave empty to derive the site SIP identity.
+  advertisedHost: ''
   advertisedUDPPort: 5060
   advertisedTLSPort: 5081
   image:
@@ -224,7 +241,7 @@ jitsi:
 
 network:
   externalIP: '66.165.222.101'
-  egressIP: '66.165.222.120'
+  egressIP: ''
   # Leave Cilium egress pinning disabled unless the cluster has a working
   # CiliumEgressGatewayPolicy path. Normal node/NAT egress may use 66.165.222.98
   # or 66.165.222.99 at the site edge.
@@ -233,6 +250,8 @@ network:
 
 asterisk:
   enabled: false
+  sip:
+    serviceHost: ''
   # Asterisk and FreeSWITCH communicate over the cluster pod network. Leave
   # external media/signaling addresses unset so PJSIP advertises the pod IP.
   localNet: '172.16.0.0/12'
@@ -260,6 +279,8 @@ asterisk:
 
 freeswitch:
   enabled: false
+  sip:
+    serviceHost: ''
   publicExposure:
     enabled: false
     # PureLB address reserved for the public FreeSWITCH RTP service.
@@ -302,7 +323,6 @@ freeswitch:
     tag: 'latest'
     digest: 'sha256:0355ade37781ac9e5f5ecfd29aa1d094d31f96a462c6f4d2f343268aaacefec1'
     pullPolicy: 'IfNotPresent'
-  did: '18077893501'
   fax:
     enabled: true
     spoolPath: '/var/spool/freeswitch/fax'
@@ -318,20 +338,7 @@ freeswitch:
     # Controlled bring-up mode for proving the initial G.711 path. Keep false
     # in normal operation; it disables the T.38 request only for fax-receive.
     g711Only:
-      enabled: true
-    detection:
-      # Temporary diagnostics for the generic fax-tone detector.
-      verbose: true
-      expires: 10
-      sleep: 0
-    testMode:
-      # Enable for a deterministic public fax test. Roll back to false to
-      # restore the shared voice/fax detection path.
       enabled: false
-      did: '16047572053'
-    knownSenders:
-      - '+18772333839'
-      - '+13072199333'
     persistence:
       enabled: true
       storageClass: 'longhorn'

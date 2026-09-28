@@ -15,10 +15,16 @@ data:
     ; connection Secret at startup. Credentials never enter this ConfigMap.
     #include /tmp/avoip-pjsip-auth.conf
 
-    [transport-udp]
+    [transport-tls]
     type=transport
-    protocol=udp
-    bind=0.0.0.0
+    protocol=tls
+    bind=0.0.0.0:5061
+    cert_file=/etc/asterisk/tls/tls.crt
+    priv_key_file=/etc/asterisk/tls/tls.key
+    ca_list_file=/etc/ssl/certs/ca-certificates.crt
+    method=tlsv1_2
+    verify_client=no
+    verify_server=yes
     local_net={{ $.Values.asterisk.localNet }}
 {{- with $.Values.asterisk.externalMediaAddress }}
     external_media_address={{ . }}
@@ -29,7 +35,7 @@ data:
 
     [freeswitch]
     type=endpoint
-    transport=transport-udp
+    transport=transport-tls
     outbound_auth=freeswitch-auth
     trust_id_inbound=yes
     trust_id_outbound=yes
@@ -47,5 +53,5 @@ data:
 
     [freeswitch]
     type=aor
-    contact=sip:{{ $fullName }}-freeswitch.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}
+    contact=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:5062;transport=tls
 {{- end }}
