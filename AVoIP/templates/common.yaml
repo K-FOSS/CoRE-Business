@@ -309,18 +309,6 @@ controllers:
         # loaded from one consistent configuration set.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-config'
         secret.reloader.stakater.com/reload: 'resolvemyhost-default-certificates'
-{{- if (include "avoip.rtpengine.enabled" . | trim) }}
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - '{{ include "avoip.fullname" . }}-rtpengine'
-              topologyKey: kubernetes.io/hostname
-{{- end }}
     containers:
       kamailio:
         command:
@@ -427,18 +415,7 @@ controllers:
         # values change therefore changes the pod template and rolls the
         # workload through Argo CD; there are no mounted RTPEngine configmaps
         # for a live-reload annotation to watch.
-{{- if .Values.kamailio.enabled }}
       affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app
-                    operator: In
-                    values:
-                      - '{{ include "avoip.fullname" . }}-kamailio'
-              topologyKey: kubernetes.io/hostname
-{{- end }}
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
