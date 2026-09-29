@@ -92,7 +92,6 @@ data:
             <action application="log" data="INFO AVoIP fax parameters uuid=${uuid} call_id=${sip_call_id} caller=${caller_id_number} did=${fax_original_destination} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} t38=${fax_t38_status} rx_reinvite_packets=${fax_t38_rx_reinvite_packet_count} enable_t38=${fax_enable_t38} enable_t38_request=${fax_enable_t38_request} disable_v17=${fax_disable_v17} use_ecm=${fax_use_ecm}"/>
             <!-- Send provisional ringback before answering the fax endpoint. -->
             <action application="ring_ready"/>
-            <action application="sleep" data="2000"/>
             <action application="answer"/>
             <!-- Send the fax called-station tone so human callers hear the endpoint is ready. -->
             <action application="playback" data="tone_stream://%(3000,0,2100)"/>
