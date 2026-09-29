@@ -133,7 +133,12 @@ def harness():
     ]
     caller.sendall('\r\n'.join(headers).encode())
     downstream, _ = backend.accept()
-    request_headers, _ = SipStream(downstream).read()
+    downstream_stream = SipStream(downstream)
+    request_headers, _ = downstream_stream.read()
+    internal_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', request_headers)
+    assert len(internal_rr) == 2, f'FreeSWITCH leg lost its two-sided route set: {internal_rr}'
+    assert any('.svc.' in value for value in internal_rr), 'Private Service route missing on FreeSWITCH leg'
+    assert any('sip.resolvemy.host:5061' in value for value in internal_rr), 'Canonical public route missing'
     response_headers = ['SIP/2.0 200 OK']
     for line in request_headers.split('\r\n')[1:]:
         if line.lower().startswith(('via:', 'from:', 'to:', 'call-id:', 'cseq:', 'record-route:')):
@@ -152,6 +157,10 @@ def harness():
         assert contact, 'Contact missing from a forwarded 200 OK'
         assert re.fullmatch(r'sips:[^@]+@sip\.resolvemy\.host:5061;transport=tls', contact[1]), \
             f'Public Contact is not the canonical TLS identity: {contact[1]}'
+        public_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', response_headers)
+        assert len(public_rr) == 1, f'Carrier response must contain only the public Record-Route: {public_rr}'
+        assert 'sip.resolvemy.host:5061' in public_rr[0], f'Canonical public Record-Route missing: {public_rr}'
+        assert '.svc.' not in '\n'.join(public_rr), f'Private Service Record-Route leaked to caller: {public_rr}'
         print(json.dumps({'reply': len(outputs) + 1,
                           'contact': contact[1],
                           'connection': re.search(r'(?m)^c=([^\r\n]+)', received)[1],
@@ -163,6 +172,23 @@ def harness():
         outputs.append(received)
     assert len(set(outputs)) == 1, '200 OK retransmission bodies differ'
     assert commands.count('answer') == 4, f'Reply bypassed NG answer handling: {commands}'
+
+    # A carrier-side 2xx ACK carries only the public Route URI. It must pass
+    # through loose_route and be sent to the private FreeSWITCH backend.
+    call_id_ack = ('\r\n'.join([
+        'ACK sips:fax@sip.resolvemy.host:5061;transport=tls SIP/2.0',
+        f'Via: SIP/2.0/TCP 127.0.0.1:{caller_port};branch=z9hG4bK{call_id}-ack;rport',
+        'From: <sip:fixture@localhost>;tag=fixture-from',
+        'To: <sip:fax@localhost>;tag=fixture-to',
+        f'Call-ID: {call_id}', 'CSeq: 1 ACK', f'Route: {public_rr[0]}',
+        'Max-Forwards: 70', 'Content-Length: 0', '', '',
+    ])).encode()
+    caller.sendall(call_id_ack)
+    ack_headers, _ = downstream_stream.read(timeout=5)
+    assert ack_headers.startswith('ACK '), f'2xx ACK did not reach FreeSWITCH: {ack_headers}'
+    assert f'Call-ID: {call_id}' in ack_headers
+    assert 'tag=fixture-from' in ack_headers and 'tag=fixture-to' in ack_headers
+
     fail_answers.set()
     downstream.sendall(response)
     try:
@@ -172,6 +198,8 @@ def harness():
     else:
         raise AssertionError('Final SDP response escaped after RTPEngine failure')
     print(json.dumps({'forwarded_200': len(outputs), 'identical_bodies': True,
+                      'carrier_record_routes': 1, 'private_route_retained_for_backend': True,
+                      'carrier_ack_reached_backend': True,
                       'connection': PUBLIC, 'audio_port': PUBLIC_PORT,
                       'failed_rewrite_dropped': True, 'ng_answers': commands.count('answer')}))
 
@@ -187,7 +215,8 @@ def fixture_config(source):
     cfg = re.sub(r'modparam\("rtpengine", "rtpengine_sock", "[^"]+"\)',
                  'modparam("rtpengine", "rtpengine_sock", "udp:127.0.0.1:12223")', cfg)
     cfg = re.sub(r'\$du = "sip:[^"]+";', '$du = "sip:127.0.0.1:16061;transport=tcp";', cfg)
-    cfg = cfg.replace('request_route {', 'request_route {\n  if (src_ip == 127.0.0.1) { route(FLOWROUTE_AUTHORIZED); exit; }', 1)
+    cfg = cfg.replace('34.210.91.112/28', '127.0.0.1')
+    cfg = cfg.replace('request_route {', 'request_route {\n  if (src_ip == 127.0.0.1) { if (has_totag()) { route(IN_DIALOG); exit; } route(FLOWROUTE_AUTHORIZED); exit; }', 1)
     return cfg
 
 

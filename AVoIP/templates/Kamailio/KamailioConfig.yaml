@@ -229,6 +229,16 @@ data:
       # RELAY send that established request back to FreeSWITCH.  The Contact
       # selected by the route set is the destination for this hop, including
       # backend-originated BYE and carrier ACK requests.
+      # Flowroute receives only the public Record-Route URI. Once loose_route()
+      # processes that route, its Request-URI is FreeSWITCH's public Contact
+      # identity; resolve every carrier-facing dialog request to the private
+      # backend service instead of sending it back to public ingress.
+      {{- range .Values.flowroute.signalingCIDRs }}
+      if (src_ip == {{ . }}) {
+        $du = "sip:{{ $freeswitchHost }}:{{ $.Values.kamailio.backend.servicePort }};transport=tls";
+        $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
+      }
+      {{- end }}
       if ($du == $null || $du == "") {
         $du = $ru;
       }
@@ -275,6 +285,10 @@ data:
     # statelessly after TM has removed the transaction. A named t_on_reply
     # callback alone misses those replies and cannot reliably drop final ones.
     reply_route {
+      # record_route_preset() inserts the private outbound-side URI first and
+      # the public inbound-side URI second. FreeSWITCH keeps both for its own
+      # route set, but do not disclose the private Service route to Flowroute.
+      remove_hf_idx("Record-Route", "0");
       # Flowroute must see a portable signaling target even when FreeSWITCH
       # resolves the public identity to its NAT address in Contact. Preserve
       # the Contact user and publish the configured canonical TLS identity.

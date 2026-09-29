@@ -49,11 +49,14 @@ python3 tests/kamailio_reply_retransmissions.py \
 ```
 
 The fixture sends an initial SDP offer and repeats the same backend `200 OK`
-immediately and after transaction expiry. It checks the bytes received by the
-caller, including Content-Length framing: every answer must have the same
-public connection address, allocated media port and complete body. It then
-injects an NG answer failure and checks that the final response is dropped.
-The mock's public address and port are test constants, not allocated live media.
+immediately and after transaction expiry. It checks that FreeSWITCH receives
+both Record-Route values while the caller receives only the canonical public
+route, and sends a 2xx ACK with that route to verify it reaches the backend
+through `loose_route()`. It also checks the bytes received by the caller,
+including Content-Length framing: every answer must have the same public
+connection address, allocated media port and complete body. It then injects an
+NG answer failure and checks that the final response is dropped. The mock's
+public address and port are test constants, not allocated live media.
 
 Temporary listeners bind only to `127.0.0.1` on TCP 15061, 15062 and 16061,
 and UDP 12223. Do not run multiple copies in one pod concurrently. The runner

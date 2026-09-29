@@ -58,6 +58,9 @@ def main():
     assert f'sip:{host(fs_name)}:5061;transport=tls' in kam
     assert f'{public_host}:5061;transport=tls;sn=public_tcp' in kam
     assert 'add_rr_param(";r2=on")' in kam
+    assert 'remove_hf_idx("Record-Route", "0")' in kam
+    assert 'Flowroute receives only the public Record-Route URI' in kam
+    assert f'$du = "sip:{host(fs_name)}:5061;transport=tls"' in kam
     assert 'loose_route()' in kam
     assert 'ACK fallback=no-route' not in kam
     assert 'sips?:([^@>]+)@[^>]+' in kam
