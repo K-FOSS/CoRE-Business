@@ -45,6 +45,29 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- default (printf "%s-%s.%s.svc.%s" (include "avoip.fullname" $root) $component $root.Release.Namespace (required "cluster.domain is required for SIP service identities" $root.Values.cluster.domain)) $override -}}
 {{- end -}}
 
+{{/* Merge shared and per-Service metadata while retaining chart-required defaults. */}}
+{{- define "avoip.service.options" -}}
+{{- $root := .root -}}
+{{- $serviceOptions := index ($root.Values.serviceOptions | default dict) .name | default dict -}}
+{{- $defaultOptions := index ($root.Values.serviceOptions | default dict) "defaults" | default dict -}}
+{{- $annotations := mergeOverwrite (deepCopy (.annotations | default dict)) (deepCopy ($defaultOptions.annotations | default dict)) (deepCopy ($serviceOptions.annotations | default dict)) -}}
+{{- $labels := mergeOverwrite (deepCopy ($defaultOptions.labels | default dict)) (deepCopy ($serviceOptions.labels | default dict)) (deepCopy (.labels | default dict)) -}}
+{{- if $annotations }}
+annotations:
+{{- toYaml $annotations | nindent 2 }}
+{{- end }}
+{{- if $labels }}
+labels:
+{{- toYaml $labels | nindent 2 }}
+{{- end }}
+{{- if .loadBalancer }}
+{{- $loadBalancerClass := default $defaultOptions.loadBalancerClass $serviceOptions.loadBalancerClass -}}
+{{- with $loadBalancerClass }}
+loadBalancerClass: '{{ . }}'
+{{- end }}
+{{- end }}
+{{- end -}}
+
 {{- define "avoip.homer.hostname" -}}
 {{- $override := .Values.homer.hostname -}}
 {{- default (printf "homer.%s.%s.%s.resolvemy.host" .Values.cluster.name .Values.datacenter .Values.region) $override -}}

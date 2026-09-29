@@ -8,6 +8,53 @@ env: 'prod'
 # common template populates it with the enabled Asterisk/FreeSWITCH controllers.
 controllers: {}
 
+# Metadata shared by every generated Service, with per-Service overrides.
+# Keys are generated Service names: asterisk, kamailio, kamailio-udp,
+# freeswitch, freeswitch-rtp, rtpengine, rtpengine-media,
+# rtpengine-valkey-proxy, homer-heplify, and homer-web. Annotations and labels
+# merge with chart defaults; required labels such as wan-mode remain enforced.
+# `loadBalancerClass` applies only to LoadBalancer Services; setting a class on
+# an existing Service may require Service recreation because Kubernetes makes
+# it immutable.
+serviceOptions:
+  defaults:
+    annotations: {}
+    labels: {}
+    loadBalancerClass: ''
+  asterisk:
+    annotations: {}
+    labels: {}
+  kamailio:
+    annotations: {}
+    labels: {}
+  kamailio-udp:
+    annotations: {}
+    labels: {}
+    loadBalancerClass: ''
+  freeswitch:
+    annotations: {}
+    labels: {}
+  freeswitch-rtp:
+    annotations: {}
+    labels: {}
+    loadBalancerClass: ''
+  rtpengine:
+    annotations: {}
+    labels: {}
+  rtpengine-media:
+    annotations: {}
+    labels: {}
+    loadBalancerClass: ''
+  rtpengine-valkey-proxy:
+    annotations: {}
+    labels: {}
+  homer-heplify:
+    annotations: {}
+    labels: {}
+  homer-web:
+    annotations: {}
+    labels: {}
+
 # Additional independent workloads (PBXs, organization services, voice workers).
 # Each entry has name, enabled, controller (BJW-S controller values), services,
 # configMaps, persistence, and networking. See docs/NETWORKING.md.
