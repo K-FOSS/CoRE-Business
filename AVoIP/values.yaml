@@ -98,7 +98,8 @@ sip:
     issuerName: 'kjdev-cluster'
 
 avoip:
-  did: '18077893501'
+  # Supplied by the owning ApplicationSet for clusters with FreeSWITCH enabled.
+  did: ''
 
 fax:
   # Supplied by the owning Backplane ApplicationSet at each site.

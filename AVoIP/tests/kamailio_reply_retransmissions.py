@@ -150,6 +150,8 @@ def harness():
         response_headers, received = upstream.final()
         contact = re.search(r'(?im)^Contact:\s*<([^>]+)>', response_headers)
         assert contact, 'Contact missing from a forwarded 200 OK'
+        assert re.fullmatch(r'sips:[^@]+@sip\.resolvemy\.host:5061;transport=tls', contact[1]), \
+            f'Public Contact is not the canonical TLS identity: {contact[1]}'
         print(json.dumps({'reply': len(outputs) + 1,
                           'contact': contact[1],
                           'connection': re.search(r'(?m)^c=([^\r\n]+)', received)[1],

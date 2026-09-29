@@ -114,8 +114,12 @@ private backend. Kamailio and FreeSWITCH can be enabled independently; when
 both are enabled, the default Kamailio backend is FreeSWITCH's private TLS-only
 SIP profile on port 5061. Kamailio uses an explicit two-sided Record-Route
 preset for the asymmetric edge: the internal route is Kamailio's private TLS
-Service on port 5062 and the external TLS route is the handling site's
-`sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` identity.
+Service on port 5062 and the external TLS route is the canonical
+`sip.resolvemy.host:5061` identity. Successful public 2xx Contacts preserve
+their called user while using the same canonical SIPS host. Every in-dialog
+request, including 2xx ACK, follows `loose_route()` through that route set;
+Kamailio does not guess a backend when a dialog Route header is missing.
+Site-specific SIP DNS remains available for site routing and observability.
 This prevents wildcard bind
 addresses such as `0.0.0.0` from being advertised in dialog routing. Compact
 Kamailio request, relay, response, rejection, and loose-route markers are

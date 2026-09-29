@@ -1,5 +1,33 @@
 # Kamailio reply regression
 
+## SIP identity render regression
+
+Render with representative values from the owning
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml),
+then run the YAML, Kamailio identity, private-service, Contact, RTPEngine,
+TLS, and DID checks:
+
+```sh
+helm lint .
+helm template avoip . -n core-prod -f values.yaml \
+  --set cluster.type=hub \
+  --set cluster.name=core-dc1-talos-prod \
+  --set cluster.domain=k3s.dc1.resolvemy.host \
+  --set asterisk.enabled=true \
+  --set freeswitch.enabled=true \
+  --set kamailio.advertisedHost=sip.core-dc1-talos-prod.dc1.yxl.resolvemy.host \
+  --set rtpengine.media.address=66.165.222.103 \
+  --set-string avoip.did=voice-fixture \
+  --set-string fax.did=fax-fixture > /tmp/avoip-render.yaml
+python3 tests/sip_identity_render.py /tmp/avoip-render.yaml \
+  --voice-did voice-fixture --fax-did fax-fixture \
+  --site-host sip.core-dc1-talos-prod.dc1.yxl.resolvemy.host \
+  --cluster-domain k3s.dc1.resolvemy.host
+```
+
+The route identities in this example are non-numeric render fixtures, not
+production DIDs or deployment values.
+
 `kamailio_reply_retransmissions.py` runs a separate instance of the deployed
 Kamailio binary with the rendered chart configuration. It substitutes loopback
 listeners, a local SIP backend, an authorized loopback caller and a mock
