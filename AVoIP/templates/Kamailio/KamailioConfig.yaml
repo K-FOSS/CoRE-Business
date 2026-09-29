@@ -2,7 +2,7 @@
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $backendService := default (printf "%s-freeswitch" $fullName) .Values.kamailio.backend.serviceName -}}
 {{- $siteHost := include "avoip.sip.siteHost" . -}}
-{{- $publicSipHost := .Values.sip.globalHost -}}
+{{- $publicSipHost := $siteHost -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 ---
