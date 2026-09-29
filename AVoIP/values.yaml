@@ -241,7 +241,7 @@ network:
     enabled: false
 
 asterisk:
-  enabled: false
+  enabled: true
   sip:
     serviceHost: ''
   # Asterisk and FreeSWITCH communicate over the cluster pod network. Leave
@@ -270,7 +270,7 @@ asterisk:
     max: 10100
 
 freeswitch:
-  enabled: false
+  enabled: true
   sip:
     serviceHost: ''
   publicExposure:
