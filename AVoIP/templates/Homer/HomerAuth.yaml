@@ -4,6 +4,7 @@
 {{- $oidcSlug := printf "%s-%s-%s-%s-managed" $oidc.applicationSlug $.Values.region $.Values.datacenter $.Values.cluster.name -}}
 {{- $forwardAuthSlug := printf "%s-%s-%s-%s-managed" "avoip-homer-forward-auth" $.Values.region $.Values.datacenter $.Values.cluster.name -}}
 {{- $oidcDisplayName := default (printf "AVoIP Homer %s managed" $.Values.cluster.name) $oidc.displayName -}}
+{{- $oidcProviderName := printf "%s %s" $oidcDisplayName $.Values.cluster.name -}}
 {{- $forwardAuthDisplayName := default (printf "AVoIP Homer Forward Auth %s managed" $.Values.cluster.name) $forwardAuth.displayName -}}
 {{- $_ := required "homer.oidc.providerConfigRef is required" $oidc.providerConfigRef -}}
 {{- $_ := required "homer.forwardAuth.providerConfigRef is required" $forwardAuth.providerConfigRef -}}
@@ -28,12 +29,14 @@ spec:
       issuer_base_url: '{{ trimSuffix "/" $oidc.issuerBaseUrl }}'
       external_url: 'https://{{ include "avoip.homer.hostname" $ }}'
       display_name: '{{ $oidcDisplayName }}'
+      provider_name: '{{ $oidcProviderName }}'
     module: |
       variable "application_slug" { type = string }
       variable "access_group" { type = string }
       variable "issuer_base_url" { type = string }
       variable "external_url" { type = string }
       variable "display_name" { type = string }
+      variable "provider_name" { type = string }
 
       data "authentik_flow" "authorization" {
         slug = "default-provider-authorization-implicit-consent"
@@ -65,7 +68,7 @@ spec:
       }
 
       resource "authentik_provider_oauth2" "homer" {
-        name                 = var.display_name
+        name                 = var.provider_name
         client_id            = var.application_slug
         client_secret        = random_password.client_secret.result
         authorization_flow   = data.authentik_flow.authorization.id
