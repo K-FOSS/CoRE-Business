@@ -28,7 +28,7 @@ spec:
       kind: Gateway
       name: {{ $.Values.gateway.name }}
       namespace: {{ $.Values.gateway.namespace }}
-      sectionName: sip-tls
+      sectionName: sips-tls
 
   rules:
     - backendRefs:
