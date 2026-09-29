@@ -215,6 +215,13 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   effective database grants, and any Dragonfly allocation. Removing a claim
   is not proof that external roles, databases, grants, buckets, or persisted
   Dragonfly data were deleted; inspect orphan and deletion policies explicitly.
+- In Helm-templated configuration files, indent control directives such as
+  `if`, `else`, `with`, `range`, and their closing `end` at the same column as
+  the YAML, XML, or configuration block they wrap. Keep the directive's
+  surrounding whitespace aligned with that block's opening and closing lines;
+  do not leave template directives flush-left when the wrapped block is
+  indented.
+
 
 ## Dependencies and generated files
 

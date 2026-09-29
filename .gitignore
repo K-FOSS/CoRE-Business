@@ -5,3 +5,5 @@ Chart.lock
 Meta/Configs
 **tmp**
 TMP
+codex-session-*
+evidence
