@@ -82,7 +82,7 @@ data:
     clearglobalvars=no
 
     [from-external]
-    exten => 18077893501,1,Progress()
+    exten => {{ .Values.avoip.did }},1,Progress()
       same => n,Answer()
       same => n,Echo()
       same => n,Hangup()
