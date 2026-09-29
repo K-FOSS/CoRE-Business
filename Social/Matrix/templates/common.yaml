@@ -453,14 +453,6 @@ persistence:
         element:
           - path: '/app/config.json'
             subPath: 'config.json'
-  ketesa-config:
-    type: 'configMap'
-    name: {{ printf "ketesa-%s-config" .Release.Name | quote }}
-    advancedMounts:
-      ketesa:
-        ketesa:
-          - path: '/var/public/config.json'
-            subPath: 'config.json'
 {{- if .Values.mas.enabled }}
   mas-template:
     type: 'configMap'
