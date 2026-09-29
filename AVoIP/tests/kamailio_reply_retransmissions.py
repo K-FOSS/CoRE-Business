@@ -20,6 +20,7 @@ import uuid
 
 PUBLIC = '66.165.222.103'
 PUBLIC_PORT = 11020
+PUBLIC_HOST = 'sip.core-dc1-talos-prod.dc1.yxl.resolvemy.host'
 
 
 def encode(value):
@@ -138,7 +139,7 @@ def harness():
     internal_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', request_headers)
     assert len(internal_rr) == 2, f'FreeSWITCH leg lost its two-sided route set: {internal_rr}'
     assert any('.svc.' in value for value in internal_rr), 'Private Service route missing on FreeSWITCH leg'
-    assert any('sips:sip.resolvemy.host:5061;transport=tls' in value for value in internal_rr), \
+    assert any(f'sips:{PUBLIC_HOST}:5061;transport=tls' in value for value in internal_rr), \
         f'Canonical public SIPS route missing: {internal_rr}'
     response_headers = ['SIP/2.0 200 OK']
     for line in request_headers.split('\r\n')[1:]:
@@ -156,11 +157,11 @@ def harness():
         response_headers, received = upstream.final()
         contact = re.search(r'(?im)^Contact:\s*<([^>]+)>', response_headers)
         assert contact, 'Contact missing from a forwarded 200 OK'
-        assert re.fullmatch(r'sips:[^@]+@sip\.resolvemy\.host:5061;transport=tls', contact[1]), \
+        assert re.fullmatch(rf'sips:[^@]+@{re.escape(PUBLIC_HOST)}:5061;transport=tls', contact[1]), \
             f'Public Contact is not the canonical TLS identity: {contact[1]}'
         public_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', response_headers)
         assert len(public_rr) == 1, f'Carrier response must contain only the public Record-Route: {public_rr}'
-        assert 'sips:sip.resolvemy.host:5061;transport=tls' in public_rr[0], \
+        assert f'sips:{PUBLIC_HOST}:5061;transport=tls' in public_rr[0], \
             f'Canonical public SIPS Record-Route missing: {public_rr}'
         assert '.svc.' not in '\n'.join(public_rr), f'Private Service Record-Route leaked to caller: {public_rr}'
         print(json.dumps({'reply': len(outputs) + 1,
@@ -178,7 +179,7 @@ def harness():
     # A carrier-side 2xx ACK carries only the public Route URI. It must pass
     # through loose_route and be sent to the private FreeSWITCH backend.
     call_id_ack = ('\r\n'.join([
-        'ACK sips:fax@sip.resolvemy.host:5061;transport=tls SIP/2.0',
+        f'ACK sips:fax@{PUBLIC_HOST}:5061;transport=tls SIP/2.0',
         f'Via: SIP/2.0/TCP 127.0.0.1:{caller_port};branch=z9hG4bK{call_id}-ack;rport',
         'From: <sip:fixture@localhost>;tag=fixture-from',
         'To: <sip:fax@localhost>;tag=fixture-to',
@@ -212,8 +213,10 @@ def fixture_config(source):
     cfg = re.sub(r'^\s*modparam\("(?:tls|siptrace)".*\n', '', cfg, flags=re.M)
     cfg = re.sub(r'^enable_tls=.*$', 'enable_tls=0', cfg, flags=re.M)
     cfg = cfg.replace('tcp_accept_haproxy=yes', 'tcp_accept_haproxy=no')
-    cfg = re.sub(r'^listen=tcp:.*$', 'listen=tcp:127.0.0.1:15061 name "public_tcp"', cfg, flags=re.M)
-    cfg = re.sub(r'^listen=tls:.*$', 'listen=tcp:127.0.0.1:15062 name "private_tls"', cfg, flags=re.M)
+    cfg = re.sub(r'^listen=(?:tcp|tls):.* name "public_(?:tcp|tls)"$',
+                 'listen=tcp:127.0.0.1:15061 name "public_tls"', cfg, flags=re.M)
+    cfg = re.sub(r'^listen=tls:.* name "private_tls"$',
+                 'listen=tcp:127.0.0.1:15062 name "private_tls"', cfg, flags=re.M)
     cfg = re.sub(r'modparam\("rtpengine", "rtpengine_sock", "[^"]+"\)',
                  'modparam("rtpengine", "rtpengine_sock", "udp:127.0.0.1:12223")', cfg)
     cfg = re.sub(r'\$du = "sip:[^"]+";', '$du = "sip:127.0.0.1:16061;transport=tcp";', cfg)
@@ -230,7 +233,8 @@ def runner(args):
     subprocess.run(base + ['-c', 'kamailio', '--', 'sh', '-c', f'cat > {stem}.cfg'],
                    input=cfg, text=True, check=True)
     subprocess.run(base + ['-c', 'kamailio', '--', 'kamailio', '-c', '-f', stem + '.cfg'], check=True)
-    fixture = subprocess.Popen(base + ['-c', 'netshoot', '--', 'python3', '-', '--harness'],
+    fixture = subprocess.Popen(base + ['-c', 'netshoot', '--', 'python3', '-', '--harness',
+                                       '--public-host', args.public_host],
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     fixture.stdin.write(pathlib.Path(__file__).read_text())
     fixture.stdin.close()
@@ -265,7 +269,10 @@ if __name__ == '__main__':
     parser.add_argument('--context')
     parser.add_argument('--namespace', default='core-prod')
     parser.add_argument('--deployment')
+    parser.add_argument('--public-host', default=PUBLIC_HOST,
+                        help='site-specific public SIP dialog hostname')
     options = parser.parse_args()
+    PUBLIC_HOST = options.public_host
     if options.harness:
         harness()
     else:

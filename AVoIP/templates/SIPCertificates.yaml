@@ -8,6 +8,10 @@ spec:
   secretName: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") }}'
+    {{- if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
+    - '{{ include "avoip.sip.siteHost" . }}'
+    - '{{ .Values.sip.globalHost }}'
+    {{- end }}
   issuerRef:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'

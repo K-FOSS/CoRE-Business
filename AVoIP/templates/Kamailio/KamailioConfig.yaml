@@ -20,12 +20,12 @@ data:
     {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
     onsend_route_reply=1
     {{- end }}
-    # Envoy terminates public TLS and sends PROXY v2 before the decrypted SIP
-    # stream, so $si remains the carrier IP.
+    # Envoy passes SIP TLS through and prepends PROXY v2 so $si remains the
+    # carrier IP. Kamailio consumes the preamble before its TLS handshake.
     tcp_accept_haproxy=yes
     # Required for both the private TLS listener and TLS relays to FreeSWITCH.
     enable_tls=1
-    listen=tcp:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"
+    listen={{ if .Values.kamailio.publicExposure.sip.tlsPassthrough }}tls:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"{{ else }}tcp:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"{{ end }}
     listen=tls:0.0.0.0:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
     alias="{{ $siteHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
@@ -51,7 +51,7 @@ data:
     loadmodule "textopsx.so"
     {{- end }}
 
-    # Preserve the actual local socket across the private TLS/public TCP
+    # Preserve the actual local socket across the private/public TLS
     # double-Record-Route used by the FreeSWITCH leg and the carrier leg.
     modparam("rr", "sockname_mode", 1)
     modparam("sanity", "autodrop", 0)
@@ -185,12 +185,11 @@ data:
       }
 
       if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
-        # TLS is terminated by the Gateway before the PROXY-v2 TCP stream
-        # reaches Kamailio; the private dialog leg remains TLS end-to-end.
+        # SIP TLS passes through the Gateway to this native TLS listener.
         {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-        xlog("L_INFO", "SIP diagnostic initial-route transport=tcp public_route=tls:{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }} internal_route=tls:5062 callid=$ci\n");
+        xlog("L_INFO", "SIP diagnostic initial-route transport=$proto public_route=tls:{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }} internal_route=tls:5062 callid=$ci\n");
         {{- end }}
-        record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tcp");
+        record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn={{ if .Values.kamailio.publicExposure.sip.tlsPassthrough }}public_tls{{ else }}public_tcp{{ end }}");
         add_rr_param(";r2=on");
         {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
         route(MEDIA_INITIAL);
@@ -210,8 +209,8 @@ data:
 
     route[IN_DIALOG] {
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      if (is_method("ACK")) {
-        xlog("L_INFO", "SIP diagnostic dialog-ACK callid=$ci from_tag=$ft to_tag=$tt source=$si:$sp recv=$Ri:$Rp proto=$proto ruri=$ru top_route=$hdr(Route)\n");
+      if (is_method("ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY")) {
+        xlog("L_INFO", "SIP diagnostic dialog-entry callid=$ci method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt source=$si:$sp recv=$Ri:$Rp proto=$proto ruri=$ru top_route=$hdr(Route)\n");
       }
       {{- end }}
       {{- if .Values.kamailio.sipLogging.enabled }}
@@ -245,7 +244,7 @@ data:
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP in-dialog loose_route=accepted method=$rm source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      xlog("L_INFO", "SIP diagnostic in-dialog decision=relay proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
+      xlog("L_INFO", "SIP diagnostic in-dialog decision=relay proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt source=$si:$sp ruri=$ru top_route=$hdr(Route) next=$du send_socket=$fsn route=$route_uri callid=$ci\n");
       {{- end }}
       {{- end }}
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
@@ -343,8 +342,8 @@ data:
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
       # ACKs are logged at the serialized send boundary so a packet capture can
       # be matched with Kamailio's selected destination and the same Call-ID.
-      if ($snd(buf) =~ "^ACK ") {
-        xlog("L_INFO", "SIP wire ACK callid=$ci cseq=$hdr(CSeq) recv_socket=$Ri:$Rp send_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) send_socket_name=$fsn destination=$snd(ip):$snd(port) ruri=$ru route=$hdr(Route)\n");
+      if ($snd(buf) =~ "^(ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY) ") {
+        xlog("L_INFO", "SIP wire dialog-request callid=$ci method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt recv_socket=$Ri:$Rp recv_proto=$proto source=$si:$sp send_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) send_socket_name=$fsn destination=$snd(ip):$snd(port) ruri=$ru top_route=$hdr(Route)\n");
       }
       {{- end }}
       {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}

@@ -36,6 +36,9 @@ def main():
     parser.add_argument("--voice-did", required=True)
     parser.add_argument("--fax-did", required=True)
     parser.add_argument("--site-host", required=True)
+    parser.add_argument("--cluster-name", required=True)
+    parser.add_argument("--native-tls", action="store_true",
+                        help="expect native public TLS and a TLSRoute")
     parser.add_argument("--cluster-domain", required=True)
     parser.add_argument("--media-address", default="66.165.222.103")
     args = parser.parse_args()
@@ -50,13 +53,18 @@ def main():
     host = lambda name: f"{name}.{namespace}.svc.{args.cluster_domain}"
 
     kam = document(items, "ConfigMap", "-kamailio-config")["data"]["kamailio.cfg"]
-    public_host = "sip.resolvemy.host"
-    assert f'advertise "{public_host}":5061 name "public_tcp"' in kam
+    public_host = args.site_host
+    public_proto = "tls" if args.native_tls else "tcp"
+    public_socket = "public_tls" if args.native_tls else "public_tcp"
+    assert f'listen={public_proto}:0.0.0.0:5061 advertise "{public_host}":5061 name "{public_socket}"' in kam
+    assert 'advertise "66.165.222.101":5061' not in kam
+    assert f'listen=tls:0.0.0.0:5062 advertise "{host(kam_name)}":5062 name "private_tls"' in kam
     assert 'alias="sip.resolvemy.host:5061"' in kam
     assert f'alias="{args.site_host}:5061"' in kam
     assert f'{host(kam_name)}:5062;transport=tls' in kam
     assert f'sip:{host(fs_name)}:5061;transport=tls' in kam
-    assert f'{public_host}:5061;transport=tls;sn=public_tcp' in kam
+    assert f'{public_host}:5061;transport=tls;sn={public_socket}' in kam
+    assert 'sips:sip.resolvemy.host:5061;transport=tls;sn=' not in kam
     assert 'add_rr_param(";r2=on")' in kam
     assert 'remove_hf_idx("Record-Route", "0")' in kam
     assert 'Flowroute receives only the public Record-Route URI' in kam
@@ -64,8 +72,31 @@ def main():
     assert 'loose_route()' in kam
     assert 'ACK fallback=no-route' not in kam
     assert 'sips?:([^@>]+)@[^>]+' in kam
-    assert r'sips:\\1@sip.resolvemy.host:5061;transport=tls' in kam
+    assert rf'sips:\\1@{args.site_host}:5061;transport=tls' in kam
+    assert 'sips:\\1@66.165.222.101:5061;transport=tls' not in kam
+    assert 'sip:\\1@66.165.222.101:5061;transport=tls' not in kam
     assert '66.165.222.101' not in kam
+    assert 'force_send_socket(public_tcp)' not in kam
+    if args.native_tls:
+        assert 'listen=tcp:0.0.0.0:5061' not in kam
+        assert 'sn=public_tcp' not in kam
+
+    public_route = document(items, "TLSRoute" if args.native_tls else "TCPRoute", "-kamailio")
+    if args.native_tls:
+        assert public_route["spec"]["hostnames"] == [args.site_host]
+        assert public_route["spec"]["parentRefs"][0]["sectionName"] == "sip-tls"
+        policy = document(items, "BackendTrafficPolicy", "-kamailio-tls-proxy-protocol")
+        assert policy["spec"]["targetRefs"][0]["kind"] == "TLSRoute"
+    service_ports = document(items, "Service", "-kamailio")["spec"]["ports"]
+    public_port = next(port for port in service_ports if port["port"] == 5061)
+    assert public_port["targetPort"] == ("tls-public" if args.native_tls else "tcp-sip")
+
+    homer_oidc = document(items, "Workspace", "avoip-homer-oidc")
+    oidc_variables = homer_oidc["spec"]["forProvider"]["varmap"]
+    assert oidc_variables["provider_name"] == (
+        f"{oidc_variables['display_name']} {args.cluster_name}"
+    )
+    assert "name                 = var.provider_name" in homer_oidc["spec"]["forProvider"]["module"]
 
     configs = document(items, "ConfigMap", "-freeswitch-configs")["data"]
     assert f"external_sip_ip={public_host}" in configs["vars.xml"]
@@ -113,7 +144,10 @@ def main():
         assert service["metadata"]["labels"]["lan-mode"] == "private"
         assert service["spec"]["type"] == "ClusterIP"
         cert = document(items, "Certificate", f"-{component}-sip-tls")
-        assert cert["spec"]["dnsNames"] == [host(service_name)]
+        expected_names = [host(service_name)]
+        if component == "kamailio" and args.native_tls:
+            expected_names.extend([args.site_host, "sip.resolvemy.host"])
+        assert cert["spec"]["dnsNames"] == expected_names
     rtp = document(items, "Deployment", "-rtpengine")
     command = str(next(container for container in rtp["spec"]["template"]["spec"]["containers"] if container["name"] == "rtpengine"))
     assert f"!{args.media_address}" in command

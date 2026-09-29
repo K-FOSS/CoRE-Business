@@ -387,10 +387,16 @@ controllers:
               timeoutSeconds: 3
               failureThreshold: 3
         ports:
+          {{- if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
+          - name: tls-public
+            containerPort: 5061
+            protocol: TCP
+          {{- else }}
           - name: tcp-sip
             containerPort: 5061
             protocol: TCP
-          - name: tls-sip
+          {{- end }}
+          - name: tls-private
             containerPort: 5062
             protocol: TCP
 {{- if .Values.diagnostics.netshoot.enabled }}
@@ -985,13 +991,17 @@ service:
     controller: kamailio
 {{- include "avoip.service.options" (dict "root" $ "name" "kamailio" "annotations" (dict "external-dns.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio")) "external-dns.alpha.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio"))) "labels" (dict "wan-mode" "public" "lan-mode" "private")) | nindent 4 }}
     ports:
-      tcp-sip:
+      sip-public:
         port: 5061
+        {{- if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
+        targetPort: tls-public
+        {{- else }}
         targetPort: tcp-sip
+        {{- end }}
         protocol: TCP
-      tls-sip:
+      tls-private:
         port: 5062
-        targetPort: tls-sip
+        targetPort: tls-private
         protocol: TCP
 {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.directService.enabled (eq .Values.cluster.type "hub") }}
   kamailio-udp:
