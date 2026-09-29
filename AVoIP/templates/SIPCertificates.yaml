@@ -8,7 +8,7 @@ spec:
   secretName: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") }}'
-    {{- if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
+    {{- if .Values.kamailio.publicExposure.sip.enabled }}
     - '{{ include "avoip.sip.siteHost" . }}'
     - '{{ .Values.sip.globalHost }}'
     {{- end }}

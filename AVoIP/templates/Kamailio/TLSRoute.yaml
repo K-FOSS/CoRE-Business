@@ -1,13 +1,8 @@
 {{- if and .Values.kamailio.enabled .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
-{{ if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: TLSRoute
-{{ else }}
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TCPRoute
-{{ end }}
 metadata:
   name: {{ $fullName }}-kamailio
   annotations:
@@ -19,10 +14,8 @@ metadata:
     wan-mode: public
     lan-mode: private
 spec:
-  {{ if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
   hostnames:
     - '{{ include "avoip.sip.siteHost" . }}'
-  {{ end }}
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway

@@ -20,12 +20,12 @@ data:
     {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
     onsend_route_reply=1
     {{- end }}
-    # Envoy passes SIP TLS through and prepends PROXY v2 so $si remains the
-    # carrier IP. Kamailio consumes the preamble before its TLS handshake.
+    # Envoy passes the encrypted TCP stream and prepends PROXY v2 so $si
+    # remains the carrier IP. Kamailio owns TLS for the complete SIP session.
     tcp_accept_haproxy=yes
     # Required for both the private TLS listener and TLS relays to FreeSWITCH.
     enable_tls=1
-    listen={{ if .Values.kamailio.publicExposure.sip.tlsPassthrough }}tls:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"{{ else }}tcp:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tcp"{{ end }}
+    listen=tls:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"
     listen=tls:0.0.0.0:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
     alias="{{ $siteHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
@@ -185,11 +185,11 @@ data:
       }
 
       if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
-        # SIP TLS passes through the Gateway to this native TLS listener.
+        # The Gateway passes this encrypted stream through to this TLS socket.
         {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
         xlog("L_INFO", "SIP diagnostic initial-route transport=$proto public_route=tls:{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }} internal_route=tls:5062 callid=$ci\n");
         {{- end }}
-        record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn={{ if .Values.kamailio.publicExposure.sip.tlsPassthrough }}public_tls{{ else }}public_tcp{{ end }}");
+        record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls");
         add_rr_param(";r2=on");
         {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
         route(MEDIA_INITIAL);

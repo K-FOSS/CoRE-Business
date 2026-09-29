@@ -129,9 +129,6 @@ kamailio:
       # SIP signaling is TCP/TLS-only. RTPEngine's separate UDP media and
       # control sockets are unaffected by this setting.
       udpEnabled: false
-      # Set true only with a matching Gateway TLS listener in Passthrough mode.
-      # False retains sites that still use Gateway TLS termination.
-      tlsPassthrough: true
       directService:
         enabled: false
       udpRoute:

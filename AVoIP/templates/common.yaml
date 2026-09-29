@@ -387,15 +387,9 @@ controllers:
               timeoutSeconds: 3
               failureThreshold: 3
         ports:
-          {{- if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
           - name: tls-public
             containerPort: 5061
             protocol: TCP
-          {{- else }}
-          - name: tcp-sip
-            containerPort: 5061
-            protocol: TCP
-          {{- end }}
           - name: tls-private
             containerPort: 5062
             protocol: TCP
@@ -993,11 +987,7 @@ service:
     ports:
       sip-public:
         port: 5061
-        {{- if .Values.kamailio.publicExposure.sip.tlsPassthrough }}
         targetPort: tls-public
-        {{- else }}
-        targetPort: tcp-sip
-        {{- end }}
         protocol: TCP
       tls-private:
         port: 5062

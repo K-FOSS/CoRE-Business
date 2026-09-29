@@ -8,7 +8,7 @@ metadata:
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
-      kind: {{ if .Values.kamailio.publicExposure.sip.tlsPassthrough }}TLSRoute{{ else }}TCPRoute{{ end }}
+      kind: TLSRoute
       name: {{ $fullName }}-kamailio
   proxyProtocol:
     version: V2

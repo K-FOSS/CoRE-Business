@@ -104,13 +104,14 @@ Forgejo build tag rather than the moving Docker Hub `latest` image.
 When Kamailio is enabled, the chart deploys the official
 [Kamailio SIP server](https://www.kamailio.org/) from its
 [official container images](https://github.com/kamailio/kamailio-docker),
-configured for Home1/YVR SIP TLS passthrough through the `main-gw` `sip-tls`
-listener to Kamailio's native TLS socket. This takes effect after the AVoIP
-and Ingress ApplicationSets reconcile; the currently observed Gateway still
-terminates TLS. The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-sets the chart mode; the [Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml)
-sets the matching listener mode. Other sites retain TLS termination until
-their site values opt into passthrough.
+configured for SIP TLS passthrough on port 5061 through the `main-gw`
+`sips-tls` listener to Kamailio's native TLS socket. Envoy Gateway normally
+selects the TLSRoute by SNI; an EnvoyPatchPolicy removes the SNI match from
+the single SIPS filter chain so clients that omit SNI still reach Kamailio.
+Kamailio presents the public certificate and terminates TLS. This takes effect
+after the active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+and [Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml)
+reconcile.
 Envoy Gateway's
 [BackendTrafficPolicy](https://gateway.envoyproxy.io/docs/concepts/gateway_api_extensions/backend-traffic-policy/)
 sends PROXY protocol v2 to Kamailio, and Kamailio's
@@ -270,7 +271,7 @@ The chart defaults are intentionally mostly inactive:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
-| Kamailio | Independently enabled | When enabled on a cluster, Kamailio receives public SIP on that site's `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` route. Home1/YVR uses Gateway TLS passthrough to Kamailio's native TLS listener; other sites remain in their configured mode. Kamailio consumes Envoy PROXY protocol v2, verifies the original Flowroute source CIDR, and forwards accepted SIP over TLS to its private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
+| Kamailio | Independently enabled | When enabled on a cluster, Kamailio receives public SIP on that site's `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` TLSRoute. The Gateway passes TLS through; its SIPS fallback filter chain handles clients without SNI. Kamailio owns TLS, consumes Envoy PROXY protocol v2, verifies Flowroute source CIDRs, and forwards accepted SIP over TLS to its private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
 | FreeSWITCH | Disabled | When enabled, creates private TLS SIP services and External Secret-backed configuration. The `avoip.did` voice route remains ringing until Asterisk answers and has no fax detector. A separate `fax.did` sends 180 Ringing for 2 seconds before answering and starting SpanDSP `rxfax`, with TIFFs stored on the configured PVC; the DID must be supplied by the site. Public media is proxied by RTPEngine. See [SIP identity and fax routing](docs/SIP-IDENTITY.md) and [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). |
 | RTPEngine | Hub-only toggle | Runs two pinned userspace media proxies, exposes the configured UDP range through a LoadBalancer Service whose provider settings are supplied by chart users, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
 | Homer 11 | Per-cluster opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, local Kamailio HEPv3 capture, RTPEngine RTCP/NG capture when local RTPEngine is enabled, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
