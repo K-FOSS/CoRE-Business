@@ -85,5 +85,9 @@ data:
     exten => {{ .Values.avoip.did }},1,Progress()
       same => n,Answer()
       same => n,Echo()
+      same => n,Playback(hello-world)
+      same => n,Playback(hello-world)
+      same => n,Playback(hello-world)
+      same => n,Playback(hello-world)
       same => n,Hangup()
 {{- end }}

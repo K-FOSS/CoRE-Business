@@ -5,7 +5,7 @@
 Render with representative values from the owning
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml),
 then run the YAML, Kamailio identity, private-service, Contact, RTPEngine,
-TLS, and DID checks:
+TLS, DID, and Asterisk Echo greeting checks:
 
 ```sh
 helm lint .

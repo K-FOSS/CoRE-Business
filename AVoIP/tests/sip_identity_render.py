@@ -95,6 +95,12 @@ def main():
     assert any(a.get("application") == "rxfax" for a in receive.findall(".//action"))
     assert not any(a.get("application") == "fax_detect" for a in dialplan.findall(".//action"))
 
+    asterisk = document(items, "ConfigMap", "-asterisk-configs")["data"]["extensions.conf"]
+    assert "same => n,Echo()\n" in asterisk
+    assert asterisk.count("same => n,Playback(hello-world)") == 4
+    assert asterisk.index("same => n,Echo()") < asterisk.index("same => n,Playback(hello-world)")
+    assert asterisk.index("same => n,Playback(hello-world)") < asterisk.index("same => n,Hangup()")
+
     for component, service_name in (("kamailio", kam_name), ("freeswitch", fs_name), ("asterisk", ast_name)):
         service = document(items, "Service", f"-{component}")
         annotations = service["metadata"]["annotations"]
