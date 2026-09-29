@@ -1000,7 +1000,7 @@ service:
     type: LoadBalancer
     # Preserve Flowroute source addresses and avoid cross-node kube-proxy SNAT.
     externalTrafficPolicy: Local
-{{- include "avoip.service.options" (dict "root" $ "name" "kamailio-udp" "loadBalancer" true "annotations" (dict "purelb.io/allow-shared-ip" "voip-gw.resolvemy.host" "purelb.io/service-group" "core-public" "purelb.io/allow-local" "true" "purelb.io/addresses" .Values.rtpengine.media.address)) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "kamailio-udp" "loadBalancer" true) | nindent 4 }}
     ports:
       udp-sip:
         port: 5060
@@ -1039,7 +1039,7 @@ service:
     # Preserve carrier RTP source addresses and avoid cross-node kube-proxy
     # SNAT for the public media socket.
     externalTrafficPolicy: Local
-{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch-rtp" "loadBalancer" true "annotations" (dict "purelb.io/allow-shared-ip" "voip-gw.resolvemy.host" "purelb.io/service-group" "core-public" "purelb.io/allow-local" "true" "purelb.io/addresses" .Values.freeswitch.publicExposure.address)) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch-rtp" "loadBalancer" true) | nindent 4 }}
     ports:
       rtp:
         portRange:
@@ -1063,7 +1063,7 @@ service:
     controller: rtpengine
     type: LoadBalancer
     externalTrafficPolicy: Local
-{{- include "avoip.service.options" (dict "root" $ "name" "rtpengine-media" "loadBalancer" true "annotations" (dict "purelb.io/allow-shared-ip" "voip-gw.resolvemy.host" "purelb.io/service-group" "core-public" "purelb.io/allow-local" "true" "purelb.io/addresses" .Values.rtpengine.media.address)) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "rtpengine-media" "loadBalancer" true) | nindent 4 }}
     ports:
       rtp:
         portRange:

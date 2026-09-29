@@ -13,6 +13,7 @@ controllers: {}
 # freeswitch, freeswitch-rtp, rtpengine, rtpengine-media,
 # rtpengine-valkey-proxy, homer-heplify, and homer-web. Annotations and labels
 # merge with chart defaults; required labels such as wan-mode remain enforced.
+# Chart users supply provider-specific LoadBalancer annotations and classes here.
 # `loadBalancerClass` applies only to LoadBalancer Services; setting a class on
 # an existing Service may require Service recreation because Kubernetes makes
 # it immutable.
@@ -329,7 +330,8 @@ freeswitch:
     serviceHost: ''
   publicExposure:
     enabled: false
-    # PureLB address reserved for the public FreeSWITCH RTP service.
+    # Public FreeSWITCH RTP address; provider-specific Service allocation is
+    # configured by chart users through serviceOptions.freeswitch-rtp.
     address: '66.165.222.103'
     sip:
       # Retained for compatibility with injected values; public SIP routes

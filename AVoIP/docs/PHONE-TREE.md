@@ -16,8 +16,9 @@ terminates TLS using its `tls-sip` listener and forwards the decrypted SIP
 stream with PROXY protocol v2; Kamailio verifies the original Flowroute source
 address before forwarding SIP over the private cluster network to FreeSWITCH.
 FreeSWITCH has no direct public SIP routes;
-the optional PureLB LoadBalancer exposes RTP only at the requested
+the optional LoadBalancer Service exposes RTP at the requested
 `freeswitch.publicExposure.address`.
+Chart users supply provider-specific Service settings through `serviceOptions.freeswitch-rtp`.
 
 ## Configured DID
 
@@ -168,10 +169,10 @@ bridged to Asterisk without LDAP authentication.
 - The certificate Secret is consumed at runtime by the Gateway and by
   FreeSWITCH's private TLS material; no combined private-key file is stored in
   Git.
-- When public RTP exposure is enabled, PureLB exposes RTP only at the requested
+- When public RTP exposure is enabled, the chart renders a LoadBalancer Service
   `freeswitch.publicExposure.address`.
 - RTP uses the configured FreeSWITCH range `11000–11049`.
-- The external FreeSWITCH profile advertises the requested PureLB RTP address
+- The external FreeSWITCH profile advertises the configured RTP Service address
   `66.165.222.101` when public RTP exposure is enabled. The outbound SIP
   egress address is also `66.165.222.101`; the former `66.165.222.103` and
   stale `66.165.222.126` addresses are no longer used.

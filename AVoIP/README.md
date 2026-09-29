@@ -136,9 +136,12 @@ and FreeSWITCH. When all three components are enabled, the site-local
 [RTPEngine image](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/-/packages/container/core-docker%2Frtpengine/mr13.5.1.27-build-70)
 and Kamailio's [RTPEngine module](https://www.kamailio.org/docs/modules/stable/modules/rtpengine.html)
 form the carrier-media proxy path. Kamailio rewrites carrier SDP through
-RTPEngine's `external` and `internal` interfaces. RTPEngine owns the PureLB
-public RTP Service on the hub when `rtpengine.enabled` is true; the FreeSWITCH
-RTP Service is omitted only when both Kamailio and RTPEngine are enabled.
+RTPEngine's `external` and `internal` interfaces. The chart renders a public
+LoadBalancer Service for RTPEngine media on enabled sites; chart users provide
+provider-specific allocation and class settings through `serviceOptions`.
+The advertised media identity remains `rtpengine.media.address`. The
+FreeSWITCH RTP Service is omitted only when both Kamailio and RTPEngine are
+enabled.
 When Kamailio and RTPEngine are both enabled, their pods can run on separate
 Kubernetes nodes. RTPEngine replicas remain spread across nodes by required
 pod anti-affinity. The RTPEngine control Service remains cluster-routable; only
@@ -251,7 +254,7 @@ The chart defaults are intentionally mostly inactive:
 | Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
 | Kamailio | Independently enabled | When enabled on a cluster, Kamailio receives inbound public SIP through Gateway-terminated TLS on `sip.resolvemy.host:5061`; Kamailio has no UDP SIP listener or Service. It consumes Envoy PROXY protocol v2 for TLS, verifies the original Flowroute source CIDR, and forwards accepted SIP over TLS to its configured private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
 | FreeSWITCH | Disabled | When enabled, creates private TLS SIP services and External Secret-backed configuration. The `avoip.did` voice route remains ringing until Asterisk answers and has no fax detector. A separate `fax.did` sends 180 Ringing for 2 seconds before answering and starting SpanDSP `rxfax`, with TIFFs stored on the configured PVC; the DID must be supplied by the site. Public media is proxied by RTPEngine. See [SIP identity and fax routing](docs/SIP-IDENTITY.md) and [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). |
-| RTPEngine | Hub-only toggle | Runs two pinned userspace media proxies, exposes the configured UDP range through PureLB, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
+| RTPEngine | Hub-only toggle | Runs two pinned userspace media proxies, exposes the configured UDP range through a LoadBalancer Service whose provider settings are supplied by chart users, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
 | Homer 11 | Per-cluster opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, local Kamailio HEPv3 capture, RTPEngine RTCP/NG capture when local RTPEngine is enabled, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
