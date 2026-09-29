@@ -310,10 +310,9 @@ freeswitch:
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'
-    # Forgejo build tags are immutable; latest-build-64 is the successful build
-    # for Core-Docker run 64, which includes the FreeSWITCH dependency fix.
-    tag: 'latest'
-    digest: 'sha256:0355ade37781ac9e5f5ecfd29aa1d094d31f96a462c6f4d2f343268aaacefec1'
+    # Pull the tested image by digest without resolving a mutable tag.
+    tag: ''
+    digest: 'sha256:b5cf4593a3b733decd5b78160d41f6c17a99c9f903112a89feff925e78c40fab'
     pullPolicy: 'IfNotPresent'
   fax:
     enabled: true
