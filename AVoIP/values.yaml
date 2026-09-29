@@ -131,7 +131,7 @@ kamailio:
       udpEnabled: false
       # Set true only with a matching Gateway TLS listener in Passthrough mode.
       # False retains sites that still use Gateway TLS termination.
-      tlsPassthrough: false
+      tlsPassthrough: true
       directService:
         enabled: false
       udpRoute:
