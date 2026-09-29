@@ -332,10 +332,10 @@ freeswitch:
       # The current Flowroute fax path is validated only through 9600 bps.
       disableV17: true
       useEcm: false
-    # Controlled bring-up mode for proving the initial G.711 path. Keep false
-    # in normal operation; it disables the T.38 request only for fax-receive.
+    # Temporary test mode: force G.711 and disable T.38 for the next fax
+    # reception test. Restore false after the test.
     g711Only:
-      enabled: false
+      enabled: true
     persistence:
       enabled: true
       storageClass: 'longhorn'
