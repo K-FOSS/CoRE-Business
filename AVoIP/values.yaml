@@ -111,6 +111,12 @@ rtpengine:
   # primary-only Redis endpoint required for shared call-state failover.
   replicas: 1
   controlPort: 22222
+  recovery:
+    # Probe the stable control Service frequently and retry soon after a
+    # timeout marks it unavailable during an RTPEngine rollout or outage.
+    disableTimeoutSeconds: 5
+    aggressiveRedetection: true
+    pingIntervalSeconds: 5
   valkey:
     # The ValkeyCluster is watched by the Backplane-installed operator in
     # valkey-operator-system. HAProxy selects its current primary for RTPEngine.

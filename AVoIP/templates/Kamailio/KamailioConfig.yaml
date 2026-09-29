@@ -67,6 +67,11 @@ data:
     {{- end }}
     {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
     modparam("rtpengine", "rtpengine_sock", "udp:{{ $fullName }}-rtpengine.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.rtpengine.controlPort }}")
+    # Re-probe the stable control Service after failure instead of suppressing
+    # commands for Kamailio's 60-second default disabled-node timeout.
+    modparam("rtpengine", "rtpengine_disable_tout", {{ .Values.rtpengine.recovery.disableTimeoutSeconds }})
+    modparam("rtpengine", "aggressive_redetection", {{ if .Values.rtpengine.recovery.aggressiveRedetection }}1{{ else }}0{{ end }})
+    modparam("rtpengine", "ping_interval", {{ .Values.rtpengine.recovery.pingIntervalSeconds }})
 
     route[MEDIA_INITIAL] {
       if (!has_body("application/sdp")) {
