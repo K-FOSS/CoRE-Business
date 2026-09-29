@@ -104,8 +104,8 @@ kamailio:
     pullPolicy: 'IfNotPresent'
 
 rtpengine:
-  # Enable the RTPEngine workload on the hub. The chart gates it off on spokes
-  # because its media Service owns the hub's public PureLB address.
+  # Enable RTPEngine per cluster, including spokes that provide local media
+  # handling. Set the media address for each cluster in its injected values.
   enabled: true
   # Two media proxies are spread across nodes. The Valkey proxy supplies the
   # primary-only Redis endpoint required for shared call-state failover.
@@ -154,8 +154,8 @@ rtpengine:
     activeSwitchover: true
   image:
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/rtpengine'
-    tag: 'mr13.5.1.27-build-70'
-    digest: 'sha256:49a4a0ab99ecbea4efe350601d39aac8279388291434c261466cd7b84cd66bbe'
+    tag: 'mr13.5.1.27-build-90'
+    digest: 'sha256:405145b8c791a6c2d0f264e332c3159e621e9f6acad8486224e1c1110af90e5f'
     pullPolicy: 'IfNotPresent'
   media:
     address: '66.165.222.103'

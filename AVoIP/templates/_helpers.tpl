@@ -23,9 +23,9 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 {{- end -}}
 
-{{/* RTPEngine owns public media on the active hub only. */}}
+{{/* Respect per-cluster RTPEngine enablement, including on spokes. */}}
 {{- define "avoip.rtpengine.enabled" -}}
-{{- if and .Values.rtpengine.enabled (eq .Values.cluster.type "hub") -}}true{{- end -}}
+{{- if .Values.rtpengine.enabled -}}true{{- end -}}
 {{- end -}}
 
 {{/* Keep the primary-aware Valkey proxy's generated resources within DNS limits. */}}
