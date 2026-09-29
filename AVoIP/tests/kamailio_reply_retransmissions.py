@@ -123,7 +123,7 @@ def harness():
     call_id = 'avoip-reply-regression-' + uuid.uuid4().hex
     body = 'v=0\r\no=fixture 1 1 IN IP4 192.0.2.10\r\ns=fixture\r\nc=IN IP4 192.0.2.10\r\nt=0 0\r\nm=audio 18000 RTP/AVP 0\r\na=rtpmap:0 PCMU/8000\r\n'
     headers = [
-        'INVITE sip:fax@127.0.0.1 SIP/2.0',
+        'INVITE sips:fax@127.0.0.1:5061;transport=tls SIP/2.0',
         f'Via: SIP/2.0/TCP 127.0.0.1:{caller_port};branch=z9hG4bK{call_id};rport',
         'From: <sip:fixture@localhost>;tag=fixture-from',
         'To: <sip:fax@localhost>', f'Call-ID: {call_id}', 'CSeq: 1 INVITE',
@@ -138,7 +138,8 @@ def harness():
     internal_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', request_headers)
     assert len(internal_rr) == 2, f'FreeSWITCH leg lost its two-sided route set: {internal_rr}'
     assert any('.svc.' in value for value in internal_rr), 'Private Service route missing on FreeSWITCH leg'
-    assert any('sip.resolvemy.host:5061' in value for value in internal_rr), 'Canonical public route missing'
+    assert any('sips:sip.resolvemy.host:5061;transport=tls' in value for value in internal_rr), \
+        f'Canonical public SIPS route missing: {internal_rr}'
     response_headers = ['SIP/2.0 200 OK']
     for line in request_headers.split('\r\n')[1:]:
         if line.lower().startswith(('via:', 'from:', 'to:', 'call-id:', 'cseq:', 'record-route:')):
@@ -159,7 +160,8 @@ def harness():
             f'Public Contact is not the canonical TLS identity: {contact[1]}'
         public_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', response_headers)
         assert len(public_rr) == 1, f'Carrier response must contain only the public Record-Route: {public_rr}'
-        assert 'sip.resolvemy.host:5061' in public_rr[0], f'Canonical public Record-Route missing: {public_rr}'
+        assert 'sips:sip.resolvemy.host:5061;transport=tls' in public_rr[0], \
+            f'Canonical public SIPS Record-Route missing: {public_rr}'
         assert '.svc.' not in '\n'.join(public_rr), f'Private Service Record-Route leaked to caller: {public_rr}'
         print(json.dumps({'reply': len(outputs) + 1,
                           'contact': contact[1],
