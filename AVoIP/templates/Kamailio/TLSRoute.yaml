@@ -6,9 +6,9 @@ kind: TLSRoute
 metadata:
   name: {{ $fullName }}-kamailio
   annotations:
-    external-dns.kubernetes.io/hostname: '{{ .Values.sip.globalHost }},{{ include "avoip.sip.siteHost" . }}'
+    external-dns.kubernetes.io/hostname: '{{ if .Values.sip.globalRouting.enabled }}{{ include "avoip.sip.siteHost" . }}{{ else }}{{ .Values.sip.globalHost }},{{ include "avoip.sip.siteHost" . }}{{ end }}'
     # TODO: Remove the legacy ExternalDNS annotation after all controllers use v0.22.0+.
-    external-dns.alpha.kubernetes.io/hostname: '{{ .Values.sip.globalHost }},{{ include "avoip.sip.siteHost" . }}'
+    external-dns.alpha.kubernetes.io/hostname: '{{ if .Values.sip.globalRouting.enabled }}{{ include "avoip.sip.siteHost" . }}{{ else }}{{ .Values.sip.globalHost }},{{ include "avoip.sip.siteHost" . }}{{ end }}'
 
   labels:
     wan-mode: public

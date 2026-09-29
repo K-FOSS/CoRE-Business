@@ -38,6 +38,14 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- default (default $derived .Values.kamailio.advertisedHost) .Values.sip.siteHost -}}
 {{- end -}}
 
+{{- define "avoip.sip.publicHost" -}}
+{{- if .Values.sip.globalRouting.enabled -}}
+{{- .Values.sip.globalHost -}}
+{{- else -}}
+{{- include "avoip.sip.siteHost" . -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "avoip.sip.serviceHost" -}}
 {{- $root := .root -}}
 {{- $component := .component -}}

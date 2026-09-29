@@ -1,0 +1,27 @@
+{{- if and .Values.kamailio.enabled .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.sip.globalRouting.enabled }}
+{{- $fullName := include "avoip.fullname" . -}}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: TLSRoute
+metadata:
+  name: {{ printf "%s-kamailio-global" $fullName | trunc 63 | trimSuffix "-" }}
+  labels:
+    wan-mode: public
+    lan-mode: private
+spec:
+  hostnames:
+    - '{{ .Values.sip.globalHost }}'
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Values.gateway.namespace }}
+      sectionName: sips-tls
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: Service
+          name: {{ $fullName }}-kamailio
+          port: 5061
+          weight: 1
+{{- end }}

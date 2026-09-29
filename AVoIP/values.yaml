@@ -95,6 +95,14 @@ sip:
   globalHost: 'sip.resolvemy.host'
   # Empty derives sip.<cluster>.<datacenter>.<region>.resolvemy.host.
   siteHost: ''
+  globalRouting:
+    # K8GB DNS ownership is opt-in until the delegated public DNS zone and
+    # provider path are ready in CoRE-Backplane.
+    enabled: false
+    primaryGeoTag: ''
+    dnsTtlSeconds: 30
+    dnsZoneNegTTL: 30
+    doFinalize: false
   tls:
     issuerName: 'kjdev-cluster'
 

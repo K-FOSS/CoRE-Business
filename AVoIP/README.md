@@ -199,12 +199,18 @@ operator's all-node headless Service for RTPEngine's direct Redis client, which
 does not follow Redis Cluster redirects. Call-state restoration and switchover
 still require live verification after reconciliation, including RTPEngine and
 Valkey node failures.
-Public signaling is TLS-only; Flowroute must target the configured
+Public signaling is TLS-only. By default, Flowroute targets the configured
 `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061;transport=tls` site
-route (or its weighted SIPS SRV target). `sip.resolvemy.host` remains a shared
-DNS alias only and is not used as the dialog identity. Kamailio's UDP listener
-remains private for the FreeSWITCH leg and is not exposed through a
-LoadBalancer or UDPRoute.
+route, and that site hostname remains the dialog identity. The chart now has an
+opt-in [K8GB](https://www.k8gb.io/) failover mode that references the existing
+Gateway API `TLSRoute` for `sip.resolvemy.host`; when enabled, Kamailio advertises that global name in
+the public listener, Record-Route, and Contact while each site continues to
+publish its site-local route. Keep K8GB mode disabled until Backplane has
+configured public DNS delegation and its authoritative provider path for the
+`sip.resolvemy.host` zone. The Backplane K8GB control plane currently installs
+no `Gslb` or `ZoneDelegation` resources. Kamailio's UDP listener remains
+private for the FreeSWITCH leg and is not exposed through a LoadBalancer or
+UDPRoute.
 
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
 [CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
