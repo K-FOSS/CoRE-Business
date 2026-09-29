@@ -215,14 +215,14 @@ rtpengine:
   media:
     address: '66.165.222.103'
     min: 11000
-    max: 11050
+    max: 13050
   logging:
     # Temporary T.38 troubleshooting verbosity. Disable after the fax test.
     enabled: true
-    level: 7
-    controlLevel: 7
-    spandspLevel: 7
-    rtcpLevel: 7
+    level: 6
+    controlLevel: 6
+    spandspLevel: 6
+    rtcpLevel: 6
 
 diagnostics:
   netshoot:
