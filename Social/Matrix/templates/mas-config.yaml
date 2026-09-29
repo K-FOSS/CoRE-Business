@@ -14,6 +14,7 @@ http:
         - name: graphql
         - name: assets
         - name: health
+        - name: adminapi
       binds:
         - address: '[::]:8080'
 database:

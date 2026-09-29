@@ -8,8 +8,11 @@ data:
     public_baseurl: {{ printf "https://%s/" .Values.synapse.hostname | quote }}
     serve_server_wellknown: true
     include_profile_updates_in_sync: true
-{{- if .Values.mas.enabled }}
     extra_well_known_client_content:
+      cc.etke.ketesa:
+        restrictBaseUrl: {{ printf "https://%s" .Values.synapse.hostname | quote }}
+        externalAuthProvider: true
+{{- if .Values.mas.enabled }}
       org.matrix.msc2965.authentication:
         issuer: {{ printf "https://%s/" .Values.mas.hostname | quote }}
         account: {{ printf "https://%s/account/" .Values.mas.hostname | quote }}

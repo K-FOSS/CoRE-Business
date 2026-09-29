@@ -11,6 +11,9 @@ gateway:
   sectionName: 'https-myloginspace'
   requestTimeout: '1m'
 
+support:
+  matrixId: '@kjones:matrix.mylogin.space'
+
 turn:
   enabled: true
   hostname: 'nat.mylogin.space'
@@ -36,6 +39,19 @@ element:
       memory: '128Mi'
     limits:
       memory: '512Mi'
+
+ketesa:
+  hostname: 'matrix-admin.mylogin.space'
+  image:
+    repository: 'ghcr.io/etkecc/ketesa'
+    tag: 'v1.5.0'
+    pullPolicy: 'IfNotPresent'
+  resources:
+    requests:
+      cpu: '50m'
+      memory: '64Mi'
+    limits:
+      memory: '256Mi'
 
 mas:
   enabled: true

@@ -32,6 +32,15 @@ The Authentik `preferred_username` is mapped to the Matrix localpart. Existing
 MAS accounts are linked to this provider only when they do not already have a
 link for it (`on_conflict: set`); keep the Authentik username stable and unique.
 
+The chart also deploys [Ketesa](https://github.com/etkecc/ketesa), the
+successor to Synapse Admin, at `matrix-admin.mylogin.space`. Ketesa is a static
+admin UI and uses the Synapse and MAS APIs from the browser; its homeserver is
+restricted through the `cc.etke.ketesa` Matrix client well-known configuration.
+The MAS listener includes the `adminapi` resource required for Ketesa's MAS
+user, session, email, and registration-token management. Ketesa remains
+authentication-protected by the existing MAS/Authentik flow; no separate
+admin-panel credentials are stored in this repository.
+
 ## Element Web optional features
 
 Element Web feature flags are configured under the `features` object in the
@@ -67,6 +76,14 @@ unstable features on the live homeserver before relying on it. See
 the [Synapse profile-update setting](https://element-hq.github.io/synapse/latest/usage/configuration/config_documentation.html#-include-profile-updates-in-sync)
 and [Element Web configuration reference](https://github.com/element-hq/element-web/blob/develop/docs/config.md).
 
+Synapse advertises the site TURN service at `nat.mylogin.space:3478` over UDP
+and TCP through `turn_uris`. Its CoTURN REST/shared secret is read from the
+Backplane-pushed `TurnAuth` Vault property through an ExternalSecret; the
+credential value is never committed. The configured source is the
+[DC1/YXL NATPuncher deployment](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/NATPuncher.yaml).
+See Synapse's [TURN configuration documentation](https://element-hq.github.io/synapse/latest/usage/configuration/config_documentation.html#turn_shared_secret_path)
+and the [CoTURN REST authentication format](https://github.com/coturn/coturn/blob/master/README.turnserver).
+
 The bootstrap Job has only namespace-scoped `get` and `create` access to
 Secrets. It generates the RSA signing key as PKCS#8 PEM, which MAS accepts;
 the encryption and Matrix secrets are generated as random hexadecimal values.
@@ -78,10 +95,16 @@ OIDC is provisioned through Authentik using the same Crossplane Terraform
 `Workspace` pattern as the [Fediverse stack](https://github.com/K-FOSS/CoRE-Business/tree/main/Social/Fediverse).
 Element automatically redirects unauthenticated users to Synapse SSO, which
 then uses the Authentik OIDC provider. Authentik can in turn use CoRE LDAP.
+The Authentik dashboard exposes an `Element` launcher for the `Matrix Users`
+group, opening `https://element.mylogin.space` in a new tab; the underlying
+`Matrix Synapse` OIDC application remains hidden from the dashboard.
+Homeserver support discovery publishes `@kjones:matrix.mylogin.space` as the
+general administrator contact at
+`https://matrix.mylogin.space/.well-known/matrix/support`.
 Synapse's optional [LDAP password provider](https://github.com/matrix-org/matrix-synapse-ldap3)
 is disabled by default and requires a separately managed bind-password Secret.
 
-The future/live owner must be an explicit Backplane ApplicationSet using the
+The live owner is the [Matrix ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Matrix.yaml), using the
 [global PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
 and the [storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
 The `User` claim follows the current [mylogin.space User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
@@ -91,7 +114,8 @@ on the Longhorn-backed homeserver PVC under `/data`. Before activation,
 add an owner under `Apps/Business/Social/` and inject `cluster.name`,
 `datacenter`, `region`, the global PostgreSQL values, and the target Gateway.
 Verify both User/XR conditions and PostgreSQL Role/Database resources, the
-Authentik Workspace callbacks, MAS health and discovery endpoints, the
+Authentik Workspace callbacks, MAS health, admin API and discovery endpoints,
+Ketesa's `matrix-admin.mylogin.space` route,
 ElementX well-known advertisement, federation port policy, and a real Element
 and ElementX login after Argo CD reconciliation. Synapse recommends PostgreSQL
 for production deployments and

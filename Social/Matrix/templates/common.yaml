@@ -10,6 +10,7 @@
 {{- $_ := required "synapse.psql.terraformProvider is required" .Values.synapse.psql.terraformProvider -}}
 {{- $_ := required "gateway.sectionName is required" .Values.gateway.sectionName -}}
 {{- $_ := required "element.hostname is required" .Values.element.hostname -}}
+{{- $_ := required "ketesa.hostname is required" .Values.ketesa.hostname -}}
 {{- if not (has .Values.migration.mode (list "check" "dry-run" "migrate")) }}
 {{- fail "migration.mode must be check, dry-run, or migrate" }}
 {{- end }}
@@ -378,6 +379,43 @@ controllers:
             type: 'HTTP'
             path: '/config.json'
             port: 8080
+  ketesa:
+    replicas: 2
+    serviceAccount:
+      name: 'default'
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: 'OnRootMismatch'
+    containers:
+      ketesa:
+        image:
+          repository: {{ .Values.ketesa.image.repository | quote }}
+          tag: {{ .Values.ketesa.image.tag | quote }}
+          pullPolicy: {{ .Values.ketesa.image.pullPolicy | quote }}
+        ports:
+          - name: http
+            containerPort: 8080
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        resources:
+          {{- toYaml .Values.ketesa.resources | nindent 10 }}
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 8080
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/'
+            port: 8080
 
 persistence:
   runtime:
@@ -414,6 +452,14 @@ persistence:
       element:
         element:
           - path: '/app/config.json'
+            subPath: 'config.json'
+  ketesa-config:
+    type: 'configMap'
+    name: {{ printf "ketesa-%s-config" .Release.Name | quote }}
+    advancedMounts:
+      ketesa:
+        ketesa:
+          - path: '/var/public/config.json'
             subPath: 'config.json'
 {{- if .Values.mas.enabled }}
   mas-template:
@@ -517,6 +563,11 @@ service:
       http:
         port: 8080
         appProtocol: 'kubernetes.io/ws'
+  ketesa:
+    controller: 'ketesa'
+    ports:
+      http:
+        port: 8080
 {{- if .Values.mas.enabled }}
   mas:
     controller: 'mas'
@@ -610,6 +661,27 @@ route:
               value: '/'
         backendRefs:
           - identifier: 'element'
+            port: 8080
+        timeouts:
+          request: {{ .Values.gateway.requestTimeout | quote }}
+  ketesa:
+    kind: 'HTTPRoute'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames:
+      - {{ .Values.ketesa.hostname | quote }}
+    parentRefs:
+      - name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    rules:
+      - matches:
+          - path:
+              type: 'PathPrefix'
+              value: '/'
+        backendRefs:
+          - identifier: 'ketesa'
             port: 8080
         timeouts:
           request: {{ .Values.gateway.requestTimeout | quote }}
