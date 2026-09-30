@@ -28,6 +28,11 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- if .Values.rtpengine.enabled -}}true{{- end -}}
 {{- end -}}
 
+{{/* Disable Homer on named clusters without the required Longhorn storage. */}}
+{{- define "avoip.homer.enabled" -}}
+{{- if and .Values.homer.enabled (not (has .Values.cluster.name .Values.homer.disabledClusters)) -}}true{{- end -}}
+{{- end -}}
+
 {{/* Keep the primary-aware Valkey proxy's generated resources within DNS limits. */}}
 {{- define "avoip.rtpengine.valkeyProxyName" -}}
 {{- printf "%s-rtp-valkey" (include "avoip.fullname" .) | trunc 63 | trimSuffix "-" -}}

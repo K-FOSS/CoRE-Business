@@ -1,0 +1,28 @@
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.storage.persistence.enabled }}
+{{- if ne .Values.homer.storage.persistence.storageClass .Values.homer.storage.storageClass.name }}
+{{- fail "Homer persistence and StorageClass names must match" }}
+{{- end }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: '{{ .Values.homer.storage.storageClass.name }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+    argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+provisioner: 'driver.longhorn.io'
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: '{{ .Values.homer.storage.storageClass.numberOfReplicas }}'
+  staleReplicaTimeout: '30'
+  fsType: 'ext4'
+  fromBackup: ''
+  dataLocality: 'disabled'
+  unmapMarkSnapChainRemoved: 'ignored'
+  disableRevisionCounter: 'true'
+  dataEngine: 'v1'
+  migratable: '{{ .Values.homer.storage.storageClass.migratable }}'
+  backupTargetName: '{{ .Values.homer.storage.storageClass.backupTargetName }}'
+{{- end }}

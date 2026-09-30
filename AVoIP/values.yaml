@@ -247,6 +247,8 @@ homer:
   # ApplicationSet can override this for clusters that should not retain local
   # SIP capture.
   enabled: true
+  disabledClusters:
+    - 'dc1-k3s-node1'
   hostname: ''
   capture:
     hepPort: 9060
@@ -274,10 +276,15 @@ homer:
       digest: 'sha256:5aea7cc516b419e3526f47dd1531be31a56a046cfe44754d94f9383e13e2ee99'
       pullPolicy: 'IfNotPresent'
   storage:
+    storageClass:
+      name: 'avoip-homer-rwx'
+      numberOfReplicas: '2'
+      migratable: 'false'
+      backupTargetName: 'default'
     persistence:
       enabled: true
-      storageClass: 'longhorn'
-      accessMode: 'ReadWriteOnce'
+      storageClass: 'avoip-homer-rwx'
+      accessMode: 'ReadWriteMany'
       size: '10Gi'
       retain: true
     retentionDays: 14

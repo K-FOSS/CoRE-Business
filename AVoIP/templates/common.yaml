@@ -2,7 +2,7 @@
 
 {{- define "avoip.common.values" -}}
 {{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
 {{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
 {{- if ne (clean .Values.freeswitch.media.diagnostics.callRecording.path) (clean .Values.freeswitch.fax.spoolPath) }}{{- fail "FreeSWITCH callRecording.path must match fax.spoolPath when Homer playback is enabled" }}{{- end }}
 {{- end }}
@@ -63,7 +63,7 @@ configMaps:
           monitor-uri /healthz
           monitor fail if { nbsrv(valkey_primary) lt 1 }
 {{- end }}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
   homer-recordings:
     forceRename: '{{ include "avoip.fullname" . }}-homer-recordings'
     includeChecksumInControllers:
@@ -484,7 +484,7 @@ controllers:
             --active-switchover
 {{- end }}
 {{- end }}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
             --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepTCPPort }}
             --homer-protocol=tcp
             --homer-id=102
@@ -875,7 +875,7 @@ controllers:
           - name: udp-sip-edge
             containerPort: 5090
             protocol: UDP
-{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
       recordings:
         image:
           repository: '{{ .Values.homer.recordings.image.repository }}'
@@ -919,13 +919,12 @@ controllers:
 {{- end }}
 
 {{ end }}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
   homer-web:
     forceRename: '{{ include "avoip.fullname" . }}-homer-web'
-    strategy: RollingUpdate
-    rollingUpdate:
-      surge: 1
-      unavailable: '0'
+    # Homer writes SQLite and DuckDB catalogs; Recreate prevents two pods from
+    # writing the same RWX volume during a rollout.
+    strategy: Recreate
     replicas: 1
     revisionHistoryLimit: 3
     serviceAccount:
@@ -1130,7 +1129,7 @@ service:
         targetPort: health
         protocol: TCP
 {{- end }}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
   homer-heplify:
     forceRename: '{{ include "avoip.fullname" . }}-homer-heplify'
     controller: homer-web
@@ -1410,11 +1409,11 @@ persistence:
       freeswitch:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
         recordings:
           - path: /recordings
 {{- end }}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
   homer-recordings-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-homer-recordings'
@@ -1426,7 +1425,7 @@ persistence:
           - path: /usr/share/nginx/html/recordings
 {{- end }}
 {{- end }}
-{{- if and .Values.homer.enabled .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
   homer-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-homer-config'
@@ -1436,6 +1435,7 @@ persistence:
           - path: /etc/homer-template
   homer-data:
 {{- if .Values.homer.storage.persistence.enabled }}
+    forceRename: '{{ include "avoip.fullname" . }}-homer-rwx'
     type: persistentVolumeClaim
     storageClass: '{{ .Values.homer.storage.persistence.storageClass }}'
     accessMode: '{{ .Values.homer.storage.persistence.accessMode }}'
@@ -1443,6 +1443,7 @@ persistence:
     retain: {{ .Values.homer.storage.persistence.retain }}
     annotations:
       argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+      argocd.argoproj.io/sync-wave: '-1'
 {{- else }}
     type: emptyDir
 {{- end }}

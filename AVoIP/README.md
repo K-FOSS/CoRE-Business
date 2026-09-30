@@ -238,6 +238,9 @@ publicly exposed.
 Answered calls can be recorded by FreeSWITCH and played in a Homer dashboard
 Iframe panel; see [Homer call audio playback](docs/HOMER-AUDIO.md) for access,
 retention, and verification.
+Homer uses a dedicated two-replica Longhorn RWX claim on the hub and Home1
+clusters; the old RWO claims are retained without copying their traces. See
+[Homer storage](docs/HOMER-STORAGE.md) for rollout and recovery details.
 
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
