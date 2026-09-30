@@ -588,6 +588,11 @@ controllers:
               timeoutSeconds: 3
               failureThreshold: 3
         ports:
+        {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+          - name: udp-public
+            containerPort: 5060
+            protocol: UDP
+        {{- end }}
           - name: tls-public
             containerPort: 5061
             protocol: TCP
@@ -1216,6 +1221,12 @@ service:
         port: 5061
         targetPort: tls-public
         protocol: TCP
+    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+      sip-public-udp:
+        port: 5060
+        targetPort: udp-public
+        protocol: UDP
+    {{- end }}
       tls-private:
         port: 5062
         targetPort: tls-private

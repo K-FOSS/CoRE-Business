@@ -188,13 +188,13 @@ kamailio:
     enabled: true
     sip:
       enabled: true
-      # SIP signaling is TCP/TLS-only. RTPEngine's separate UDP media and
-      # control sockets are unaffected by this setting.
-      udpEnabled: false
+      # Enable the Gateway UDPRoute for public SIP/5060. Public SIPS/TLS
+      # remains available independently on 5061.
+      udpEnabled: true
       directService:
         enabled: false
       udpRoute:
-        enabled: false
+        enabled: true
   backend:
     # The default backend is the chart's FreeSWITCH service when both are enabled.
     serviceName: ''
