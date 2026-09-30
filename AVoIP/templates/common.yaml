@@ -489,8 +489,11 @@ controllers:
             enabled: true
             custom: true
             spec:
-              tcpSocket:
-                port: topos-redis
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - nc -z 127.0.0.1 {{ .Values.kamailio.topology.redis.proxyPort }}
               periodSeconds: 5
               timeoutSeconds: 2
               failureThreshold: 6
