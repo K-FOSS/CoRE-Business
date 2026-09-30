@@ -61,7 +61,7 @@ spec:
       backendRefs:
         - group: ''
           kind: 'Service'
-          name: '{{ include "avoip.fullname" . }}-homer-recordings'
+          name: '{{ include "avoip.fullname" . }}-rec'
           port: {{ .Values.homer.recordings.port }}
     {{- end }}
     - matches:

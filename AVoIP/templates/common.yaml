@@ -1159,7 +1159,7 @@ service:
         protocol: TCP
 {{- if and .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
   homer-recordings:
-    forceRename: '{{ include "avoip.fullname" . }}-homer-recordings'
+    forceRename: '{{ include "avoip.fullname" . }}-rec'
     controller: freeswitch
     ports:
       http:
