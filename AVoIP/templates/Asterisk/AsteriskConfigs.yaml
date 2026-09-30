@@ -60,6 +60,18 @@ data:
     console => notice,warning,error,verbose,debug
     messages.log => notice,warning,error
 
+  cli.conf: |
+    [general]
+    [defaults]
+    [startup_commands]
+    {{- if .Values.asterisk.logging.enabled }}
+    core set verbose {{ .Values.asterisk.logging.verbose }} = yes
+    core set debug {{ .Values.asterisk.logging.debug }} = yes
+    {{- if .Values.asterisk.logging.pjsip }}
+    pjsip set logger on = yes
+    {{- end }}
+    {{- end }}
+
   cdr.conf: |
     [general]
     enable=yes

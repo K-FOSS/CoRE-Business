@@ -1376,6 +1376,8 @@ persistence:
             subPath: extensions.conf
           - path: /etc/asterisk/logger.conf
             subPath: logger.conf
+          - path: /etc/asterisk/cli.conf
+            subPath: cli.conf
           - path: /etc/asterisk/cdr.conf
             subPath: cdr.conf
           - path: /etc/asterisk/cdr_pgsql.conf

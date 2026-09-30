@@ -383,6 +383,13 @@ network:
 
 asterisk:
   enabled: true
+  logging:
+    # Temporary troubleshooting verbosity routed to the container console.
+    # PJSIP packet traces can contain caller identities and SIP headers.
+    enabled: true
+    verbose: 5
+    debug: 3
+    pjsip: true
   sip:
     serviceHost: ''
   # Asterisk and FreeSWITCH communicate over the cluster pod network. Leave
