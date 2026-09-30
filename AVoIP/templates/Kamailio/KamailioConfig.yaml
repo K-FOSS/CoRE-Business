@@ -247,6 +247,18 @@ data:
             "SIP FLOWROUTE RX pod=$env(POD_NAME) source=$si:$sp recv=$Ri:$Rp proto=$proto callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE RX BEGIN ---\n$mb\n--- SIP FLOWROUTE RX END ---\n"
           );
           {{- end }}
+          if (is_method("CANCEL")) {
+            {{- if and (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
+            rtpengine_manage();
+            {{- end }}
+            $var(cancel_result) = t_relay_cancel();
+            if ($var(cancel_result) > 0) {
+              sl_send_reply("481", "Call Does Not Exist");
+            } else if ($var(cancel_result) < 0) {
+              sl_reply_error();
+            }
+            exit;
+          }
           route(FROM_CARRIER);
           exit;
         }
@@ -262,6 +274,18 @@ data:
         src_ip == {{ .Values.kamailio.backend.podCIDR }}
       ) {
         $var(side) = "backend";
+        if (is_method("CANCEL")) {
+          {{- if and (include "avoip.rtpengine.enabled" . | trim) $.Values.freeswitch.enabled }}
+          rtpengine_manage();
+          {{- end }}
+          $var(cancel_result) = t_relay_cancel();
+          if ($var(cancel_result) > 0) {
+            sl_send_reply("481", "Call Does Not Exist");
+          } else if ($var(cancel_result) < 0) {
+            sl_reply_error();
+          }
+          exit;
+        }
         route(FROM_BACKEND);
         exit;
       }
@@ -297,20 +321,6 @@ data:
 
       if (is_method("OPTIONS")) {
         sl_send_reply("200", "Keepalive");
-        exit;
-      }
-
-      if (is_method("CANCEL")) {
-        if (t_check_trans()) {
-          {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
-          rtpengine_manage();
-          {{- end }}
-
-          set_send_socket_name("private_tls");
-          route(RELAY);
-        }
-
-        sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
 
@@ -356,20 +366,6 @@ data:
         );
       }
       {{- end }}
-      if (is_method("CANCEL")) {
-        if (t_check_trans()) {
-          {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
-          rtpengine_manage();
-          {{- end }}
-
-          set_send_socket_name("public_tls");
-          route(RELAY);
-        }
-
-        sl_send_reply("481", "Call Does Not Exist");
-        exit;
-      }
-
       if (has_totag()) {
         if (is_method("ACK") && !is_present_hf("Route") && $(ru{uri.param,tps}) == "") {
           if (t_check_trans()) {
@@ -431,8 +427,8 @@ data:
     route[INITIAL_CARRIER] {
       # Fixed provider next-hop is owned by Kamailio; retain the called user
       # and do not teach FreeSWITCH carrier hostnames or transport topology.
-      route(RR_BACKEND_TO_CARRIER);
       $ru = "sips:" + $rU + "@{{ .Values.flowroute.outboundHost }}";
+      route(RR_BACKEND_TO_CARRIER);
       $du = "sips:{{ .Values.flowroute.outboundHost }}:5061;transport=tls";
       set_send_socket_name("public_tls");
       route(RELAY);
