@@ -125,8 +125,8 @@ Its ports
 follow `sip.enabled` (TLS/5061), `sip.tcpEnabled` (TCP/5060), and
 `sip.udpEnabled` (UDP/5060); it never exposes private TLS/5062. Configure its
 type, labels, annotations, and LoadBalancer class under
-`serviceOptions.kamailio-pub`. If UDP is sent through the Gateway instead, use
-`sip.udpRoute.enabled`; that route targets the ordinary ClusterIP Service.
+`serviceOptions.kamailio-pub`. UDP and TCP/5060 are supported only through
+this direct Service; there is no Gateway UDPRoute.
 Direct TCP/TLS LoadBalancers must preserve the original client address and
 support the PROXY protocol expected by Kamailio. Prefer the Gateway path if the
 site LoadBalancer cannot meet those requirements.

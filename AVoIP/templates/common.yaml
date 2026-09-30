@@ -1245,8 +1245,8 @@ service:
         port: 5062
         targetPort: tls-private
         protocol: TCP
-{{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
-{{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
+{{ if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
+{{ $kamailioPubHost := include "avoip.sip.kamailioPubHost" . }}
   kamailio-pub:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio-pub'
     controller: kamailio
@@ -1695,6 +1695,7 @@ persistence:
 {{- end }}
 
 {{- $commonValues := include "avoip.common.values" . | fromYaml -}}
+{{- if hasKey $commonValues "Error" }}{{- fail (printf "invalid generated BJW-S common values: %s" (index $commonValues "Error")) }}{{- end }}
 {{- $_ := set .Values "controllers" $commonValues.controllers -}}
 {{- $_ := set .Values "service" $commonValues.service -}}
 {{- $_ := set .Values "persistence" $commonValues.persistence -}}
