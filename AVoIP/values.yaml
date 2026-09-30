@@ -218,8 +218,6 @@ kamailio:
         # Empty derives kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host.
         # Enabled UDP/TCP sockets advertise this direct carrier-facing identity.
         hostname: ''
-      udpRoute:
-        enabled: false
   backend:
     # The default backend is the chart's FreeSWITCH service when both are enabled.
     serviceName: ''
