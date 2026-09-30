@@ -228,18 +228,22 @@ data:
         if (!loose_route_mode("1")) route(REJECT_DIALOG);
         route(TO_BACKEND);
       } else {
+        # Backend-originated in-dialog requests must enter through the
+        # private Kamailio Record-Route identity.
         if ($(route_uri{uri.host}) != "{{ $kamailioHost }}" ||
             $(route_uri{uri.port}) != "5062" ||
             $(route_uri{uri.transport}) != "tls" ||
-            $(route_uri{uri.param,sn}) != "private_tls") route(REJECT_DIALOG);
-        if (!loose_route_mode("1")) route(REJECT_DIALOG);
-        # A UAS sends the paired private/public Record-Route set in reverse.
-        # Consume our public route as well, leaving any upstream routes intact.
-        if ($(route_uri{uri.host}) != "{{ $publicSipHost }}" ||
-            $(route_uri{uri.port}) != "{{ .Values.kamailio.advertisedTLSPort }}" ||
-            $(route_uri{uri.transport}) != "tls" ||
-            $(route_uri{uri.param,sn}) != "public_tls") route(REJECT_DIALOG);
-        if (!loose_route_mode("1")) route(REJECT_DIALOG);
+            $(route_uri{uri.param,sn}) != "private_tls") {
+          route(REJECT_DIALOG);
+        }
+
+        # This is the first half of our paired Record-Route set. r2=on tells
+        # rr to process both corresponding Route headers together, so do not
+        # attempt to consume the public half with a second loose_route call.
+        if (!loose_route_mode("1")) {
+          route(REJECT_DIALOG);
+        }
+
         route(TO_CARRIER);
       }
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
