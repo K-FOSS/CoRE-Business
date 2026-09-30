@@ -73,6 +73,7 @@ spec:
         client_secret        = random_password.client_secret.result
         authorization_flow   = data.authentik_flow.authorization.id
         invalidation_flow    = data.authentik_flow.invalidation.id
+        access_token_validity = "hours=8"
         issuer_mode          = "per_provider"
         signing_key          = data.authentik_certificate_key_pair.signing_key.id
         allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/api/v4/auth/oauth2/authentik/callback" }]
