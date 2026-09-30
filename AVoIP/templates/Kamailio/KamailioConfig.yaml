@@ -62,7 +62,6 @@ data:
     loadmodule "textops.so"
     loadmodule "xlog.so"
     loadmodule "tls.so"
-    loadmodule "ctl.so"
 
     {{- if .Values.kamailio.topology.enabled }}
     loadmodule "ndb_redis.so"
@@ -81,7 +80,6 @@ data:
 
     modparam("tls", "config", "/etc/kamailio/tls.cfg")
     modparam("tls", "xavp_cfg", "tls")
-    modparam("ctl", "binrpc", "unixs:{{ .Values.kamailio.rpcSocket }}")
 
     #
     # Record routing

@@ -121,8 +121,6 @@ fax:
 kamailio:
   enabled: true
   tcpChildren: 4
-  # /tmp is an emptyDir mount because the root filesystem is read-only.
-  rpcSocket: '/tmp/kamailio_ctl'
   replicas: 3
   rollingUpdate:
     # BJW-S 5.0.1 uses the field name `surge`; keep zero quoted so its
