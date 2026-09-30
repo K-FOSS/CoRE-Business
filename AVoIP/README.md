@@ -140,6 +140,12 @@ host. FreeSWITCH uses that site host as its external SIP identity as well.
 Every in-dialog request, including 2xx ACK, follows `loose_route()`; Kamailio
 does not special-case ACK or guess a backend when a dialog Route header is
 missing.
+For a new outbound TLS connection to Flowroute, Kamailio egress traverses the
+site's VyOS WAN-GW/NAT function routers. Their shared VRRP address is the
+upstream source NAT identity; it can differ from the public SIP ingress address
+and RTPEngine's advertised RTP address. The hub's observed Flowroute-facing
+source was `66.165.222.97`, while its advertised RTP address is
+`66.165.222.103`. See [SIP identity and egress](docs/SIP-IDENTITY.md).
 The shared SIP hostname remains available as a DNS alias. This prevents wildcard bind
 addresses such as `0.0.0.0` from being advertised in dialog routing. Compact
 Kamailio request, relay, response, rejection, and loose-route markers are

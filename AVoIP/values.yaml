@@ -315,8 +315,9 @@ network:
   externalIP: '66.165.222.101'
   egressIP: ''
   # Leave Cilium egress pinning disabled unless the cluster has a working
-  # CiliumEgressGatewayPolicy path. Normal node/NAT egress may use 66.165.222.98
-  # or 66.165.222.99 at the site edge.
+  # CiliumEgressGatewayPolicy path. Normal SIP egress is source NATed at the
+  # VyOS WAN-GW/NAT function routers to their VRRP address; the hub's observed
+  # Flowroute-facing source is 66.165.222.97.
   ciliumEgressGateway:
     enabled: false
 
