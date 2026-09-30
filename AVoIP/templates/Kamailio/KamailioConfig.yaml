@@ -6,6 +6,7 @@
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $rawSipLogging := or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound) -}}
+{{- $carrierTrafficLogging := default false .Values.kamailio.sipLogging.carrierTraffic -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -245,6 +246,12 @@ data:
         {{- range .Values.flowroute.signalingCIDRs }}
         if (src_ip == {{ . }}) {
           $var(side) = "carrier";
+          {{- if $carrierTrafficLogging }}
+          xlog(
+            "L_INFO",
+            "SIP FLOWROUTE RX pod=$env(POD_NAME) source=$si:$sp recv=$Ri:$Rp proto=$proto callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE RX BEGIN ---\n$mb\n--- SIP FLOWROUTE RX END ---\n"
+          );
+          {{- end }}
           route(FROM_CARRIER);
           exit;
         }
@@ -575,6 +582,15 @@ data:
     {{- end }}
 
     onsend_route {
+      {{- if $carrierTrafficLogging }}
+      if ($fsn == "public_tls") {
+        xlog(
+          "L_INFO",
+          "SIP FLOWROUTE TX pod=$env(POD_NAME) destination=$snd(ip):$snd(port) proto=$snd(proto) callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE TX BEGIN ---\n$snd(buf)\n--- SIP FLOWROUTE TX END ---\n"
+        );
+      }
+      {{- end }}
+
       if ($snd(buf) =~ "^ACK ") {
         xlog(
           "L_INFO",

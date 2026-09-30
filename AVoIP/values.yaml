@@ -158,6 +158,11 @@ kamailio:
     # Optional compact request/response markers; ACK and failure logs remain on.
     enabled: true
 
+    # Log complete authorized carrier-facing SIP messages in both directions.
+    # This includes Authorization, identity headers, SDP, and MESSAGE bodies;
+    # keep enabled only while investigating a carrier signaling issue.
+    carrierTraffic: true
+
     # Temporary full-message receive logging. Disable after the ACK investigation.
     rawInbound: false
     # Adds socket/ACL/transaction decision markers without dumping SIP bodies.

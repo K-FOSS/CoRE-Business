@@ -12,6 +12,16 @@
 6. Roll back the reviewed Git commit through Argo CD if the generated config
    is invalid. Do not bypass PROXYv2 or broaden the private NetworkPolicy.
 
+When `kamailio.sipLogging.carrierTraffic` is enabled, Kamailio emits complete
+authorized carrier-facing messages as `SIP FLOWROUTE RX` and `SIP FLOWROUTE TX`
+records. RX records are emitted after the PROXYv2-derived carrier CIDR check;
+TX records are emitted for the `public_tls` send socket. Use the Call-ID and
+the `CSeq` value to correlate INVITE, provisional/final replies, ACK, BYE,
+CANCEL, retransmissions, and error responses across replicas. These records
+can contain Authorization headers, caller/callee identities, PAI, Contact,
+SDP, and MESSAGE bodies. Keep the setting enabled only for an incident and
+disable it afterward.
+
 ## Inspektor Gadget network debugging
 
 Inspektor Gadget is available in the sites as an optional kernel-level view of
