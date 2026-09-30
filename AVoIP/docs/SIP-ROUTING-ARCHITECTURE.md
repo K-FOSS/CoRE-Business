@@ -53,8 +53,8 @@ chart defaults alone are not the deployed configuration.
   exchange, strips the private route from replies sent to the carrier, and
   rewrites public Contacts while preserving the SIP user. The public peer sees
   only the public route and target.
-- Kamailio currently renders two replicas. FreeSWITCH and RTPEngine render
-  one each by default. FreeSWITCH has a persistent fax spool and local call
+- Kamailio, FreeSWITCH, and RTPEngine render one replica each by default.
+  FreeSWITCH has a persistent fax spool and local call
   channels; it is not scaled by the SIP edge change. The RTPEngine Valkey
   deployment supplies shared media-session storage but does not increase the
   media proxy replica count by itself.
@@ -238,16 +238,12 @@ failure semantics are measured.
 
 ## Edge availability and dialog handling
 
-Kamailio now renders two replicas by default behind the stable Kubernetes
-Service. A topology spread preference distributes them across nodes when
-possible, and a PodDisruptionBudget preserves one ready replica during
-voluntary disruption. Both replicas consume the same TLS certificate and
-configuration. Dialog traffic continues through the standard loose-routing
-path; no method-specific ACK forwarding is introduced.
-
-This provides replica-level availability inside a site. It does not migrate an
-active call when a site fails. K8GB DNS failover directs new calls to the
-healthy site; resolver caching affects how quickly clients see a DNS change.
+Kamailio currently runs one replica per site behind its Kubernetes Service.
+Dialog traffic follows standard loose routing, with no method-specific ACK
+forwarding. A pod restart can interrupt active calls. Adding more replicas
+requires verified dialog affinity and failover behavior; see the
+[SIP HA options](SIP-HA-OPTIONS.md). K8GB DNS failover, when enabled, directs
+new calls to a healthy site but does not migrate active dialogs.
 An active call still depends on the site-local SIP, PBX, and RTP state that
 accepted it.
 
