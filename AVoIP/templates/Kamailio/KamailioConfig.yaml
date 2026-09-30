@@ -52,8 +52,9 @@ data:
     loadmodule "textopsx.so"
     {{- end }}
 
-    # Preserve the actual local socket across the private/public TLS
-    # double-Record-Route used by the FreeSWITCH leg and the carrier leg.
+    # Preserve local socket metadata on the internal paired Record-Route set.
+    # Carrier-facing replies are sanitized below so Kamailio-only parameters
+    # never become part of Flowroute's dialog route set.
     modparam("rr", "sockname_mode", 1)
     modparam("sanity", "autodrop", 0)
     {{- if (include "avoip.homer.enabled" . | trim) }}
@@ -198,7 +199,13 @@ data:
     }
 
     route[INITIAL_BACKEND] {
-      record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls");
+      # Keep the complete paired Record-Route internally. The carrier-facing
+      # reply_route below removes the private half and normalizes the public
+      # half to a plain RFC SIP loose-route URI.
+      record_route_preset(
+        "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls",
+        "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls"
+      );
       add_rr_param(";r2=on");
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
       route(MEDIA_INITIAL);
@@ -215,17 +222,30 @@ data:
       if (!is_present_hf("Route")) {
         route(REJECT_DIALOG);
       }
+
       # A carrier request must target the public Contact we advertised.
       if ($var(side) == "carrier" && $rd != "{{ $publicSipHost }}") {
         route(REJECT_DIALOG);
       }
+
       if ($var(side) == "carrier") {
+        # The carrier-visible route set intentionally contains only:
+        #
+        #   <sips:PUBLIC_HOST:5061;lr>
+        #
+        # Do not require Kamailio-private sn=/ftag=/r2 metadata here. The
+        # request has already been authenticated by source CIDR and by arriving
+        # on the public TLS listener, so host + port identify our Route URI.
         if ($(route_uri{uri.host}) != "{{ $publicSipHost }}" ||
-            $(route_uri{uri.port}) != "{{ .Values.kamailio.advertisedTLSPort }}" ||
-            $(route_uri{uri.transport}) != "tls" ||
-            $(route_uri{uri.param,sn}) != "public_tls") route(REJECT_DIALOG);
+            $(route_uri{uri.port}) != "{{ .Values.kamailio.advertisedTLSPort }}") {
+          route(REJECT_DIALOG);
+        }
+
         # The public Contact names this proxy; skip strict R-URI detection.
-        if (!loose_route_mode("1")) route(REJECT_DIALOG);
+        if (!loose_route_mode("1")) {
+          route(REJECT_DIALOG);
+        }
+
         route(TO_BACKEND);
       } else {
         # Backend-originated in-dialog requests must enter through the
@@ -302,6 +322,7 @@ data:
       } else {
         $var(reply_transaction) = "unmatched";
       }
+
       # A response whose top Via names our private listener is returning from
       # the FreeSWITCH leg toward a carrier-originated request.
       #
@@ -310,41 +331,69 @@ data:
       if (is_method("INVITE|UPDATE") &&
           $hdr(Via) =~ "{{ $kamailioHost }}:5062") {
 
-          # The initial INVITE contains our paired Record-Route. Hide the private
-          # half from the carrier and turn the remaining public half back into a
-          # normal single Record-Route.
+          # Initial INVITEs contain our paired private/public Record-Route set.
+          #
+          # FreeSWITCH must retain the complete private representation:
+          #
+          #   private: transport=tls;sn=private_tls;ftag=...;lr;r2=on
+          #   public:  transport=tls;sn=public_tls;ftag=...;lr;r2=on
+          #
+          # Flowroute must NOT receive those Kamailio implementation details.
+          # Remove the private half, then normalize our public half in-place to:
+          #
+          #   <sips:PUBLIC_HOST:5061;lr>
+          #
+          # Transforming the existing header in-place preserves ordering if an
+          # upstream proxy ever contributes additional Record-Route headers.
           if ($hdr(Record-Route) =~ "sn=private_tls") {
-              if (remove_hf_match(
-                    "Record-Route",
-                    "in",
-                    "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls"
-                  )) {
-                  subst_hf(
-                    "Record-Route",
-                    "/(sn=public_tls[^>]*);r2=on/\\1/",
-                    "a"
-                  );
-              }
+            remove_hf_match(
+              "Record-Route",
+              "in",
+              "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls"
+            );
           }
 
-          # INVITE and UPDATE can refresh the dialog's remote target. Never allow
-          # the backend Contact to replace the public Kamailio target exposed to
-          # the carrier.
+          if ($hdr(Record-Route) =~ "sn=public_tls") {
+            # Normal form when rr append_fromtag is enabled.
+            subst_hf(
+              "Record-Route",
+              "/;transport=tls;sn=public_tls;ftag=[^;>]+;lr;r2=on/;lr/",
+              "a"
+            );
+
+            # Defensive fallback if a future rr configuration disables ftag.
+            subst_hf(
+              "Record-Route",
+              "/;transport=tls;sn=public_tls;lr;r2=on/;lr/",
+              "a"
+            );
+          }
+
+          # INVITE and UPDATE can refresh the dialog's remote target. Never
+          # expose FreeSWITCH's private/raw Contact to the carrier.
+          #
+          # Deliberately emit a minimal SIPS Contact:
+          #
+          #   <sips:user@PUBLIC_HOST:5061>
+          #
+          # Do not preserve backend URI parameters such as transport= or gw=.
+          # The sips: scheme already expresses secure SIP for this interop test.
           if ($rs =~ "^(1[0-9][0-9]|2[0-9][0-9])$" &&
               is_present_hf("Contact")) {
-              if (!subst_hf(
-                    "Contact",
-                    "/<sips?:([^@>]+)@[^;>]+(;[^>]*)?>/<sips:\\1@{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }}\\2>/",
-                    "a"
-                  )) {
-                  xlog(
-                    "L_ERR",
-                    "SIP reply drop reason=contact-rewrite pod=$env(POD_NAME) callid=$ci status=$rs\n"
-                  );
-                  drop;
-              }
+            if (!subst_hf(
+                  "Contact",
+                  "/<sips?:([^@>]+)@[^;>]+(;[^>]*)?>/<sips:\\1@{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }}>/",
+                  "a"
+                )) {
+              xlog(
+                "L_ERR",
+                "SIP reply drop reason=contact-rewrite pod=$env(POD_NAME) callid=$ci status=$rs\n"
+              );
+              drop;
+            }
           }
       }
+
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
       # Without transaction context rtpengine_manage cannot infer a late
       # duplicate answer, so retain the existing reply processing behavior.
@@ -365,12 +414,14 @@ data:
         rtpengine_manage();
       }
       {{- end }}
+
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP reply pod=$env(POD_NAME) callid=$ci cseq=$hdr(CSeq) status=$rs source=$si:$sp recv=$Ri:$Rp\n");
       {{- end }}
       return(1);
     }
     {{- end }}
+
     # Observe serialized bytes and the actual chosen send socket. This is a
     # local send observation, not confirmation that the peer received SIP.
     onsend_route {
@@ -381,18 +432,23 @@ data:
       if ($snd(buf) =~ "^(INVITE|BYE|CANCEL|UPDATE) ") {
         xlog("L_INFO", "SIP wire request pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) conn=$conid socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n");
       }
-      if ($snd(buf) =~ "^SIP/2.0 (180|183|2[0-9][0-9]) " && $hdr(CSeq) =~ "INVITE" &&
-          $snd(buf) =~ "\r\nContact:" && $snd(buf) =~ "\r\nRecord-Route:") {
+      if ($snd(buf) =~ "^SIP/2.0 (180|183|2[0-9][0-9]) " &&
+          $hdr(CSeq) =~ "INVITE" &&
+          $snd(buf) =~ "\r\nContact:" &&
+          $snd(buf) =~ "\r\nRecord-Route:") {
         xlog("L_INFO", "SIP wire invite-reply pod=$env(POD_NAME) callid=$ci status=$rs destination=$snd(ip):$snd(port) contact=$(snd(buf){re.subst,/.*\r\n(Contact:[^\r\n]+)\r\n.*/\\1/s}) routes=$(snd(buf){re.subst,/.*\r\n(Record-Route:[^\r\n]+)\r\n.*/\\1/s})\n");
       }
       {{- end }}
       {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-      if (($snd(buf) =~ "^INVITE " || $snd(buf) =~ "^SIP/2.0 (180|183|200) ") &&
-          $snd(buf) =~ "\r\nc=IN IP" && $snd(buf) =~ "\r\nm=") {
+      if (($snd(buf) =~ "^INVITE " ||
+           $snd(buf) =~ "^SIP/2.0 (180|183|200) ") &&
+          $snd(buf) =~ "\r\nc=IN IP" &&
+          $snd(buf) =~ "\r\nm=") {
         xlog("L_INFO", "SIP wire SDP pod=$env(POD_NAME) callid=$ci method=$rm status=$rs destination=$snd(ip):$snd(port) connection=$(snd(buf){re.subst,/.*\r\n(c=[^\r\n]+)\r\n.*/\\1/s}) media=$(snd(buf){re.subst,/.*\r\n(m=[^\r\n]+)\r\n.*/\\1/s})\n");
       }
       {{- end }}
     }
+
   tls.cfg: |
     # Private Kamailio TLS listener and verified FreeSWITCH TLS client.
     [server:default]
