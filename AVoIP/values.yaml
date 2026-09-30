@@ -121,8 +121,14 @@ fax:
 kamailio:
   enabled: true
   tcpChildren: 4
-  rpcSocket: '/run/kamailio/kamailio_ctl'
+  # /tmp is an emptyDir mount because the root filesystem is read-only.
+  rpcSocket: '/tmp/kamailio_ctl'
   replicas: 3
+  rollingUpdate:
+    # BJW-S 5.0.1 uses the field name `surge`; keep zero quoted so its
+    # truthiness check still renders Kubernetes maxSurge: 0.
+    surge: '0'
+    unavailable: 1
   podDisruptionBudget:
     minAvailable: 2
 
@@ -158,13 +164,15 @@ kamailio:
     rawInbound: false
     # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
     diagnostics:
-      enabled: false
+      # Temporarily enabled while investigating the recurring 30-second call
+      # failure. This emits routing/transaction markers and no full SIP body.
+      enabled: true
       # Kamailio core debug level used only while diagnostics are enabled.
       coreDebug: 2
       # Log sanitized SIP routing metadata and SDP before/after RTPEngine.
       # Disable after the media investigation because SDP can expose endpoint
       # addresses and codec details.
-      sdp: false
+      sdp: true
   publicExposure:
     enabled: true
     sip:

@@ -416,8 +416,8 @@ controllers:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio'
     strategy: RollingUpdate
     rollingUpdate:
-      surge: 1
-      unavailable: '0'
+      surge: '{{ .Values.kamailio.rollingUpdate.surge }}'
+      unavailable: '{{ .Values.kamailio.rollingUpdate.unavailable }}'
     replicas: {{ .Values.kamailio.replicas }}
     podDisruptionBudget:
       minAvailable: {{ .Values.kamailio.podDisruptionBudget.minAvailable }}
