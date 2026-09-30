@@ -21,6 +21,8 @@ data:
         {{- if and $.Values.freeswitch.fax.enabled $.Values.fax.did }}
         <extension name="dedicated-fax-did">
           <condition field="destination_number" expression="^{{ $.Values.fax.did }}$">
+            <!-- Keep this interoperability experiment scoped to the fax/test DID. -->
+            <action application="set" data="sip_require_timer=false"/>
             <action application="set" data="fax_original_destination=${destination_number}"/>
             <action application="log" data="INFO AVoIP dedicated fax DID: direct receive caller=${caller_id_number} did=${destination_number} uuid=${uuid}"/>
             <action application="transfer" data="fax-receive XML public"/>
