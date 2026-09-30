@@ -45,3 +45,5 @@ their SIP, B2BUA, and media state can be recovered elsewhere.
 
 See [SIP border](sip-border.md), [topology hiding](topology-hiding.md),
 [RTPEngine HA](rtpengine-ha.md), and [failure domains](failure-domains.md).
+For node-level TCP debugging during a border incident, use the documented
+[Inspektor Gadget procedure](runbooks/sip-border-failure.md#inspektor-gadget-network-debugging).

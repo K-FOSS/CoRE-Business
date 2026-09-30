@@ -99,11 +99,19 @@ def main():
     public_port = next(port for port in service_ports if port["port"] == 5061)
     assert public_port["targetPort"] == "tls-public"
     kamailio_deployment = document(items, "Deployment", "-kamailio")
-    assert kamailio_deployment["spec"]["replicas"] == 1
+    assert kamailio_deployment["spec"]["replicas"] == 3
+    assert kamailio_deployment["spec"]["strategy"]["rollingUpdate"]["maxUnavailable"] == 1
+    assert kamailio_deployment["spec"]["strategy"]["rollingUpdate"]["maxSurge"] == 0
+    kamailio_pod = kamailio_deployment["spec"]["template"]["spec"]
+    assert kamailio_pod["affinity"]["podAntiAffinity"]["requiredDuringSchedulingIgnoredDuringExecution"]
+    assert kamailio_pod["topologySpreadConstraints"][0]["whenUnsatisfiable"] == "DoNotSchedule"
+    pdb = document(items, "PodDisruptionBudget", "-kamailio")
+    assert pdb["spec"]["minAvailable"] == 2
     kamailio_container = next(
         c for c in kamailio_deployment["spec"]["template"]["spec"]["containers"]
         if c["name"] == "kamailio"
     )
+    assert "kamcmd -s unixs:/tmp/kamailio_ctl core.uptime" in str(kamailio_container["readinessProbe"])
     assert any(e["name"] == "POD_NAME" and e["valueFrom"]["fieldRef"]["fieldPath"] == "metadata.name"
                for e in kamailio_container["env"])
     freeswitch_deployment = document(items, "Deployment", "-freeswitch")
@@ -163,13 +171,14 @@ def main():
 
     for component, service_name in (("freeswitch", fs_name), ("asterisk", ast_name)):
         service = document(items, "Service", f"-{component}")
-        assert service["metadata"]["labels"]["lan-mode"] == "private"
-        assert "wan-mode" not in service["metadata"]["labels"]
+        assert "wan-mode" not in service["metadata"].get("labels", {})
+        assert "lan-mode" not in service["metadata"].get("labels", {})
         assert "annotations" not in service["metadata"]
         assert service["spec"]["type"] == "ClusterIP"
     public_service = document(items, "Service", "-kamailio")
-    assert public_service["metadata"]["annotations"]["external-dns.kubernetes.io/hostname"] == public_host
-    assert public_service["metadata"]["labels"]["wan-mode"] == "public"
+    assert "annotations" not in public_service["metadata"]
+    assert "wan-mode" not in public_service["metadata"].get("labels", {})
+    assert "lan-mode" not in public_service["metadata"].get("labels", {})
     assert {port["port"] for port in public_service["spec"]["ports"]} == {5061, 5062}
     assert not any(item and item.get("kind") == "Service" and item["metadata"]["name"].endswith("-freeswitch-rtp")
                    for item in items)
