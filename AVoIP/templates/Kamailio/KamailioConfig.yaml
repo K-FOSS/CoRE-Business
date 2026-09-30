@@ -98,7 +98,6 @@ data:
     # later Kamailio replicas can restore the same dialog topology.
     #
     modparam("ndb_redis", "server", TOPOS_REDIS_SERVER)
-    modparam("ndb_redis", "ca_path", "/etc/ssl/certs")
     modparam("ndb_redis", "connect_timeout", 1000)
     modparam("ndb_redis", "cmd_timeout", 1000)
 
