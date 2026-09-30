@@ -317,6 +317,15 @@ data:
       # A 2xx ACK is a separate transaction. Route-set/TOPOS processing must
       # happen before any transaction-only handling.
       if (has_totag()) {
+        # A non-2xx ACK has a To-tag but no dialog Route/Contact token. Only
+        # that shape may use INVITE transaction matching; a 2xx ACK continues
+        # through ordinary TOPOS dialog routing below.
+        if (is_method("ACK") && !is_present_hf("Route") && $(ru{uri.param,tps}) == "") {
+          if (t_check_trans()) {
+            route(RELAY);
+            exit;
+          }
+        }
         route(IN_DIALOG);
         exit;
       }
@@ -362,6 +371,12 @@ data:
       }
 
       if (has_totag()) {
+        if (is_method("ACK") && !is_present_hf("Route") && $(ru{uri.param,tps}) == "") {
+          if (t_check_trans()) {
+            route(RELAY);
+            exit;
+          }
+        }
         route(IN_DIALOG);
         exit;
       }
