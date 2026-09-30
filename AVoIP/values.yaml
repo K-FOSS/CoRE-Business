@@ -125,8 +125,12 @@ kamailio:
       # separate from RTPEngine's Valkey state and from any cross-site store.
       secretName: 'avoip-kamailio-topos'
       serverKey: 'server'
-      host: 'dragonfly-core'
+      # Empty derives the site-scoped Dragonfly identity used by other stacks:
+      # dragonfly.<cluster>.<datacenter>.<region>.mylogin.space
+      host: ''
       port: 6379
+      proxyPort: 16379
+      tlsServerName: ''
       database: 51
       secretStoreRef:
         kind: 'ClusterSecretStore'

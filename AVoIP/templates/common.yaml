@@ -5,7 +5,6 @@
 {{- if .Values.kamailio.topology.enabled }}
 {{- if not .Values.kamailio.topology.redis.secretName }}{{- fail "kamailio.topology.redis.secretName is required when topology hiding is enabled" }}{{- end }}
 {{- if not .Values.kamailio.topology.redis.serverKey }}{{- fail "kamailio.topology.redis.serverKey is required when topology hiding is enabled" }}{{- end }}
-{{- if not .Values.kamailio.topology.redis.host }}{{- fail "kamailio.topology.redis.host is required when topology hiding is enabled" }}{{- end }}
 {{- if lt (int .Values.kamailio.topology.redis.database) 1 }}{{- fail "kamailio.topology.redis.database must be a non-zero site-local Dragonfly allocation" }}{{- end }}
 {{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
@@ -21,6 +20,31 @@ defaultPodOptions:
     logs: loki-myloginspace
 
 configMaps:
+{{- if and .Values.kamailio.enabled .Values.kamailio.topology.enabled }}
+  kamailio-topos-tls-proxy:
+    forceRename: '{{ include "avoip.fullname" . }}-kamailio-topos-tls-proxy'
+    includeChecksumInControllers:
+      - 'kamailio'
+    data:
+      haproxy.cfg: |
+        global
+          log stdout format raw local0
+          maxconn 256
+
+        defaults
+          log global
+          mode tcp
+          timeout connect 2s
+          timeout client 1h
+          timeout server 1h
+
+        frontend topos_clients
+          bind 127.0.0.1:{{ .Values.kamailio.topology.redis.proxyPort }}
+          default_backend dragonfly
+
+        backend dragonfly
+          server dragonfly {{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.kamailio.topology.redis.host }}:{{ .Values.kamailio.topology.redis.port }} check ssl verify required ca-file /etc/ssl/certs/ca-certificates.crt sni str({{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.kamailio.topology.redis.tlsServerName }})
+{{- end }}
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
 {{- if ne (int .Values.rtpengine.valkey.shards) 1 }}{{- fail "RTPEngine Valkey proxy requires exactly one Valkey shard" }}{{- end }}
 {{- if ne (int .Values.rtpengine.valkey.database) 0 }}{{- fail "Valkey Cluster requires RTPEngine database 0" }}{{- end }}
@@ -127,6 +151,44 @@ networkpolicies:
           ports:
             - protocol: UDP
               port: {{ .Values.rtpengine.controlPort }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: dragonfly
+                  app.kubernetes.io/instance: dragonfly-core
+          ports:
+            - protocol: TCP
+              port: 6379
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: kube-system
+              podSelector:
+                matchLabels:
+                  k8s-app: kube-dns
+          ports:
+            - protocol: UDP
+              port: 53
+            - protocol: TCP
+              port: 53
+{{- range .Values.flowroute.signalingCIDRs }}
+        - to:
+            - ipBlock:
+                cidr: '{{ . }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+{{- end }}
+{{- if include "avoip.homer.enabled" . | trim }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: homer-web
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 9061
+{{- end }}
 {{- end }}
 
 controllers:
@@ -402,6 +464,41 @@ controllers:
               - ALL
 {{- end }}
     containers:
+{{- if .Values.kamailio.topology.enabled }}
+      topos-tls-proxy:
+        command:
+          - /usr/local/sbin/haproxy
+        args:
+          - '-W'
+          - '-db'
+          - '-f'
+          - /usr/local/etc/haproxy/haproxy.cfg
+        image:
+          repository: '{{ .Values.rtpengine.valkey.proxy.image.repository }}'
+          tag: '{{ .Values.rtpengine.valkey.proxy.image.tag }}'
+          digest: '{{ .Values.rtpengine.valkey.proxy.image.digest }}'
+          pullPolicy: '{{ .Values.rtpengine.valkey.proxy.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        probes:
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              tcpSocket:
+                port: topos-redis
+              periodSeconds: 5
+              timeoutSeconds: 2
+              failureThreshold: 6
+        ports:
+          - name: topos-redis
+            containerPort: {{ .Values.kamailio.topology.redis.proxyPort }}
+            protocol: TCP
+{{- end }}
       kamailio:
         command:
           - /bin/sh
@@ -1347,6 +1444,16 @@ persistence:
             subPath: kamailio.cfg
           - path: /etc/kamailio/tls.cfg
             subPath: tls.cfg
+{{- if .Values.kamailio.topology.enabled }}
+  kamailio-topos-tls-proxy-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-kamailio-topos-tls-proxy'
+    advancedMounts:
+      kamailio:
+        topos-tls-proxy:
+          - path: /usr/local/etc/haproxy/haproxy.cfg
+            subPath: haproxy.cfg
+{{- end }}
   kamailio-tls:
     type: secret
     name: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'

@@ -16,7 +16,9 @@ spec:
       engineVersion: 'v2'
       type: 'Opaque'
       data:
-        server: 'name=topos;addr={{ $redis.host }};port={{ $redis.port }};db={{ $redis.database }};pass={{ `{{ .password }}` }};tls=1'
+        # ndb_redis in the pinned Kamailio image has no Redis TLS support.
+        # The pod-local HAProxy bridge performs verified TLS to Dragonfly.
+        server: 'name=topos;addr=127.0.0.1;port={{ $redis.proxyPort }};db={{ $redis.database }};pass={{ `{{ .password }}` }};tls=0'
   secretStoreRef:
     kind: '{{ $redis.secretStoreRef.kind }}'
     name: '{{ $redis.secretStoreRef.name }}'
