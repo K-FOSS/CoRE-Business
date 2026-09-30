@@ -29,12 +29,10 @@ python3 tests/sip_identity_render.py /tmp/avoip-render.yaml \
 The route identities in this example are non-numeric render fixtures, not
 production DIDs or deployment values.
 
-For Home1/YVR's native TLS mode, also set
-`kamailio.publicExposure.sip.tlsPassthrough=true` and pass `--native-tls` to
-the render test. The matching shared Gateway listener is configured by the
-[Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml);
-both layers must reconcile before live calls use passthrough. DC1/YXL stays in
-termination mode unless its site values opt in.
+For Home1/YVR, set its cluster, datacenter, region, domain, and public SIP host
+in a second render. The shared `sips-tls` Gateway listener is configured by the
+[Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml).
+The Gateway passes the encrypted SIP stream through to Kamailio at both sites.
 
 `kamailio_reply_retransmissions.py` runs a separate instance of the deployed
 Kamailio binary with the rendered chart configuration. It substitutes loopback
@@ -60,9 +58,10 @@ python3 tests/kamailio_reply_retransmissions.py \
 The fixture sends an initial SDP offer and repeats the same backend `200 OK`
 immediately and after transaction expiry. It checks that FreeSWITCH receives
 both Record-Route values while the caller receives only the configured site's
-public route, and sends a 2xx ACK with that route to verify it reaches the backend
-through `loose_route()`. It also checks the bytes received by the caller,
-including Content-Length framing: every answer must have the same public
+public route without `r2=on`. It checks 180, 183, and 200 SIPS Contacts,
+forwards the 2xx ACK, a mid-dialog re-INVITE and ACK, and BYEs from either
+side. It rejects a source outside the carrier ACL. It also checks the bytes
+received by the caller, including Content-Length framing: every answer must have the same public
 connection address, allocated media port and complete body. It then injects an
 NG answer failure and checks that the final response is dropped. The mock's
 public address and port are test constants, not allocated live media.

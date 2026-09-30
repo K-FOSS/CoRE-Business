@@ -120,6 +120,20 @@ def harness():
             time.sleep(0.1)
     assert caller is not None, 'Test Kamailio listener did not start'
     time.sleep(0.5)
+    unauthorized = socket.socket()
+    unauthorized.bind(('127.0.0.2', 0))
+    unauthorized.connect(('127.0.0.1', 15061))
+    unauthorized_port = unauthorized.getsockname()[1]
+    unauthorized.sendall(('\r\n'.join([
+        'INVITE sips:fax@127.0.0.1:5061;transport=tls SIP/2.0',
+        f'Via: SIP/2.0/TCP 127.0.0.2:{unauthorized_port};branch=z9hG4bKunauthorized;rport',
+        'From: <sip:unauthorized@localhost>;tag=unauthorized',
+        'To: <sip:fax@localhost>', 'Call-ID: unauthorized-regression',
+        'CSeq: 1 INVITE', 'Max-Forwards: 70', 'Content-Length: 0', '', '',
+    ])).encode())
+    rejected, _ = SipStream(unauthorized).read()
+    assert rejected.startswith('SIP/2.0 403'), rejected
+    unauthorized.close()
     caller_port = caller.getsockname()[1]
     call_id = 'avoip-reply-regression-' + uuid.uuid4().hex
     body = 'v=0\r\no=fixture 1 1 IN IP4 192.0.2.10\r\ns=fixture\r\nc=IN IP4 192.0.2.10\r\nt=0 0\r\nm=audio 18000 RTP/AVP 0\r\na=rtpmap:0 PCMU/8000\r\n'
@@ -150,6 +164,19 @@ def harness():
                          'Content-Type: application/sdp', f'Content-Length: {len(private_body)}']
     response = ('\r\n'.join(response_headers) + '\r\n\r\n' + private_body).encode()
     upstream = SipStream(caller)
+    for status in ('180 Ringing', '183 Session Progress'):
+        provisional = response_headers.copy()
+        provisional[0] = f'SIP/2.0 {status}'
+        provisional[-2:] = ['Content-Length: 0']
+        downstream.sendall(('\r\n'.join(provisional) + '\r\n\r\n').encode())
+        for _ in range(10):
+            forwarded, _ = upstream.read()
+            if forwarded.startswith(f'SIP/2.0 {status}'):
+                break
+        assert forwarded.startswith(f'SIP/2.0 {status}'), forwarded
+        assert f'Contact: <sips:fax@{PUBLIC_HOST}:5061;transport=tls>' in forwarded, forwarded
+        assert '.svc.' not in forwarded and '66.165.222.101' not in forwarded, forwarded
+        assert 'r2=on' not in forwarded, forwarded
     outputs = []
     for delay in (0, 0.2, 2, 4):
         time.sleep(delay)
@@ -164,6 +191,9 @@ def harness():
         assert f'sips:{PUBLIC_HOST}:5061;transport=tls' in public_rr[0], \
             f'Canonical public SIPS Record-Route missing: {public_rr}'
         assert '.svc.' not in '\n'.join(public_rr), f'Private Service Record-Route leaked to caller: {public_rr}'
+        assert 'r2=on' not in '\n'.join(public_rr), f'Orphan paired-route marker leaked: {public_rr}'
+        assert '.svc.' not in response_headers and '66.165.222.101' not in response_headers, \
+            f'Private or unintended signaling address leaked: {response_headers}'
         print(json.dumps({'reply': len(outputs) + 1,
                           'contact': contact[1],
                           'connection': re.search(r'(?m)^c=([^\r\n]+)', received)[1],
@@ -191,6 +221,63 @@ def harness():
     assert ack_headers.startswith('ACK '), f'2xx ACK did not reach FreeSWITCH: {ack_headers}'
     assert f'Call-ID: {call_id}' in ack_headers
     assert 'tag=fixture-from' in ack_headers and 'tag=fixture-to' in ack_headers
+    caller.sendall(call_id_ack)
+    duplicate_ack, _ = downstream_stream.read(timeout=5)
+    assert duplicate_ack.startswith('ACK '), duplicate_ack
+
+    missing_route_ack = re.sub(br'(?im)^Route: [^\r\n]+\r\n', b'', call_id_ack)
+    caller.sendall(missing_route_ack)
+    try:
+        downstream_stream.read(timeout=0.5)
+    except socket.timeout:
+        pass
+    else:
+        raise AssertionError('ACK without a dialog Route reached FreeSWITCH')
+
+    def dialog_request(method, cseq, route, ruri, branch):
+        return ('\r\n'.join([
+            f'{method} {ruri} SIP/2.0',
+            f'Via: SIP/2.0/TCP 127.0.0.1:{caller_port};branch=z9hG4bK{call_id}-{branch};rport',
+            'From: <sip:fixture@localhost>;tag=fixture-from',
+            'To: <sip:fax@localhost>;tag=fixture-to',
+            f'Call-ID: {call_id}', f'CSeq: {cseq} {method}',
+            f'Route: {route}', 'Max-Forwards: 70', 'Content-Length: 0', '', '',
+        ])).encode()
+
+    # A later request on the same dialog must still use the backend; its
+    # response and ACK must keep the public Contact and the private next hop.
+    caller.sendall(dialog_request('INVITE', 2, public_rr[0],
+                                  f'sips:fax@{PUBLIC_HOST}:5061;transport=tls', 'reinvite'))
+    reinvite, _ = downstream_stream.read()
+    assert reinvite.startswith('INVITE '), reinvite
+    assert f'Call-ID: {call_id}' in reinvite
+    reinvite_reply = ['SIP/2.0 200 OK']
+    for line in reinvite.split('\r\n')[1:]:
+        if line.lower().startswith(('via:', 'from:', 'to:', 'call-id:', 'cseq:')):
+            reinvite_reply.append(line)
+    reinvite_reply += ['Contact: <sip:fax@127.0.0.1:16061;transport=tls>',
+                       'Content-Length: 0', '', '']
+    downstream.sendall('\r\n'.join(reinvite_reply).encode())
+    reinvite_answer, _ = upstream.final()
+    assert reinvite_answer.startswith('SIP/2.0 200 OK'), reinvite_answer
+    assert f'Contact: <sips:fax@{PUBLIC_HOST}:5061;transport=tls>' in reinvite_answer
+    caller.sendall(dialog_request('ACK', 2, public_rr[0],
+                                  f'sips:fax@{PUBLIC_HOST}:5061;transport=tls', 'reinvite-ack'))
+    reinvite_ack, _ = downstream_stream.read()
+    assert reinvite_ack.startswith('ACK '), reinvite_ack
+
+    caller.sendall(dialog_request('BYE', 3, public_rr[0],
+                                  f'sips:fax@{PUBLIC_HOST}:5061;transport=tls', 'caller-bye'))
+    carrier_bye, _ = downstream_stream.read()
+    assert carrier_bye.startswith('BYE '), carrier_bye
+
+    # FreeSWITCH retained both routes and can send its own in-dialog BYE to
+    # the original caller Contact without looping into the backend service.
+    backend_bye = dialog_request('BYE', 4, internal_rr[0] + '\r\nRoute: ' + internal_rr[1],
+                                 f'sip:fixture@127.0.0.1:{caller_port};transport=tcp', 'backend-bye')
+    downstream.sendall(backend_bye)
+    outbound_bye, _ = upstream.read()
+    assert outbound_bye.startswith('BYE '), outbound_bye
 
     fail_answers.set()
     downstream.sendall(response)

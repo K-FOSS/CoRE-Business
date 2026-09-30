@@ -97,19 +97,18 @@ preset for the asymmetric edge: the internal route is Kamailio's private TLS
 Service on port 5062 and the external TLS route is the site's
 `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` identity. The private
 Record-Route remains on the FreeSWITCH leg, while Kamailio removes that private
-header from replies toward Flowroute so the carrier receives only the
-site-specific public route. Both sites can use the same DIDs through separate
+header and its paired-route marker from replies toward Flowroute so the carrier
+receives only the site-specific public route. Both sites can use the same DIDs through separate
 site-local value/secret injection; the site-specific dialog route keeps each
 call's signaling anchored to the site that accepted it. This supports YVR
 primary/YXL failover for new calls, while established dialogs remain local to
-their original site. After `loose_route()` handles the public route,
+their original site. After `loose_route_mode("1")` handles the public route,
 carrier-originated in-dialog requests are sent to FreeSWITCH over the private
-TLS service. Successful public 2xx
-Contacts preserve their called user while using the originating site's SIPS
+TLS service. Public 180, 183, and successful INVITE 2xx Contacts preserve their
+called user while using the originating site's SIPS
 host. FreeSWITCH uses that site host as its external SIP identity as well.
-Every in-dialog request, including 2xx ACK, follows `loose_route()`; Kamailio
-does not special-case ACK or guess a backend when a dialog Route header is
-missing.
+Every in-dialog request, including 2xx ACK, follows the dialog Route set;
+Kamailio drops an ACK with an invalid route instead of guessing a backend.
 
 New outbound Flowroute connections are source NATed by the site's VyOS
 WAN-GW/NAT VRRP pair. The hub's observed signaling source was

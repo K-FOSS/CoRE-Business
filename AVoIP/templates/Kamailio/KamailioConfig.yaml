@@ -116,6 +116,9 @@ data:
     {{- end }}
 
     request_route {
+      if (is_method("ACK")) {
+        xlog("L_INFO", "SIP ACK ingress replica=$Ri callid=$ci cseq=$hdr(CSeq) recv=$Ri:$Rp proto=$proto source=$si:$sp ruri=$ru route=$hdr(Route)\n");
+      }
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP request proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp ruri=$ru route=$hdr(Route) callid=$ci\n");
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
@@ -203,8 +206,21 @@ data:
         exit;
       }
 
-      if (is_method("ACK|BYE|CANCEL")) {
-        route(RELAY);
+      # TM consumes an ACK to a negative final response. A 2xx ACK must
+      # carry a To tag and the public Route set; never guess its backend.
+      if (is_method("ACK")) {
+        t_check_trans();
+        xlog("L_WARN", "SIP ACK dropped decision=no-dialog-route replica=$Ri callid=$ci cseq=$hdr(CSeq) source=$si:$sp ruri=$ru route=$hdr(Route)\n");
+        exit;
+      }
+      if (is_method("CANCEL")) {
+        if (t_check_trans()) {
+          route(RELAY);
+        }
+        exit;
+      }
+      if (is_method("BYE")) {
+        sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
 
@@ -221,7 +237,13 @@ data:
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP in-dialog proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp callid=$ci route=$hdr(Route)\n");
       {{- end }}
-      if (!loose_route()) {
+      # The public Contact uses this proxy's own identity. Skip strict-route
+      # R-URI detection while consuming the explicit dialog Route set.
+      if (!loose_route_mode("1")) {
+        if (is_method("ACK")) {
+          xlog("L_WARN", "SIP ACK dropped decision=invalid-route replica=$Ri callid=$ci cseq=$hdr(CSeq) recv=$Ri:$Rp source=$si:$sp ruri=$ru route=$hdr(Route)\n");
+          exit;
+        }
         {{- if .Values.kamailio.sipLogging.enabled }}
         xlog("L_WARN", "SIP in-dialog loose_route=failed method=$rm source=$si:$sp ruri=$ru callid=$ci\n");
         {{- end }}
@@ -233,7 +255,7 @@ data:
       # RELAY send that established request back to FreeSWITCH.  The Contact
       # selected by the route set is the destination for this hop, including
       # backend-originated BYE and carrier ACK requests.
-      # Flowroute receives only the public Record-Route URI. Once loose_route()
+      # Flowroute receives only the public Record-Route URI. Once loose_route_mode()
       # processes that route, its Request-URI is FreeSWITCH's public Contact
       # identity; resolve every carrier-facing dialog request to the private
       # backend service instead of sending it back to public ingress.
@@ -249,7 +271,7 @@ data:
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog("L_INFO", "SIP in-dialog loose_route=accepted method=$rm source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      xlog("L_INFO", "SIP diagnostic in-dialog decision=relay proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt source=$si:$sp ruri=$ru top_route=$hdr(Route) next=$du send_socket=$fsn route=$route_uri callid=$ci\n");
+      xlog("L_INFO", "SIP diagnostic in-dialog decision=relay replica=$Ri proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt source=$si:$sp ruri=$ru top_route=$hdr(Route) next=$du send_socket=$fsn route=$route_uri callid=$ci\n");
       {{- end }}
       {{- end }}
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
@@ -290,13 +312,14 @@ data:
     # callback alone misses those replies and cannot reliably drop final ones.
     reply_route {
       # record_route_preset() inserts the private outbound-side URI first and
-      # the public inbound-side URI second. FreeSWITCH keeps both for its own
-      # route set, but do not disclose the private Service route to Flowroute.
+      # the public inbound-side URI second. FreeSWITCH keeps the pair for its
+      # route set. Flowroute sees one route, so remove the pair-only r2 marker.
       remove_hf_idx("Record-Route", "0");
+      subst_hf("Record-Route", "/;r2=on//g", "a");
       # Flowroute must see a portable signaling target even when FreeSWITCH
       # resolves the public identity to its NAT address in Contact. Preserve
       # the Contact user and publish the configured canonical TLS identity.
-      if ($rs =~ "^2[0-9][0-9]$" && is_present_hf("Contact")) {
+      if ($rs =~ "^(180|183|2[0-9][0-9])$" && $hdr(CSeq) =~ "INVITE" && is_present_hf("Contact")) {
         subst_hf("Contact", "/<sips?:([^@>]+)@[^>]+>/<sips:\\1@{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls>/", "a");
       }
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}

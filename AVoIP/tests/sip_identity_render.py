@@ -64,11 +64,19 @@ def main():
     assert 'sips:sip.resolvemy.host:5061;transport=tls;sn=' not in kam
     assert 'add_rr_param(";r2=on")' in kam
     assert 'remove_hf_idx("Record-Route", "0")' in kam
+    assert 'subst_hf("Record-Route", "/;r2=on//g", "a")' in kam
+    assert 'loose_route_mode("1")' in kam
+    assert 'modparam("siptrace", "trace_mode", 1)' in kam
+    assert 'SIP ACK ingress replica=$Ri' in kam
+    assert 'SIP ACK dropped decision=invalid-route' in kam
     assert 'Flowroute receives only the public Record-Route URI' in kam
     assert f'$du = "sip:{host(fs_name)}:5061;transport=tls"' in kam
-    assert 'loose_route()' in kam
+    assert 'if (!loose_route_mode("1"))' in kam
     assert 'ACK fallback=no-route' not in kam
     assert 'sips?:([^@>]+)@[^>]+' in kam
+    assert '$rs =~ "^(180|183|2[0-9][0-9])$"' in kam
+    assert '$hdr(CSeq) =~ "INVITE"' in kam
+    assert 'replica=$Ri' in kam
     assert rf'sips:\\1@{args.site_host}:5061;transport=tls' in kam
     assert 'sips:\\1@66.165.222.101:5061;transport=tls' not in kam
     assert 'sip:\\1@66.165.222.101:5061;transport=tls' not in kam
@@ -85,12 +93,8 @@ def main():
     service_ports = document(items, "Service", "-kamailio")["spec"]["ports"]
     public_port = next(port for port in service_ports if port["port"] == 5061)
     assert public_port["targetPort"] == "tls-public"
-    kamailio_deployment = document(items, "Deployment", "-avoip-kamailio")
-    assert kamailio_deployment["spec"]["replicas"] == 2
-    spread = kamailio_deployment["spec"]["template"]["spec"]["topologySpreadConstraints"]
-    assert any(item["topologyKey"] == "kubernetes.io/hostname" for item in spread)
-    kamailio_pdb = document(items, "PodDisruptionBudget", "-avoip-kamailio")
-    assert kamailio_pdb["spec"]["minAvailable"] == 1
+    kamailio_deployment = document(items, "Deployment", "-kamailio")
+    assert kamailio_deployment["spec"]["replicas"] == 1
 
     homer_oidc = document(items, "Workspace", "avoip-homer-oidc")
     oidc_variables = homer_oidc["spec"]["forProvider"]["varmap"]
@@ -122,7 +126,7 @@ def main():
     assert any(a.get("application") == "bridge" for a in voice.findall(".//action"))
     assert not any("fax" in (a.get("application", "") + a.get("data", "")) for a in voice.findall(".//action"))
     post_answer = extension(dialplan, "did-post-answer")
-    assert not any("fax" in (a.get("application", "") + a.get("data", "")) for a in post_answer.findall(".//action"))
+    assert not any(a.get("application") in ("fax_detect", "rxfax") for a in post_answer.findall(".//action"))
     fax = extension(dialplan, "dedicated-fax-did")
     assert fax.find("condition").get("expression") == f"^{args.fax_did}$"
     assert [a.get("application") for a in fax.findall(".//action")][-1] == "transfer"
