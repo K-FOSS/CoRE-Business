@@ -5,6 +5,15 @@ the public encrypted stream and PROXY protocol v2 to Kamailio; the immediate
 network peer is Envoy, not Flowroute. Kamailio validates the PROXY-derived
 carrier address against `flowroute.signalingCIDRs`.
 
+The site-specific public FQDN is the carrier-facing established-dialog
+identity; the private Kamailio Service FQDN is the application-facing
+identity. TLS egress to Flowroute is selected by Kamailio using
+`flowroute.outboundHost`, not by FreeSWITCH. RR maintains an ordered pair of
+public/private socket routes, while TOPOS hides the pair and stores its
+replica-independent reconstruction data in site-local Dragonfly database 51.
+Do not move established-dialog Contact identities to the global SIP name
+until cross-site dialog state and B2BUA recovery are validated.
+
 The private policy admits the FreeSWITCH pods to 5062 and permits Kamailio to
 reach FreeSWITCH TLS/5061 and RTPEngine NG UDP/22222. Configure the Envoy
 namespace and pod labels in `kamailio.networkPolicy.envoy`; carrier CIDRs do

@@ -91,6 +91,9 @@ gateway:
   namespace: 'core-prod'
 
 flowroute:
+  # Carrier egress is selected at the SIP border; application peers never
+  # route directly to this hostname.
+  outboundHost: 'us-west-or.sip.flowroute.com'
   signalingCIDRs:
     - '34.210.91.112/28'
     - '34.226.36.32/28'
