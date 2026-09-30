@@ -7,6 +7,7 @@
 {{- if not .Values.kamailio.topology.redis.serverKey }}{{- fail "kamailio.topology.redis.serverKey is required when topology hiding is enabled" }}{{- end }}
 {{- if lt (int .Values.kamailio.topology.redis.database) 1 }}{{- fail "kamailio.topology.redis.database must be a non-zero site-local Dragonfly allocation" }}{{- end }}
 {{- end }}
+{{- if or (lt (int .Values.freeswitch.sipLogging.sofiaDebug) 0) (gt (int .Values.freeswitch.sipLogging.sofiaDebug) 9) }}{{- fail "freeswitch.sipLogging.sofiaDebug must be between 0 and 9" }}{{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
 {{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
 {{- if ne (clean .Values.freeswitch.media.diagnostics.callRecording.path) (clean .Values.freeswitch.fax.spoolPath) }}{{- fail "FreeSWITCH callRecording.path must match fax.spoolPath when Homer playback is enabled" }}{{- end }}

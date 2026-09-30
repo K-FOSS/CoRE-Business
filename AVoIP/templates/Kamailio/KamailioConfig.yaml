@@ -108,6 +108,8 @@ data:
     # Keep all TOPOS hooks enabled: outgoing response rewriting plus incoming
     # dialog lookup/restoration are both required when Kamailio replicas share
     # Redis/Dragonfly state.
+    # Bits 1|2|4|8 enable outgoing, pre-send, incoming, and receive hooks.
+    # In particular bit 2 is required for event_route[topos:msg-sending].
     modparam("topos", "event_mode", 15)
 
     # Store and restore topology around INVITE dialogs.
@@ -119,6 +121,19 @@ data:
     # token in this URI parameter, not in the Contact username.
     modparam("topos", "contact_mode", 1)
     modparam("topos", "cparam_name", "tps")
+    {{- end }}
+
+    {{- if and .Values.kamailio.topology.enabled .Values.kamailio.sipLogging.postToposResponses }}
+    # Temporary full response capture after TOPOS has stripped/replaced the
+    # externally visible topology and immediately before the message is sent.
+    event_route[topos:msg-sending] {
+      if (is_reply() && $rm == "INVITE" && $rs >= 180 && $rs <= 299) {
+        xlog(
+          "L_INFO",
+          "SIP POST-TOPOS SEND call_id=$ci status=$rs cseq=$hdr(CSeq) contact=$hdr(Contact) record_route=$hdr(Record-Route) via=$hdr(Via) to=$hdr(To) from=$hdr(From) content_length=$hdr(Content-Length) destination=$du send_socket=$fsn/$fs\n--- SIP POST-TOPOS MESSAGE BEGIN ---\n$mb\n--- SIP POST-TOPOS MESSAGE END ---\n"
+        );
+      }
+    }
     {{- end }}
 
     {{- if (include "avoip.homer.enabled" . | trim) }}
@@ -215,7 +230,7 @@ data:
       if (is_method("ACK")) {
         xlog(
           "L_INFO",
-          "SIP ack ingress pod=$env(POD_NAME) callid=$ci cseq=$hdr(CSeq) conn=$conid recv=$Ri:$Rp proto=$proto source=$si:$sp ruri=$ru route=$hdr(Route)\n"
+          "SIP ACK INGRESS pod=$env(POD_NAME) source=$si:$sp recv_socket=$Rn/$Ri:$Rp proto=$proto ruri=$ru route=$hdr(Route) call_id=$ci cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt\n"
         );
       }
 

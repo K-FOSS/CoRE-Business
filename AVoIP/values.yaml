@@ -166,8 +166,12 @@ kamailio:
     # keep enabled only while investigating a carrier signaling issue.
     carrierTraffic: true
 
+    # Temporary response snapshot after TOPOS has rewritten the message and
+    # immediately before transport send. Full SIP bodies may contain PII/SDP.
+    postToposResponses: true
+
     # Temporary full-message receive logging. Disable after the ACK investigation.
-    rawInbound: false
+    rawInbound: true
     # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
     diagnostics:
       # Temporarily enabled while investigating the recurring 30-second call
@@ -437,6 +441,9 @@ freeswitch:
     # troubleshooting. It can be disabled when production trace volume or
     # signaling metadata exposure is not acceptable.
     enabled: true
+    # Sofia profile transaction diagnostics (0-9). Raise temporarily when
+    # investigating which 2xx response is waiting for an ACK.
+    sofiaDebug: 9
   media:
     # Snapshot per-call RTP statistics only when explicitly enabled.
     diagnostics:
