@@ -116,11 +116,15 @@ fax:
 
 kamailio:
   enabled: true
+  tcpChildren: 4
   sip:
     serviceHost: ''
   sipLogging:
     # Optional compact request/response markers; ACK and failure logs remain on.
     enabled: true
+
+    # Temporary full-message receive logging. Disable after the ACK investigation.
+    rawInbound: true
     # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
     diagnostics:
       enabled: true
