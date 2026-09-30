@@ -190,7 +190,10 @@ through an idempotent migration rather than relying on a pod-local database.
 
 ## Edge availability and dialog handling
 
-Kamailio currently runs one replica per site behind its Kubernetes Service.
+The chart target is three Kamailio replicas per site behind its Kubernetes
+Service, with site-local TOPOS state and disruption controls. Existing live
+deployments must be reconciled and disruption-tested before this target is
+treated as an operational guarantee.
 Dialog traffic follows standard loose routing, with no method-specific ACK
 forwarding. A pod restart can interrupt active calls. Adding more replicas
 requires verified dialog affinity and failover behavior; see the
@@ -201,13 +204,12 @@ accepted it.
 
 ### Shared routing state and failover boundary
 
-The current Kamailio configuration does not load a dialog, topology-hiding,
-location, or database module. It does not write SIP dialog state to a shared
-store. The initial request establishes a SIP route set in SIP headers, and
-each replica applies the same routing script. This is enough for either
-same-site Kamailio replica to process a request when it arrives there, but it
-does not replicate transaction state, TLS/TCP connections, FreeSWITCH channel
-state, or RTPengine media sessions.
+The current Kamailio configuration loads TOPOS with a site-local Dragonfly
+backend. TOPOS persists the public/private topology mapping needed to rebuild
+dialog routing at another replica, while it does not replicate transaction
+state, TLS/TCP connections, FreeSWITCH channel state, or RTPEngine media
+sessions. The three-replica target therefore improves new-call admission and
+dialog topology reconstruction, but it is not active-call migration.
 
 The target should make the distinction explicit:
 

@@ -25,9 +25,11 @@ serviceOptions:
     loadBalancerClass: ''
   asterisk:
     annotations: {}
+    # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
   kamailio:
     annotations: {}
+    # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
   kamailio-udp:
     annotations: {}
@@ -35,6 +37,7 @@ serviceOptions:
     loadBalancerClass: ''
   freeswitch:
     annotations: {}
+    # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
   freeswitch-rtp:
     annotations: {}
@@ -118,6 +121,7 @@ fax:
 kamailio:
   enabled: true
   tcpChildren: 4
+  rpcSocket: '/run/kamailio/kamailio_ctl'
   replicas: 3
   podDisruptionBudget:
     minAvailable: 2

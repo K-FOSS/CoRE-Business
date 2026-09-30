@@ -570,7 +570,10 @@ controllers:
                 command:
                   - /bin/sh
                   - -c
-                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
+                  - >-
+                    test -r /etc/kamailio/kamailio.cfg &&
+                    test -s /tmp/kamailio.pid &&
+                    kamcmd -s unixs:{{ .Values.kamailio.rpcSocket }} core.uptime >/dev/null
               periodSeconds: 10
               timeoutSeconds: 3
               failureThreshold: 3
