@@ -8,11 +8,13 @@ env: 'prod'
 # common template populates it with the enabled Asterisk/FreeSWITCH controllers.
 controllers: {}
 
-# Metadata shared by every generated Service, with per-Service overrides.
+# Service type and metadata shared by every generated Service, with
+# per-Service overrides.
 # Keys are generated Service names: asterisk, kamailio, kamailio-udp,
 # freeswitch, freeswitch-rtp, rtpengine, rtpengine-media,
-# rtpengine-valkey-proxy, homer-heplify, and homer-web. Annotations and labels
-# merge with chart defaults. The chart does not set ExternalDNS hostname
+# rtpengine-valkey-proxy, homer-heplify, homer-web, and homer-recordings.
+# Per-Service type, annotations, labels, and LoadBalancer class are configurable.
+# Annotations and labels merge with chart defaults. The chart does not set ExternalDNS hostname
 # annotations on Services by default; site-specific overrides remain supported.
 # Chart users supply provider-specific annotations and classes here.
 # `loadBalancerClass` applies only to LoadBalancer Services; setting a class on
@@ -20,45 +22,61 @@ controllers: {}
 # it immutable.
 serviceOptions:
   defaults:
+    type: ''
     annotations: {}
     labels: {}
     loadBalancerClass: ''
   asterisk:
+    type: 'ClusterIP'
     annotations: {}
     # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
   kamailio:
+    type: 'ClusterIP'
     annotations: {}
     # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
   kamailio-udp:
+    type: 'LoadBalancer'
     annotations: {}
     labels: {}
     loadBalancerClass: ''
   freeswitch:
+    type: 'ClusterIP'
     annotations: {}
     # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
   freeswitch-rtp:
+    type: 'LoadBalancer'
     annotations: {}
     labels: {}
     loadBalancerClass: ''
   rtpengine:
+    type: 'ClusterIP'
     annotations: {}
     labels: {}
   rtpengine-media:
+    type: 'LoadBalancer'
     annotations: {}
     labels: {}
     loadBalancerClass: ''
   rtpengine-valkey-proxy:
+    type: 'ClusterIP'
     annotations: {}
     labels: {}
   homer-heplify:
+    type: 'ClusterIP'
     annotations: {}
     labels: {}
   homer-web:
+    type: 'ClusterIP'
     annotations: {}
     labels: {}
+  homer-recordings:
+    type: 'ClusterIP'
+    annotations: {}
+    labels: {}
+    loadBalancerClass: ''
 
 # Additional independent workloads (PBXs, organization services, voice workers).
 # Each entry has name, enabled, controller (BJW-S controller values), services,

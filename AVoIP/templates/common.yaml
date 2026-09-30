@@ -1224,10 +1224,11 @@ service:
   kamailio-udp:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio-udp'
     controller: kamailio
-    type: LoadBalancer
+    {{- if eq (include "avoip.service.type" (dict "root" $ "name" "kamailio-udp") | trim) "LoadBalancer" }}
     # Preserve Flowroute source addresses and avoid cross-node kube-proxy SNAT.
     externalTrafficPolicy: Local
-{{- include "avoip.service.options" (dict "root" $ "name" "kamailio-udp" "loadBalancer" true) | nindent 4 }}
+    {{- end }}
+{{- include "avoip.service.options" (dict "root" $ "name" "kamailio-udp") | nindent 4 }}
     ports:
       udp-sip:
         port: 5060
@@ -1262,11 +1263,12 @@ service:
   freeswitch-rtp:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
     controller: freeswitch
-    type: LoadBalancer
+    {{- if eq (include "avoip.service.type" (dict "root" $ "name" "freeswitch-rtp") | trim) "LoadBalancer" }}
     # Preserve carrier RTP source addresses and avoid cross-node kube-proxy
     # SNAT for the public media socket.
     externalTrafficPolicy: Local
-{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch-rtp" "loadBalancer" true) | nindent 4 }}
+    {{- end }}
+{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch-rtp") | nindent 4 }}
     ports:
       rtp:
         portRange:
@@ -1288,9 +1290,10 @@ service:
   rtpengine-media:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine-media'
     controller: rtpengine
-    type: LoadBalancer
+    {{- if eq (include "avoip.service.type" (dict "root" $ "name" "rtpengine-media") | trim) "LoadBalancer" }}
     externalTrafficPolicy: Local
-{{- include "avoip.service.options" (dict "root" $ "name" "rtpengine-media" "loadBalancer" true) | nindent 4 }}
+    {{- end }}
+{{- include "avoip.service.options" (dict "root" $ "name" "rtpengine-media") | nindent 4 }}
     ports:
       rtp:
         portRange:
@@ -1344,6 +1347,7 @@ service:
   homer-recordings:
     forceRename: '{{ include "avoip.fullname" . }}-rec'
     controller: freeswitch
+{{- include "avoip.service.options" (dict "root" $ "name" "homer-recordings") | nindent 4 }}
     ports:
       http:
         port: {{ .Values.homer.recordings.port }}

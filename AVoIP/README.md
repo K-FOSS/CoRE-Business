@@ -137,6 +137,10 @@ form the carrier-media proxy path. Kamailio rewrites carrier SDP through
 RTPEngine's `external` and `internal` interfaces. The chart renders a public
 LoadBalancer Service for RTPEngine media on enabled sites; chart users provide
 provider-specific allocation and class settings through `serviceOptions`.
+Each generated Service supports `serviceOptions.<service>.type`, `labels`, and
+`annotations`; LoadBalancer Services also support `loadBalancerClass`. The
+per-Service defaults are declared in `values.yaml`, and optional policy labels
+and provider annotations remain unset unless supplied by the site values.
 The advertised media identity remains `rtpengine.media.address`. The
 FreeSWITCH RTP Service is omitted only when both Kamailio and RTPEngine are
 enabled.

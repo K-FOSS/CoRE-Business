@@ -59,12 +59,20 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{/* Merge shared and per-Service metadata while retaining chart-required defaults. */}}
+{{- define "avoip.service.type" -}}
+{{- $root := .root -}}
+{{- $serviceOptions := index ($root.Values.serviceOptions | default dict) .name | default dict -}}
+{{- $defaultOptions := index ($root.Values.serviceOptions | default dict) "defaults" | default dict -}}
+{{- default $defaultOptions.type $serviceOptions.type -}}
+{{- end -}}
+
 {{- define "avoip.service.options" -}}
 {{- $root := .root -}}
 {{- $serviceOptions := index ($root.Values.serviceOptions | default dict) .name | default dict -}}
 {{- $defaultOptions := index ($root.Values.serviceOptions | default dict) "defaults" | default dict -}}
 {{- $annotations := mergeOverwrite (deepCopy (.annotations | default dict)) (deepCopy ($defaultOptions.annotations | default dict)) (deepCopy ($serviceOptions.annotations | default dict)) -}}
 {{- $labels := mergeOverwrite (deepCopy ($defaultOptions.labels | default dict)) (deepCopy ($serviceOptions.labels | default dict)) (deepCopy (.labels | default dict)) -}}
+{{- $type := include "avoip.service.type" . | trim -}}
 {{- if $annotations }}
 annotations:
 {{- toYaml $annotations | nindent 2 }}
@@ -73,7 +81,10 @@ annotations:
 labels:
 {{- toYaml $labels | nindent 2 }}
 {{- end }}
-{{- if .loadBalancer }}
+{{- with $type }}
+type: '{{ . }}'
+{{- end }}
+{{- if eq $type "LoadBalancer" }}
 {{- $loadBalancerClass := default $defaultOptions.loadBalancerClass $serviceOptions.loadBalancerClass -}}
 {{- with $loadBalancerClass }}
 loadBalancerClass: '{{ . }}'

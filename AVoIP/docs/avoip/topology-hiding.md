@@ -25,7 +25,9 @@ The paired RR set is the authoritative public/private interface map. The
 carrier-to-backend helper orders outbound `private_tls` then inbound
 `public_tls`; the backend-to-carrier helper reverses that order. `rr` adds
 socket-name metadata, and `r2=on` lets normal loose routing consume the pair
-as a unit. Dialog Contact identities remain site-pinned even when the global
+as a unit. Preset RR URIs explicitly include each named socket once
+(`sn=public_tls` / `sn=private_tls`); `sockname_mode=1` remains enabled for
+ordinary RR construction. Dialog Contact identities remain site-pinned even when the global
 SIP name is used for new-call discovery. Kamailio owns Flowroute's configured
 TLS egress target; FreeSWITCH does not select a carrier.
 
