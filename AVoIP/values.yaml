@@ -117,23 +117,42 @@ fax:
 kamailio:
   enabled: true
   tcpChildren: 4
+
+  topology:
+    enabled: true
+    redis:
+      # Site-local Dragonfly is the SIP topology store. This is intentionally
+      # separate from RTPEngine's Valkey state and from any cross-site store.
+      secretName: 'avoip-kamailio-topos'
+      serverKey: 'server'
+      host: 'dragonfly-core'
+      port: 6379
+      database: 51
+      secretStoreRef:
+        kind: 'ClusterSecretStore'
+        name: 'corevault-rootsecrets'
+      remoteRef:
+        key: ''
+        property: 'Password'
+
   sip:
     serviceHost: ''
+
   sipLogging:
     # Optional compact request/response markers; ACK and failure logs remain on.
     enabled: true
 
     # Temporary full-message receive logging. Disable after the ACK investigation.
-    rawInbound: true
+    rawInbound: false
     # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
     diagnostics:
-      enabled: true
+      enabled: false
       # Kamailio core debug level used only while diagnostics are enabled.
       coreDebug: 2
       # Log sanitized SIP routing metadata and SDP before/after RTPEngine.
       # Disable after the media investigation because SDP can expose endpoint
       # addresses and codec details.
-      sdp: true
+      sdp: false
   publicExposure:
     enabled: true
     sip:
@@ -153,6 +172,13 @@ kamailio:
     # Coarse source guard for the private TLS listener. The chart NetworkPolicy
     # limits port 5062 to FreeSWITCH pods when using the default backend.
     podCIDR: '172.16.0.0/12'
+  networkPolicy:
+    envoy:
+      # Match the Envoy Gateway data-plane pods, not carrier source CIDRs.
+      # Override these labels if the installed GatewayClass uses different
+      # data-plane labels.
+      namespace: 'envoy-gateway-system'
+      podName: 'envoy'
   # Legacy override; leave empty to derive the site SIP identity.
   advertisedHost: ''
   advertisedTLSPort: 5061

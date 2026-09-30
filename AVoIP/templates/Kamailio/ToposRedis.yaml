@@ -1,0 +1,28 @@
+{{- if and .Values.kamailio.enabled .Values.kamailio.topology.enabled }}
+{{- $redis := .Values.kamailio.topology.redis }}
+{{- $remoteKey := default (printf "Storage/DragonFly/CoRE/%s/%s/%s/Creds" .Values.region .Values.datacenter .Values.cluster.name) $redis.remoteRef.key }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ $redis.secretName }}'
+spec:
+  refreshInterval: '1h'
+  target:
+    name: '{{ $redis.secretName }}'
+    creationPolicy: 'Owner'
+    deletionPolicy: 'Retain'
+    template:
+      engineVersion: 'v2'
+      type: 'Opaque'
+      data:
+        server: 'name=topos;addr={{ $redis.host }};port={{ $redis.port }};db={{ $redis.database }};pass={{ `{{ .password }}` }};tls=1'
+  secretStoreRef:
+    kind: '{{ $redis.secretStoreRef.kind }}'
+    name: '{{ $redis.secretStoreRef.name }}'
+  data:
+    - secretKey: 'password'
+      remoteRef:
+        key: '{{ $remoteKey }}'
+        property: '{{ $redis.remoteRef.property }}'
+{{- end }}

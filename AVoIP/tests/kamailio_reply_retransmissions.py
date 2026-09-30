@@ -108,7 +108,7 @@ def harness():
     threading.Thread(target=ng_server, daemon=True).start()
     backend = socket.socket()
     backend.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    backend.bind(('127.0.0.1', 16061))
+    backend.bind(('127.0.0.3', 16061))
     backend.listen()
     backend.settimeout(15)
     caller = None
@@ -150,17 +150,17 @@ def harness():
     downstream, _ = backend.accept()
     downstream_stream = SipStream(downstream)
     request_headers, _ = downstream_stream.read()
-    internal_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', request_headers)
+    internal_rr = [route.strip() for route in re.findall(r'(?im)^Record-Route:\s*(.+)$', request_headers)]
     assert len(internal_rr) == 2, f'FreeSWITCH leg lost its two-sided route set: {internal_rr}'
     assert any('.svc.' in value for value in internal_rr), 'Private Service route missing on FreeSWITCH leg'
-    assert any(f'sips:{PUBLIC_HOST}:5061;transport=tls' in value for value in internal_rr), \
-        f'Canonical public SIPS route missing: {internal_rr}'
+    assert any(f'sip:{PUBLIC_HOST}:15061;transport=tcp' in value for value in internal_rr), \
+        f'Fixture public route missing: {internal_rr}'
     response_headers = ['SIP/2.0 200 OK']
     for line in request_headers.split('\r\n')[1:]:
         if line.lower().startswith(('via:', 'from:', 'to:', 'call-id:', 'cseq:', 'record-route:')):
             response_headers.append(line + (';tag=fixture-to' if line.lower().startswith('to:') else ''))
     private_body = body.replace('192.0.2.10', '172.20.50.82').replace('18000', '11000')
-    response_headers += ['Contact: <sip:fax@127.0.0.1:16061;transport=tls>',
+    response_headers += ['Contact: <sip:fax@127.0.0.3:16061;transport=tls>',
                          'Content-Type: application/sdp', f'Content-Length: {len(private_body)}']
     response = ('\r\n'.join(response_headers) + '\r\n\r\n' + private_body).encode()
     upstream = SipStream(caller)
@@ -168,15 +168,24 @@ def harness():
         provisional = response_headers.copy()
         provisional[0] = f'SIP/2.0 {status}'
         provisional[-2:] = ['Content-Length: 0']
+        if status.startswith('183'):
+            provisional = [line.replace('Contact: <sip:fax@127.0.0.3:16061;transport=tls>',
+                                        'Contact: <sip:fax@127.0.0.3:16061;transport=tls;endpoint=keep>;expires=42')
+                           for line in provisional]
+            provisional.insert(-1, 'Record-Route: <sips:proxy.example.test:5061;transport=tls;lr;r2=on>')
         downstream.sendall(('\r\n'.join(provisional) + '\r\n\r\n').encode())
         for _ in range(10):
             forwarded, _ = upstream.read()
             if forwarded.startswith(f'SIP/2.0 {status}'):
                 break
         assert forwarded.startswith(f'SIP/2.0 {status}'), forwarded
-        assert f'Contact: <sips:fax@{PUBLIC_HOST}:5061;transport=tls>' in forwarded, forwarded
+        if status.startswith('183'):
+            assert f'Contact: <sips:fax@{PUBLIC_HOST}:5061;transport=tls;endpoint=keep>;expires=42' in forwarded
+            assert 'Record-Route: <sips:proxy.example.test:5061;transport=tls;lr;r2=on>' in forwarded
+        else:
+            assert f'Contact: <sips:fax@{PUBLIC_HOST}:5061;transport=tls>' in forwarded, forwarded
         assert '.svc.' not in forwarded and '66.165.222.101' not in forwarded, forwarded
-        assert 'r2=on' not in forwarded, forwarded
+        assert f'sn=public_tls;r2=on' not in forwarded, forwarded
     outputs = []
     for delay in (0, 0.2, 2, 4):
         time.sleep(delay)
@@ -186,10 +195,10 @@ def harness():
         assert contact, 'Contact missing from a forwarded 200 OK'
         assert re.fullmatch(rf'sips:[^@]+@{re.escape(PUBLIC_HOST)}:5061;transport=tls', contact[1]), \
             f'Public Contact is not the canonical TLS identity: {contact[1]}'
-        public_rr = re.findall(r'(?im)^Record-Route:\s*(.+)$', response_headers)
+        public_rr = [route.strip() for route in re.findall(r'(?im)^Record-Route:\s*(.+)$', response_headers)]
         assert len(public_rr) == 1, f'Carrier response must contain only the public Record-Route: {public_rr}'
-        assert f'sips:{PUBLIC_HOST}:5061;transport=tls' in public_rr[0], \
-            f'Canonical public SIPS Record-Route missing: {public_rr}'
+        assert f'sip:{PUBLIC_HOST}:15061;transport=tcp' in public_rr[0], \
+            f'Fixture public Record-Route missing: {public_rr}'
         assert '.svc.' not in '\n'.join(public_rr), f'Private Service Record-Route leaked to caller: {public_rr}'
         assert 'r2=on' not in '\n'.join(public_rr), f'Orphan paired-route marker leaked: {public_rr}'
         assert '.svc.' not in response_headers and '66.165.222.101' not in response_headers, \
@@ -226,6 +235,9 @@ def harness():
     assert duplicate_ack.startswith('ACK '), duplicate_ack
 
     missing_route_ack = re.sub(br'(?im)^Route: [^\r\n]+\r\n', b'', call_id_ack)
+    missing_route_ack = missing_route_ack.replace(f'branch=z9hG4bK{call_id}-ack'.encode(),
+                                                  f'branch=z9hG4bK{call_id}-missing-route'.encode())
+    assert b'Route:' not in missing_route_ack
     caller.sendall(missing_route_ack)
     try:
         downstream_stream.read(timeout=0.5)
@@ -255,7 +267,7 @@ def harness():
     for line in reinvite.split('\r\n')[1:]:
         if line.lower().startswith(('via:', 'from:', 'to:', 'call-id:', 'cseq:')):
             reinvite_reply.append(line)
-    reinvite_reply += ['Contact: <sip:fax@127.0.0.1:16061;transport=tls>',
+    reinvite_reply += ['Contact: <sip:fax@127.0.0.3:16061;transport=tls>',
                        'Content-Length: 0', '', '']
     downstream.sendall('\r\n'.join(reinvite_reply).encode())
     reinvite_answer, _ = upstream.final()
@@ -273,11 +285,65 @@ def harness():
 
     # FreeSWITCH retained both routes and can send its own in-dialog BYE to
     # the original caller Contact without looping into the backend service.
-    backend_bye = dialog_request('BYE', 4, internal_rr[0] + '\r\nRoute: ' + internal_rr[1],
+    # A UAS reverses the Record-Route set when constructing its Route set.
+    backend_bye = dialog_request('BYE', 4, internal_rr[1] + '\r\nRoute: ' + internal_rr[0],
                                  f'sip:fixture@127.0.0.1:{caller_port};transport=tcp', 'backend-bye')
-    downstream.sendall(backend_bye)
+    backend_caller = socket.socket()
+    backend_caller.bind(('127.0.0.3', 0))
+    backend_caller.connect(('127.0.0.1', 15062))
+    backend_caller.sendall(backend_bye)
     outbound_bye, _ = upstream.read()
     assert outbound_bye.startswith('BYE '), outbound_bye
+
+    def initial_request(test_id, method, branch):
+        return ('\r\n'.join([
+            f'{method} sips:fax@{PUBLIC_HOST}:5061;transport=tls SIP/2.0',
+            f'Via: SIP/2.0/TCP 127.0.0.1:{caller_port};branch={branch};rport',
+            'From: <sip:fixture@localhost>;tag=fixture-from',
+            'To: <sip:fax@localhost>', f'Call-ID: {test_id}',
+            f'CSeq: 1 {method}',
+            f'Contact: <sip:fixture@127.0.0.1:{caller_port};transport=tcp>',
+            'Max-Forwards: 70', 'Content-Length: 0', '', '',
+        ])).encode()
+
+    def backend_final(request, status, tag):
+        lines = [f'SIP/2.0 {status}']
+        for line in request.split('\r\n')[1:]:
+            if line.lower().startswith(('via:', 'from:', 'to:', 'call-id:', 'cseq:', 'record-route:')):
+                lines.append(line + (f';tag={tag}' if line.lower().startswith('to:') else ''))
+        lines += ['Content-Length: 0', '', '']
+        downstream.sendall('\r\n'.join(lines).encode())
+
+    def until_status(status):
+        for _ in range(10):
+            header, _ = upstream.read()
+            if header.startswith(f'SIP/2.0 {status}'):
+                return header
+        raise AssertionError(f'No {status} response arrived')
+
+    negative_id = 'avoip-negative-' + uuid.uuid4().hex
+    negative_branch = 'z9hG4bK' + negative_id
+    caller.sendall(initial_request(negative_id, 'INVITE', negative_branch))
+    negative_invite, _ = downstream_stream.read()
+    backend_final(negative_invite, '486 Busy Here', 'negative-to')
+    negative_response = until_status('486')
+    assert '.svc.' not in negative_response and 'r2=on' not in negative_response
+    negative_ack = initial_request(negative_id, 'ACK', negative_branch).decode()
+    negative_ack = negative_ack.replace('To: <sip:fax@localhost>',
+                                        'To: <sip:fax@localhost>;tag=negative-to')
+    caller.sendall(negative_ack.encode())
+    relayed_negative_ack, _ = downstream_stream.read()
+    assert relayed_negative_ack.startswith('ACK '), relayed_negative_ack
+
+    cancel_id = 'avoip-cancel-' + uuid.uuid4().hex
+    cancel_branch = 'z9hG4bK' + cancel_id
+    caller.sendall(initial_request(cancel_id, 'INVITE', cancel_branch))
+    pending_invite, _ = downstream_stream.read()
+    caller.sendall(initial_request(cancel_id, 'CANCEL', cancel_branch))
+    relayed_cancel, _ = downstream_stream.read()
+    assert relayed_cancel.startswith('CANCEL '), relayed_cancel
+    backend_final(pending_invite, '487 Request Terminated', 'cancelled-to')
+    assert until_status('487').startswith('SIP/2.0 487')
 
     fail_answers.set()
     downstream.sendall(response)
@@ -304,11 +370,24 @@ def fixture_config(source):
                  'listen=tcp:127.0.0.1:15061 name "public_tls"', cfg, flags=re.M)
     cfg = re.sub(r'^listen=tls:.* name "private_tls"$',
                  'listen=tcp:127.0.0.1:15062 name "private_tls"', cfg, flags=re.M)
+    # Make the paired Route URIs local to the isolated TCP fixture. The chart
+    # render separately verifies the production SIPS/TLS identities.
+    cfg = cfg.replace('modparam("rr", "sockname_mode", 1)',
+                      'modparam("rr", "sockname_mode", 1)\nmodparam("rr", "ignore_sips", 1)')
+    cfg = cfg.replace(':5062;transport=tls;sn=private_tls', ':15062;transport=tcp;sn=private_tls')
+    cfg = cfg.replace(':5061;transport=tls;sn=public_tls', ':15061;transport=tcp;sn=public_tls')
+    cfg = cfg.replace('$(route_uri{uri.port}) != "5062"', '$(route_uri{uri.port}) != "15062"')
+    cfg = cfg.replace('$(route_uri{uri.port}) != "5061"', '$(route_uri{uri.port}) != "15061"')
+    cfg = cfg.replace('$(route_uri{uri.transport}) != "tls"', '$(route_uri{uri.transport}) != "tcp"')
+    cfg = re.sub(r'^(alias="[^"]+):5061"$', r'\1:15061"', cfg, flags=re.M)
+    cfg = re.sub(r'^(alias="[^"]+):5062"$', r'\1:15062"', cfg, flags=re.M)
     cfg = re.sub(r'modparam\("rtpengine", "rtpengine_sock", "[^"]+"\)',
                  'modparam("rtpengine", "rtpengine_sock", "udp:127.0.0.1:12223")', cfg)
-    cfg = re.sub(r'\$du = "sip:[^"]+";', '$du = "sip:127.0.0.1:16061;transport=tcp";', cfg)
+    cfg = re.sub(r'\$du = "sip:[^"]+";', '$du = "sip:127.0.0.3:16061;transport=tcp";', cfg)
     cfg = cfg.replace('34.210.91.112/28', '127.0.0.1')
-    cfg = cfg.replace('request_route {', 'request_route {\n  if (src_ip == 127.0.0.1) { if (has_totag()) { route(IN_DIALOG); exit; } route(FLOWROUTE_AUTHORIZED); exit; }', 1)
+    cfg = cfg.replace('172.16.0.0/12', '127.0.0.3')
+    cfg = cfg.replace('$proto == "tls" && $Rp == 5061', '$proto == "tcp" && $Rp == 15061')
+    cfg = cfg.replace('$proto == "tls" && $Rp == 5062', '$proto == "tcp" && $Rp == 15062')
     return cfg
 
 
@@ -317,6 +396,7 @@ def runner(args):
             'deploy/' + args.deployment]
     stem = '/tmp/avoip-replies-' + uuid.uuid4().hex
     cfg = fixture_config(pathlib.Path(args.config).read_text())
+    assert 'SIP wire request' in cfg, 'Render with kamailio.sipLogging.diagnostics.enabled=true'
     subprocess.run(base + ['-c', 'kamailio', '--', 'sh', '-c', f'cat > {stem}.cfg'],
                    input=cfg, text=True, check=True)
     subprocess.run(base + ['-c', 'kamailio', '--', 'kamailio', '-c', '-f', stem + '.cfg'], check=True)
@@ -347,6 +427,13 @@ def runner(args):
         if fixture.poll() is None:
             fixture.terminate()
         subprocess.run(base + ['-c', 'kamailio', '--', 'rm', '-f', stem + '.cfg', stem + '.pid'], check=False)
+    assert re.search(r'SIP ack send .*socket=\d+:127\.0\.0\.1:15062 .*socket_name=private_tls', log), \
+        'Serialized backend ACK did not use private_tls'
+    assert re.search(r'SIP wire request .*method=INVITE .*socket=\d+:127\.0\.0\.1:15062 .*socket_name=private_tls', log), \
+        'Serialized initial INVITE did not use private_tls'
+    assert re.search(r'SIP wire request .*method=BYE .*socket=\d+:127\.0\.0\.1:15061 .*socket_name=public_tls', log), \
+        'Serialized backend BYE did not use public_tls'
+    print('Serialized private/public SIP socket checks passed')
 
 
 if __name__ == '__main__':

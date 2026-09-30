@@ -2,6 +2,12 @@
 
 {{- define "avoip.common.values" -}}
 {{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
+{{- if .Values.kamailio.topology.enabled }}
+{{- if not .Values.kamailio.topology.redis.secretName }}{{- fail "kamailio.topology.redis.secretName is required when topology hiding is enabled" }}{{- end }}
+{{- if not .Values.kamailio.topology.redis.serverKey }}{{- fail "kamailio.topology.redis.serverKey is required when topology hiding is enabled" }}{{- end }}
+{{- if not .Values.kamailio.topology.redis.host }}{{- fail "kamailio.topology.redis.host is required when topology hiding is enabled" }}{{- end }}
+{{- if lt (int .Values.kamailio.topology.redis.database) 1 }}{{- fail "kamailio.topology.redis.database must be a non-zero site-local Dragonfly allocation" }}{{- end }}
+{{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
 {{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
 {{- if ne (clean .Values.freeswitch.media.diagnostics.callRecording.path) (clean .Values.freeswitch.fax.spoolPath) }}{{- fail "FreeSWITCH callRecording.path must match fax.spoolPath when Homer playback is enabled" }}{{- end }}
@@ -83,9 +89,17 @@ networkpolicies:
     controller: kamailio
     policyTypes:
       - Ingress
+      - Egress
     rules:
       ingress:
-        - ports:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: '{{ .Values.kamailio.networkPolicy.envoy.namespace }}'
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: '{{ .Values.kamailio.networkPolicy.envoy.podName }}'
+          ports:
             - protocol: TCP
               port: 5061
         - from:
@@ -96,6 +110,23 @@ networkpolicies:
           ports:
             - protocol: TCP
               port: 5062
+      egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: freeswitch
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: rtpengine
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: UDP
+              port: {{ .Values.rtpengine.controlPort }}
 {{- end }}
 
 controllers:
@@ -346,7 +377,8 @@ controllers:
         # shared certificate material changes so listeners and media routes are
         # loaded from one consistent configuration set.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-config'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
+      terminationGracePeriodSeconds: 60
     initContainers:
 {{- if .Values.freeswitch.enabled }}
       tls-ca:
@@ -375,12 +407,22 @@ controllers:
           - /bin/sh
           - -c
         args:
-          - exec /usr/sbin/kamailio -DD -E -P /tmp/kamailio.pid -f /etc/kamailio/kamailio.cfg
+          - >-
+            /usr/sbin/kamailio -c -f /etc/kamailio/kamailio.cfg &&
+            exec /usr/sbin/kamailio -DD -E -P /tmp/kamailio.pid
+            -f /etc/kamailio/kamailio.cfg
         env:
           - name: POD_NAME
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
+{{- if .Values.kamailio.topology.enabled }}
+          - name: TOPOS_REDIS_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.kamailio.topology.redis.secretName }}'
+                key: '{{ .Values.kamailio.topology.redis.serverKey }}'
+{{- end }}
         image:
           repository: '{{ .Values.kamailio.image.repository }}'
           tag: '{{ .Values.kamailio.image.tag }}'
@@ -401,7 +443,7 @@ controllers:
                 command:
                   - /bin/sh
                   - -c
-                  - kill -0 1 && test -r /etc/kamailio/kamailio.cfg
+                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
               periodSeconds: 5
               timeoutSeconds: 3
               failureThreshold: 18
@@ -413,7 +455,7 @@ controllers:
                 command:
                   - /bin/sh
                   - -c
-                  - kill -0 1 && test -r /etc/kamailio/kamailio.cfg
+                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
               periodSeconds: 10
               timeoutSeconds: 3
               failureThreshold: 3
@@ -425,7 +467,7 @@ controllers:
                 command:
                   - /bin/sh
                   - -c
-                  - kill -0 1
+                  - test -s /tmp/kamailio.pid && kill -0 1
               periodSeconds: 30
               timeoutSeconds: 3
               failureThreshold: 3
@@ -1030,7 +1072,7 @@ service:
   asterisk:
     forceRename: '{{ include "avoip.fullname" . }}-asterisk'
     controller: asterisk
-{{- include "avoip.service.options" (dict "root" $ "name" "asterisk" "annotations" (dict "external-dns.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk")) "external-dns.alpha.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk"))) "labels" (dict "wan-mode" "public" "lan-mode" "private")) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "asterisk" "labels" (dict "lan-mode" "private")) | nindent 4 }}
     extraSelectorLabels:
       app: '{{ include "avoip.fullname" . }}-asterisk'
     ports:
@@ -1052,7 +1094,7 @@ service:
   kamailio:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio'
     controller: kamailio
-{{- include "avoip.service.options" (dict "root" $ "name" "kamailio" "annotations" (dict "external-dns.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio")) "external-dns.alpha.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio"))) "labels" (dict "wan-mode" "public" "lan-mode" "private")) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "kamailio" "annotations" (dict "external-dns.kubernetes.io/hostname" (include "avoip.sip.publicHost" .) "external-dns.alpha.kubernetes.io/hostname" (include "avoip.sip.publicHost" .)) "labels" (dict "wan-mode" "public" "lan-mode" "private")) | nindent 4 }}
     ports:
       sip-public:
         port: 5061
@@ -1082,7 +1124,7 @@ service:
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
     controller: freeswitch
-{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch" "annotations" (dict "external-dns.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch")) "external-dns.alpha.kubernetes.io/hostname" (include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch"))) "labels" (dict "wan-mode" "public" "lan-mode" "private")) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch" "labels" (dict "lan-mode" "private")) | nindent 4 }}
     ports:
       tcp-sip:
         port: 5060

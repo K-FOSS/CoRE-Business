@@ -96,13 +96,12 @@ private backend. The chart configures
 to Flowroute requests so answers use the received TLS source port even when
 the carrier's Via advertises 5061. Kamailio and FreeSWITCH can be enabled independently; when
 both are enabled, the default Kamailio backend is FreeSWITCH's private TLS-only
-SIP profile on port 5061. Kamailio uses an explicit two-sided Record-Route
-preset for the asymmetric edge: the internal route is Kamailio's private TLS
-Service on port 5062 and the external TLS route is the site's
-`sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` identity. The private
-Record-Route remains on the FreeSWITCH leg, while Kamailio removes that private
-header and its paired-route marker from replies toward Flowroute so the carrier
-receives only the site-specific public route. Both sites can use the same DIDs through separate
+SIP profile on port 5061. Kamailio uses TOPOS-backed two-sided topology state
+for the asymmetric edge: the internal route is Kamailio's private TLS Service
+on port 5062 and the external TLS route is the site's
+`sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` identity. TOPOS hides
+the private route and backend Contact from Flowroute without a second manual
+header-rewrite layer. Both sites can use the same DIDs through separate
 site-local value/secret injection; the site-specific dialog route keeps each
 call's signaling anchored to the site that accepted it. This supports YVR
 primary/YXL failover for new calls, while established dialogs remain local to
@@ -192,6 +191,15 @@ configured public DNS delegation and its authoritative provider path for the
 `sip.resolvemy.host` zone. The Backplane K8GB control plane currently installs
 no `Gslb` or `ZoneDelegation` resources. Kamailio has no UDP SIP listener; its
 private FreeSWITCH leg uses TLS.
+
+Kamailio is the only public SIP border. The ordinary FreeSWITCH and Asterisk
+Services are private ClusterIP Services without `wan-mode: public` or
+ExternalDNS records; when Kamailio and RTPEngine are enabled, FreeSWITCH's
+public RTP Service is omitted. Kamailio TOPOS state uses site-local
+`dragonfly-core` logical database `51` through the generated
+`avoip-kamailio-topos` Secret, separate from RTPEngine's Valkey state. See the
+[AVoIP boundary and HA architecture](docs/avoip/architecture.md) and
+[topology-hiding design](docs/avoip/topology-hiding.md).
 
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
 [CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)

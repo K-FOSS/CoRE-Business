@@ -63,25 +63,30 @@ def main():
     assert f'{public_host}:5061;transport=tls;sn={public_socket}' in kam
     assert 'sips:sip.resolvemy.host:5061;transport=tls;sn=' not in kam
     assert 'add_rr_param(";r2=on")' in kam
-    assert 'remove_hf_idx("Record-Route", "0")' in kam
-    assert 'subst_hf("Record-Route", "/;r2=on//g", "a")' in kam
-    assert 'loose_route_mode("1")' in kam
-    assert 'modparam("siptrace", "trace_mode", 1)' in kam
-    assert 'SIP ACK ingress replica=$Ri' in kam
-    assert 'SIP ACK dropped decision=invalid-route' in kam
-    assert 'Flowroute receives only the public Record-Route URI' in kam
-    assert f'$du = "sip:{host(fs_name)}:5061;transport=tls"' in kam
+    assert 'loadmodule "corex.so"' in kam
+    assert 'loadmodule "ndb_redis.so"' in kam
+    assert 'loadmodule "topos.so"' in kam
+    assert 'loadmodule "topos_redis.so"' in kam
+    assert 'modparam("topos", "contact_mode", 3)' in kam
+    assert 'TOPOS_REDIS_SERVER' in kam
+    assert 'remove_hf_match("Record-Route"' not in kam
+    assert 'subst_hf("Record-Route"' not in kam
+    assert 'subst_hf("Contact"' not in kam
+    assert 'remove_hf_idx("Record-Route", "0")' not in kam
     assert 'if (!loose_route_mode("1"))' in kam
-    assert 'ACK fallback=no-route' not in kam
-    assert 'sips?:([^@>]+)@[^>]+' in kam
-    assert '$rs =~ "^(180|183|2[0-9][0-9])$"' in kam
-    assert '$hdr(CSeq) =~ "INVITE"' in kam
-    assert 'replica=$Ri' in kam
-    assert rf'sips:\\1@{args.site_host}:5061;transport=tls' in kam
-    assert 'sips:\\1@66.165.222.101:5061;transport=tls' not in kam
-    assert 'sip:\\1@66.165.222.101:5061;transport=tls' not in kam
+    assert 'modparam("siptrace", "trace_mode", 1)' in kam
+    assert 'SIP ack ingress pod=$env(POD_NAME)' in kam
+    assert 'SIP ack send pod=$env(POD_NAME)' in kam
+    assert 'SIP dialog reject pod=$env(POD_NAME)' in kam
+    assert 'set_send_socket_name("private_tls")' in kam
+    assert 'set_send_socket_name("public_tls")' in kam
+    assert '$proto == "tls" && $Rp == 5061' in kam
+    assert '$proto == "tls"' in kam and '$Rp == 5062' in kam
+    assert f'sip:{host(fs_name)}:5061;transport=tls' in kam
+    assert f'$xavp(tls=>server_name) = "{host(fs_name)}"' in kam
+    assert 'SIP ack send pod=$env(POD_NAME)' in kam
     assert '66.165.222.101' not in kam
-    assert 'force_send_socket(public_tcp)' not in kam
+    assert 'sdp=$rb' not in kam
     assert 'listen=tcp:0.0.0.0:5061' not in kam
     assert 'sn=public_tcp' not in kam
 
@@ -95,6 +100,22 @@ def main():
     assert public_port["targetPort"] == "tls-public"
     kamailio_deployment = document(items, "Deployment", "-kamailio")
     assert kamailio_deployment["spec"]["replicas"] == 1
+    kamailio_container = next(
+        c for c in kamailio_deployment["spec"]["template"]["spec"]["containers"]
+        if c["name"] == "kamailio"
+    )
+    assert any(e["name"] == "POD_NAME" and e["valueFrom"]["fieldRef"]["fieldPath"] == "metadata.name"
+               for e in kamailio_container["env"])
+    freeswitch_deployment = document(items, "Deployment", "-freeswitch")
+    assert freeswitch_deployment["spec"]["replicas"] == 1
+    policy = next(item for item in items if item and item.get("kind") == "NetworkPolicy"
+                  and item["spec"]["podSelector"]["matchLabels"].get("app.kubernetes.io/controller") == "kamailio")
+    ingress = policy["spec"]["ingress"]
+    assert any(rule.get("ports") == [{"port": 5061, "protocol": "TCP"}] and "from" in rule
+               for rule in ingress)
+    assert any(rule.get("ports") == [{"port": 5062, "protocol": "TCP"}]
+               and rule["from"][0]["podSelector"]["matchLabels"]["app.kubernetes.io/controller"] == "freeswitch"
+               for rule in ingress)
 
     homer_oidc = document(items, "Workspace", "avoip-homer-oidc")
     oidc_variables = homer_oidc["spec"]["forProvider"]["varmap"]
@@ -104,7 +125,7 @@ def main():
     assert "name                 = var.provider_name" in homer_oidc["spec"]["forProvider"]["module"]
 
     configs = document(items, "ConfigMap", "-freeswitch-configs")["data"]
-    assert f"external_sip_ip={public_host}" in configs["vars.xml"]
+    assert f"external_sip_ip={host(kam_name)}" in configs["vars.xml"]
     assert f"private_sip_host={host(fs_name)}" in configs["vars.xml"]
     assert "network.egressIP" not in configs["vars.xml"]
     profiles = document(items, "ConfigMap", "-freeswitch-sip-configs")["data"]
@@ -140,19 +161,22 @@ def main():
     assert asterisk.index("same => n,Echo()") < asterisk.index("same => n,Playback(hello-world)")
     assert asterisk.index("same => n,Playback(hello-world)") < asterisk.index("same => n,Hangup()")
 
-    for component, service_name in (("kamailio", kam_name), ("freeswitch", fs_name), ("asterisk", ast_name)):
+    for component, service_name in (("freeswitch", fs_name), ("asterisk", ast_name)):
         service = document(items, "Service", f"-{component}")
-        annotations = service["metadata"]["annotations"]
-        assert annotations["external-dns.kubernetes.io/hostname"] == host(service_name)
-        assert annotations["external-dns.alpha.kubernetes.io/hostname"] == host(service_name)
-        assert service["metadata"]["labels"]["wan-mode"] == "public"
         assert service["metadata"]["labels"]["lan-mode"] == "private"
+        assert "wan-mode" not in service["metadata"]["labels"]
+        assert "annotations" not in service["metadata"]
         assert service["spec"]["type"] == "ClusterIP"
-        cert = document(items, "Certificate", f"-{component}-sip-tls")
-        expected_names = [host(service_name)]
-        if component == "kamailio":
-            expected_names.extend([args.site_host, "sip.resolvemy.host"])
-        assert cert["spec"]["dnsNames"] == expected_names
+    public_service = document(items, "Service", "-kamailio")
+    assert public_service["metadata"]["annotations"]["external-dns.kubernetes.io/hostname"] == public_host
+    assert public_service["metadata"]["labels"]["wan-mode"] == "public"
+    assert {port["port"] for port in public_service["spec"]["ports"]} == {5061, 5062}
+    assert not any(item and item.get("kind") == "Service" and item["metadata"]["name"].endswith("-freeswitch-rtp")
+                   for item in items)
+    topos_secret = next(item for item in items if item and item.get("kind") == "ExternalSecret"
+                        and item["metadata"]["name"] == "avoip-kamailio-topos")
+    assert topos_secret["spec"]["data"][0]["remoteRef"]["key"].endswith("/Creds")
+    assert "db=51" in topos_secret["spec"]["target"]["template"]["data"]["server"]
     rtp = document(items, "Deployment", "-rtpengine")
     command = str(next(container for container in rtp["spec"]["template"]["spec"]["containers"] if container["name"] == "rtpengine"))
     assert f"!{args.media_address}" in command
