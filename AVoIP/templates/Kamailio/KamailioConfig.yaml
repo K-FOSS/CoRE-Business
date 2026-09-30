@@ -400,15 +400,15 @@ data:
     route[RR_CARRIER_TO_BACKEND] {
       # record_route_preset(outbound interface, inbound interface).
       record_route_preset(
-        "{{ $kamailioHost }}:5062;transport=tls;r2=on",
-        "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;r2=on"
+        "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls;r2=on",
+        "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls;r2=on"
       );
     }
 
     route[RR_BACKEND_TO_CARRIER] {
       record_route_preset(
-        "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;r2=on",
-        "{{ $kamailioHost }}:5062;transport=tls;r2=on"
+        "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls;r2=on",
+        "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls;r2=on"
       );
     }
 
