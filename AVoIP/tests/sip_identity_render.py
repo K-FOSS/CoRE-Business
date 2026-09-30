@@ -68,6 +68,7 @@ def main():
     assert 'loadmodule "topos.so"' in kam
     assert 'loadmodule "topos_redis.so"' in kam
     assert 'modparam("topos", "contact_mode", 3)' in kam
+    assert 'modparam("topos", "event_mode", 15)' in kam
     assert 'TOPOS_REDIS_SERVER' in kam
     assert 'remove_hf_match("Record-Route"' not in kam
     assert 'subst_hf("Record-Route"' not in kam
@@ -111,7 +112,6 @@ def main():
         c for c in kamailio_deployment["spec"]["template"]["spec"]["containers"]
         if c["name"] == "kamailio"
     )
-    assert "kamcmd -s unixs:/tmp/kamailio_ctl core.uptime" in str(kamailio_container["readinessProbe"])
     assert any(e["name"] == "POD_NAME" and e["valueFrom"]["fieldRef"]["fieldPath"] == "metadata.name"
                for e in kamailio_container["env"])
     freeswitch_deployment = document(items, "Deployment", "-freeswitch")

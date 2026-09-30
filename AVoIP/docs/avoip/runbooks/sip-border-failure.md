@@ -59,6 +59,61 @@ Gadget execution requires privileged
 node/eBPF access, so restrict it to authorized operators and record the site,
 node, filter, version, and capture window in the incident notes.
 
+## TLS and SIP payload inspection options
+
+The Cilium datapath and ordinary network eBPF hooks see SIPS as encrypted TCP;
+they can show endpoints, ports, timing, retransmission, resets, and drops, but
+they cannot parse SIP headers or SDP. Because Kamailio terminates TLS, a
+process-level eBPF hook is possible at the TLS library boundary. Inspektor
+Gadget provides an optional [`trace_ssl`](https://inspektor-gadget.io/docs/v0.56.0/gadgets/trace_ssl/)
+gadget for OpenSSL, GnuTLS, NSS, and libcrypto. Confirm that the installed
+gadget version supports the target library and image before using it.
+
+Metadata-only TLS tracing should be the first step:
+
+```sh
+SITE_CONTEXT=logged-user
+GADGET_VERSION=<installed-version>
+
+kubectl --context "$SITE_CONTEXT" gadget run \
+  ghcr.io/inspektor-gadget/gadget/trace_ssl:"$GADGET_VERSION" \
+  -n core-prod -l app.kubernetes.io/controller=kamailio \
+  --record-data=false
+```
+
+If TCP connectivity is present but SIP behavior is still unexplained, a short,
+single-call payload capture can be enabled:
+
+```sh
+kubectl --context "$SITE_CONTEXT" gadget run \
+  ghcr.io/inspektor-gadget/gadget/trace_ssl:"$GADGET_VERSION" \
+  -n core-prod -l app.kubernetes.io/controller=kamailio \
+  --record-data=true -o json
+```
+
+Treat this as equivalent to raw SIP logging. Captured data may contain
+Authorization headers, Call-IDs, caller/callee identities, PAI, Contact and
+Route values, SDP, MESSAGE bodies, and media addresses. Use one test call,
+restrict the pod label and time window, store output only in the incident
+workspace, and stop it with `Ctrl-C` immediately afterward. Do not enable
+payload recording continuously or in production defaults.
+
+There is no standard SIP-aware eBPF gadget in the Cilium monitor or the
+Inspektor Gadget set. The practical SIP inspection choices are therefore:
+
+1. Kamailio high-level diagnostics and Homer for method, Call-ID, CSeq, route,
+   ACK, transaction, and sanitized SDP decisions.
+2. `trace_ssl --record-data=true` for a tightly scoped plaintext-at-TLS-boundary
+   capture when the SIP bytes themselves are required.
+3. A separately reviewed custom uprobe/eBPF gadget for a pinned Kamailio or
+   TLS-library build when repeatable SIP parsing is needed. This must be
+   version-tested because symbols, offsets, buffering, and thread ownership
+   can change between images.
+
+Cilium `cilium-dbg monitor` remains the authority for network policy verdicts,
+packet traces, and drops; it is not a SIP decoder. Correlate all three layers:
+TLS/process capture, Kamailio/Homer SIP diagnostics, and Cilium L3/L4 events.
+
 ## Cilium pod-level network tracing
 
 The site Cilium agents run as pods in `kube-system` and provide a second,

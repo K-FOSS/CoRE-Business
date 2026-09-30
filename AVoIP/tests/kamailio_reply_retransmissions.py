@@ -363,7 +363,7 @@ def harness():
 def fixture_config(source):
     cfg = source
     cfg = re.sub(r'^\s*loadmodule "(?:tls|siptrace)\.so".*\n', '', cfg, flags=re.M)
-    cfg = re.sub(r'^\s*modparam\("(?:tls|siptrace)".*\n', '', cfg, flags=re.M)
+    cfg = re.sub(r'^\s*modparam\("(?:tls|siptrace)".*?\)\s*\n', '', cfg, flags=re.M | re.S)
     cfg = re.sub(r'^enable_tls=.*$', 'enable_tls=0', cfg, flags=re.M)
     cfg = cfg.replace('tcp_accept_haproxy=yes', 'tcp_accept_haproxy=no')
     cfg = re.sub(r'^listen=(?:tcp|tls):.* name "public_(?:tcp|tls)"$',
@@ -381,9 +381,10 @@ def fixture_config(source):
     cfg = cfg.replace('$(route_uri{uri.transport}) != "tls"', '$(route_uri{uri.transport}) != "tcp"')
     cfg = re.sub(r'^(alias="[^"]+):5061"$', r'\1:15061"', cfg, flags=re.M)
     cfg = re.sub(r'^(alias="[^"]+):5062"$', r'\1:15062"', cfg, flags=re.M)
-    cfg = re.sub(r'modparam\("rtpengine", "rtpengine_sock", "[^"]+"\)',
-                 'modparam("rtpengine", "rtpengine_sock", "udp:127.0.0.1:12223")', cfg)
-    cfg = re.sub(r'\$du = "sip:[^"]+";', '$du = "sip:127.0.0.3:16061;transport=tcp";', cfg)
+    cfg = re.sub(r'modparam\(\s*"rtpengine",\s*"rtpengine_sock",\s*"[^"]+"\s*\)',
+                 'modparam("rtpengine", "rtpengine_sock", "udp:127.0.0.1:12223")', cfg,
+                 flags=re.S)
+    cfg = re.sub(r'\$du\s*=\s*"sip:[^"]+";', '$du = "sip:127.0.0.3:16061;transport=tcp";', cfg)
     cfg = cfg.replace('34.210.91.112/28', '127.0.0.1')
     cfg = cfg.replace('172.16.0.0/12', '127.0.0.3')
     cfg = cfg.replace('$proto == "tls" && $Rp == 5061', '$proto == "tcp" && $Rp == 15061')

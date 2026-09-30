@@ -103,6 +103,10 @@ data:
 
     modparam("topos", "storage", "redis")
     modparam("topos_redis", "serverid", "topos")
+    # Keep all TOPOS hooks enabled: outgoing response rewriting plus incoming
+    # dialog lookup/restoration are both required when Kamailio replicas share
+    # Redis/Dragonfly state.
+    modparam("topos", "event_mode", 15)
 
     # Store and restore topology around INVITE dialogs.
     modparam("topos", "sanity_checks", 1)

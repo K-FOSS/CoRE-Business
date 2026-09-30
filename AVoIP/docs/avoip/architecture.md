@@ -47,3 +47,7 @@ See [SIP border](sip-border.md), [topology hiding](topology-hiding.md),
 [RTPEngine HA](rtpengine-ha.md), and [failure domains](failure-domains.md).
 For node-level TCP debugging during a border incident, use the documented
 [Inspektor Gadget procedure](runbooks/sip-border-failure.md#inspektor-gadget-network-debugging).
+For CNI policy, drop, and endpoint-path evidence, use the same runbook’s
+[Cilium pod tracing procedure](runbooks/sip-border-failure.md#cilium-pod-level-network-tracing).
+TLS-boundary and narrowly scoped SIP payload capture options are documented in
+the runbook’s [TLS and SIP inspection section](runbooks/sip-border-failure.md#tls-and-sip-payload-inspection).
