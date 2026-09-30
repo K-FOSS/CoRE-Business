@@ -43,10 +43,10 @@ data:
     enable_tls=1
 
     # Public carrier-facing identity.
-    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
     listen=udp:0.0.0.0:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_udp"
     {{- end }}
-    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
     listen=tcp:0.0.0.0:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_tcp"
     {{- end }}
     listen=tls:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"

@@ -591,12 +591,12 @@ controllers:
               timeoutSeconds: 3
               failureThreshold: 3
         ports:
-        {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+        {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
           - name: udp-public
             containerPort: 5060
             protocol: UDP
         {{- end }}
-        {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+        {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
           - name: tcp-public
             containerPort: 5060
             protocol: TCP
@@ -1225,13 +1225,13 @@ service:
     controller: kamailio
 {{- include "avoip.service.options" (dict "root" $ "name" "kamailio") | nindent 4 }}
     ports:
-    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
       sip-public-udp:
         port: 5060
         targetPort: udp-public
         protocol: UDP
     {{- end }}
-    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
       sip-public-tcp:
         port: 5060
         targetPort: tcp-public
@@ -1256,13 +1256,13 @@ service:
     {{- end }}
 {{- include "avoip.service.options" (dict "root" $ "name" "kamailio-pub" "annotations" (dict "external-dns.kubernetes.io/hostname" $kamailioPubHost "external-dns.alpha.kubernetes.io/hostname" $kamailioPubHost)) | nindent 4 }}
     ports:
-    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
       udp-sip:
         port: 5060
         targetPort: udp-public
         protocol: UDP
     {{- end }}
-    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
       tcp-sip:
         port: 5060
         targetPort: tcp-public
