@@ -88,16 +88,20 @@ desktops:
         value: 'true'
       - name: 'SELKIES_DESKTOP'
         value: 'false'
-      - name: 'SELKIES_FRAMERATE'
-        value: '120'
+      - name: WLR_BACKENDS
+        value: wayland
+
       - name: 'SELKIES_ENCODER'
         value: 'x264enc'
       - name: 'SELKIES_H264_STREAMING_MODE'
         value: 'true|locked'
       - name: 'SELKIES_USE_PAINT_OVER_QUALITY'
         value: 'false'
-      - name: 'SELKIES_GAMEPAD_ENABLED'
-        value: 'true'
+      - name: SELKIES_USE_BROWSER_CURSORS
+        value: false|locked
+
+      - name: SELKIES_GAMEPAD_ENABLED
+        value: true|locked
       - name: NVIDIA_DRIVER_CAPABILITIES
         value: compute,video,graphics,utility,display
       - name: DRINODE
@@ -108,6 +112,55 @@ desktops:
         value: 10de:1e87!
       - name: VK_LOADER_DRIVERS_SELECT
         value: '*nvidia*'
+
+      - name: WLR_WL_OUTPUTS
+        value: '1'
+
+      - name: __GLX_VENDOR_LIBRARY_NAME
+        value: nvidia
+      - name: SELKIES_FRAMERATE
+        value: '60'
+      - name: SELKIES_USE_CPU
+        value: false|locked
+      - name: SELKIES_ENABLE_RATE_CONTROL
+        value: true|locked
+      - name: SELKIES_RATE_CONTROL_MODE
+        value: cbr
+
+      - name: SELKIES_VIDEO_BITRATE
+        value: '100'
+
+
+      - name: SELKIES_USE_PAINT_OVER_QUALITY
+        value: 'false'
+
+      - name: SELKIES_ENCODER
+        value: x264enc
+
+      - name: __NV_PRIME_RENDER_OFFLOAD
+        value: '1'
+
+      - name: __VK_LAYER_NV_optimus
+        value: NVIDIA_only
+
+      - name: VK_LOADER_DRIVERS_SELECT
+        value: '*nvidia*'
+      - name: SELKIES_H264_STREAMING_MODE
+        value: true|locked
+      - name: SELKIES_USE_CSS_SCALING
+        value: false|locked
+
+
+
+      - name: SELKIES_MANUAL_WIDTH
+        value: '2560'
+      - name: SELKIES_MANUAL_HEIGHT
+        value: '1440'
+
+      - name: SELKIES_H264_FULLCOLOR
+        value: true|locked
+      - name: SELKIES_SCALING_DPI
+        value: '96'
     volume:
       enabled: true
       size: '450Gi'

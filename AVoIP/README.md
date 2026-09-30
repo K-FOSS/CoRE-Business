@@ -113,6 +113,21 @@ host. FreeSWITCH uses that site host as its external SIP identity as well.
 Every in-dialog request, including 2xx ACK, follows the dialog Route set;
 Kamailio drops an ACK with an invalid route instead of guessing a backend.
 
+An optional `kamailio-pub` direct Service is controlled by
+`kamailio.publicExposure.sip.directService.enabled` (off by default). Its
+`external-dns.kubernetes.io/hostname` and legacy
+`external-dns.alpha.kubernetes.io/hostname` annotations both use
+`kamailio.publicExposure.sip.directService.hostname`, or derive
+`<release-fullname>-kamailio-pub.<namespace>.svc.<cluster-domain>`. Its ports
+follow `sip.enabled` (TLS/5061), `sip.tcpEnabled` (TCP/5060), and
+`sip.udpEnabled` (UDP/5060); it never exposes private TLS/5062. Configure its
+type, labels, annotations, and LoadBalancer class under
+`serviceOptions.kamailio-pub`. If UDP is sent through the Gateway instead, use
+`sip.udpRoute.enabled`; that route targets the ordinary ClusterIP Service.
+Direct TCP/TLS LoadBalancers must preserve the original client address and
+support the PROXY protocol expected by Kamailio. Prefer the Gateway path if the
+site LoadBalancer cannot meet those requirements.
+
 New outbound Flowroute connections are source NATed by the site's VyOS
 WAN-GW/NAT VRRP pair. The hub's observed signaling source was
 `66.165.222.97`; RTPEngine separately advertises `66.165.222.103` for RTP.

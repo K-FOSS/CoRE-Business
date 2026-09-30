@@ -10,7 +10,7 @@ controllers: {}
 
 # Service type and metadata shared by every generated Service, with
 # per-Service overrides.
-# Keys are generated Service names: asterisk, kamailio, kamailio-udp,
+# Keys are generated Service names: asterisk, kamailio, kamailio-pub,
 # freeswitch, freeswitch-rtp, rtpengine, rtpengine-media,
 # rtpengine-valkey-proxy, homer-heplify, homer-web, and homer-recordings.
 # Per-Service type, annotations, labels, and LoadBalancer class are configurable.
@@ -36,7 +36,7 @@ serviceOptions:
     annotations: {}
     # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
-  kamailio-udp:
+  kamailio-pub:
     type: 'LoadBalancer'
     annotations: {}
     labels: {}
@@ -205,12 +205,18 @@ kamailio:
   publicExposure:
     enabled: true
     sip:
+      # Enables the public SIPS/TLS Gateway route and TLS listener.
       enabled: true
-      # Public SIP signaling is TLS-only. RTPEngine's UDP media/control paths
-      # are independent of this setting.
+      # Optional cleartext signaling transports; these do not affect RTP or
+      # RTPEngine's separate UDP media/control paths.
       udpEnabled: false
+      tcpEnabled: false
       directService:
+        # When enabled, create the kamailio-pub Service with only the public
+        # signaling transports enabled above. Private TLS/5062 is never added.
         enabled: false
+        # Empty derives <release>-kamailio-pub.<namespace>.svc.<cluster-domain>.
+        hostname: ''
       udpRoute:
         enabled: false
   backend:

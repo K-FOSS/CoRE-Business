@@ -42,6 +42,12 @@ data:
     enable_tls=1
 
     # Public carrier-facing identity.
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+    listen=udp:0.0.0.0:5060 advertise "{{ $publicSipHost }}":5060 name "public_udp"
+    {{- end }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+    listen=tcp:0.0.0.0:5060 advertise "{{ $publicSipHost }}":5060 name "public_tcp"
+    {{- end }}
     listen=tls:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"
 
     # Private application/B2BUA-facing identity.
@@ -274,7 +280,11 @@ data:
       #
       # Carrier-facing trust boundary.
       #
-      if ($proto == "tls" && $Rp == 5061) {
+      if (
+        ($proto == "tls" && $Rp == 5061) ||
+        ($proto == "udp" && $Rp == 5060) ||
+        ($proto == "tcp" && $Rp == 5060)
+      ) {
         {{- range .Values.flowroute.signalingCIDRs }}
         if (src_ip == {{ . }}) {
           $var(side) = "carrier";

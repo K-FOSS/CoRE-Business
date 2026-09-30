@@ -591,6 +591,16 @@ controllers:
               timeoutSeconds: 3
               failureThreshold: 3
         ports:
+        {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+          - name: udp-public
+            containerPort: 5060
+            protocol: UDP
+        {{- end }}
+        {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+          - name: tcp-public
+            containerPort: 5060
+            protocol: TCP
+        {{- end }}
           - name: tls-public
             containerPort: 5061
             protocol: TCP
@@ -1215,6 +1225,18 @@ service:
     controller: kamailio
 {{- include "avoip.service.options" (dict "root" $ "name" "kamailio") | nindent 4 }}
     ports:
+    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+      sip-public-udp:
+        port: 5060
+        targetPort: udp-public
+        protocol: UDP
+    {{- end }}
+    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+      sip-public-tcp:
+        port: 5060
+        targetPort: tcp-public
+        protocol: TCP
+    {{- end }}
       sip-public:
         port: 5061
         targetPort: tls-public
@@ -1223,20 +1245,35 @@ service:
         port: 5062
         targetPort: tls-private
         protocol: TCP
-{{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.directService.enabled (eq .Values.cluster.type "hub") }}
-  kamailio-udp:
-    forceRename: '{{ include "avoip.fullname" . }}-kamailio-udp'
+{{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
+{{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
+  kamailio-pub:
+    forceRename: '{{ include "avoip.fullname" . }}-kamailio-pub'
     controller: kamailio
-    {{- if eq (include "avoip.service.type" (dict "root" $ "name" "kamailio-udp") | trim) "LoadBalancer" }}
-    # Preserve Flowroute source addresses and avoid cross-node kube-proxy SNAT.
+    {{- if eq (include "avoip.service.type" (dict "root" $ "name" "kamailio-pub") | trim) "LoadBalancer" }}
+    # Preserve client source addresses for Kamailio's carrier CIDR checks.
     externalTrafficPolicy: Local
     {{- end }}
-{{- include "avoip.service.options" (dict "root" $ "name" "kamailio-udp") | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "kamailio-pub" "annotations" (dict "external-dns.kubernetes.io/hostname" $kamailioPubHost "external-dns.alpha.kubernetes.io/hostname" $kamailioPubHost)) | nindent 4 }}
     ports:
+    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
       udp-sip:
         port: 5060
-        targetPort: udp-sip
+        targetPort: udp-public
         protocol: UDP
+    {{- end }}
+    {{- if and .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+      tcp-sip:
+        port: 5060
+        targetPort: tcp-public
+        protocol: TCP
+    {{- end }}
+    {{- if .Values.kamailio.publicExposure.sip.enabled }}
+      tls-sips:
+        port: 5061
+        targetPort: tls-public
+        protocol: TCP
+    {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

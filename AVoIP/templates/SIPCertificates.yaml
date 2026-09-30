@@ -12,6 +12,9 @@ spec:
     - '{{ include "avoip.sip.siteHost" . }}'
     - '{{ .Values.sip.globalHost }}'
     {{- end }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.directService.enabled }}
+    - '{{ include "avoip.sip.kamailioPubHost" . }}'
+    {{- end }}
   issuerRef:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
