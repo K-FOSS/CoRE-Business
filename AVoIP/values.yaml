@@ -263,6 +263,16 @@ homer:
     # Homer coordinator serves the UI and v4 API on 8080. The separate ingest
     # HTTP listener remains on homer.capture.httpPort.
     port: 8080
+  recordings:
+    # FreeSWITCH recordings are served under the Homer hostname for its iframe widget.
+    enabled: true
+    port: 8088
+    retentionDays: 2
+    image:
+      repository: 'nginxinc/nginx-unprivileged'
+      tag: '1.29.3-alpine'
+      digest: 'sha256:5aea7cc516b419e3526f47dd1531be31a56a046cfe44754d94f9383e13e2ee99'
+      pullPolicy: 'IfNotPresent'
   storage:
     persistence:
       enabled: true
@@ -366,7 +376,7 @@ freeswitch:
     # Snapshot per-call RTP statistics only when explicitly enabled.
     diagnostics:
       enabled: true
-      # Temporary inbound-call recording for fax-tone/T.38 troubleshooting.
+      # Temporary inbound-call recording for Homer playback and fax troubleshooting.
       # Disable after the capture is complete because recordings contain call audio.
       callRecording:
         enabled: true

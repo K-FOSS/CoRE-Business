@@ -53,6 +53,17 @@ spec:
   hostnames:
     - '{{ include "avoip.homer.hostname" . }}'
   rules:
+    {{- if and .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+    - matches:
+        - path:
+            type: 'PathPrefix'
+            value: '/recordings'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ include "avoip.fullname" . }}-homer-recordings'
+          port: {{ .Values.homer.recordings.port }}
+    {{- end }}
     - matches:
         - path:
             type: 'PathPrefix'

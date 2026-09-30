@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Call recordings</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 1rem; color: #e6e9ef; background: #151a23; }
+    h1 { font-size: 1.1rem; margin: 0 0 .75rem; }
+    p { color: #b9c2d1; }
+    input { width: min(100%, 32rem); box-sizing: border-box; padding: .5rem; border-radius: .3rem; border: 1px solid #526078; color: inherit; background: #232c3b; }
+    audio { width: min(100%, 40rem); margin: .75rem 0; }
+    button { color: inherit; background: #30415c; border: 1px solid #647b9e; border-radius: .3rem; padding: .4rem .65rem; cursor: pointer; }
+    button:hover { background: #425d81; }
+    ul { padding: 0; list-style: none; max-height: 18rem; overflow-y: auto; }
+    li { display: flex; gap: .75rem; align-items: center; margin: .3rem 0; }
+    small { color: #b9c2d1; }
+  </style>
+</head>
+<body>
+  <h1>Call recordings</h1>
+  <p>Choose a WAV by call time or FreeSWITCH UUID. Recordings expire after the configured retention period.</p>
+  <label for="search">Filter recordings</label><br>
+  <input id="search" type="search" placeholder="UUID or time" autocomplete="off">
+  <p id="status" role="status">Loading recordings…</p>
+  <audio id="player" controls preload="none" hidden></audio>
+  <ul id="results"></ul>
+  <script src="/recordings/player.js" defer></script>
+</body>
+</html>

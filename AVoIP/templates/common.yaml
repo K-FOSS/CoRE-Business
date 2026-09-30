@@ -2,6 +2,10 @@
 
 {{- define "avoip.common.values" -}}
 {{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
+{{- if ne (clean .Values.freeswitch.media.diagnostics.callRecording.path) (clean .Values.freeswitch.fax.spoolPath) }}{{- fail "FreeSWITCH callRecording.path must match fax.spoolPath when Homer playback is enabled" }}{{- end }}
+{{- end }}
 global:
   nameOverride: '{{ .Release.Name }}'
   createDefaultServiceAccount: false
@@ -10,10 +14,10 @@ defaultPodOptions:
   labels:
     logs: loki-myloginspace
 
+configMaps:
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
 {{- if ne (int .Values.rtpengine.valkey.shards) 1 }}{{- fail "RTPEngine Valkey proxy requires exactly one Valkey shard" }}{{- end }}
 {{- if ne (int .Values.rtpengine.valkey.database) 0 }}{{- fail "Valkey Cluster requires RTPEngine database 0" }}{{- end }}
-configMaps:
   rtpengine-valkey-proxy:
     forceRename: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
     includeChecksumInControllers:
@@ -58,6 +62,19 @@ configMaps:
           bind :{{ .Values.rtpengine.valkey.proxy.healthPort }}
           monitor-uri /healthz
           monitor fail if { nbsrv(valkey_primary) lt 1 }
+{{- end }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+  homer-recordings:
+    forceRename: '{{ include "avoip.fullname" . }}-homer-recordings'
+    includeChecksumInControllers:
+      - 'freeswitch'
+    data:
+      default.conf: |
+{{ $.Files.Get "files/homer-recordings/default.conf" | replace "__PORT__" (toString $.Values.homer.recordings.port) | indent 8 }}
+      index.html: |
+{{ $.Files.Get "files/homer-recordings/index.html" | indent 8 }}
+      player.js: |
+{{ $.Files.Get "files/homer-recordings/player.js" | indent 8 }}
 {{- end }}
 
 controllers:
@@ -858,6 +875,33 @@ controllers:
           - name: udp-sip-edge
             containerPort: 5090
             protocol: UDP
+{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+      recordings:
+        image:
+          repository: '{{ .Values.homer.recordings.image.repository }}'
+          tag: '{{ .Values.homer.recordings.image.tag }}'
+          digest: '{{ .Values.homer.recordings.image.digest }}'
+          pullPolicy: '{{ .Values.homer.recordings.image.pullPolicy }}'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            (while :; do
+              find /recordings -maxdepth 1 -type f -name '*.wav' -mtime +{{ sub (int .Values.homer.recordings.retentionDays) 1 }} -exec rm -f '{}' \;
+              sleep 21600
+            done) &
+            exec nginx -g 'daemon off;'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        ports:
+          - name: recordings
+            containerPort: {{ .Values.homer.recordings.port }}
+            protocol: TCP
+{{- end }}
 {{- if .Values.diagnostics.netshoot.enabled }}
       netshoot:
         command:
@@ -1113,6 +1157,16 @@ service:
         port: 80
         targetPort: http
         protocol: TCP
+{{- if and .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+  homer-recordings:
+    forceRename: '{{ include "avoip.fullname" . }}-homer-recordings'
+    controller: freeswitch
+    ports:
+      http:
+        port: {{ .Values.homer.recordings.port }}
+        targetPort: recordings
+        protocol: TCP
+{{- end }}
 {{- end }}
 
 persistence:
@@ -1356,6 +1410,21 @@ persistence:
       freeswitch:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+        recordings:
+          - path: /recordings
+{{- end }}
+{{- if and .Values.homer.enabled .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+  homer-recordings-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-homer-recordings'
+    advancedMounts:
+      freeswitch:
+        recordings:
+          - path: /etc/nginx/conf.d/default.conf
+            subPath: default.conf
+          - path: /usr/share/nginx/html/recordings
+{{- end }}
 {{- end }}
 {{- if and .Values.homer.enabled .Values.kamailio.enabled }}
   homer-config:

@@ -27,7 +27,7 @@ data:
           </condition>
         </extension>
         {{- end }}
-        {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled }}
+        {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
         <extension name="did-post-answer">
           <condition field="destination_number" expression="^did-post-answer$">
             {{- if $.Values.freeswitch.media.diagnostics.enabled }}
@@ -35,6 +35,9 @@ data:
             <action application="set" data="log_audio_stats_on_hangup=true"/>
             <action application="set_media_stats"/>
             <action application="log" data="INFO AVoIP inbound media answer uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
+            {{- end }}
+            {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+            <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
             {{- end }}
             {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
             <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
@@ -50,7 +53,7 @@ data:
             <action application="set" data="log_audio_stats_on_hangup=true"/>
             <action application="set" data="execute_on_media=log INFO AVoIP inbound media established uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec}"/>
             {{- end }}
-            {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled }}
+            {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
             <action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>
             {{- end }}
             <!-- Keep the carrier leg ringing until Asterisk returns 200 OK. -->

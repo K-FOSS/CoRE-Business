@@ -235,6 +235,9 @@ stack. Kamailio forwards HEPv3 signaling directly to the Homer 11 ingest
 listener, while RTPEngine forwards RTCP/NG diagnostics. The Homer UI is
 protected by Authentik OIDC and Gateway Forward Auth; its HEP ports are not
 publicly exposed.
+Answered calls can be recorded by FreeSWITCH and played in a Homer dashboard
+Iframe panel; see [Homer call audio playback](docs/HOMER-AUDIO.md) for access,
+retention, and verification.
 
 The mirrored `gateway` and `jitsi` values document the current merge contract.
 The existing SIP routes still use their dedicated SIP Gateway sections, and
