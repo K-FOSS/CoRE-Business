@@ -2,8 +2,8 @@
 
 | Layer | Current scope | Replication / limitation |
 | --- | --- | --- |
-| Envoy | Site public SIP VIP | One data-plane replica today; TCP/TLS connections may terminate on pod loss. |
-| Kamailio | Site SIP border | One replica today; TOPOS state is site-local Dragonfly. |
+| Envoy | Site public SIP VIP | Site-local replica count remains deployment-controlled; TCP/TLS connections may terminate on pod loss. |
+| Kamailio | Site SIP border | Chart target is three replicas per site with anti-affinity, hostname spread, PDB minAvailable 2, and site-local TOPOS state in Dragonfly. Transactions and TCP/TLS connections remain pod-local. |
 | FreeSWITCH | Site B2BUA | One replica; dialogs are process-local and require affinity before scaling. |
 | Asterisk | Internal application/fax peer | Reached through FreeSWITCH, never public by default. |
 | RTPEngine | Site media anchor | One replica by default; Valkey recovery does not prove UDP takeover. |

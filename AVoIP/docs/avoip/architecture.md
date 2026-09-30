@@ -23,6 +23,19 @@ ClusterIP identity. RTPEngine owns media anchoring and its public UDP address;
 Kubernetes Service load balancing is not treated as safe established-call
 media ownership.
 
+The chart's next site-local border target is three Kamailio replicas. The
+replicas share TOPOS records through the site-local Dragonfly allocation, use
+hostname anti-affinity and spread constraints, and are protected by a
+`minAvailable: 2` PodDisruptionBudget. This improves new-call admission during
+one pod or node failure, but does not migrate an in-flight TCP/TLS connection,
+Kamailio transaction, FreeSWITCH channel, or RTPEngine UDP session.
+
+The pinned common-library version does not render `minReadySeconds`; rollout
+safety currently comes from startup/config validation, readiness, zero
+rolling-update unavailability, the disruption budget, graceful termination,
+and spread constraints. Add a supported raw deployment patch or library
+upgrade before treating a minimum-ready dwell time as an availability claim.
+
 ## HA progression
 
 The safe order is shared topology state, site-local Kamailio/Envoy replicas,

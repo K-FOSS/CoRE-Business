@@ -12,8 +12,9 @@ controllers: {}
 # Keys are generated Service names: asterisk, kamailio, kamailio-udp,
 # freeswitch, freeswitch-rtp, rtpengine, rtpengine-media,
 # rtpengine-valkey-proxy, homer-heplify, and homer-web. Annotations and labels
-# merge with chart defaults; required labels such as wan-mode remain enforced.
-# Chart users supply provider-specific LoadBalancer annotations and classes here.
+# merge with chart defaults. The chart does not set ExternalDNS hostname
+# annotations on Services by default; site-specific overrides remain supported.
+# Chart users supply provider-specific annotations and classes here.
 # `loadBalancerClass` applies only to LoadBalancer Services; setting a class on
 # an existing Service may require Service recreation because Kubernetes makes
 # it immutable.
@@ -117,6 +118,9 @@ fax:
 kamailio:
   enabled: true
   tcpChildren: 4
+  replicas: 3
+  podDisruptionBudget:
+    minAvailable: 2
 
   topology:
     enabled: true

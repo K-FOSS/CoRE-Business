@@ -418,8 +418,9 @@ controllers:
     rollingUpdate:
       surge: 1
       unavailable: '0'
-    replicas: 1
-    minReadySeconds: 5
+    replicas: {{ .Values.kamailio.replicas }}
+    podDisruptionBudget:
+      minAvailable: {{ .Values.kamailio.podDisruptionBudget.minAvailable }}
     revisionHistoryLimit: 3
     serviceAccount:
       name: default
@@ -441,6 +442,20 @@ controllers:
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-config'
         secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
       terminationGracePeriodSeconds: 60
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: '{{ include "avoip.fullname" . }}-kamailio'
+              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: '{{ include "avoip.fullname" . }}-kamailio'
     initContainers:
 {{- if .Values.freeswitch.enabled }}
       tls-ca:
@@ -1172,7 +1187,7 @@ service:
   asterisk:
     forceRename: '{{ include "avoip.fullname" . }}-asterisk'
     controller: asterisk
-{{- include "avoip.service.options" (dict "root" $ "name" "asterisk" "labels" (dict "lan-mode" "private")) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "asterisk") | nindent 4 }}
     extraSelectorLabels:
       app: '{{ include "avoip.fullname" . }}-asterisk'
     ports:
@@ -1194,7 +1209,7 @@ service:
   kamailio:
     forceRename: '{{ include "avoip.fullname" . }}-kamailio'
     controller: kamailio
-{{- include "avoip.service.options" (dict "root" $ "name" "kamailio" "annotations" (dict "external-dns.kubernetes.io/hostname" (include "avoip.sip.publicHost" .) "external-dns.alpha.kubernetes.io/hostname" (include "avoip.sip.publicHost" .)) "labels" (dict "wan-mode" "public" "lan-mode" "private")) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "kamailio") | nindent 4 }}
     ports:
       sip-public:
         port: 5061
@@ -1224,7 +1239,7 @@ service:
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
     controller: freeswitch
-{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch" "labels" (dict "lan-mode" "private")) | nindent 4 }}
+{{- include "avoip.service.options" (dict "root" $ "name" "freeswitch") | nindent 4 }}
     ports:
       tcp-sip:
         port: 5060
