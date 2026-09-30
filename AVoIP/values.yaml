@@ -215,7 +215,8 @@ kamailio:
         # When enabled, create the kamailio-pub Service with only the public
         # signaling transports enabled above. Private TLS/5062 is never added.
         enabled: false
-        # Empty derives <release>-kamailio-pub.<namespace>.svc.<cluster-domain>.
+        # Empty derives kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host.
+        # Enabled UDP/TCP sockets advertise this direct carrier-facing identity.
         hostname: ''
       udpRoute:
         enabled: false

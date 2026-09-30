@@ -118,7 +118,10 @@ An optional `kamailio-pub` direct Service is controlled by
 `external-dns.kubernetes.io/hostname` and legacy
 `external-dns.alpha.kubernetes.io/hostname` annotations both use
 `kamailio.publicExposure.sip.directService.hostname`, or derive
-`<release-fullname>-kamailio-pub.<namespace>.svc.<cluster-domain>`. Its ports
+`kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host`. When direct
+Service is enabled, UDP/TCP sockets advertise this identity; otherwise they
+advertise the existing `sip.<cluster>.<datacenter>.<region>.resolvemy.host`.
+Its ports
 follow `sip.enabled` (TLS/5061), `sip.tcpEnabled` (TCP/5060), and
 `sip.udpEnabled` (UDP/5060); it never exposes private TLS/5062. Configure its
 type, labels, annotations, and LoadBalancer class under

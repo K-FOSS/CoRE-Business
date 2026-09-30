@@ -61,7 +61,7 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- define "avoip.sip.kamailioPubHost" -}}
 {{- $root := . -}}
 {{- $override := $root.Values.kamailio.publicExposure.sip.directService.hostname -}}
-{{- default (printf "%s-kamailio-pub.%s.svc.%s" (include "avoip.fullname" $root) $root.Release.Namespace (required "cluster.domain is required for the Kamailio direct Service identity" $root.Values.cluster.domain)) $override -}}
+{{- default (printf "kamailio-pub.%s.%s.%s.resolvemy.host" $root.Values.cluster.name $root.Values.datacenter $root.Values.region) $override -}}
 {{- end -}}
 
 {{/* Merge shared and per-Service metadata while retaining chart-required defaults. */}}

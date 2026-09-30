@@ -2,6 +2,7 @@
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $backendService := default (printf "%s-freeswitch" $fullName) .Values.kamailio.backend.serviceName -}}
 {{- $publicSipHost := include "avoip.sip.siteHost" . -}}
+{{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $rawSipLogging := or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound) -}}
@@ -43,10 +44,10 @@ data:
 
     # Public carrier-facing identity.
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
-    listen=udp:0.0.0.0:5060 advertise "{{ $publicSipHost }}":5060 name "public_udp"
+    listen=udp:0.0.0.0:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_udp"
     {{- end }}
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
-    listen=tcp:0.0.0.0:5060 advertise "{{ $publicSipHost }}":5060 name "public_tcp"
+    listen=tcp:0.0.0.0:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_tcp"
     {{- end }}
     listen=tls:0.0.0.0:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"
 
@@ -55,6 +56,9 @@ data:
 
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
     alias="{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
+    {{- if .Values.kamailio.publicExposure.sip.directService.enabled }}
+    alias="{{ $kamailioPubHost }}:5060"
+    {{- end }}
     alias="{{ $kamailioHost }}:5062"
 
     loadmodule "tm.so"
