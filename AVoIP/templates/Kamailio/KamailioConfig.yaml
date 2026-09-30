@@ -163,6 +163,11 @@ data:
     }
 
     route[FLOWROUTE_AUTHORIZED] {
+      # Flowroute can originate TLS from an ephemeral port while its Via
+      # advertises 5061 without rport. Route replies to the received port so
+      # Kamailio can reuse the inbound Envoy/PROXY-protocol TLS connection.
+      force_rport();
+
       if (is_method("REGISTER")) {
         sl_send_reply("403", "Registration Disabled");
         exit;

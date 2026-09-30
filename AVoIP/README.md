@@ -117,7 +117,10 @@ Envoy Gateway's
 sends PROXY protocol v2 to Kamailio, and Kamailio's
 [HAProxy PROXY-protocol support](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#tcp_accept_haproxy)
 verifies the original Flowroute source before forwarding SIP to the configured
-private backend. Kamailio and FreeSWITCH can be enabled independently; when
+private backend. Kamailio applies
+[symmetric response routing](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#force_rport)
+to Flowroute requests so answers use the received TLS source port even when
+the carrier's Via advertises 5061. Kamailio and FreeSWITCH can be enabled independently; when
 both are enabled, the default Kamailio backend is FreeSWITCH's private TLS-only
 SIP profile on port 5061. Kamailio uses an explicit two-sided Record-Route
 preset for the asymmetric edge: the internal route is Kamailio's private TLS
