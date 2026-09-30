@@ -427,7 +427,7 @@ asterisk:
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk'
-    tag: '20.21.0'
+    tag: '20'
     digest: ''
     pullPolicy: 'IfNotPresent'
   rtp:
