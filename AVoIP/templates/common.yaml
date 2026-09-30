@@ -217,6 +217,9 @@ controllers:
       annotations:
         kubectl.kubernetes.io/default-container: 'asterisk'
         kubectl.kubernetes.io/default-logs-container: 'asterisk'
+        # Asterisk PJSIP transports require a process restart to apply identity
+        # changes. Hash the rendered PJSIP ConfigMap into the pod template.
+        checksum/asterisk-pjsip-config: '{{ include (print $.Template.BasePath "/Asterisk/AsteriskConfigTemplate.yaml") . | sha256sum }}'
         # Reloader restarts Asterisk when its file-backed configuration changes.
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.

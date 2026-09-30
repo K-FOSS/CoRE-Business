@@ -410,11 +410,10 @@ asterisk:
     pjsip: true
   sip:
     serviceHost: ''
-  # Asterisk and FreeSWITCH communicate over the cluster pod network. Leave
-  # external media/signaling addresses unset so PJSIP advertises the pod IP.
-  localNet: '172.16.0.0/12'
+  # Asterisk and FreeSWITCH communicate over the cluster network. PJSIP
+  # advertises the stable Asterisk service FQDN for SIP signaling; set an
+  # external media address only when media must be advertised outside the pod.
   externalMediaAddress: ''
-  externalSignalingAddress: ''
   # Stable locally administered Asterisk Entity ID; do not derive it from the
   # pod network interface because pod MAC addresses are not deployment state.
   entityID: '02:dc:1a:22:2a:01'
@@ -428,7 +427,7 @@ asterisk:
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk
     repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk'
-    tag: '20'
+    tag: '20.21.0'
     digest: ''
     pullPolicy: 'IfNotPresent'
   rtp:

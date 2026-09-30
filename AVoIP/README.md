@@ -355,12 +355,15 @@ Principal upstream projects:
 
 - [Asterisk](https://www.asterisk.org/) and its
   [documentation](https://docs.asterisk.org/)
-- The deployed Asterisk image is the pinned `core-docker/asterisk:20` package
+- The deployed Asterisk image is the `core-docker/asterisk:20.21.0` package
   from the site-local [Core-Docker project](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker),
   built from the upstream [andrius/asterisk image source](https://github.com/andrius/asterisk).
-  The digest is maintained in `values.yaml`; backups are maintained at
+  This Asterisk 20 release provides PJSIP's `external_signaling_hostname`;
+  the upstream [20.21.0 release notes](https://downloads.asterisk.org/pub/telephony/asterisk/ChangeLog-20.21.0.html)
+  describe the release. Backups are maintained at
   [GitHub](https://github.com/K-FOSS/Core-Docker) and
   [slop.writemy.codes](https://slop.writemy.codes/CoRE/Core-Docker).
+
 - [FreeSWITCH](https://signalwire.com/freeswitch) and its
   [source repository](https://github.com/signalwire/freeswitch)
 - [Sipwise RTPEngine](https://github.com/sipwise/rtpengine) and its
@@ -372,3 +375,39 @@ Principal upstream projects:
   [source repository](https://github.com/speaches-ai/speaches)
 - [Jitsi Meet](https://jitsi.org/) and the
   [Jitsi Helm chart](https://github.com/jitsi-contrib/jitsi-helm)
+
+### Internal Asterisk SIP identity
+
+The internal Asterisk PJSIP TLS transport advertises the generated Asterisk
+Service FQDN from `avoip.sip.serviceHost`; its cert-manager Certificate uses
+the same hostname as a DNS SAN. FreeSWITCH continues to target that Service
+identity on TLS/5061. The pod template hashes the rendered PJSIP ConfigMap and
+also watches it with Stakater Reloader so transport changes restart Asterisk,
+which is required to apply PJSIP transport options. The transport does not set
+`local_net`: Asterisk otherwise classifies the FreeSWITCH pod as local and
+skips external signaling Contact rewriting for that peer. No external media
+address is configured, so this identity change does not rewrite SDP.
+
+For a deployed call-path check, inspect Asterisk's version and effective
+transport, then verify the certificate from the FreeSWITCH pod's `netshoot`
+container (replace the example site name as appropriate):
+
+```sh
+kubectl -n core-prod exec deploy/<asterisk-deployment> -c asterisk -- \
+  asterisk -rx 'core show version'
+kubectl -n core-prod exec deploy/<asterisk-deployment> -c asterisk -- \
+  asterisk -rx 'pjsip show transport transport-tls'
+kubectl -n core-prod exec deploy/<freeswitch-pod> -c netshoot -- \
+  openssl s_client \
+    -connect 'core-dc1-talos-prod-business-avoip-prod-avoip-asterisk.core-prod.svc.k3s.dc1.resolvemy.host:5061' \
+    -servername 'core-dc1-talos-prod-business-avoip-prod-avoip-asterisk.core-prod.svc.k3s.dc1.resolvemy.host' \
+    -verify_return_error
+```
+
+With Asterisk PJSIP and FreeSWITCH Sofia SIP tracing enabled for one controlled
+internal test call, verify FreeSWITCH's INVITE is followed by Asterisk's 200 OK
+with the Asterisk Service FQDN in Contact, then a FreeSWITCH ACK. Repeated 200
+OK retransmissions and an approximately 32-second ACK timeout indicate the
+dialog still is not established; pod readiness alone is not acceptance.
+The chart-level identity assertions can be run with
+`bash tests/asterisk-tls-identity.sh`.
