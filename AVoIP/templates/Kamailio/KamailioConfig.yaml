@@ -17,7 +17,7 @@ data:
     log_stderror=yes
     children=2
     auto_aliases=no
-    {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
+    {{- if or .Values.kamailio.sipLogging.diagnostics.enabled .Values.kamailio.sipLogging.diagnostics.sdp }}
     onsend_route_reply=1
     {{- end }}
     # Envoy passes the encrypted TCP stream and prepends PROXY v2 so $si
@@ -34,6 +34,7 @@ data:
     loadmodule "tm.so"
     loadmodule "sl.so"
     loadmodule "rr.so"
+    loadmodule "corex.so"
     loadmodule "maxfwd.so"
     loadmodule "sanity.so"
     loadmodule "pv.so"
@@ -78,9 +79,6 @@ data:
       if (!has_body("application/sdp")) {
         return;
       }
-      {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-      xlog("L_INFO", "SIP media before RTPEngine phase=initial callid=$ci source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) set=private-control flags=external,internal sdp=$rb\n");
-      {{- end }}
       if (!rtpengine_manage("replace-origin external internal")) {
         xlog("L_ERR", "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
         # Do not send an offer to FreeSWITCH if it cannot be anchored. Any
@@ -88,17 +86,10 @@ data:
         sl_send_reply("503", "Media Relay Unavailable");
         exit;
       }
-      xlog("L_INFO", "RTPEngine initial SDP handled callid=$ci method=$rm source=$si:$sp\n");
-        {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-        xlog("L_INFO", "SIP media after RTPEngine phase=initial callid=$ci source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
-        {{- end }}
     }
 
     route[MEDIA_DIALOG] {
       if (has_body("application/sdp")) {
-        {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-        xlog("L_INFO", "SIP media before RTPEngine phase=dialog callid=$ci method=$rm source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
-        {{- end }}
         if (!rtpengine_manage("replace-origin")) {
           xlog("L_ERR", "RTPEngine dialog SDP handling failed callid=$ci method=$rm source=$si:$sp\n");
           if (!is_method("ACK")) {
@@ -106,9 +97,6 @@ data:
           }
           exit;
         }
-          {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-          xlog("L_INFO", "SIP media after RTPEngine phase=dialog callid=$ci method=$rm source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
-          {{- end }}
       } else if (is_method("BYE|CANCEL")) {
         rtpengine_manage();
       }
@@ -117,191 +105,185 @@ data:
 
     request_route {
       if (is_method("ACK")) {
-        xlog("L_INFO", "SIP ACK ingress replica=$Ri callid=$ci cseq=$hdr(CSeq) recv=$Ri:$Rp proto=$proto source=$si:$sp ruri=$ru route=$hdr(Route)\n");
+        xlog("L_INFO", "SIP ack ingress pod=$env(POD_NAME) callid=$ci cseq=$hdr(CSeq) conn=$conid recv=$Ri:$Rp proto=$proto source=$si:$sp ruri=$ru route=$hdr(Route)\n");
       }
-      {{- if .Values.kamailio.sipLogging.enabled }}
-      xlog("L_INFO", "SIP request proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp ruri=$ru route=$hdr(Route) callid=$ci\n");
-      {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      xlog("L_INFO", "SIP diagnostic ingress socket=$Ri:$Rp proto=$proto method=$rm cseq=$hdr(CSeq) source=$si:$sp ruri=$ru route=$hdr(Route) via=$hdr(Via) callid=$ci\n");
-      {{- end }}
-      {{- end }}
       if (!sanity_check("1511", "7")) {
-        xlog("L_WARN", "Kamailio rejected malformed SIP from $si:$sp\n");
+        xlog("L_WARN", "SIP reject reason=malformed pod=$env(POD_NAME) method=$rm source=$si:$sp callid=$ci\n");
         exit;
       }
       if (!mf_process_maxfwd_header("10")) {
-        if (!is_method("ACK")) {
-          sl_send_reply("483", "Too Many Hops");
-        }
+        xlog("L_WARN", "SIP reject reason=max-forwards pod=$env(POD_NAME) method=$rm source=$si:$sp callid=$ci\n");
+        if (!is_method("ACK")) sl_send_reply("483", "Too Many Hops");
         exit;
       }
-
-      # Only Flowroute signaling sources may use the public DID termination.
-      {{- range .Values.flowroute.signalingCIDRs }}
-      if (src_ip == {{ . }}) {
-        {{- if $.Values.kamailio.sipLogging.diagnostics.enabled }}
-        xlog("L_INFO", "SIP diagnostic ACL=flowroute source=$si:$sp method=$rm callid=$ci\n");
-        {{- end }}
-        route(FLOWROUTE_AUTHORIZED);
-      }
-      {{- end }}
-      # Permit only established dialogs arriving from the private backend.
-      # Initial requests from the backend remain unauthorized.
-      if (src_ip == {{ .Values.kamailio.backend.podCIDR }}) {
-        if (has_totag()) {
-          {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-          xlog("L_INFO", "SIP diagnostic ACL=backend-established source=$si:$sp method=$rm callid=$ci\n");
-          {{- end }}
-          route(IN_DIALOG);
+      # The public socket receives Envoy's passthrough TLS and PROXY v2.
+      # The private socket is for FreeSWITCH, with a pod-selector policy on 5062.
+      if ($proto == "tls" && $Rp == 5061) {
+        {{- range .Values.flowroute.signalingCIDRs }}
+        if (src_ip == {{ . }}) {
+          $var(side) = "carrier";
+          route(FROM_CARRIER);
           exit;
         }
-        sl_send_reply("403", "Source Not Authorized");
+        {{- end }}
+      }
+      if ($proto == "tls" && $Rp == 5062 && src_ip == {{ .Values.kamailio.backend.podCIDR }}) {
+        $var(side) = "backend";
+        route(FROM_BACKEND);
         exit;
       }
-      {{- if .Values.kamailio.sipLogging.enabled }}
-      xlog("L_WARN", "Kamailio rejected SIP source=$si:$sp method=$rm ruri=$ru callid=$ci\n");
-      {{- end }}
-      sl_send_reply("403", "Source Not Authorized");
+      xlog("L_WARN", "SIP reject reason=source-or-socket pod=$env(POD_NAME) method=$rm source=$si:$sp recv=$Ri:$Rp proto=$proto callid=$ci\n");
+      if (!is_method("ACK")) sl_send_reply("403", "Source Not Authorized");
       exit;
     }
 
-    route[FLOWROUTE_AUTHORIZED] {
-      # Flowroute can originate TLS from an ephemeral port while its Via
-      # advertises 5061 without rport. Route replies to the received port so
-      # Kamailio can reuse the inbound Envoy/PROXY-protocol TLS connection.
+    route[FROM_CARRIER] {
+      # Flowroute may use an ephemeral TLS source port without Via rport.
       force_rport();
-
       if (is_method("REGISTER")) {
         sl_send_reply("403", "Registration Disabled");
         exit;
       }
-
       if (is_method("OPTIONS")) {
         sl_send_reply("200", "Keepalive");
         exit;
       }
-
-      if (has_totag()) {
-        {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-        xlog("L_INFO", "SIP diagnostic dialog-entry proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp ruri=$ru route=$hdr(Route) callid=$ci\n");
-        {{- end }}
-        # All in-dialog requests, including 2xx ACK, follow the Record-Route
-        # set inserted on the initial INVITE. Do not guess a backend for an
-        # ACK whose Route set is absent or malformed.
-        route(IN_DIALOG);
-        exit;
-      }
-
-      if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
-        # The Gateway passes this encrypted stream through to this TLS socket.
-        {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-        xlog("L_INFO", "SIP diagnostic initial-route transport=$proto public_route=tls:{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }} internal_route=tls:5062 callid=$ci\n");
-        {{- end }}
-        record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls");
-        add_rr_param(";r2=on");
-        {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
-        route(MEDIA_INITIAL);
-        {{- end }}
-        route(RELAY);
-        exit;
-      }
-
-      # TM consumes an ACK to a negative final response. A 2xx ACK must
-      # carry a To tag and the public Route set; never guess its backend.
-      if (is_method("ACK")) {
-        t_check_trans();
-        xlog("L_WARN", "SIP ACK dropped decision=no-dialog-route replica=$Ri callid=$ci cseq=$hdr(CSeq) source=$si:$sp ruri=$ru route=$hdr(Route)\n");
-        exit;
-      }
+      # TM consumes ACKs to negative finals. A 2xx ACK continues through the
+      # Route set even after the original INVITE transaction expires.
+      if (is_method("ACK")) t_check_trans();
       if (is_method("CANCEL")) {
         if (t_check_trans()) {
+          set_send_socket_name("private_tls");
           route(RELAY);
         }
-        exit;
-      }
-      if (is_method("BYE")) {
         sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
-
+      if (has_totag()) {
+        route(IN_DIALOG);
+        exit;
+      }
+      if (is_method("ACK")) {
+        xlog("L_WARN", "SIP ack drop reason=no-dialog-route pod=$env(POD_NAME) callid=$ci cseq=$hdr(CSeq) source=$si:$sp\n");
+        exit;
+      }
+      if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
+        route(INITIAL_BACKEND);
+        exit;
+      }
+      xlog("L_WARN", "SIP reject reason=unsupported-initial pod=$env(POD_NAME) method=$rm callid=$ci\n");
       sl_send_reply("405", "Method Not Allowed");
       exit;
     }
 
-    route[IN_DIALOG] {
-      {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      if (is_method("ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY")) {
-        xlog("L_INFO", "SIP diagnostic dialog-entry callid=$ci method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt source=$si:$sp recv=$Ri:$Rp proto=$proto ruri=$ru top_route=$hdr(Route)\n");
-      }
-      {{- end }}
-      {{- if .Values.kamailio.sipLogging.enabled }}
-      xlog("L_INFO", "SIP in-dialog proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp callid=$ci route=$hdr(Route)\n");
-      {{- end }}
-      # The public Contact uses this proxy's own identity. Skip strict-route
-      # R-URI detection while consuming the explicit dialog Route set.
-      if (!loose_route_mode("1")) {
-        if (is_method("ACK")) {
-          xlog("L_WARN", "SIP ACK dropped decision=invalid-route replica=$Ri callid=$ci cseq=$hdr(CSeq) recv=$Ri:$Rp source=$si:$sp ruri=$ru route=$hdr(Route)\n");
-          exit;
+    route[FROM_BACKEND] {
+      # A To tag alone is not proof of a dialog; IN_DIALOG checks the private
+      # local Route URI before selecting an external destination.
+      if (is_method("ACK")) t_check_trans();
+      if (is_method("CANCEL")) {
+        if (t_check_trans()) {
+          set_send_socket_name("public_tls");
+          route(RELAY);
         }
-        {{- if .Values.kamailio.sipLogging.enabled }}
-        xlog("L_WARN", "SIP in-dialog loose_route=failed method=$rm source=$si:$sp ruri=$ru callid=$ci\n");
-        {{- end }}
         sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
-      # loose_route() can leave the next dialog hop in the Request-URI while
-      # leaving $du empty.  Do not let the initial-request backend fallback in
-      # RELAY send that established request back to FreeSWITCH.  The Contact
-      # selected by the route set is the destination for this hop, including
-      # backend-originated BYE and carrier ACK requests.
-      # Flowroute receives only the public Record-Route URI. Once loose_route_mode()
-      # processes that route, its Request-URI is FreeSWITCH's public Contact
-      # identity; resolve every carrier-facing dialog request to the private
-      # backend service instead of sending it back to public ingress.
-      {{- range .Values.flowroute.signalingCIDRs }}
-      if (src_ip == {{ . }}) {
-        $du = "sip:{{ $freeswitchHost }}:{{ $.Values.kamailio.backend.servicePort }};transport=tls";
-        $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
+      if (has_totag()) {
+        route(IN_DIALOG);
+        exit;
       }
+      xlog("L_WARN", "SIP reject reason=backend-initial pod=$env(POD_NAME) method=$rm source=$si:$sp callid=$ci\n");
+      if (!is_method("ACK")) sl_send_reply("403", "Source Not Authorized");
+      exit;
+    }
+
+    route[INITIAL_BACKEND] {
+      record_route_preset("{{ $kamailioHost }}:5062;transport=tls;sn=private_tls", "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls");
+      add_rr_param(";r2=on");
+      {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
+      route(MEDIA_INITIAL);
       {{- end }}
-      if ($du == $null || $du == "") {
-        $du = $ru;
+      route(TO_BACKEND);
+      route(RELAY);
+      exit;
+    }
+
+    route[IN_DIALOG] {
+      if (!is_method("ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY")) {
+        route(REJECT_DIALOG);
       }
-      {{- if .Values.kamailio.sipLogging.enabled }}
-      xlog("L_INFO", "SIP in-dialog loose_route=accepted method=$rm source=$si:$sp ruri=$ru next=$du route=$route_uri callid=$ci\n");
-      {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      xlog("L_INFO", "SIP diagnostic in-dialog decision=relay replica=$Ri proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt source=$si:$sp ruri=$ru top_route=$hdr(Route) next=$du send_socket=$fsn route=$route_uri callid=$ci\n");
-      {{- end }}
-      {{- end }}
+      if (!is_present_hf("Route")) {
+        route(REJECT_DIALOG);
+      }
+      # A carrier request must target the public Contact we advertised.
+      if ($var(side) == "carrier" && $rd != "{{ $publicSipHost }}") {
+        route(REJECT_DIALOG);
+      }
+      if ($var(side) == "carrier") {
+        if ($(route_uri{uri.host}) != "{{ $publicSipHost }}" ||
+            $(route_uri{uri.port}) != "{{ .Values.kamailio.advertisedTLSPort }}" ||
+            $(route_uri{uri.transport}) != "tls" ||
+            $(route_uri{uri.param,sn}) != "public_tls") route(REJECT_DIALOG);
+        # The public Contact names this proxy; skip strict R-URI detection.
+        if (!loose_route_mode("1")) route(REJECT_DIALOG);
+        route(TO_BACKEND);
+      } else {
+        if ($(route_uri{uri.host}) != "{{ $kamailioHost }}" ||
+            $(route_uri{uri.port}) != "5062" ||
+            $(route_uri{uri.transport}) != "tls" ||
+            $(route_uri{uri.param,sn}) != "private_tls") route(REJECT_DIALOG);
+        if (!loose_route_mode("1")) route(REJECT_DIALOG);
+        # A UAS sends the paired private/public Record-Route set in reverse.
+        # Consume our public route as well, leaving any upstream routes intact.
+        if ($(route_uri{uri.host}) != "{{ $publicSipHost }}" ||
+            $(route_uri{uri.port}) != "{{ .Values.kamailio.advertisedTLSPort }}" ||
+            $(route_uri{uri.transport}) != "tls" ||
+            $(route_uri{uri.param,sn}) != "public_tls") route(REJECT_DIALOG);
+        if (!loose_route_mode("1")) route(REJECT_DIALOG);
+        route(TO_CARRIER);
+      }
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
       route(MEDIA_DIALOG);
+      {{- end }}
+      if (is_method("ACK")) {
+        xlog("L_INFO", "SIP ack decision=relay pod=$env(POD_NAME) callid=$ci cseq=$hdr(CSeq) side=$var(side) recv=$Ri:$Rp source=$si:$sp ruri=$ru route=$route_uri next=$du socket=$fsn\n");
+      }
+      {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+      if (!is_method("ACK")) {
+        xlog("L_INFO", "SIP dialog decision=relay pod=$env(POD_NAME) callid=$ci method=$rm side=$var(side) ruri=$ru route=$route_uri next=$du socket=$fsn\n");
+      }
       {{- end }}
       route(RELAY);
       exit;
     }
 
+    route[REJECT_DIALOG] {
+      xlog("L_WARN", "SIP dialog reject pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) side=$var(side) source=$si:$sp recv=$Ri:$Rp ruri=$ru route=$hdr(Route)\n");
+      if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
+      exit;
+    }
+
+    route[TO_BACKEND] {
+      # FreeSWITCH has one replica in this chart; the Service resolves to that
+      # dialog endpoint. Multiple backend replicas require dialog affinity.
+      $du = "sip:{{ $freeswitchHost }}:{{ .Values.kamailio.backend.servicePort }};transport=tls";
+      $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
+      set_send_socket_name("private_tls");
+    }
+
+    route[TO_CARRIER] {
+      if ($du == $null || $du == "") $du = $ru;
+      set_send_socket_name("public_tls");
+    }
+
     route[RELAY] {
-      # Preserve the next hop selected by loose_route() for backend-originated
-      # in-dialog traffic. Initial/public requests have no destination yet and
-      # are sent to the private FreeSWITCH SIP edge.
-      if ($du == $null || $du == "") {
-        $du = "sip:{{ $freeswitchHost }}:{{ $.Values.kamailio.backend.servicePort }};transport=tls";
-        $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
-      }
-      {{- if .Values.kamailio.sipLogging.enabled }}
-      xlog("L_INFO", "SIP relay proto=$proto recv=$Ri:$Rp method=$rm source=$si:$sp destination=$du callid=$ci\n");
-      {{- end }}
       if (!t_relay()) {
-        {{- if .Values.kamailio.sipLogging.enabled }}
-        xlog("L_ERR", "SIP relay failed method=$rm source=$si:$sp destination=$du callid=$ci\n");
-        {{- end }}
-        sl_reply_error();
+        xlog("L_ERR", "SIP relay failure pod=$env(POD_NAME) callid=$ci method=$rm side=$var(side) recv=$Ri:$Rp next=$du socket=$fsn\n");
+        if (!is_method("ACK")) sl_reply_error();
+        exit;
       }
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      else {
-        xlog("L_INFO", "SIP diagnostic relay=queued proto=$proto recv=$Ri:$Rp method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru callid=$ci\n");
-      }
+      xlog("L_INFO", "SIP relay queued pod=$env(POD_NAME) callid=$ci method=$rm side=$var(side) next=$du socket=$fsn\n");
       {{- end }}
       exit;
     }
@@ -311,29 +293,30 @@ data:
     # statelessly after TM has removed the transaction. A named t_on_reply
     # callback alone misses those replies and cannot reliably drop final ones.
     reply_route {
-      # record_route_preset() inserts the private outbound-side URI first and
-      # the public inbound-side URI second. FreeSWITCH keeps the pair for its
-      # route set. Flowroute sees one route, so remove the pair-only r2 marker.
-      remove_hf_idx("Record-Route", "0");
-      subst_hf("Record-Route", "/;r2=on//g", "a");
-      # Flowroute must see a portable signaling target even when FreeSWITCH
-      # resolves the public identity to its NAT address in Contact. Preserve
-      # the Contact user and publish the configured canonical TLS identity.
-      if ($rs =~ "^(180|183|2[0-9][0-9])$" && $hdr(CSeq) =~ "INVITE" && is_present_hf("Contact")) {
-        subst_hf("Contact", "/<sips?:([^@>]+)@[^>]+>/<sips:\\1@{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls>/", "a");
+      if (t_check_trans()) {
+        $var(reply_transaction) = "matched";
+      } else {
+        $var(reply_transaction) = "unmatched";
+      }
+      # Only FreeSWITCH INVITE replies heading to the carrier cross this
+      # topology boundary. In reply_route $Rp names the original request's
+      # receiving socket, so use the source plus transaction/private route.
+      if (src_ip == {{ .Values.kamailio.backend.podCIDR }} && $hdr(CSeq) =~ "INVITE" &&
+          ($var(reply_transaction) == "matched" || $hdr(Record-Route) =~ "sn=private_tls")) {
+        if (remove_hf_match("Record-Route", "in", "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls")) {
+          subst_hf("Record-Route", "/(sn=public_tls[^>]*);r2=on/\\1/", "a");
+        }
+        if ($rs =~ "^(180|183|2[0-9][0-9])$" && is_present_hf("Contact")) {
+          if (!subst_hf("Contact", "/<sips?:([^@>]+)@[^;>]+(;[^>]*)?>/<sips:\\1@{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }}\\2>/", "a")) {
+            xlog("L_ERR", "SIP reply drop reason=contact-rewrite pod=$env(POD_NAME) callid=$ci status=$rs\n");
+            drop;
+          }
+        }
       }
       {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
-      # Recover offer/answer context when the transaction still exists.
-      # Without it, rtpengine_manage treats an SDP reply as an answer.
-      if (t_check_trans()) {
-        $var(media_reply_transaction) = "matched";
-      } else {
-        $var(media_reply_transaction) = "unmatched";
-      }
+      # Without transaction context rtpengine_manage cannot infer a late
+      # duplicate answer, so retain the existing reply processing behavior.
       if (has_body("application/sdp")) {
-        {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-        xlog("L_INFO", "SIP media before RTPEngine phase=reply callid=$ci status=$rs source=$si:$sp did=$rU from=$fu pai=$hdr(P-Asserted-Identity) sdp=$rb\n");
-        {{- end }}
         if (!rtpengine_manage("replace-origin")) {
           xlog("L_ERR", "RTPEngine reply SDP handling failed callid=$ci status=$rs\n");
           # Dropping the SDP-bearing reply is fail-closed: never forward a
@@ -346,42 +329,38 @@ data:
           xlog("L_ERR", "RTPEngine reply body apply failed callid=$ci status=$rs\n");
           drop;
         }
-        {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-        xlog("L_INFO", "SIP media after RTPEngine phase=reply transaction=$var(media_reply_transaction) callid=$ci cseq=$hdr(CSeq) status=$rs source=$si:$sp sdp=$rb\n");
-        {{- end }}
-      } else if ($var(media_reply_transaction) == "matched" && $rs =~ "[3-6][0-9][0-9]") {
+      } else if ($var(reply_transaction) == "matched" && $rs =~ "[3-6][0-9][0-9]") {
         rtpengine_manage();
       }
       {{- end }}
       {{- if .Values.kamailio.sipLogging.enabled }}
-      xlog("L_INFO", "SIP reply proto=$proto recv=$Ri:$Rp status=$rs reason=$rr source=$si:$sp via=$hdr(Via) callid=$ci\n");
-      {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      xlog("L_INFO", "SIP diagnostic reply socket=$Ri:$Rp proto=$proto status=$rs reason=$rr source=$si:$sp cseq=$hdr(CSeq) via=$hdr(Via) callid=$ci\n");
-      {{- end }}
+      xlog("L_INFO", "SIP reply pod=$env(POD_NAME) callid=$ci cseq=$hdr(CSeq) status=$rs source=$si:$sp recv=$Ri:$Rp\n");
       {{- end }}
       return(1);
     }
     {{- end }}
-    {{- if or .Values.kamailio.sipLogging.diagnostics.enabled .Values.kamailio.sipLogging.diagnostics.sdp }}
-    # Observe the serialized response buffer, not the original $rb. Emit only
-    # ACK routing metadata and SDP address/port lines, never full SIP headers
-    # or authentication.
+    # Observe serialized bytes and the actual chosen send socket. This is a
+    # local send observation, not confirmation that the peer received SIP.
     onsend_route {
+      if ($snd(buf) =~ "^ACK ") {
+        xlog("L_INFO", "SIP ack send pod=$env(POD_NAME) callid=$ci cseq=$hdr(CSeq) conn=$conid recv=$Ri:$Rp source=$si:$sp socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port) ruri=$ru\n");
+      }
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
-      # ACKs are logged at the serialized send boundary so a packet capture can
-      # be matched with Kamailio's selected destination and the same Call-ID.
-      if ($snd(buf) =~ "^(ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY) ") {
-        xlog("L_INFO", "SIP wire dialog-request callid=$ci method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt recv_socket=$Ri:$Rp recv_proto=$proto source=$si:$sp send_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) send_socket_name=$fsn destination=$snd(ip):$snd(port) ruri=$ru top_route=$hdr(Route)\n");
+      if ($snd(buf) =~ "^(INVITE|BYE|CANCEL|UPDATE) ") {
+        xlog("L_INFO", "SIP wire request pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) conn=$conid socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n");
+      }
+      if ($snd(buf) =~ "^SIP/2.0 (180|183|2[0-9][0-9]) " && $hdr(CSeq) =~ "INVITE" &&
+          $snd(buf) =~ "\r\nContact:" && $snd(buf) =~ "\r\nRecord-Route:") {
+        xlog("L_INFO", "SIP wire invite-reply pod=$env(POD_NAME) callid=$ci status=$rs destination=$snd(ip):$snd(port) contact=$(snd(buf){re.subst,/.*\r\n(Contact:[^\r\n]+)\r\n.*/\\1/s}) routes=$(snd(buf){re.subst,/.*\r\n(Record-Route:[^\r\n]+)\r\n.*/\\1/s})\n");
       }
       {{- end }}
       {{- if .Values.kamailio.sipLogging.diagnostics.sdp }}
-      if ($snd(buf) =~ "^SIP/2.0 200 " &&
+      if (($snd(buf) =~ "^INVITE " || $snd(buf) =~ "^SIP/2.0 (180|183|200) ") &&
           $snd(buf) =~ "\r\nc=IN IP" && $snd(buf) =~ "\r\nm=") {
-        xlog("L_INFO", "SIP wire SDP answer callid=$ci cseq=$hdr(CSeq) destination=$snd(ip):$snd(port) connection=$(snd(buf){re.subst,/.*\r\n(c=[^\r\n]+)\r\n.*/\\1/s}) media=$(snd(buf){re.subst,/.*\r\n(m=[^\r\n]+)\r\n.*/\\1/s})\n");
+        xlog("L_INFO", "SIP wire SDP pod=$env(POD_NAME) callid=$ci method=$rm status=$rs destination=$snd(ip):$snd(port) connection=$(snd(buf){re.subst,/.*\r\n(c=[^\r\n]+)\r\n.*/\\1/s}) media=$(snd(buf){re.subst,/.*\r\n(m=[^\r\n]+)\r\n.*/\\1/s})\n");
       }
       {{- end }}
     }
-    {{- end }}
   tls.cfg: |
     # Private Kamailio TLS listener and verified FreeSWITCH TLS client.
     [server:default]

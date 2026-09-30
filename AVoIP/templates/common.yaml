@@ -77,6 +77,27 @@ configMaps:
 {{ $.Files.Get "files/homer-recordings/player.js" | indent 8 }}
 {{- end }}
 
+networkpolicies:
+{{- if and .Values.kamailio.enabled .Values.freeswitch.enabled (not .Values.kamailio.backend.serviceName) }}
+  kamailio-sip-ingress:
+    controller: kamailio
+    policyTypes:
+      - Ingress
+    rules:
+      ingress:
+        - ports:
+            - protocol: TCP
+              port: 5061
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: freeswitch
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 5062
+{{- end }}
+
 controllers:
 {{- if .Values.asterisk.enabled }}
   asterisk:
@@ -355,6 +376,11 @@ controllers:
           - -c
         args:
           - exec /usr/sbin/kamailio -DD -E -P /tmp/kamailio.pid -f /etc/kamailio/kamailio.cfg
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
         image:
           repository: '{{ .Values.kamailio.image.repository }}'
           tag: '{{ .Values.kamailio.image.tag }}'
@@ -1458,6 +1484,7 @@ persistence:
 {{- $_ := set .Values "controllers" $commonValues.controllers -}}
 {{- $_ := set .Values "service" $commonValues.service -}}
 {{- $_ := set .Values "persistence" $commonValues.persistence -}}
+{{- $_ := set .Values "networkpolicies" (mergeOverwrite (deepCopy (.Values.networkpolicies | default dict)) ($commonValues.networkpolicies | default dict)) -}}
 {{- $_ := set .Values "configMaps" (mergeOverwrite (default dict .Values.configMaps) (default dict $commonValues.configMaps)) -}}
 {{- include "avoip.networking.apply" . -}}
 {{- include "bjw-s.common.loader.generate" . }}
