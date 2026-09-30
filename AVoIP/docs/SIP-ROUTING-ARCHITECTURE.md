@@ -69,13 +69,12 @@ chart defaults alone are not the deployed configuration.
   delegation when the `ZoneDelegation` is removed, so parent DNS cleanup stays
   an explicit operator task.
 
-FreeSWITCH currently provides the local voice/fax switchboard: it sends the
-voice DID to Asterisk and handles the dedicated fax DID locally. Its private
-Asterisk SIP profile is configured to query the Authentik-backed LDAP
+FreeSWITCH currently sends the voice DID to Asterisk and handles the dedicated
+fax DID locally. Its private Asterisk SIP profile is configured to query the
+Authentik-backed LDAP
 directory and require SIP authentication. The rendered configuration alone
 does not prove the required SIP verifier attributes exist or that a live
-registration would succeed. An optional static switchboard map now routes
-exact usernames/extensions from that private profile to named TLS backends.
+registration would succeed.
 The chart has no general SIP registrar, dynamic contact store, or public
 username/extension router, and FreeSWITCH call channels remain local to one
 process. These are existing deployment gaps, not enabled HA features.
@@ -188,56 +187,6 @@ and Record-Route keeps subsequent dialog requests with that selected service.
 Provision the location tables from the schema matching the pinned Kamailio
 release, such as its [PostgreSQL usrloc schema](https://github.com/kamailio/kamailio/blob/6.1/utils/kamctl/postgres/usrloc-create.sql),
 through an idempotent migration rather than relying on a pod-local database.
-
-### Switchboard contract
-
-The first chart layer is `freeswitch.switchboard.backends` and
-`freeswitch.switchboard.routes`: explicit private TLS backend names and exact
-username/extension mappings. When routes are configured, the ACL-restricted,
-LDAP-authenticated Asterisk Sofia profile enters the `switchboard` context;
-with an empty map it keeps its existing context. The carrier-facing Kamailio
-profile remains in `public`. Unknown switchboard users are rejected. This map
-is static and does not imply backend health checking, registration, or
-multi-worker balancing. A later directory/registrar layer must add backend
-health, capacity, and authorization identity. Initial selection may then
-balance among healthy workers. The selection must remain stable for ACK, BYE,
-UPDATE, re-INVITE, INFO, REFER, and subsequent requests, including requests
-that land on the other Kamailio replica. Store only the minimum owner/backend
-mapping or carry an opaque signed routing token; never publish backend service
-names to the carrier. Route all backend-originated requests through the
-private edge.
-
-For an opt-in private route, chart users can supply a mapping of this shape:
-
-```yaml
-freeswitch:
-  switchboard:
-    backends:
-      - name: 'operator'
-        host: 'operator.core-prod.svc.k8s.home1.resolvemy.host'
-        port: 5061
-    routes:
-      - user: 'alice'
-        backend: 'operator'
-        targetUser: 'alice'
-```
-
-The backend must already provide a TLS SIP service and a certificate valid for
-its hostname. The chart does not create that backend or provision its service
-identity. Values are validated for duplicate names/users, unknown backends,
-unsafe URI characters, and invalid ports. The route is reached only through
-the existing Asterisk Sofia profile, whose source ACL and LDAP authentication
-must both succeed. This is a private service route, not a carrier DID rule or
-a public SIP registration endpoint.
-
-The first deployed backend-registration rollout should keep existing DID and
-fax behavior unchanged, use Asterisk's existing `User` service identity as
-the first SIP REGISTER client, store and look up its contact through a shared
-registrar backend, and prove both edge
-replicas resolve the same contact after one replica restarts. Only then should
-the optional static switchboard mapping be used for that service. Expand to
-multiple backends only after registration, routing ownership, and backend
-failure semantics are measured.
 
 ## Edge availability and dialog handling
 

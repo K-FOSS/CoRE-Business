@@ -28,7 +28,7 @@ takeover have all been demonstrated with a real call.
 
 | Option | Suitable use | Limitation or prerequisite | Decision |
 | --- | --- | --- | --- |
-| PostgreSQL `usrloc` in database-only mode | Authoritative service contacts visible to both Kamailio replicas; site-qualified Asterisk registration is the first case | Needs a `User.mylogin.space` claim and connection Secret, pinned Kamailio schema migration, bounded database latency, TLS, and a proven writable endpoint after hub failure | **Preferred for the registrar** |
+| PostgreSQL `usrloc` in database-only mode | Service contacts visible to both Kamailio replicas in a single site; site-qualified Asterisk registration is the first pilot | Needs a `User.mylogin.space` claim and connection Secret, pinned Kamailio schema migration, bounded database latency and TLS. The current Home1-writable/DC1-standby topology cannot establish independent site writes during a partition. | Single-site pilot candidate; select a site-local write authority before multisite user registration |
 | Backplane `dragonfly-core` | Site-local directory cache or short-lived presence after a separate database number is registered | YVR and YXL instances do not replicate one another; a cache cannot be the only cross-site dialog owner | Optional later |
 | A dedicated SIP Valkey/Redis instance | Fast, independently owned transient routing state if a measured need exceeds PostgreSQL | Requires its own credentials, persistence policy, failure tests, and lifecycle; it must not share RTPEngine keys | Consider only with a concrete need |
 | AVoIP's current Valkey | RTPEngine media-session recovery | Database `0` and the primary-aware proxy are owned by RTPEngine; SIP registration would mix lifecycles and failure domains | Do not reuse |
@@ -67,9 +67,8 @@ authentication, limit source networks, and keep credentials out of logs.
 
 | Option | Benefit | Limit | Suggested role |
 | --- | --- | --- | --- |
-| Current FreeSWITCH `freeswitch.switchboard` YAML map | Small chart change; exact private TLS targets; carrier DID and fax contexts remain isolated | Static targets, one FreeSWITCH process by default, no dynamic REGISTER lookup or health selection | Use for a controlled first private route after registration works |
 | Kamailio registrar plus routing at the site border | One place for REGISTER, health-aware initial selection, public topology boundary, and Record-Route | Needs shared contacts, verified service identity, per-dialog backend affinity, and clear separation of carrier and private ACLs | Preferred long-term SIP routing plane |
-| Separate switchboard service backed by PostgreSQL | Independent deployment and business-rule API for usernames, groups, policies, and extension aliases | Adds a critical service and a lookup protocol to call setup; must be HA and fail closed without leaking private routes | Add when static YAML rules become difficult to maintain |
+| Directory-driven switchboard service | Dynamic authorized identities, groups, extensions, queues and operator controls | Adds a critical policy service and lookup path; needs per-site availability, access controls and fail-closed behavior | Evaluate in [Phase 9](../TODO.md) |
 
 For whichever option selects a backend, ACK, BYE, UPDATE, re-INVITE, INFO,
 REFER, and other in-dialog requests must return to the backend that owns the
