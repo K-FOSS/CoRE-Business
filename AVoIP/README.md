@@ -1,54 +1,29 @@
 # AVoIP
 
-This chart is the desired state for the AVoIP stack in `core-prod` while it
-moves from legacy ownership toward WIP production status. It is not yet a
-production-certified replacement: the live hub is the active validation
-environment, and the legacy ApplicationSet remains the deployment owner until
-the production-readiness gates below are closed. It
-contains optional Asterisk and FreeSWITCH workloads plus an optional Jitsi Meet
-dependency. Speech recognition and synthesis are provided by the existing
+This chart is the site-specific desired state for the AVoIP stack in `core-prod`.
+The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+deploys it to the DC1 hub, Home1, and the `dc1-k3s` spoke. DC1 and Home1
+enable the telephony workloads; the `dc1-k3s` spoke does not enable Asterisk
+or FreeSWITCH. Speech recognition and synthesis are provided by the existing
 [CoRE AI stack](https://github.com/K-FOSS/CoRE-Business/tree/main/AI), not by
-workloads duplicated in this chart. It does not currently expose a public HTTP
-route from this chart.
+workloads duplicated in this chart. Homer has an Authentik-protected web route
+where enabled.
 
-## Lifecycle status: legacy to WIP production
+## Validation status
 
-The stack is in a controlled WIP-production transition. `core-dc1-talos-prod`
-is the active hub validation environment; the other ApplicationSet targets are
-spokes and do not currently run the telephony components. The deployed owner is
-still the [legacy AVoIP ApplicationSet in CoRE-Backplane](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml),
-so “WIP production” describes the maturity target, not a completed ownership
-migration.
+The chart is deployed, but the end-to-end call and failover paths still need
+live verification:
 
-Current transition state:
+1. Confirm an inbound Flowroute INVITE receives an ACK at FreeSWITCH and stays
+   up for at least 60 seconds. Calls observed on 2026-09-30 ended after about
+   32 seconds with `ACK Timeout`; see [SIP identity and call verification](docs/SIP-IDENTITY.md).
+2. Verify an ordinary voice call bridges to Asterisk and a fax call reaches
+   `rxfax`, writes a TIFF, and completes with the configured T.38/G.711 mode.
+3. Exercise site failover and the RTPEngine/Valkey recovery path before treating
+   either as production verified.
 
-- Desired voice path: Flowroute → Kamailio → RTPEngine → FreeSWITCH →
-  Asterisk for ordinary calls.
-- Fax validation is in progress with FreeSWITCH `mod_spandsp`, G.711 fallback,
-  T.38 passthrough, and per-cluster Homer capture.
-- Configuration changes roll out through Git, Argo CD, and Reloader-backed
-  Deployment updates. Direct cluster changes are incident diagnostics only and
-  must not become the lasting source of truth.
-- The legacy `dc1-k3s` speech remnants are retirement candidates and are not a
-  supported telephony backend.
-
-The following gates remain before treating the stack as production-ready:
-
-1. Complete real Flowroute fax tests, including a FreeSWITCH T.38 re-INVITE,
-   Flowroute acceptance, a received TIFF, and a successful result.
-2. Demonstrate that ordinary inbound voice calls continue to bridge to
-   Asterisk during and after fax testing.
-3. Resolve the Kamailio UDP worker stability issue. The current evidence shows
-   `recvfrom(): [103] Software caused connection abort`, worker exit status 255,
-   and parent shutdown. This occurred during a burst of thousands of SIP
-   messages and has not been proven to originate from T.38 signaling.
-4. Reduce or account for the high-volume internal REGISTER/INVITE traffic and
-   verify the node/Cilium/conntrack path during a recurrence.
-5. Reconcile the desired multi-cluster ApplicationSet and confirm the rendered
-   Lovely output, operator conditions, routes, persistence, and rollback path.
-
-Until these gates are closed, changes should be described as WIP production
-validation and not as a stable general-purpose AVoIP release.
+Changes flow through Git and Argo CD; Reloader restarts workloads when their
+watched configuration changes.
 
 ## Deployment ownership
 
@@ -64,7 +39,7 @@ clusters: `core-dc1-talos-prod`, `core-home1-talos-prod`, and
 `core-prod`, and renders through the
 [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
 
-The [owning ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml)
+The [owning ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
 `ServerSideApply=true`, and injects the following Helm merge values:
 
@@ -82,18 +57,13 @@ The current component matrix is:
 | Cluster | Role | Asterisk | FreeSWITCH |
 | --- | --- | --- | --- |
 | `core-dc1-talos-prod` | Hub | Enabled | Enabled |
-| `core-home1-talos-prod` | Spoke | Disabled | Disabled |
+| `core-home1-talos-prod` | Spoke | Enabled | Enabled |
 | `dc1-k3s-node1` | Spoke | Disabled | Disabled |
 
-The chart’s top-level `values.yaml` contains the same single-cluster defaults
-for standalone rendering, with both telephony components disabled. The
-current [owning ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml)
-overrides those flags only for the hub. Lovely-injected values take precedence
-for each selected cluster. The live `dc1-k3s` controller is stale: it still
-has the older single-cluster ApplicationSet and the application was last
-observed at revision `f043ea6e783e1655db2a1456ad2a2c5b575479cf`, with Argo
-reporting `Synced` and `Healthy` on 2026-06-11. Its old speech resources remain
-pending the newer ApplicationSet/chart reconciliation.
+The chart’s top-level `values.yaml` supplies standalone defaults. The
+ApplicationSet's Lovely-injected values select each site's actual components,
+hostnames, media addresses, and DIDs. Inspect both layers before changing a
+site deployment.
 
 The deployed FreeSWITCH image is built by the site-local
 [Core-Docker Forgejo project](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker)
@@ -117,7 +87,7 @@ Envoy Gateway's
 sends PROXY protocol v2 to Kamailio, and Kamailio's
 [HAProxy PROXY-protocol support](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#tcp_accept_haproxy)
 verifies the original Flowroute source before forwarding SIP to the configured
-private backend. Kamailio applies
+private backend. The chart configures
 [symmetric response routing](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#force_rport)
 to Flowroute requests so answers use the received TLS source port even when
 the carrier's Via advertises 5061. Kamailio and FreeSWITCH can be enabled independently; when
@@ -140,14 +110,14 @@ host. FreeSWITCH uses that site host as its external SIP identity as well.
 Every in-dialog request, including 2xx ACK, follows `loose_route()`; Kamailio
 does not special-case ACK or guess a backend when a dialog Route header is
 missing.
-For a new outbound TLS connection to Flowroute, Kamailio egress traverses the
-site's VyOS WAN-GW/NAT function routers. Their shared VRRP address is the
-upstream source NAT identity; it can differ from the public SIP ingress address
-and RTPEngine's advertised RTP address. The hub's observed Flowroute-facing
-source was `66.165.222.97`, while its advertised RTP address is
-`66.165.222.103`. See [SIP identity and egress](docs/SIP-IDENTITY.md).
-The shared SIP hostname remains available as a DNS alias. This prevents wildcard bind
-addresses such as `0.0.0.0` from being advertised in dialog routing. Compact
+
+New outbound Flowroute connections are source NATed by the site's VyOS
+WAN-GW/NAT VRRP pair. The hub's observed signaling source was
+`66.165.222.97`; RTPEngine separately advertises `66.165.222.103` for RTP.
+See [SIP identity and egress](docs/SIP-IDENTITY.md) for the distinct paths.
+
+The shared SIP hostname remains available as a DNS alias. This prevents wildcard
+bind addresses such as `0.0.0.0` from being advertised in dialog routing. Compact
 Kamailio request, relay, response, rejection, and loose-route markers are
 enabled by default through `kamailio.sipLogging.enabled`; the logging avoids
 full SIP/SDP dumps and can be disabled for quieter production logs.
@@ -217,9 +187,8 @@ the public listener, Record-Route, and Contact while each site continues to
 publish its site-local route. Keep K8GB mode disabled until Backplane has
 configured public DNS delegation and its authoritative provider path for the
 `sip.resolvemy.host` zone. The Backplane K8GB control plane currently installs
-no `Gslb` or `ZoneDelegation` resources. Kamailio's UDP listener remains
-private for the FreeSWITCH leg and is not exposed through a LoadBalancer or
-UDPRoute.
+no `Gslb` or `ZoneDelegation` resources. Kamailio has no UDP SIP listener; its
+private FreeSWITCH leg uses TLS.
 
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
 [CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
@@ -286,15 +255,15 @@ check for startup, readiness, and liveness; FreeSWITCH uses a non-network
 process/configuration check because its event socket is not enabled. Each
 controller must pass startup and readiness before the old replica is removed.
 
-The chart defaults are intentionally mostly inactive:
+Component behavior is controlled by chart values and the ApplicationSet merge:
 
 | Component | Chart behavior | User/API resources |
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
-| Asterisk | Disabled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
+| Asterisk | Site-controlled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
 | Kamailio | Independently enabled | When enabled on a cluster, Kamailio receives public SIP on that site's `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` TLSRoute. The Gateway passes TLS through; its SIPS fallback filter chain handles clients without SNI. Kamailio owns TLS, consumes Envoy PROXY protocol v2, verifies Flowroute source CIDRs, and forwards accepted SIP over TLS to its private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
-| FreeSWITCH | Disabled | When enabled, creates private TLS SIP services and External Secret-backed configuration. The `avoip.did` voice route remains ringing until Asterisk answers and has no fax detector. A separate `fax.did` sends 180 Ringing for 2 seconds before answering and starting SpanDSP `rxfax`, with TIFFs stored on the configured PVC; the DID must be supplied by the site. Public media is proxied by RTPEngine. See [SIP identity and fax routing](docs/SIP-IDENTITY.md) and [RTP-DIAGNOSTICS.md](docs/RTP-DIAGNOSTICS.md). |
-| RTPEngine | Hub-only toggle | Runs two pinned userspace media proxies, exposes the configured UDP range through a LoadBalancer Service whose provider settings are supplied by chart users, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
+| FreeSWITCH | Site-controlled | When enabled, creates private TLS SIP services and External Secret-backed configuration. The `avoip.did` voice route remains ringing until Asterisk answers. A separate `fax.did` starts SpanDSP `rxfax`, with TIFFs stored on the configured PVC; the DID must be supplied by the site. Public media is proxied by RTPEngine. See [SIP identity and fax routing](docs/SIP-IDENTITY.md). |
+| RTPEngine | Site-controlled | Runs one pinned userspace media proxy by default, exposes the configured UDP range through a LoadBalancer Service whose provider settings are supplied by chart users, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
 | Homer 11 | Per-cluster opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, local Kamailio HEPv3 capture, RTPEngine RTCP/NG capture when local RTPEngine is enabled, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |
 | Jitsi Meet | Disabled | Pinned dependency `jitsi-meet` `1.2.2`; no Jitsi resources render by default. |
 
@@ -319,35 +288,15 @@ keeps Flowroute inbound traffic on its separate source-ACL-protected external
 profile, so carrier ingress does not bypass application authentication. See
 [PHONE-TREE.md](docs/PHONE-TREE.md) for the call paths and verification checks.
 
-## Live `dc1-k3s` snapshot
+## Historical `dc1-k3s` state
 
-The following is a non-secret inventory captured from the live cluster. Secret
-objects, secret data, environment values sourced from Secrets, and generated
-credentials are deliberately excluded.
-
-The active Argo application is
-`dc1-k3s-node1-business-avoip` in `argocd`, targeting `core-prod`. Its complete
-resource inventory is only:
-
-- Deployment `dc1-k3s-node1-business-avoip-avoip-vosk`, `0` replicas,
-  image `alphacep/kaldi-en:latest`, container HTTP port `2700`.
-- Service `dc1-k3s-node1-business-avoip-avoip-vosk`, ClusterIP, TCP and UDP
-  port `5060`, both targeting the container ports named `tcp-sip` and
-  `udp-sip`.
-- Deployment `dc1-k3s-node1-business-avoip-avoip-mycroft-mimic`, `0` replicas,
-  image `smartgic/ovos-tts-server-bark:alpha`, container HTTP port `9666`, and
-  an `emptyDir` mounted at `/home/mimic3/.local`.
-- Service `dc1-k3s-node1-business-avoip-avoip-mycroft-mimic`, ClusterIP port
-  `80` targeting the `http` port.
-
-No Asterisk, FreeSWITCH, Jitsi, `User`, HTTPRoute, TLSRoute, or UDPRoute
-resource is currently part of this Argo application. The live speech
-resources are scaled to zero, matching the chart’s replica settings.
-
-These speech resources are legacy remnants. The chart no longer renders them;
-the next Argo reconciliation will prune them. Until that reconciliation, they
-remain visible in the live snapshot above and must not be treated as supported
-speech backends.
+A 2026-06-11 inventory showed scaled-to-zero Vosk and Mycroft resources from
+an older [legacy AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml).
+That inventory predates the active multi-cluster
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+and must not be treated as current controller state. The current chart does not
+render those speech workloads; check Argo CD before making deletion or
+recovery decisions about any remnants.
 
 ## Speech architecture and TODOs
 
@@ -369,21 +318,6 @@ Remaining integration work is to connect the minimal FreeSWITCH DID service to
 the existing Wyoming endpoint (or an OpenAI-compatible speech bridge) if voice
 TTS/STT is needed. This chart does not currently ship an IVR or speech bridge;
 its old Vosk and Mycroft resources have been removed.
-
-## Documented chart/live differences
-
-These differences are intentional or unresolved and should be reviewed before
-activating a component:
-
-1. The legacy live Vosk Service exposes TCP/UDP SIP port `5060` and targets port
-   names that do not exist on the Vosk Deployment. The Deployment exposes only
-   HTTP port `2700`. Because replicas are zero and Vosk is being retired, no
-   repair is planned; the Service will be pruned on reconciliation.
-2. The legacy live Vosk image is the mutable `alphacep/kaldi-en:latest` tag;
-   it is being retired rather than pinned or reactivated.
-3. The legacy live OVOS TTS Deployment has `imagePullPolicy: Always`; it is
-   also being retired rather than reconciled back into this chart.
-4. The live application is rendered from an older revision of the [legacy ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml), while the current desired ApplicationSet is multi-cluster and injects Helm values. Compare the rendered Lovely output after every chart change; standalone `helm template` is only a partial check for this deployment.
 
 ## Validation and activation notes
 

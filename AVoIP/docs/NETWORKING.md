@@ -2,18 +2,14 @@
 
 The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 owns this chart through Lovely and `LOVELY_HELM_MERGE`, targeting `core-prod`
-on the production hub. Network overrides should be supplied in that site's
-merge layer. Empty defaults preserve existing pods and their cluster network.
+on the DC1 hub and Home1 spoke. Network overrides belong in each site's merge
+layer. Empty defaults preserve existing pods and their cluster network.
 
-Kamailio's new outbound TLS sessions to Flowroute use the site's VyOS WAN-GW/NAT
-function routers as their egress upstream. VyOS source NAT presents the shared
-VRRP address to the carrier; the hub's observed public source was
-`66.165.222.97`. The public RTPEngine media address (`66.165.222.103` at the
-hub) is separately advertised in SDP. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-currently disables Cilium egress gateway pinning, so its `network.egressIP`
-value does not set the SIP signaling source. See the
-[VyOS source NAT documentation](https://docs.vyos.io/en/latest/configuration/nat/nat44.html#source-nat)
-for the translation behavior.
+The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+disables Cilium egress gateway pinning. Outbound Flowroute signaling instead
+uses the site's VyOS WAN-GW/NAT VRRP source address. See
+[SIP identity and egress](SIP-IDENTITY.md) for the observed hub address and
+its distinction from the public RTP address.
 
 `workloadNetworking` is keyed by enabled controller: `asterisk`, `freeswitch`,
 `kamailio`, `rtpengine`, or `homer-web`. It also supports controllers added by

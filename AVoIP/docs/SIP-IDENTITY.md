@@ -1,10 +1,18 @@
 # AVoIP SIP identity and dedicated fax routing
 
-Kamailio applies [symmetric response routing](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#force_rport) to authorized Flowroute requests. Flowroute can originate an INVITE from an ephemeral TLS port while its Via advertises 5061 without `rport`; responses must use the received port so the inbound Envoy/PROXY-protocol TLS connection can be reused. New in-dialog requests, such as FreeSWITCH's BYE, still target Flowroute's public port 5061.
-
-New outbound connections from Kamailio to Flowroute leave through the site's VyOS WAN-GW/NAT function routers and are source NATed to the routers' shared VRRP address. The hub's observed public source on the outbound BYE/200 exchange was `66.165.222.97`. This egress identity differs from the hub's `66.165.222.103` RTPEngine media address and does not identify the inbound Envoy-to-Kamailio TLS connection. When tracing a call, compare the carrier's observed source address with the VyOS NAT/VRRP state; do not infer the SIP reply path from a successful outbound BYE. The [VyOS source NAT documentation](https://docs.vyos.io/en/latest/configuration/nat/nat44.html#source-nat) explains the address translation.
-
 The active chart owner is Backplane's [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml), which supplies cluster identity, component enablement, site SIP hostname, DIDs, and egress policy. The separate [Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml) configures the shared Gateway listener and its SIPS fallback. Home1/YVR and DC1/YXL use TLSRoute on port 5061; Kamailio owns the TLS session. An EnvoyPatchPolicy makes the SIPS filter chain a fallback for clients that omit SNI. Render both injected value layers before reconciliation.
+
+## Signaling and media paths
+
+| Traffic | Path | Carrier-facing identity at the hub |
+| --- | --- | --- |
+| Inbound INVITE and its reply | Flowroute ↔ Envoy TLS passthrough ↔ Kamailio | Site SIP hostname on port 5061 |
+| New outbound request, such as FreeSWITCH's BYE | Kamailio → VyOS WAN-GW/NAT VRRP pair → Flowroute | `66.165.222.97` observed on the BYE transaction |
+| RTP | Flowroute ↔ RTPEngine | `66.165.222.103` advertised in SDP |
+
+The VyOS routers [source NAT](https://docs.vyos.io/en/latest/configuration/nat/nat44.html#source-nat) new outbound connections to their shared VRRP address. The observed outbound BYE and its successful response establish that this egress path works; they do not establish that the original INVITE answer reached Flowroute.
+
+Flowroute can send an INVITE from an ephemeral TLS source port while its Via advertises 5061 without `rport`. The chart configures [`force_rport()`](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#force_rport) for authorized carrier requests so the answer targets the received port and can reuse the inbound Envoy/PROXY-protocol connection. New outbound requests still target Flowroute's port 5061. Confirm the resulting connection choice and ACK with a live call; the address logged at Kamailio's send boundary alone does not prove delivery.
 
 By default, `sip.siteHost` is the site-specific public SIP identity, supplied through `kamailio.advertisedHost` or derived as `sip.<cluster>.<datacenter>.<region>.resolvemy.host`. Kamailio advertises this hostname on its public listener, uses it for the public side of its existing two-sided Record-Route set, and rewrites successful public Contacts to `sips:<user>@<siteHost>:5061;transport=tls`. FreeSWITCH also uses the same site hostname as its external SIP identity. This pins each dialog to the site that accepted it, so Flowroute's YVR-primary/YXL-failover routing applies to new calls while in-dialog ACK, BYE, UPDATE, and re-INVITE requests return to the originating site. Both sites may be configured with the same DIDs; keep each site's value in its own deployment secret/value injection and do not commit a DID literal. Site affinity does not replicate live dialogs between independent sites, so failover applies to new call setup, not an already established call.
 
@@ -14,7 +22,7 @@ The private side remains the Kamailio Kubernetes Service FQDN on TLS 5062, leadi
 
 The `sips-tls` Gateway listener uses TLS passthrough to the Kamailio `TLSRoute`; it does not terminate the SIP TLS session. Envoy Gateway normally matches the route hostname against SNI. The fallback [EnvoyPatchPolicy](https://gateway.envoyproxy.io/docs/tasks/extensibility/envoy-patch-policy/) removes the `server_names` match from the one SIPS filter chain, allowing no-SNI TLS clients to reach that same TLSRoute without changing the backend or terminating TLS. This relies on the SIPS listener having one TLSRoute/backend; adding another SIPS route requires revisiting the fallback so it cannot route unrelated SNI traffic incorrectly. Envoy prepends PROXY protocol v2, which Kamailio consumes before its native TLS handshake. Kamailio presents its chart-managed cert-manager certificate; its SAN list includes the site hostname, shared SIP alias, and private Kamailio service name. `sip.tls.issuerName` must issue publicly trusted certificates for the public names. Verify the Kamailio `Certificate` is Ready and run the TLS verification below before testing Flowroute. The private hops remain Kamailio to FreeSWITCH on TLS 5061 at the Kamailio service's private port 5062 and FreeSWITCH to Asterisk on TLS 5061; Sofia verifies the Asterisk server certificate.
 
-The voice DID is configured with `avoip.did` and only bridges to Asterisk. The fax DID is configured separately with `fax.did`; it defaults to empty, so the owning ApplicationSet must supply the assigned fax number before enabling fax routing. Keep the two values distinct. A fax DID match runs before the voice and reject routes, transfers directly to `fax-receive`, answers, and executes `rxfax` to the persistent fax spool. Fax T.38, PCMU/PCMA, ECM, and V.17 settings stay on that extension. The voice route has no fax detector or fax recording.
+The voice DID is configured with `avoip.did` and only bridges to Asterisk. The fax DID is configured separately with `fax.did`; it defaults to empty, so the owning ApplicationSet must supply the assigned fax number before enabling fax routing. Keep the two values distinct. A fax DID match runs before the voice and reject routes, transfers directly to `fax-receive`, answers, and executes `rxfax` to the persistent fax spool. Fax T.38, PCMU/PCMA, ECM, and V.17 settings stay on that extension. The voice route has no fax detector; temporary call recording is controlled separately by `freeswitch.media.diagnostics.callRecording.enabled`.
 
 RTPEngine continues to advertise `rtpengine.media.address` in carrier SDP, independently of every SIP hostname. Its NG control Service and Valkey behavior are unchanged. RTPEngine HEP NG output uses Homer heplify's TCP port, while RTP remains on the existing UDP media range.
 
@@ -36,7 +44,7 @@ python3 tests/sip_identity_render.py /tmp/avoip-render.yaml \
   --voice-did voice-fixture --fax-did fax-fixture \
   --site-host sip.core-home1-talos-prod.home1.yvr.resolvemy.host \
   --cluster-name core-home1-talos-prod \
-  --cluster-domain k8s.home1.resolvemy.host --media-address 24.86.197.63 \
+  --cluster-domain k8s.home1.resolvemy.host --media-address 24.86.197.63
 ```
 
 Set `SITE_SIP_HOST` to the current site route (for example, `sip.core-home1-talos-prod.home1.yvr.resolvemy.host` or `sip.core-dc1-talos-prod.dc1.yxl.resolvemy.host`). For the carrier-side DNS and TLS checks, run:
@@ -116,10 +124,15 @@ kubectl --context logged-user -n core-prod logs \
   -c freeswitch --since=10m | rg -F "$CALL_ID"
 ```
 
-Use Homer to confirm both ACK hops and the dialog tags, then check FreeSWITCH
-logs for the absence of `ACK Timeout`. These log commands are correlation
-helpers; the Homer packet sequence is the proof that the ACK reached the UAS.
+Homer shows the SIP dialog after Kamailio decrypts TLS; use it to confirm both
+ACK hops and matching dialog tags. The log commands help correlate the Call-ID.
+Check that `Certificate` resources are Ready and that the public answer keeps
+the same RTPEngine media address across retransmissions. Verify the internal
+TLS listeners and certificate SANs with `openssl s_client`,
+`sofia status profile kamailio`, `sofia status profile asterisk`, and
+`pjsip show transports`.
 
-After Argo CD reconciles the published chart and the Backplane value change, confirm the `Certificate` resources are Ready, then compare one inbound Call-ID in Kamailio, FreeSWITCH, Asterisk, RTPEngine, and Homer. Check the public `200 OK` and its retransmissions for the same RTPEngine media address and port, and verify the ACK reaches FreeSWITCH. Use `openssl s_client -connect <service-fqdn>:5061 -servername <service-fqdn> -verify_hostname <service-fqdn>` from a diagnostic pod on each internal hop. Check the SAN on each mounted certificate, rather than accepting a successful TLS handshake alone. Inspect `sofia status profile kamailio`, `sofia status profile asterisk`, and `pjsip show transports` for the TLS listeners.
-
-For voice, call `avoip.did` and confirm FreeSWITCH logs a bridge to Asterisk with no `fax_detect`, `rxfax`, T.38 variables, or fax recording. For fax, call the configured `fax.did` and confirm `fax receive start`, `rxfax`, a fax result log, and a TIFF under `freeswitch.fax.spoolPath`, with no Asterisk bridge. Compare RTPEngine packet counts in both directions and verify Homer receives RTPEngine HEP on TCP 9061. Confirm the three SIP service records resolve to their ClusterIP addresses and their Certificates are Ready before placing calls.
+For voice, call `avoip.did` and confirm a bridge to Asterisk without `rxfax`.
+For fax, call `fax.did` and confirm `rxfax`, a result log, and a TIFF under
+`freeswitch.fax.spoolPath` without an Asterisk bridge. Compare RTPEngine packet
+counts in both directions and verify Homer receives RTPEngine HEP on TCP 9061.

@@ -164,7 +164,7 @@ rtpengine:
   # Enable RTPEngine per cluster, including spokes that provide local media
   # handling. Set the media address for each cluster in its injected values.
   enabled: true
-  # Two media proxies are spread across nodes. The Valkey proxy supplies the
+  # The Valkey proxy supplies the
   # primary-only Redis endpoint required for shared call-state failover.
   replicas: 1
   controlPort: 22222
