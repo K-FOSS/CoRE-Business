@@ -10,6 +10,9 @@ addresses, or private route-set entries.
 The [SIP HA options](SIP-HA-OPTIONS.md) compare the registration, storage,
 authentication, switchboard, dialog, and media choices and give the proposed
 order of implementation.
+The focused [stateful SIP and multisite plan](SIP-STATEFUL-HA.md) and
+[phased TODO](../TODO.md) define the current upgrade gates, failure contract,
+and evidence required before marking a phase complete.
 
 ## Target call path
 
@@ -345,10 +348,13 @@ requirements are designed.
 
 ## Rollout sequence
 
-Follow the staged implementation and proof in
-[SIP HA options](SIP-HA-OPTIONS.md#recommended-order-and-proof). Keep the
-current DID and fax routes while introducing private registration, then prove
-backend affinity before turning on the global public dialog identity.
+Follow the [stateful SIP phased plan](SIP-STATEFUL-HA.md#phases-migration-and-rollback)
+and [TODO tracker](../TODO.md). Resolve the current ACK timeout and prove a
+60-second voice call first. Correct transaction and dialog routing before
+adding backend pools, shared assignment recovery, or global ingress. The
+[SIP HA options](SIP-HA-OPTIONS.md) remain a design comparison for the separate
+private registrar and switchboard work. Keep the current voice and dedicated
+fax DID paths through each stage.
 
 ## Verification
 

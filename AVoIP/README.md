@@ -1,6 +1,10 @@
 # AVoIP
 
 This chart is the site-specific desired state for the AVoIP stack in `core-prod`.
+The [stateful SIP and multisite architecture plan](docs/SIP-STATEFUL-HA.md)
+and its [phased TODO tracker](TODO.md) describe proposed work, failure
+boundaries, acceptance evidence, and rollback. They do not change the deployed
+call path.
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 deploys it to the DC1 hub, Home1, and the `dc1-k3s` spoke. DC1 and Home1
 enable the telephony workloads; the `dc1-k3s` spoke does not enable Asterisk

@@ -2,6 +2,10 @@
 
 This is a decision guide for the next AVoIP chart changes. The current and
 target call paths are in [SIP routing architecture](SIP-ROUTING-ARCHITECTURE.md).
+For the stateful routing, replica balancing and multisite upgrade, use the
+[phased architecture plan](SIP-STATEFUL-HA.md) and [TODO tracker](../TODO.md)
+as the implementation and acceptance sequence; the options below are inputs
+to its open decisions, not completed capabilities.
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 injects each site's cluster identity, SIP hostname, media address and range,
 and DID values through Lovely. No DID belongs in this repository.
