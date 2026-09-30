@@ -50,7 +50,7 @@ data:
     type=identify
     endpoint=freeswitch
     match=10.0.0.0/8
-    match=
+    match=172.16.0.0/12
 
     [freeswitch]
     type=aor
