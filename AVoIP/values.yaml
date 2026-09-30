@@ -166,8 +166,9 @@ kamailio:
     # keep enabled only while investigating a carrier signaling issue.
     carrierTraffic: true
 
-    # Temporary response snapshot after TOPOS has rewritten the message and
-    # immediately before transport send. Full SIP bodies may contain PII/SDP.
+    # Temporary SIP wire diagnostics: PRE-TOPOS-STRIP replies plus corex's
+    # final network-send buffer for CSeq 1 INVITE 180/200 responses. Complete
+    # messages can contain PII/SDP; keep disabled outside a controlled trace.
     postToposResponses: true
 
     # Temporary full-message receive logging. Disable after the ACK investigation.

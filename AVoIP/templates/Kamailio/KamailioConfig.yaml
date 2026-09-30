@@ -124,14 +124,36 @@ data:
     {{- end }}
 
     {{- if and .Values.kamailio.topology.enabled .Values.kamailio.sipLogging.postToposResponses }}
-    # Temporary full response capture after TOPOS has stripped/replaced the
-    # externally visible topology and immediately before the message is sent.
+    # This hook runs before TOPOS strips outbound topology. Its message is an
+    # intermediate diagnostic snapshot, not the final network representation.
     event_route[topos:msg-sending] {
       if (is_reply() && $rm == "INVITE" && $rs >= 180 && $rs <= 299) {
         xlog(
           "L_INFO",
-          "SIP POST-TOPOS SEND call_id=$ci status=$rs cseq=$hdr(CSeq) contact=$hdr(Contact) record_route=$hdr(Record-Route) via=$hdr(Via) to=$hdr(To) from=$hdr(From) content_length=$hdr(Content-Length) destination=$du send_socket=$fsn/$fs\n--- SIP POST-TOPOS MESSAGE BEGIN ---\n$mb\n--- SIP POST-TOPOS MESSAGE END ---\n"
+          "SIP PRE-TOPOS-STRIP SEND call_id=$ci status=$rs cseq=$hdr(CSeq) contact=$hdr(Contact) record_route=$hdr(Record-Route) via=$hdr(Via) to=$hdr(To) from=$hdr(From) content_length=$hdr(Content-Length) destination=$du send_socket=$fsn/$fs\n--- SIP PRE-TOPOS-STRIP MESSAGE BEGIN ---\n$mb\n--- SIP PRE-TOPOS-STRIP MESSAGE END ---\n"
         );
+      }
+    }
+    {{- end }}
+
+    {{- if .Values.kamailio.sipLogging.postToposResponses }}
+    # corex observes the raw message at the network I/O boundary. Do not set
+    # nio_msg_avp or change $mb: this route is strictly observation-only.
+    modparam("corex", "nio_intercept", 1)
+
+    event_route[network:msg] {
+      if (!is_incoming()) {
+        # Limit this sensitive raw capture to the controlled test's initial
+        # INVITE 180/200 responses (CSeq 1 INVITE).
+        if (
+          $mb =~ "^SIP/2.0 (180|200) " &&
+          $mb =~ "\r\nCSeq:[ \t]*1[ \t]+INVITE"
+        ) {
+          xlog(
+            "L_INFO",
+            "--- SIP FINAL NETWORK TX BEGIN ---\n$mb\n--- SIP FINAL NETWORK TX END ---\n"
+          );
+        }
       }
     }
     {{- end }}
@@ -262,6 +284,10 @@ data:
             "SIP FLOWROUTE RX pod=$env(POD_NAME) source=$si:$sp recv=$Ri:$Rp proto=$proto callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE RX BEGIN ---\n$mb\n--- SIP FLOWROUTE RX END ---\n"
           );
           {{- end }}
+          # CANCEL belongs to the INVITE transaction in TM's local process.
+          # TOPOS Redis does not replicate TM state: the same TLS connection
+          # must remain pinned by the L4 gateway to the pod holding that
+          # transaction. A CANCEL arriving on another pod correctly misses.
           if (is_method("CANCEL")) {
             {{- if and (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
             rtpengine_manage();
