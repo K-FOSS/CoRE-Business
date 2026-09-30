@@ -182,6 +182,7 @@ data:
       <network-lists>
         <list name="asterisk" default="deny">
           <node type="allow" cidr="10.0.0.0/8"/>
+          <node type="allow" cidr="172.16.0.0/12"/>
         </list>
       <list name="flowroute" default="deny">
         {{- range $.Values.flowroute.signalingCIDRs }}
@@ -189,6 +190,8 @@ data:
         {{- end }}
       </list>
       <list name="kamailio" default="deny">
+        <node type="allow" cidr="10.0.0.0/8"/>
+        <node type="allow" cidr="172.16.0.0/12"/>
         <node type="allow" cidr="{{ $.Values.freeswitch.publicExposure.podCIDR }}"/>
       </list>
       </network-lists>
