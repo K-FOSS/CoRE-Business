@@ -333,40 +333,34 @@ data:
 
           # Initial INVITEs contain our paired private/public Record-Route set.
           #
-          # FreeSWITCH must retain the complete private representation:
-          #
-          #   private: transport=tls;sn=private_tls;ftag=...;lr;r2=on
-          #   public:  transport=tls;sn=public_tls;ftag=...;lr;r2=on
-          #
-          # Flowroute must NOT receive those Kamailio implementation details.
-          # Remove the private half, then normalize our public half in-place to:
-          #
-          #   <sips:PUBLIC_HOST:5061;lr>
-          #
-          # Transforming the existing header in-place preserves ordering if an
-          # upstream proxy ever contributes additional Record-Route headers.
-          if ($hdr(Record-Route) =~ "sn=private_tls") {
-            remove_hf_match(
-              "Record-Route",
-              "in",
-              "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls"
-            );
+          # Inspect ALL Record-Route fields. $hdr(Record-Route) alone only returns
+          # the first field, which is the private route in our paired RR set.
+          if ($(hdr(Record-Route)[*]) =~ "sn=private_tls") {
+              if (!remove_hf_match(
+                    "Record-Route",
+                    "in",
+                    "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls"
+                  )) {
+                  xlog(
+                    "L_ERR",
+                    "SIP reply drop reason=private-record-route-removal pod=$env(POD_NAME) callid=$ci status=$rs\n"
+                  );
+                  drop;
+              }
           }
 
-          if ($hdr(Record-Route) =~ "sn=public_tls") {
-            # Normal form when rr append_fromtag is enabled.
-            subst_hf(
-              "Record-Route",
-              "/;transport=tls;sn=public_tls;ftag=[^;>]+;lr;r2=on/;lr/",
-              "a"
-            );
-
-            # Defensive fallback if a future rr configuration disables ftag.
-            subst_hf(
-              "Record-Route",
-              "/;transport=tls;sn=public_tls;lr;r2=on/;lr/",
-              "a"
-            );
+          if ($(hdr(Record-Route)[*]) =~ "sn=public_tls") {
+              if (!subst_hf(
+                    "Record-Route",
+                    "/;transport=tls;sn=public_tls;ftag=[^;>]+;lr;r2=on/;lr/",
+                    "a"
+                  )) {
+                  xlog(
+                    "L_ERR",
+                    "SIP reply drop reason=public-record-route-rewrite pod=$env(POD_NAME) callid=$ci status=$rs routes=$(hdr(Record-Route)[*])\n"
+                  );
+                  drop;
+              }
           }
 
           # INVITE and UPDATE can refresh the dialog's remote target. Never
