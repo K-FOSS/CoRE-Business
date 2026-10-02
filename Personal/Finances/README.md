@@ -12,7 +12,7 @@ Wealthfolio and a Bloomberg-like market-research workstation remain desired
 future components; they still require separate ownership, rendering,
 persistence, access, and data-provider design.
 
-This prepared chart deploys [Firefly III](https://www.firefly-iii.org/), a
+This chart's default workload is [Firefly III](https://www.firefly-iii.org/), a
 self-hosted personal finance manager, with the
 [BJW-S Common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 It serves `firefly.mylogin.space` through a Gateway API HTTPRoute and uses the
@@ -155,7 +155,13 @@ for public services.
 
 The pattern follows the existing
 [Office ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml)
-and [Fitness Authentik configuration](https://github.com/K-FOSS/CoRE-Business/blob/main/Personal/Fitness/templates/Authentik.yaml).
+and is selected by the current
+[Personal/Finances ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Finances.yaml).
+That ApplicationSet renders `Personal/Finances` with the Lovely plugin into
+`core-prod` on `core-home1-talos-prod`; its injected values provide the cluster,
+datacenter, region, and `psql-home1-yvr` PostgreSQL providers. The
+[Fitness Authentik configuration](https://github.com/K-FOSS/CoRE-Business/blob/main/Personal/Fitness/templates/Authentik.yaml)
+is also a reference for the access pattern.
 
 Firefly III creates its PostgreSQL role and database through the current
 [Backplane `mylogin.space` User resource definition](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml),
@@ -179,17 +185,20 @@ The database host defaults to the local-scoped PostgreSQL endpoint
 ApplicationSet must inject those site values and the matching PostgreSQL
 provider references.
 
-There is currently no active finance-chart owner in the
-[CoRE-Backplane Apps/Business tree](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business),
-so this is prepared desired state and will not deploy until an ApplicationSet
-explicitly references `Personal/Finances`. Its future owner must inject
-`cluster.name`, `datacenter`, `region`, and both Firefly PostgreSQL provider
-references. If WYGIWYH is enabled, it must inject both WYGIWYH PostgreSQL
-provider references as well. The owner must select the target namespace and
-renderer and confirm the `main-gw` / `https-myloginspace` listener. The
-generated database roles and names are retained by the Backplane database
-resources. The dashboard has no database-provider inputs, but its dedicated
-Authentik application and External Secrets generator must be available.
+The current [Personal/Finances ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Finances.yaml)
+selects this chart for `core-home1-talos-prod` in `core-prod`, uses the Lovely
+renderer, and injects `firefly-app-key` plus the Firefly PostgreSQL provider
+pair `psql-home1-yvr`.
+The current ApplicationSet values do not enable WYGIWYH or the Financial
+Dashboard; both remain disabled by local defaults. To enable WYGIWYH, add
+`wygiwyh.enabled: true` and both WYGIWYH PostgreSQL provider references to that
+ApplicationSet's `LOVELY_HELM_MERGE`. The dashboard needs
+`financialDashboard.enabled: true` there. When enabled, both companion routes
+use the local `main-gw` / `https-myloginspace` defaults, and this chart creates
+their Authentik applications and External Secrets generators. Backplane retains
+the generated database roles and names. This documents declared desired state;
+check the Argo CD Application and downstream resource conditions to confirm
+what is currently reconciled.
 
 The chart includes a per-minute Firefly scheduler CronJob. Its generated name
 is capped at Kubernetes' 52-character CronJob limit. Review its inherited
