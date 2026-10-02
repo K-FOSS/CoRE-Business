@@ -11,5 +11,7 @@ spec:
 
   timeout:
     http:
-      requestTimeout: 1h
+      maxStreamDuration: 0s
+      requestTimeout: 0s
+      streamIdleTimeout: 0s
 {{- end }}
