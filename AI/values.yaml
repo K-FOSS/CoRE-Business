@@ -340,6 +340,31 @@ owui:
   mcpo:
     enabled: true
 
+paperclip:
+  # This AI ApplicationSet also renders other clusters. Keep the orchestration
+  # control plane pinned to the production home1 site until a target is selected.
+  enabled: true
+  targetCluster: 'core-home1-talos-prod'
+  image:
+    repository: 'ghcr.io/paperclipai/paperclip'
+    tag: 'v2026.1001.0'
+  externalUrl: 'https://paperclip.core-home1-talos-prod.home1.yvr.mylogin.space'
+  database:
+    crossplaneProvider: ''
+    terraformProvider: ''
+  persistence:
+    size: '10Gi'
+    storageClass: 'longhorn'
+  runtimeSecret:
+    generatorName: 'core-business-ai-paperclip-runtime'
+    secretName: 'core-business-ai-paperclip-runtime'
+  oidc:
+    enabled: true
+    providerConfigRef: 'authentik'
+    issuerBaseUrl: 'https://idp.mylogin.space'
+    applicationSlug: 'paperclip'
+    accessGroup: 'Paperclip Users'
+
 mcp:
   enabled: true
 

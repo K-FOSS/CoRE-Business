@@ -1,0 +1,110 @@
+{{- if and .Values.paperclip.enabled (eq .Values.cluster.name .Values.paperclip.targetCluster) .Values.paperclip.oidc.enabled }}
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: {{ .Release.Name }}-paperclip-oidc
+spec:
+  providerConfigRef:
+    name: {{ .Values.paperclip.oidc.providerConfigRef | quote }}
+  writeConnectionSecretToRef:
+    namespace: {{ .Release.Namespace | quote }}
+    name: {{ printf "%s-paperclip-oidc" .Release.Name | quote }}
+  forProvider:
+    source: Inline
+    module: |
+      data "authentik_flow" "authorization" {
+        slug = "default-provider-authorization-explicit-consent"
+      }
+
+      data "authentik_flow" "invalidation" {
+        slug = "default-provider-invalidation-flow"
+      }
+
+      data "authentik_property_mapping_provider_scope" "scopes" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-email",
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+        ]
+      }
+
+      data "authentik_certificate_key_pair" "signing_key" {
+        name = "tls"
+      }
+
+      resource "random_password" "client_secret" {
+        length  = 128
+        lower   = true
+        numeric = true
+        upper   = true
+        special = true
+      }
+
+      resource "authentik_provider_oauth2" "paperclip" {
+        name          = "Paperclip {{ .Values.cluster.name }}"
+        client_id     = "{{ .Values.paperclip.oidc.applicationSlug }}-{{ .Values.datacenter }}-{{ .Values.region }}-{{ .Values.cluster.name }}"
+        client_secret = random_password.client_secret.result
+        client_type   = "confidential"
+        signing_key   = data.authentik_certificate_key_pair.signing_key.id
+
+        allowed_redirect_uris = [
+          {
+            matching_mode = "strict"
+            url           = "{{ trimSuffix "/" .Values.paperclip.externalUrl }}/api/auth/callback/authentik"
+          },
+        ]
+
+        property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "paperclip" {
+        name              = "Paperclip {{ .Values.cluster.name }}"
+        slug              = "{{ .Values.paperclip.oidc.applicationSlug }}-{{ .Values.datacenter }}-{{ .Values.region }}-{{ .Values.cluster.name }}"
+        group             = "AI"
+        protocol_provider = authentik_provider_oauth2.paperclip.id
+      }
+
+      resource "authentik_group" "paperclip_users" {
+        name         = "{{ .Values.paperclip.oidc.accessGroup }}"
+        is_superuser = false
+      }
+
+      resource "authentik_application_entitlement" "paperclip_access" {
+        name        = "${authentik_group.paperclip_users.id}-ent"
+        application = authentik_application.paperclip.uuid
+      }
+
+      resource "authentik_policy_binding" "entitlement_access" {
+        target = authentik_application_entitlement.paperclip_access.id
+        group  = authentik_group.paperclip_users.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "application_access" {
+        target = authentik_application.paperclip.uuid
+        group  = authentik_group.paperclip_users.id
+        order  = 0
+      }
+
+      output "OIDC_CLIENT_ID" {
+        value     = authentik_provider_oauth2.paperclip.client_id
+        sensitive = true
+      }
+
+      output "OIDC_CLIENT_SECRET" {
+        value     = random_password.client_secret.result
+        sensitive = true
+      }
+
+      output "OIDC_ISSUER" {
+        value     = "{{ trimSuffix "/" .Values.paperclip.oidc.issuerBaseUrl }}/application/o/{{ .Values.paperclip.oidc.applicationSlug }}-{{ .Values.datacenter }}-{{ .Values.region }}-{{ .Values.cluster.name }}/"
+        sensitive = false
+      }
+
+      output "OIDC_DISCOVERY_URL" {
+        value     = "{{ trimSuffix "/" .Values.paperclip.oidc.issuerBaseUrl }}/application/o/{{ .Values.paperclip.oidc.applicationSlug }}-{{ .Values.datacenter }}-{{ .Values.region }}-{{ .Values.cluster.name }}/.well-known/openid-configuration"
+        sensitive = false
+      }
+{{- end }}

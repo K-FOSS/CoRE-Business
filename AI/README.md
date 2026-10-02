@@ -17,6 +17,43 @@ Two non-legacy Backplane ApplicationSets render this same chart into
 Both inject `env`, cluster name/domain, datacentre and region through Lovely.
 Do not assume the local defaults represent either deployment role.
 
+The Paperclip orchestration service is enabled only for
+`core-home1-talos-prod`, the production site selected by the AI ApplicationSet.
+It uses a dedicated site-local PostgreSQL database provisioned by a
+`mylogin.space/v1alpha1` `User` claim with the `psql-home1-yvr` providers and
+`psql-local.core-home1-talos-prod.home1.yvr.mylogin.space` host. Its
+`/paperclip` data volume uses the site's Longhorn `longhorn` StorageClass,
+whose current configuration uses two replicas and local plus peer-site backup
+targets. The PVC is retained on chart removal.
+
+Paperclip is served at
+`paperclip.core-home1-talos-prod.home1.yvr.mylogin.space` over the existing
+AI Gateway. The route carries `wan-mode: 'public'` for site DNS and has no
+Forecastle annotations. The application requires authenticated mode, disables
+open account sign-up, and uses generated Better Auth, agent JWT and tool-action
+signing secrets.
+
+Paperclip supports generic OIDC through its Instance Settings SSO page. This
+chart creates a confidential Authentik OIDC application restricted to the
+`Paperclip Users` group and writes the client credentials plus discovery URL
+to `<release>-paperclip-oidc`. After deployment, bootstrap the first Paperclip
+administrator with Paperclip's `auth bootstrap-ceo` CLI command, then add an
+OIDC provider of type `oidc` in Instance Settings → SSO using the discovery URL,
+client ID and client secret from that Secret. Use provider ID `authentik`; its
+registered callback is
+`https://paperclip.core-home1-talos-prod.home1.yvr.mylogin.space/api/auth/callback/authentik`.
+The Authentik application itself is provisioned declaratively, while Paperclip
+stores the enabled SSO configuration in its PostgreSQL instance settings.
+
+The site-local database, Longhorn backup configuration, and shared Dragonfly
+instance are owned respectively by Backplane's [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
+[storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml),
+and [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
+
+Paperclip does not currently document or expose a Redis/Dragonfly connection
+setting. It is not assigned a Dragonfly logical database; the shared Dragonfly
+service and allocation registry remain unchanged.
+
 ## Integrations and generated resources
 
 - The [bjw-s common library](https://bjw-s-labs.github.io/helm-charts/docs/) v5
@@ -101,6 +138,14 @@ Do not assume the local defaults represent either deployment role.
   are not terminated by Envoy Gateway.
 - GPU scheduling, runtime classes and node selectors are controlled by values;
   verify them against the selected cluster before enabling a backend.
+- [Paperclip](https://paperclip.app/), its [documentation](https://docs.paperclip.ing/)
+  and [source repository](https://github.com/paperclipai/paperclip): the service
+  uses PostgreSQL and its persistent local data directory in this single-replica deployment. Its
+  supported [Docker deployment](https://github.com/paperclipai/paperclip/blob/master/docs/deploy/docker.md)
+  and [environment reference](https://github.com/paperclipai/paperclip/blob/master/docs/deploy/environment-variables.md)
+  do not define a Redis/Dragonfly dependency. Generic OIDC is configured from
+  the authenticated Paperclip UI; see its [SSO support](https://github.com/paperclipai/paperclip/issues/3028)
+  and [Better Auth generic OIDC callback reference](https://better-auth.com/docs/plugins/generic-oauth).
 
 ## Validation and operations
 
@@ -148,6 +193,14 @@ transcription remains connected for longer than the former five-minute idle
 window. Removing the chart removes its local ClusterMesh backends but leaves
 the Longhorn PV for manual recovery or deletion because its reclaim policy is
 `Retain`.
+For Paperclip, verify the site-local `User` and Authentik `Workspace` become
+Ready, inspect the generated connection Secret metadata without printing its
+values, confirm the retained Longhorn PVC is bound and backed up, and test the
+OIDC callback and access denial for users outside `Paperclip Users`. The first
+administrator bootstrap and Paperclip SSO settings are one-time post-deployment
+steps; preserve the `/paperclip/instances/default/secrets/master.key` contents
+through the volume and backup lifecycle because Paperclip uses it to decrypt
+stored agent secrets.
 
 ## Upstream projects
 

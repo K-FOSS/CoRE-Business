@@ -1040,6 +1040,102 @@ controllers:
   {{- end }}
   {{- end }}
 
+  {{- if and $.Values.paperclip.enabled (eq $.Values.cluster.name $.Values.paperclip.targetCluster) }}
+  paperclip:
+    strategy: Recreate
+
+    annotations:
+      secret.reloader.stakater.com/reload: '{{ $.Values.paperclip.runtimeSecret.secretName }}'
+
+    containers:
+      paperclip:
+        image:
+          repository: {{ $.Values.paperclip.image.repository | quote }}
+          tag: {{ $.Values.paperclip.image.tag | quote }}
+          pullPolicy: IfNotPresent
+
+        env:
+          - name: PORT
+            value: '3100'
+
+          - name: PAPERCLIP_BIND
+            value: 'lan'
+
+          - name: TRUST_PROXY
+            value: '1'
+
+          - name: PAPERCLIP_HOME
+            value: '/paperclip'
+
+          - name: PAPERCLIP_DEPLOYMENT_MODE
+            value: 'authenticated'
+
+          - name: PAPERCLIP_DEPLOYMENT_EXPOSURE
+            value: 'public'
+
+          - name: PAPERCLIP_AUTH_DISABLE_SIGN_UP
+            value: 'true'
+
+          - name: PAPERCLIP_AUTH_PUBLIC_BASE_URL
+            value: {{ $.Values.paperclip.externalUrl | quote }}
+
+          - name: PAPERCLIP_PUBLIC_URL
+            value: {{ $.Values.paperclip.externalUrl | quote }}
+
+          - name: PAPERCLIP_ALLOWED_HOSTNAMES
+            value: {{ (trimPrefix "https://" $.Values.paperclip.externalUrl) | quote }}
+
+          - name: BETTER_AUTH_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Values.paperclip.runtimeSecret.secretName | quote }}
+                key: 'BETTER_AUTH_SECRET'
+
+          - name: PAPERCLIP_AGENT_JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Values.paperclip.runtimeSecret.secretName | quote }}
+                key: 'PAPERCLIP_AGENT_JWT_SECRET'
+
+          - name: PAPERCLIP_TOOL_ACTION_SIGNING_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ $.Values.paperclip.runtimeSecret.secretName | quote }}
+                key: 'PAPERCLIP_TOOL_ACTION_SIGNING_SECRET'
+
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $.Release.Name }}-paperclip-user'
+                key: 'psqlURI'
+
+        ports:
+          - name: http
+            containerPort: 3100
+
+        probes:
+          liveness:
+            enabled: true
+            type: HTTP
+            port: http
+            path: /api/health
+            spec:
+              initialDelaySeconds: 60
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 3
+          readiness:
+            enabled: true
+            type: HTTP
+            port: http
+            path: /api/health
+            spec:
+              initialDelaySeconds: 30
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 6
+  {{- end }}
+
   {{- if $.Values.tts.enabled }}
   tts:
     # For Deployments, valid values are Recreate (default) and RollingUpdate.
@@ -1226,6 +1322,20 @@ persistence:
       localagi:
         localagi:
           - path: /pool
+  {{- end }}
+
+  {{- if and $.Values.paperclip.enabled (eq $.Values.cluster.name $.Values.paperclip.targetCluster) }}
+  paperclip-data:
+    enabled: true
+    type: persistentVolumeClaim
+    size: {{ $.Values.paperclip.persistence.size | quote }}
+    accessMode: ReadWriteOnce
+    storageClass: {{ $.Values.paperclip.persistence.storageClass | quote }}
+    retain: true
+    advancedMounts:
+      paperclip:
+        paperclip:
+          - path: /paperclip
   {{- end }}
 
   {{- if $.Values.speeches.enabled }}
@@ -1894,6 +2004,20 @@ service:
         appProtocol: 'kubernetes.io/ws'
   {{- end }}
 
+  {{- if and $.Values.paperclip.enabled (eq $.Values.cluster.name $.Values.paperclip.targetCluster) }}
+  paperclip:
+    enabled: true
+    controller: 'paperclip'
+    primary: true
+    ports:
+      http:
+        enabled: true
+        primary: true
+        port: 80
+        targetPort: 3100
+        protocol: TCP
+  {{- end }}
+
   {{- if $.Values.speeches.enabled }}
   {{- range $backendName, $backend := $.Values.speeches.backends }}
   {{- if $backend.enabled }}
@@ -2028,6 +2152,32 @@ service:
 
 
 route:
+  {{- if and $.Values.paperclip.enabled (eq $.Values.cluster.name $.Values.paperclip.targetCluster) }}
+  paperclip:
+    enabled: true
+    kind: HTTPRoute
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+    hostnames:
+      - {{ trimPrefix "https://" $.Values.paperclip.externalUrl | quote }}
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ $.Values.pubgateway.name | quote }}
+        sectionName: {{ $.Values.pubgateway.sectionName | quote }}
+        namespace: {{ $.Values.pubgateway.namespace | quote }}
+    rules:
+      - backendRefs:
+          - kind: Service
+            port: 80
+            identifier: paperclip
+            weight: 1
+        timeouts:
+          backendRequest: 300s
+          request: 300s
+  {{- end }}
+
   {{- if and $.Values.gpustack.enabled $.Values.gpustack.server.enabled $.Values.gpustack.server.gateway.enabled $.Values.gpustack.server.gateway.httproute.enabled  }}
   gpustack:
     # -- Enables or disables the route

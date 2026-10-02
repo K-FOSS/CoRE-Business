@@ -1,0 +1,19 @@
+{{- if and .Values.paperclip.enabled (eq .Values.cluster.name .Values.paperclip.targetCluster) }}
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: {{ .Release.Name }}-paperclip-user
+spec:
+  name: 'Paperclip {{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}'
+  groups:
+    - LDAPService
+  psql:
+    enabled: true
+    createUserDatabase: true
+    hostname: {{ printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region | quote }}
+    crossplane:
+      crossplaneProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.paperclip.database.crossplaneProvider | quote }}
+      terraformProvider: {{ default (printf "psql-%s-%s" .Values.datacenter .Values.region) .Values.paperclip.database.terraformProvider | quote }}
+  writeConnectionSecretToRef:
+    name: {{ printf "%s-paperclip-user" .Release.Name | quote }}
+{{- end }}
