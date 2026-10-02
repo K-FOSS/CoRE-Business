@@ -66,9 +66,10 @@ pdf.mylogin.space HTTPRoute
   for TLS termination before the container and permits the Nextcloud and
   Collabora hosts as WOPI aliases; WOPI and post requests are restricted to
   the Nextcloud host. The container runs with restricted capabilities and
-  `RuntimeDefault` seccomp, so `mount_jail_tree` is disabled to avoid the
-  privileged mount-namespace operation that otherwise prevents CODE startup.
-  Its Service is a `ClusterIP` with ExternalDNS
+  `RuntimeDefault` seccomp. Its configuration disables Collabora capability
+  handling and jail bind mounts, and puts child-root and cache data under the
+  writable `/tmp` volume to support that restricted runtime. Its Service is
+  a `ClusterIP` with ExternalDNS
   annotations for `collabora.mylogin.space`.
 - The PDF workload uses the `frooodle/s-pdf` image and a mutable `latest` tag.
 
