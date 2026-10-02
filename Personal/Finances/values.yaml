@@ -55,3 +55,41 @@ firefly:
 httpbin:
   enabled: true
   imageTag: '2.25.0'
+
+# WYGIWYH is an optional companion finance tracker. Enable only when its
+# PostgreSQL User claim and persistent attachment storage have been reviewed.
+wygiwyh:
+  enabled: false
+  hostname: 'wygiwyh.mylogin.space'
+  imageTag: '0.22.1'
+  secretKeySecret: 'wygiwyh-secret-key'
+  database:
+    userSecret: 'wygiwyh-database'
+    databaseKey: 'database'
+    passwordKey: 'password'
+    usernameKey: 'username'
+    crossplane:
+      crossplaneProvider: ''
+      terraformProvider: ''
+  resources:
+    requests:
+      cpu: '50m'
+      memory: '256Mi'
+    limits:
+      cpu: '1000m'
+      memory: '1Gi'
+
+# This Next.js dashboard reads from Firefly III and stores its local password
+# and connection settings on its data volume.
+financialDashboard:
+  enabled: false
+  hostname: 'dashboard.mylogin.space'
+  imageTag: 'v0.1.1'
+  sessionSecretSecret: 'financial-dashboard-session-secret'
+  resources:
+    requests:
+      cpu: '50m'
+      memory: '128Mi'
+    limits:
+      cpu: '1000m'
+      memory: '512Mi'

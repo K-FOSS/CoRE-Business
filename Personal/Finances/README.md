@@ -7,10 +7,10 @@ optimization—rather than define a single mandatory application. Firefly III is
 the starting point and current reference implementation; additional apps can
 be added when they provide a distinct capability.
 
-The chart currently prepares Firefly III only. Wealthfolio and a Bloomberg-like
-market-research workstation are desired future components; the companion
-applications below are not deployed yet and still require separate ownership,
-rendering, persistence, access, and data-provider design.
+The chart deploys Firefly III by default and includes opt-in WYGIWYH support.
+Wealthfolio and a Bloomberg-like market-research workstation remain desired
+future components; they still require separate ownership, rendering,
+persistence, access, and data-provider design.
 
 This prepared chart deploys [Firefly III](https://www.firefly-iii.org/), a
 self-hosted personal finance manager, with the
@@ -30,6 +30,63 @@ it can result in a new Firefly user rather than access to the existing user's
 data. This uses Firefly's
 [remote-user authentication](https://github.com/firefly-iii/firefly-iii/blob/main/config/auth.php)
 and Authentik's [Envoy forward-auth integration](https://docs.goauthentik.io/add-secure-apps/providers/proxy/server_envoy/).
+
+## Authentik header diagnostic
+
+The chart includes an opt-in [go-httpbin](https://github.com/mccutchen/go-httpbin)
+diagnostic workload. Set `httpbin.enabled: true` in the owning ApplicationSet
+values to expose the Authentik-protected
+`https://firefly.mylogin.space/auth-debug/headers` endpoint. Its response
+shows all headers received by the backend, including `X-authentik-email`; it
+does not write header values to persistent storage. Keep it disabled after
+debugging because headers can contain session cookies and other sensitive data.
+
+## WYGIWYH companion
+
+[WYGIWYH](https://github.com/eitchtee/WYGIWYH) is an opinionated, multi-currency
+finance tracker with transaction rules, an automation API, and a dollar-cost
+averaging tracker. It overlaps Firefly III as a transaction tracker, so enable
+it only if its no-budget workflow is useful and decide which app owns each
+record before entering the same transactions in both.
+
+Set `wygiwyh.enabled: true` in the owning ApplicationSet values to render its
+workload at `wygiwyh.mylogin.space`. It uses the shared PostgreSQL service via a
+separate `mylogin.space/v1alpha1` `User` claim, a generated Django `SECRET_KEY`,
+and a retained 5Gi Longhorn attachment PVC. The HTTPRoute is private and
+protected by Authentik forward authentication. WYGIWYH still uses its own local
+accounts after the Authentik gate; create its first admin account in the
+container with `python manage.py createsuperuser`. OIDC login is supported by
+upstream but is not configured here. Its local account and Authentik identity
+must therefore be maintained separately.
+
+The owner must inject
+`wygiwyh.database.crossplane.crossplaneProvider` and
+`wygiwyh.database.crossplane.terraformProvider`, in addition to the common
+cluster, region, datacenter, Gateway and PostgreSQL inputs. Back up the
+PostgreSQL database and the `core-business-finances-wygiwyh-media` PVC together.
+The generated signing key and media PVC are retained after chart removal;
+review the resulting orphaned resources before deleting either one.
+
+## Firefly Personal Financial Dashboard
+
+[giorobert88/financial-dashboard](https://github.com/giorobert88/financial-dashboard)
+is a Next.js dashboard for Firefly III with safe-to-spend pacing, account
+views, upcoming payments, and transaction categorization. It reads and updates
+Firefly III through its API; payment preferences are stored in Firefly account
+notes. Enable it with `financialDashboard.enabled: true` in the owning
+ApplicationSet values. It uses the pinned upstream image `v0.1.1`, a generated
+session secret, and a retained 1Gi Longhorn PVC for its dashboard password and
+connection settings. Back up this PVC with Firefly III and protect it as
+financial data; the Firefly Personal Access Token is entered in the dashboard's
+API settings.
+
+The route defaults to `dashboard.mylogin.space`, is private, and is protected
+by its own Authentik forward-auth application. The dashboard also requires its
+own local password after the Authentik gate. On first launch, create that
+password in the web UI, then configure a dedicated Firefly III Personal Access
+Token under Settings > API Connection. The token can categorize transactions
+and update account notes, so treat it as a write credential. Keep this app's
+route private and do not publish the dashboard hostname through Forecastle.
 
 ## Candidate companion applications
 
@@ -55,16 +112,18 @@ security story is selected.
 
 1. Keep Firefly III as the transaction ledger and establish import, backup, and
    reconciliation workflows.
-2. Add Wallos if recurring bills and subscriptions are the immediate gap.
-3. Add Wealthfolio for investment holdings, portfolio performance, net worth,
+2. Add the Financial Dashboard if mobile-friendly spending pacing and account
+   views are the immediate gap; it remains a Firefly III client.
+3. Add Wallos if recurring bills and subscriptions are the immediate gap.
+4. Add Wealthfolio for investment holdings, portfolio performance, net worth,
    and longer-term planning.
-4. Evaluate OpenBB as the research workstation for market dashboards, company
+5. Evaluate OpenBB as the research workstation for market dashboards, company
    and macro research, news/data exploration, and watchlists. Treat it as a
    market-data and research layer, not as the household transaction ledger.
-5. Evaluate Actual Budget if the main gap is forward-looking, envelope-style
+6. Evaluate Actual Budget if the main gap is forward-looking, envelope-style
    cash allocation. Decide whether it complements Firefly III or becomes the
    budgeting source of truth before importing the same accounts into both.
-6. Add Ghostfolio only if it provides a clear capability that Wealthfolio does
+7. Add Ghostfolio only if it provides a clear capability that Wealthfolio does
    not. Consider [QuantConnect LEAN](https://www.lean.io/) ([documentation](https://www.quantconnect.com/docs/v2/)) later for research, backtesting, or algorithmic trading; it is an engine, not a Bloomberg-style terminal.
 
 The desired high-level split is:
@@ -72,15 +131,16 @@ The desired high-level split is:
 | System | Primary responsibility |
 | --- | --- |
 | Firefly III | Household transaction ledger, categorization, recurring transactions, and detailed cash-flow history |
+| Financial Dashboard | Firefly III visualization and transaction categorization client |
 | Wealthfolio | Investment holdings, performance, net worth, contributions, and retirement/FIRE planning |
 | OpenBB | Market data, watchlists, research dashboards, macro/company analysis, and news/data workflows |
 
 Bank aggregators and investment market-data providers may transmit sensitive
 financial information to third parties. Treat credentials, provider terms,
 regional coverage, rate limits, exports, and restore procedures as acceptance
-criteria for any future component. Do not add a companion application to this
-chart until its deployment owner, persistence, access policy, secret handling,
-and data ownership are documented.
+criteria for any future component. Do not enable another companion application
+until its deployment owner, persistence, access policy, secret handling, and
+data ownership are documented.
 
 ## Access and identity
 
@@ -119,15 +179,17 @@ The database host defaults to the local-scoped PostgreSQL endpoint
 ApplicationSet must inject those site values and the matching PostgreSQL
 provider references.
 
-There is currently no active Firefly owner in the
+There is currently no active finance-chart owner in the
 [CoRE-Backplane Apps/Business tree](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business),
 so this is prepared desired state and will not deploy until an ApplicationSet
 explicitly references `Personal/Finances`. Its future owner must inject
 `cluster.name`, `datacenter`, `region`, and both Firefly PostgreSQL provider
-references, select
-the target namespace and renderer, and confirm the `main-gw` /
-`https-myloginspace` listener. The generated database role and name are
-retained by the Backplane database resources.
+references. If WYGIWYH is enabled, it must inject both WYGIWYH PostgreSQL
+provider references as well. The owner must select the target namespace and
+renderer and confirm the `main-gw` / `https-myloginspace` listener. The
+generated database roles and names are retained by the Backplane database
+resources. The dashboard has no database-provider inputs, but its dedicated
+Authentik application and External Secrets generator must be available.
 
 The chart includes a per-minute Firefly scheduler CronJob. Its generated name
 is capped at Kubernetes' 52-character CronJob limit. Review its inherited
@@ -142,6 +204,7 @@ helm lint Personal/Finances \
   --set firefly.database.crossplane.crossplaneProvider=psql-home1-yvr \
   --set firefly.database.crossplane.terraformProvider=psql-home1-yvr
 helm template core-business-firefly Personal/Finances --namespace core-prod \
+  --api-versions gateway.networking.k8s.io/v1/HTTPRoute \
   --set cluster.name=core-home1-talos-prod \
   --set datacenter=yvr \
   --set region=yvr \
@@ -153,6 +216,8 @@ helm template core-business-firefly Personal/Finances --namespace core-prod \
 Review the upstream [Firefly III source repository](https://github.com/firefly-iii/firefly-iii),
 [installation documentation](https://docs.firefly-iii.org/references/faq/install/),
 [Kubernetes support repository](https://github.com/firefly-iii/kubernetes),
+[WYGIWYH source and deployment documentation](https://github.com/eitchtee/WYGIWYH),
+[Financial Dashboard source and deployment documentation](https://github.com/giorobert88/financial-dashboard),
 [Authentik proxy-provider documentation](https://docs.goauthentik.io/add-secure-apps/providers/proxy/),
 [Envoy Gateway external-authorization documentation](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/),
 [Crossplane Terraform provider documentation](https://marketplace.upbound.io/providers/upbound/provider-terraform),

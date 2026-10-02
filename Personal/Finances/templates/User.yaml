@@ -12,3 +12,20 @@ spec:
       terraformProvider: '{{ .Values.firefly.database.crossplane.terraformProvider }}'
   writeConnectionSecretToRef:
     name: '{{ .Values.firefly.database.userSecret }}'
+{{- if .Values.wygiwyh.enabled }}
+---
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: 'wygiwyh-database-user'
+spec:
+  name: 'WYGIWYH database'
+  psql:
+    enabled: true
+    createUserDatabase: true
+    crossplane:
+      crossplaneProvider: '{{ .Values.wygiwyh.database.crossplane.crossplaneProvider }}'
+      terraformProvider: '{{ .Values.wygiwyh.database.crossplane.terraformProvider }}'
+  writeConnectionSecretToRef:
+    name: '{{ .Values.wygiwyh.database.userSecret }}'
+{{- end }}

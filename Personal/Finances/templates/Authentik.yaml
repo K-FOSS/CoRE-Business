@@ -25,7 +25,18 @@ spec:
     http:
       headersToBackend:
         - 'set-cookie'
-        - 'x-authentik-*'
+        - 'x-authentik-username'
+        - 'x-authentik-groups'
+        - 'x-authentik-entitlements'
+        - 'x-authentik-email'
+        - 'x-authentik-name'
+        - 'x-authentik-uid'
+        - 'x-authentik-jwt'
+        - 'x-authentik-meta-jwks'
+        - 'x-authentik-meta-outpost'
+        - 'x-authentik-meta-provider'
+        - 'x-authentik-meta-app'
+        - 'x-authentik-meta-version'
         - 'authorization'
         - 'Content-Type'
         - 'Location'
@@ -63,7 +74,18 @@ spec:
     http:
       headersToBackend:
         - 'set-cookie'
-        - 'x-authentik-*'
+        - 'x-authentik-username'
+        - 'x-authentik-groups'
+        - 'x-authentik-entitlements'
+        - 'x-authentik-email'
+        - 'x-authentik-name'
+        - 'x-authentik-uid'
+        - 'x-authentik-jwt'
+        - 'x-authentik-meta-jwks'
+        - 'x-authentik-meta-outpost'
+        - 'x-authentik-meta-provider'
+        - 'x-authentik-meta-app'
+        - 'x-authentik-meta-version'
         - 'authorization'
         - 'Content-Type'
         - 'Location'
@@ -72,6 +94,72 @@ spec:
           type: 'ConsistentHash'
           consistentHash:
             type: 'SourceIP'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ .Values.authentik.outpost.namespace }}'
+          name: '{{ .Values.authentik.outpost.name }}'
+          port: {{ .Values.authentik.outpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+{{- end }}
+{{- if .Values.wygiwyh.enabled }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-wygiwyh-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-wygiwyh'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-email'
+        - 'x-authentik-username'
+        - 'Content-Type'
+        - 'Location'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ .Values.authentik.outpost.namespace }}'
+          name: '{{ .Values.authentik.outpost.name }}'
+          port: {{ .Values.authentik.outpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+{{- end }}
+{{- if .Values.financialDashboard.enabled }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-financial-dashboard-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ include "bjw-s.common.lib.chart.names.fullname" . }}-financial-dashboard'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'Content-Type'
+        - 'Location'
       backendRefs:
         - group: ''
           kind: 'Service'
@@ -114,6 +202,40 @@ spec:
         protocol_provider = authentik_provider_proxy.app.id
       }
 
+      {{- if .Values.wygiwyh.enabled }}
+      resource "authentik_provider_proxy" "wygiwyh" {
+        name               = "{{ include "bjw-s.common.lib.chart.names.fullname" . }}-wygiwyh"
+        mode               = "forward_single"
+        external_host      = "https://{{ .Values.wygiwyh.hostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "wygiwyh" {
+        name              = "WYGIWYH"
+        slug              = "{{ include "bjw-s.common.lib.chart.names.fullname" . }}-wygiwyh"
+        group             = "Personal"
+        protocol_provider = authentik_provider_proxy.wygiwyh.id
+      }
+      {{- end }}
+
+      {{- if .Values.financialDashboard.enabled }}
+      resource "authentik_provider_proxy" "financial_dashboard" {
+        name               = "{{ include "bjw-s.common.lib.chart.names.fullname" . }}-financial-dashboard"
+        mode               = "forward_single"
+        external_host      = "https://{{ .Values.financialDashboard.hostname }}"
+        authorization_flow = data.authentik_flow.authorization.id
+        invalidation_flow  = data.authentik_flow.invalidation.id
+      }
+
+      resource "authentik_application" "financial_dashboard" {
+        name              = "Financial Dashboard"
+        slug              = "{{ include "bjw-s.common.lib.chart.names.fullname" . }}-financial-dashboard"
+        group             = "Personal"
+        protocol_provider = authentik_provider_proxy.financial_dashboard.id
+      }
+      {{- end }}
+
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -127,6 +249,12 @@ spec:
       sectionName: '{{ .Values.gateway.sectionName }}'
   hostnames:
     - '{{ .Values.firefly.hostname }}'
+    {{- if .Values.wygiwyh.enabled }}
+    - '{{ .Values.wygiwyh.hostname }}'
+    {{- end }}
+    {{- if .Values.financialDashboard.enabled }}
+    - '{{ .Values.financialDashboard.hostname }}'
+    {{- end }}
   rules:
     - matches:
         - path:
