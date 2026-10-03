@@ -83,7 +83,7 @@ collabora-online:
         - host: "https://collabora.mylogin.space:443"
         - host: "https://office.mylogin.space:443"
 
-    extra_params: --o:ssl.enable=true --o:ssl.termination=false --o:ssl.cert_file_path=/etc/coolwsd/tls/tls.crt --o:ssl.key_file_path=/etc/coolwsd/tls/tls.key --o:net.proto=IPv4 --o:security.capabilities=false --o:mount_jail_tree=false --o:child_root_path=/tmp/coolwsd-child-roots --o:cache_files.path=/tmp/coolwsd-cache --o:net.post_allow.host[0]=office\.mylogin\.space --o:storage.wopi.host[0]=office\.mylogin\.space
+    extra_params: --o:ssl.enable=true --o:ssl.termination=false --o:ssl.cert_file_path=/etc/coolwsd/tls/tls.crt --o:ssl.key_file_path=/etc/coolwsd/tls/tls.key --o:ssl.ca_file_path=/etc/ssl/certs/ca-certificates.crt --o:net.proto=IPv4 --o:security.capabilities=false --o:mount_jail_tree=false --o:child_root_path=/tmp/coolwsd-child-roots --o:cache_files.path=/tmp/coolwsd-cache --o:net.post_allow.host[0]=office\.mylogin\.space --o:storage.wopi.host[0]=office\.mylogin\.space
 
     # External hostname:port of the server running coolwsd.
     # If empty, it's derived from the request (please set it if this doesn't work).

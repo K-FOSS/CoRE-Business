@@ -67,6 +67,8 @@ pdf.mylogin.space HTTPRoute
   `myloginspace-default-certificates` Secret mounted read-only into the pod;
   startup, readiness and liveness probes use HTTPS as well. The certificate
   must cover `collabora.mylogin.space` and be present in the target namespace.
+  Collabora's TLS CA path points to the image's system bundle at
+  `/etc/ssl/certs/ca-certificates.crt`.
   Collabora permits the Nextcloud and
   Collabora hosts as WOPI aliases; WOPI and post requests are restricted to
   the Nextcloud host. The container runs with restricted capabilities and
