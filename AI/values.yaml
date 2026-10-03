@@ -347,7 +347,7 @@ paperclip:
   targetCluster: 'core-home1-talos-prod'
   image:
     repository: 'ghcr.io/paperclipai/paperclip'
-    tag: 'v2026.1001.0'
+    tag: '2026.1001.0'
   externalUrl: 'https://paperclip.core-home1-talos-prod.home1.yvr.mylogin.space'
   database:
     crossplaneProvider: ''
