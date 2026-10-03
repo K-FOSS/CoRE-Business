@@ -175,7 +175,7 @@ route:
             weight: 1
         timeouts:
           backendRequest: '120s'
-          request: '120s'
+          request: '0s'
 {{- end -}}
 
 {{- $_ := mergeOverwrite .Values (include "vaultwarden.hardcodedValues" . | fromYaml) -}}
