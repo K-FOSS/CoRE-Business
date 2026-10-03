@@ -8,6 +8,8 @@ metadata:
 spec:
   name: 'Vaultwarden'
 
+  email: {{ .Values.vaultwarden.smtp.fromAddress | quote }}
+
   username: {{ .Values.vaultwarden.user.username | quote }}
 
   psql:

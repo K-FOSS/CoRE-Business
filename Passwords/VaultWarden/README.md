@@ -55,7 +55,9 @@ Public sign-up, invitations, organization creation and the public Gateway API
 route remain enabled. SMTP uses `smtp-out.mylogin.space:587` with STARTTLS and
 `passwords@mail.mylogin.space` as its sender address. The SMTP username and
 password come from the Vaultwarden User connection Secret, which is also used
-for PostgreSQL authentication. The chart contains no credential defaults.
+for PostgreSQL authentication. The User claim's email field uses the same
+`vaultwarden.smtp.fromAddress` value. The chart contains no credential
+defaults.
 
 ## Validation
 
