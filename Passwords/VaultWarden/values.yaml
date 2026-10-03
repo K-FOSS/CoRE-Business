@@ -53,7 +53,6 @@ vaultwarden:
     server: 'smtp-out.mylogin.space'
     port: '587'
     tls: 'starttls'
-    secretName: 'business-vaultwarden-mail-prod'
 
   psql:
     # The owning ApplicationSet must inject the target's site-local PGPool DNS

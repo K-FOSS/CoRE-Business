@@ -53,13 +53,13 @@ controllers:
           SMTP_USERNAME:
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
-                key: 'Username'
+                name: {{ .Values.vaultwarden.user.connectionSecretName | quote }}
+                key: 'username'
           SMTP_PASSWORD:
             valueFrom:
               secretKeyRef:
-                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
-                key: 'Password'
+                name: {{ .Values.vaultwarden.user.connectionSecretName | quote }}
+                key: 'password'
           DATABASE_USERNAME:
             valueFrom:
               secretKeyRef:
