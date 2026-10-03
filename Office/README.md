@@ -41,7 +41,8 @@ pdf.mylogin.space HTTPRoute
 - Nextcloud uses the FPM image with nginx enabled, a custom worker ReplicaSet,
   a 25 Gi `ReadWriteOnce` PVC on `ssd-storage`, and Velero backup annotations.
   The worker has required pod affinity to the main Nextcloud app pod, so the
-  scheduler places it on the same node.
+  scheduler places it on the same node. Its component label is specific to
+  Nextcloud so cluster-wide worker anti-affinity policies do not block it.
 - The external PostgreSQL endpoint and `office-nextcloud-creds` Secret provide
   the application database path. The bundled PostgreSQL and MariaDB charts are
   disabled. The values currently show both `internalDatabase.enabled` and

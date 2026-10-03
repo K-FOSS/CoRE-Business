@@ -2,10 +2,10 @@
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
-  name: nextcloud-workers
+  name: nextcloud-background-workers
   labels:
     app.kubernetes.io/name: nextcloud
-    app.kubernetes.io/component: worker
+    app.kubernetes.io/component: nextcloud-worker
 
 spec:
   # modify replicas according to your case
@@ -13,14 +13,14 @@ spec:
 
   selector:
     matchLabels:
-      app.kubernetes.io/component: worker
+      app.kubernetes.io/component: nextcloud-worker
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/name: nextcloud
 
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: worker
+        app.kubernetes.io/component: nextcloud-worker
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/name: nextcloud
 
