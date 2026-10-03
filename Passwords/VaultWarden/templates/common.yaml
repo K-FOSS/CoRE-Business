@@ -127,7 +127,13 @@ service:
 persistence:
   data:
     enabled: true
-    type: emptyDir
+    type: persistentVolumeClaim
+    storageClass: {{ .Values.vaultwarden.persistence.storageClass | quote }}
+    accessMode: 'ReadWriteOnce'
+    size: {{ .Values.vaultwarden.persistence.size | quote }}
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
     advancedMounts:
       vaultwarden:
         vaultwarden:

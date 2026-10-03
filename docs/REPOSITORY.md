@@ -160,6 +160,12 @@ rendering on the configured hub cluster. A hub-only External Secrets
 store, and spoke-only `ExternalSecret` resources recreate the workload Secret
 without duplicating the User claim or database role.
 
+Vaultwarden's `/data` directory is stored on a retained 1 GiB Longhorn
+`ReadWriteOnce` PVC, preserving its local RSA private key and mobile client
+sessions across pod replacement. The claim survives Argo CD pruning and
+Application deletion; its data needs deliberate recovery or deletion during
+decommissioning. No recurring Longhorn backup job is selected for this claim.
+
 The active AI chart provisions OpenWebUI's database identity on the site-local
 `psql-<datacenter>-<region>` providers and connects it to the corresponding
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space` endpoint. OpenWebUI

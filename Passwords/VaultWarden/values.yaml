@@ -35,6 +35,10 @@ vaultwarden:
       cpu: '800m'
       memory: '512Mi'
 
+  persistence:
+    storageClass: 'longhorn'
+    size: '1Gi'
+
   config:
     allowSignups: true
     verifySignup: false

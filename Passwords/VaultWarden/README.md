@@ -40,12 +40,16 @@ ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/
 Storage prerequisites remain owned by the [storage base
 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
 
-The database role and database use orphaning provider behavior, so removing
-the claim or chart does not by itself remove PostgreSQL data. The `/data`
-mount remains an `emptyDir`; PostgreSQL holds vault records, but local RSA
-keys, attachments, sends and icon cache do not survive pod replacement. Treat
-that as the current data-durability policy until persistent storage is added
-with a reviewed backup and recovery plan.
+The database role and database use orphaning provider behavior, so removing the
+claim or chart does not by itself remove PostgreSQL data. Vaultwarden's `/data`
+mount uses a 1 GiB Longhorn `ReadWriteOnce` PVC, which preserves its RSA private
+key across pod replacement and lets mobile clients continue using their
+existing sessions. Attachments, sends and icon cache also persist there. The
+PVC is retained from Argo CD pruning and Application deletion; operators must
+deliberately recover or delete it when decommissioning the vault. The storage
+ApplicationSet configures Longhorn's site-local default backup target, but
+does not select a recurring backup job for this PVC, so the volume currently
+has no chart-configured backup schedule.
 
 Public sign-up, invitations, organization creation and the public Gateway API
 route remain enabled. SMTP credentials and User connection credentials must
