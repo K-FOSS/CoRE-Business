@@ -84,7 +84,7 @@ wygiwyh:
 financialDashboard:
   enabled: true
   hostname: 'ff-dash.mylogin.space'
-  imageTag: 'v0.1.1'
+  imageTag: '0.2.0'
   sessionSecretSecret: 'financial-dashboard-session-secret'
   resources:
     requests:
