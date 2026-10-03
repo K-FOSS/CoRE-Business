@@ -62,8 +62,12 @@ pdf.mylogin.space HTTPRoute
 - Gateway API exposes Nextcloud, while ExternalDNS publishes the Collabora
   ClusterIP Service. An Envoy Gateway BackendTrafficPolicy adjusts the
   Nextcloud backend behavior.
-- Collabora uses chart `1.3.1` and CODE image `26.04.3.1.1`. It is configured
-  for TLS termination before the container and permits the Nextcloud and
+- Collabora uses chart `1.3.1` and CODE image `26.04.3.1.1`. The Collabora
+  service serves HTTPS directly on port 9980 using the site-local
+  `myloginspace-default-certificates` Secret mounted read-only into the pod;
+  startup, readiness and liveness probes use HTTPS as well. The certificate
+  must cover `collabora.mylogin.space` and be present in the target namespace.
+  Collabora permits the Nextcloud and
   Collabora hosts as WOPI aliases; WOPI and post requests are restricted to
   the Nextcloud host. The container runs with restricted capabilities and
   `RuntimeDefault` seccomp. Its configuration disables Collabora capability
@@ -81,6 +85,8 @@ pdf.mylogin.space HTTPRoute
 - ExternalDNS configured to publish `collabora.mylogin.space` to the internal
   ClusterIP, with client routing that can reach the cluster Service CIDR.
 - External Secrets with the `mainvault-core` ClusterSecretStore.
+- The site-local `myloginspace-default-certificates` TLS Secret in each target
+  namespace, with `tls.crt` and `tls.key` entries for `collabora.mylogin.space`.
 - The CoRE Crossplane `User` API and its providers.
 - The Crossplane Terraform provider. This chart creates the credential-free
   `office-nextcloud-s3-session` ProviderConfig, with
@@ -147,7 +153,8 @@ private DNS are suitable only when users' networks can route to the cluster
 Service CIDR (for example through a VPN). A ClusterIP reachable only by
 Nextcloud is insufficient because the browser also opens the Collabora editor
 and WebSocket connection. ExternalDNS only publishes the name; it does not
-provide routing, proxying, or TLS termination.
+provide routing or proxying. TLS terminates in Collabora using the mounted
+site-local certificate.
 
 ## Upstream projects
 
