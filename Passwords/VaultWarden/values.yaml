@@ -49,6 +49,10 @@ vaultwarden:
     orgCreationUsers: 'all'
 
   smtp:
+    fromAddress: 'passwords@mail.mylogin.space'
+    server: 'smtp-out.mylogin.space'
+    port: '587'
+    tls: 'starttls'
     secretName: 'business-vaultwarden-mail-prod'
 
   psql:

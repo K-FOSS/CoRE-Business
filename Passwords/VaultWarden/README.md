@@ -52,8 +52,11 @@ does not select a recurring backup job for this PVC, so the volume currently
 has no chart-configured backup schedule.
 
 Public sign-up, invitations, organization creation and the public Gateway API
-route remain enabled. SMTP credentials and User connection credentials must
-come from existing Secrets; the chart contains no credential defaults.
+route remain enabled. SMTP uses `smtp-out.mylogin.space:587` with STARTTLS and
+`passwords@mail.mylogin.space` as its sender address. The SMTP username and
+password still come from the existing `business-vaultwarden-mail-prod` Secret;
+User connection credentials also come from existing Secrets. The chart
+contains no credential defaults.
 
 ## Validation
 

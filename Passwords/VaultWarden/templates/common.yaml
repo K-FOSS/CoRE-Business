@@ -45,23 +45,11 @@ controllers:
           ENABLE_WEBSOCKET: {{ .Values.vaultwarden.config.enableWebsockets | quote }}
           ORG_CREATION_USERS: {{ .Values.vaultwarden.config.orgCreationUsers | quote }}
           SMTP_FROM_NAME: 'Vaultwarden'
-          SMTP_SECURITY: 'off'
+          SMTP_SECURITY: {{ .Values.vaultwarden.smtp.tls | quote }}
           SMTP_TIMEOUT: '120'
-          SMTP_HOST:
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
-                key: 'Hostname'
-          SMTP_FROM:
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
-                key: 'Username'
-          SMTP_PORT:
-            valueFrom:
-              secretKeyRef:
-                name: {{ .Values.vaultwarden.smtp.secretName | quote }}
-                key: 'Port'
+          SMTP_HOST: {{ .Values.vaultwarden.smtp.server | quote }}
+          SMTP_FROM: {{ .Values.vaultwarden.smtp.fromAddress | quote }}
+          SMTP_PORT: {{ .Values.vaultwarden.smtp.port | quote }}
           SMTP_USERNAME:
             valueFrom:
               secretKeyRef:
