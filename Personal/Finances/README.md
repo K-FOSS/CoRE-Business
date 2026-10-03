@@ -22,7 +22,9 @@ Authentik forward authentication.
 Authentication is intended to be seamless: Envoy sends the request to the
 site Authentik outpost, the outpost returns the authenticated user's email,
 and Firefly's `remote_user_guard` uses that email to load the matching local
-Firefly user. The `/outpost.goauthentik.io/` callback path is routed directly
+Firefly user. The guard reads `X-Authentik-Email` as its identity header and
+`x-authentik-email` as its email field, matching the live `logged-user` YVR
+deployment. The `/outpost.goauthentik.io/` callback path is routed directly
 to the outpost so login redirects and logout work on the Firefly hostname.
 Firefly's native password login is intentionally disabled by this configuration.
 The Authentik email must remain stable after a Firefly user is created; changing
