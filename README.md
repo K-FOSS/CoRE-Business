@@ -1,5 +1,6 @@
 # CoRE Business
 
+
 CoRE Business contains the application charts and manifests for the business
 and personal-service layer of the CoRE platform. It includes AI services,
 automation, communications, office and collaboration tools, mail, ERP,
