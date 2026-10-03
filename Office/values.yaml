@@ -1018,7 +1018,7 @@ nextcloud:
       autoconfig.php: true
 
       # SMTP default configuration
-      smtp.config.php: false
+      smtp.config.php: true
 
     # Extra config files created in /var/www/html/config/
     # ref: https://docs.nextcloud.com/server/15/admin_manual/configuration_server/config_sample_php_parameters.html#multiple-config-php-file
@@ -1174,6 +1174,39 @@ nextcloud:
           secretKeyRef:
             name: office-nextcloud-s3-creds
             key: SecretAccessKey
+
+      # Nextcloud SMTP delivery uses the existing Office service credentials.
+      # The chart's mail.enabled helper expects the SMTP host in the credential
+      # Secret, which only contains username/password, so provide the host here.
+      - name: MAIL_FROM_ADDRESS
+        value: 'nextcloud-core-prod'
+
+      - name: MAIL_DOMAIN
+        value: 'mail.mylogin.space'
+
+      - name: SMTP_HOST
+        value: 'mail.mylogin.space'
+
+      - name: SMTP_PORT
+        value: '465'
+
+      - name: SMTP_SECURE
+        value: 'ssl'
+
+      - name: SMTP_AUTHTYPE
+        value: 'LOGIN'
+
+      - name: SMTP_NAME
+        valueFrom:
+          secretKeyRef:
+            name: office-nextcloud-creds
+            key: username
+
+      - name: SMTP_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: office-nextcloud-creds
+            key: password
 
 
     # Extra mounts for the pods. Example shown is for connecting a legacy NFS volume
