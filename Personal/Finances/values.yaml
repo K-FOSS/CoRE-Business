@@ -82,8 +82,8 @@ wygiwyh:
 # This Next.js dashboard reads from Firefly III and stores its local password
 # and connection settings on its data volume.
 financialDashboard:
-  enabled: false
-  hostname: 'dashboard.mylogin.space'
+  enabled: true
+  hostname: 'ff-dash.mylogin.space'
   imageTag: 'v0.1.1'
   sessionSecretSecret: 'financial-dashboard-session-secret'
   resources:
