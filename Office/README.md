@@ -11,9 +11,9 @@ rendering Helm templates alone does not reproduce the complete Argo CD output.
 ## Deployment ownership
 
 [The NextCloud ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml)
-selects YVR bare-metal infrastructure clusters for the CoRE tenant. It deploys
-this path to `core-prod`, enables namespace creation, preserves resources when
-an ApplicationSet entry disappears, and injects the following through Lovely:
+currently generates the Home1 YVR production Office Application in `core-prod`.
+It enables namespace creation, preserves resources when an ApplicationSet
+entry disappears, and injects the following through Lovely:
 
 - Production environment, cluster name/domain, datacentre and region.
 - The current `hub` role.
@@ -38,11 +38,25 @@ pdf.mylogin.space HTTPRoute
   -> Stirling-PDF workload
 ```
 
-- Nextcloud uses the FPM image with nginx enabled, a custom worker ReplicaSet,
-  a 25 Gi `ReadWriteOnce` PVC on `ssd-storage`, and Velero backup annotations.
-  The worker has required pod affinity to the main Nextcloud app pod, so the
-  scheduler places it on the same node. Its component label is specific to
-  Nextcloud so cluster-wide worker anti-affinity policies do not block it.
+- Nextcloud uses the FPM image with nginx enabled, a task-processing worker
+  Deployment, and a separate five-minute CronJob for general `cron.php`
+  background jobs. The web, worker, and CronJob use the same pinned Nextcloud
+  35.0.1 Alpine FPM image digest. The worker and CronJob run as Alpine
+  `www-data` (UID 82), use the chart's Nextcloud environment and config/PVC
+  mounts, and have required pod affinity to the web pod so the `ReadWriteOnce`
+  data PVC stays on the same node. The old standalone ReplicaSet has a different
+  component selector; normal Argo CD pruning removes it during the kind change,
+  and it cannot adopt the new Deployment's pods.
+- The CronJob runs `php -f /var/www/html/cron.php` with
+  `concurrencyPolicy: Forbid`, `OnFailure` pod restarts, two retries and bounded
+  history. It has no short active deadline, so a legitimate longer cron run is
+  not killed by Kubernetes. Nextcloud remains in Cron background-job mode.
+- The persistent task worker runs `occ taskprocessing:worker` in a restart
+  loop with a 60-second normal exit interval. This command is supported by the
+  pinned Nextcloud 35 image (the command changed in Nextcloud 32.0.7). These
+  command containers bypass the image entrypoint and therefore rely on the
+  already initialized installation and configuration on the shared PVC and
+  generated ConfigMaps.
 - The external PostgreSQL endpoint and `office-nextcloud-creds` Secret provide
   the application database path. The bundled PostgreSQL and MariaDB charts are
   disabled. The values currently show both `internalDatabase.enabled` and
@@ -112,9 +126,9 @@ pdf.mylogin.space HTTPRoute
   on that interface.
 - Keep the rendered WOPI/post-allow restrictions aligned with the Nextcloud
   hostname whenever hostnames or gateway topology change.
-- The Nextcloud image uses the mutable `fpm-alpine` tag with `Always` pull
-  policy, and the PDF image uses `latest`. A restart can therefore change
-  software without a repository commit.
+- The Nextcloud image is pinned to the `35.0.1-fpm-alpine` linux/amd64 digest.
+  The PDF image still uses the mutable `latest` tag. A PDF workload restart can
+  therefore change software without a repository commit.
 - Nextcloud persistence is `ReadWriteOnce`. Confirm scheduling and replacement
   behavior before changing replicas, zones, storage classes or claim identity.
 - Database, object storage and PVC backups have different consistency needs.
@@ -164,6 +178,8 @@ site-local certificate.
 ## Upstream projects
 
 - [Nextcloud website](https://nextcloud.com/), [administrator documentation](https://docs.nextcloud.com/server/latest/admin_manual/) and [Helm chart](https://github.com/nextcloud/helm/tree/main/charts/nextcloud)
+- [Nextcloud background-job documentation](https://docs.nextcloud.com/server/stable/admin_manual/configuration_server/background_jobs_configuration.html) and [AI task-processing worker documentation](https://docs.nextcloud.com/server/stable/admin_manual/ai/overview.html)
+- [Pinned Nextcloud 35 Alpine FPM image](https://hub.docker.com/layers/library/nextcloud/35.0.1-fpm-alpine/images/sha256-f77b02a52251e408a4fbc232f27817eaedeb4acbf3c3dbd0daf72cf1e1c88601)
 - [MinIO website](https://min.io/), [documentation](https://min.io/docs/minio/kubernetes/upstream/) and [`aminueza/minio` Terraform provider](https://registry.terraform.io/providers/aminueza/minio/3.40.1/docs)
 - [Collabora Online website](https://www.collaboraonline.com/), [SDK documentation](https://sdk.collaboraonline.com/docs/) and [Helm chart](https://github.com/CollaboraOnline/online/tree/main/kubernetes/helm/collabora-online)
 - [Stirling website](https://www.stirling.com/), [documentation](https://docs.stirlingpdf.com/) and [source](https://github.com/Stirling-Tools/Stirling-PDF)

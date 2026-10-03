@@ -1,0 +1,46 @@
+{{- if .Values.nextcloud.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: 'nextcloud-background-cron'
+spec:
+  schedule: '*/5 * * * *'
+  concurrencyPolicy: 'Forbid'
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: 'nextcloud'
+            app.kubernetes.io/instance: {{ .Release.Name | quote }}
+            app.kubernetes.io/component: 'nextcloud-cron'
+        spec:
+          restartPolicy: 'OnFailure'
+          {{- include "office.nextcloud.background.commonPodSpec" . | nindent 10 }}
+          containers:
+            - name: 'nextcloud-cron'
+              image: {{ include "nextcloud.image" .Subcharts.nextcloud | quote }}
+              imagePullPolicy: {{ .Values.nextcloud.image.pullPolicy | quote }}
+              workingDir: '/var/www/html'
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ['ALL']
+                runAsNonRoot: true
+                runAsUser: 82
+              command:
+                - 'php'
+                - '-f'
+                - '/var/www/html/cron.php'
+              env:
+                - name: PHP_INI_SCAN_DIR
+                  value: '/usr/local/etc/php/conf.d:/tmp/php-conf.d'
+                {{- include "nextcloud.env" .Subcharts.nextcloud | nindent 16 }}
+              resources:
+                {{- toYaml .Subcharts.nextcloud.Values.resources | nindent 16 }}
+              volumeMounts:
+                {{- include "nextcloud.volumeMounts" .Subcharts.nextcloud | nindent 16 }}
+{{- end }}

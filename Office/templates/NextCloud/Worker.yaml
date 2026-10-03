@@ -1,174 +1,49 @@
 {{- if .Values.nextcloud.enabled }}
 apiVersion: apps/v1
-kind: ReplicaSet
+kind: Deployment
 metadata:
-  name: nextcloud-background-workers
+  name: 'nextcloud-background-workers'
   labels:
-    app.kubernetes.io/name: nextcloud
-    app.kubernetes.io/component: nextcloud-worker
-
+    app.kubernetes.io/name: 'nextcloud'
+    app.kubernetes.io/component: 'nextcloud-task-worker'
 spec:
-  # modify replicas according to your case
   replicas: 1
-
+  strategy:
+    type: 'Recreate'
   selector:
     matchLabels:
-      app.kubernetes.io/component: nextcloud-worker
-      app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/name: nextcloud
-
+      app.kubernetes.io/name: 'nextcloud'
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
+      app.kubernetes.io/component: 'nextcloud-task-worker'
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: nextcloud-worker
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/name: nextcloud
-
+        app.kubernetes.io/name: 'nextcloud'
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        app.kubernetes.io/component: 'nextcloud-task-worker'
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution: 
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/component: app
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
-                  app.kubernetes.io/name: nextcloud
-              topologyKey: kubernetes.io/hostname
-
-      volumes:
-        - name: nextcloud-main
-          persistentVolumeClaim:
-            claimName: '{{ .Release.Name }}-nextcloud-nextcloud'
-
-        - configMap:
-            defaultMode: 420
-            name: '{{ .Release.Name }}-nextcloud-config'
-          name: nextcloud-config
+      {{- include "office.nextcloud.background.commonPodSpec" . | nindent 6 }}
       containers:
-        - name: nextcloud-worker
-          image: nextcloud:fpm-alpine
+        - name: 'nextcloud-task-worker'
+          image: {{ include "nextcloud.image" .Subcharts.nextcloud | quote }}
+          imagePullPolicy: {{ .Values.nextcloud.image.pullPolicy | quote }}
+          workingDir: '/var/www/html'
           securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
             runAsNonRoot: true
             runAsUser: 82
-
-          command: 
-            - 'php' 
-            - 'occ' 
-            - 'background-job:worker'
-            - '-t=60' 
-            - 'OC\TaskProcessing\SynchronousBackgroundJob'
-          args: []
+          command:
+            - '/bin/sh'
+            - '-ec'
+            - 'while true; do php /var/www/html/occ taskprocessing:worker -v -t 60; done'
           env:
-            # - name: POSTGRES_HOST
-            #   value: 'psql.service.dc1.kjdev:5432'
-            # - name: POSTGRES_DB
-            #   value: SzS9n9UxZS
-            # - name: POSTGRES_USER
-            #   valueFrom:
-            #     secretKeyRef:
-            #       key: Username
-            #       name: business-office-nextcloud-database-prod
-            # - name: POSTGRES_PASSWORD
-            #   valueFrom:
-            #     secretKeyRef:
-            #       key: Password
-            #       name: business-office-nextcloud-database-prod
-
-            - name: NEXTCLOUD_ADMIN_USER
-              valueFrom:
-                secretKeyRef:
-                  key: AdminUser
-                  name: business-office-nextcloud-keys-prod
-
-            - name: NEXTCLOUD_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  key: AdminPassword
-                  name: business-office-nextcloud-keys-prod
-
-            - name: NEXTCLOUD_TRUSTED_DOMAINS
-              value: office.mylogin.space
-
-            - name: NEXTCLOUD_DATA_DIR
-              value: /var/www/html/data
-
-            - name: REDIS_HOST
-              value: {{ .Values.nextcloudRedis.host | quote }}
-
-            - name: REDIS_HOST_PORT
-              value: {{ .Values.nextcloudRedis.port | quote }}
-
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.nextcloudRedis.secretName | quote }}
-                  key: password
-
-            - name: OBJECTSTORE_S3_HOST
-              value: {{ .Values.nextcloudS3Credentials.endpoint | quote }}
-
-            - name: OBJECTSTORE_S3_USEPATH_STYLE
-              value: 'true'
-
-            - name: OBJECTSTORE_S3_LEGACYAUTH
-              value: 'false'
-
-            - name: OBJECTSTORE_S3_PORT
-              value: '443'
-
-            - name: OBJECTSTORE_S3_SSL
-              value: 'true'
-
-            - name: OBJECTSTORE_S3_BUCKET
-              valueFrom:
-                secretKeyRef:
-                  key: username
-                  name: {{ .Values.nextcloudS3Credentials.userSecretName | quote }}
-
-            - name: OBJECTSTORE_S3_KEY
-              valueFrom:
-                secretKeyRef:
-                  key: AccessKey
-                  name: {{ .Values.nextcloudS3Credentials.credentialsSecretName | quote }}
-
-            - name: OBJECTSTORE_S3_SECRET
-              valueFrom:
-                secretKeyRef:
-                  key: SecretAccessKey
-                  name: {{ .Values.nextcloudS3Credentials.credentialsSecretName | quote }}
-
+            - name: PHP_INI_SCAN_DIR
+              value: '/usr/local/etc/php/conf.d:/tmp/php-conf.d'
+            {{- include "nextcloud.env" .Subcharts.nextcloud | nindent 12 }}
+          resources:
+            {{- toYaml .Subcharts.nextcloud.Values.resources | nindent 12 }}
           volumeMounts:
-            - mountPath: /var/www/
-              name: nextcloud-main
-              subPath: root
-            - mountPath: /var/www/html
-              name: nextcloud-main
-              subPath: html
-            - mountPath: /var/www/html/data
-              name: nextcloud-main
-              subPath: data
-            - mountPath: /var/www/html/config
-              name: nextcloud-main
-              subPath: config
-            - mountPath: /var/www/html/custom_apps
-              name: nextcloud-main
-              subPath: custom_apps
-            - mountPath: /var/www/tmp
-              name: nextcloud-main
-              subPath: tmp
-            - mountPath: /var/www/html/themes
-              name: nextcloud-main
-              subPath: themes
-            - mountPath: /var/www/html/config/redis.config.php
-              name: nextcloud-config
-              subPath: redis.config.php
-            - mountPath: /var/www/html/config/.htaccess
-              name: nextcloud-config
-              subPath: .htaccess
-            - mountPath: /var/www/html/config/apps.config.php
-              name: nextcloud-config
-              subPath: apps.config.php
-            - mountPath: /var/www/html/config/autoconfig.php
-              name: nextcloud-config
-              subPath: autoconfig.php
+            {{- include "nextcloud.volumeMounts" .Subcharts.nextcloud | nindent 12 }}
 {{- end }}

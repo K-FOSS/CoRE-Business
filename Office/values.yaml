@@ -459,7 +459,7 @@ nextcloud:
   ##
   image:
     repository: nextcloud
-    tag: fpm-alpine
+    tag: '35.0.1-fpm-alpine@sha256:f77b02a52251e408a4fbc232f27817eaedeb4acbf3c3dbd0daf72cf1e1c88601'
     pullPolicy: Always
 
   deploymentAnnotations: {}
