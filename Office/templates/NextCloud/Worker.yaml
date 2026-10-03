@@ -29,11 +29,10 @@ spec:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution: 
             - labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/instance 
-                    operator: In 
-                    values:
-                      - {{ .Release.Name }}
+                matchLabels:
+                  app.kubernetes.io/component: app
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                  app.kubernetes.io/name: nextcloud
               topologyKey: kubernetes.io/hostname
 
       volumes:
