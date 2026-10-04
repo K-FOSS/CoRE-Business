@@ -88,7 +88,7 @@ speeches:
         - 'srv3'
       resources:
         requests:
-          cpu: '4'
+          cpu: '64m'
         limits:
           cpu: '4'
       service:
