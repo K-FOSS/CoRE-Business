@@ -4,7 +4,53 @@
 {{- if not .Values.rawResources -}}{{- $_ := set .Values "rawResources" dict -}}{{- end -}}
 {{- if not .Values.configMaps -}}{{- $_ := set .Values "configMaps" dict -}}{{- end -}}
 {{- $profiles := deepCopy .Values.workloadNetworking -}}
-{{- range $function := .Values.functions -}}
+{{- $functions := deepCopy .Values.functions -}}
+{{- if include "avoip.talkHpb.enabled" $root | trim -}}
+{{- $talkHpb := $root.Values.talkHpb -}}
+{{- $controller := dict
+  "replicas" 1
+  "strategy" "Recreate"
+  "revisionHistoryLimit" 3
+  "pod" (dict
+    "securityContext" (dict "runAsNonRoot" true "runAsUser" 1000 "runAsGroup" 1000 "fsGroup" 1000 "seccompProfile" (dict "type" "RuntimeDefault"))
+    "labels" (dict "app" (printf "%s-talk-hpb" (include "avoip.fullname" $root)))
+    "annotations" (dict
+      "kubectl.kubernetes.io/default-container" "talk-hpb"
+      "secret.reloader.stakater.com/reload" (printf "%s,%s" $talkHpb.secrets.name $talkHpb.secrets.turnName)))
+  "containers" (dict "talk-hpb" (dict
+    "image" (dict "repository" $talkHpb.image.repository "tag" $talkHpb.image.tag "pullPolicy" $talkHpb.image.pullPolicy)
+    "env" (dict
+      "NC_DOMAIN" $talkHpb.nextcloudHostname
+      "TALK_HOST" $talkHpb.mediaHostname
+      "TALK_PORT" (toString $talkHpb.turn.port)
+      "TURN_DOMAIN" $talkHpb.mediaHostname
+      "AIO_LOG_LEVEL" "warn"
+      "SIGNALING_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" $talkHpb.secrets.name "key" "SIGNALING_SECRET")))
+      "INTERNAL_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" $talkHpb.secrets.name "key" "INTERNAL_SECRET")))
+      "TURN_SECRET" (dict "valueFrom" (dict "secretKeyRef" (dict "name" $talkHpb.secrets.turnName "key" "TURN_SECRET"))))
+    "ports" (list (dict "name" "signaling" "containerPort" 8081 "protocol" "TCP"))
+    "securityContext" (dict "allowPrivilegeEscalation" false "capabilities" (dict "drop" (list "ALL"))))) -}}
+{{- $_ := set (get (get $controller "containers") "talk-hpb") "probes" (dict
+  "startup" (dict "enabled" true "custom" true "spec" (dict "exec" (dict "command" (list "/healthcheck.sh")) "periodSeconds" 5 "timeoutSeconds" 30 "failureThreshold" 36))
+  "readiness" (dict "enabled" true "custom" true "spec" (dict "exec" (dict "command" (list "/healthcheck.sh")) "periodSeconds" 30 "timeoutSeconds" 30 "failureThreshold" 3))
+  "liveness" (dict "enabled" true "custom" true "spec" (dict "exec" (dict "command" (list "/healthcheck.sh")) "periodSeconds" 30 "timeoutSeconds" 30 "failureThreshold" 3))) -}}
+{{- $services := dict
+  "signaling" (dict "ports" (dict "http" (dict "port" 8081 "targetPort" "signaling" "protocol" "TCP")))
+  "media" (dict "ports" (dict
+    "turn-tcp" (dict "port" $talkHpb.turn.port "targetPort" $talkHpb.turn.port "protocol" "TCP")
+    "turn-udp" (dict "port" $talkHpb.turn.port "targetPort" $talkHpb.turn.port "protocol" "UDP"))) -}}
+{{- $mediaOptions := index $root.Values.serviceOptions "talk-hpb-media" | default dict -}}
+{{- $mediaService := get $services "media" -}}
+{{- $_ := mergeOverwrite $mediaService (pick $mediaOptions "type" "annotations" "labels" "loadBalancerClass") -}}
+{{- if eq $mediaOptions.type "LoadBalancer" -}}{{- $_ := set $mediaService "externalTrafficPolicy" "Local" -}}{{- end -}}
+{{- $networking := dict "initContainers" (dict "wait-for-media-host" (dict
+  "image" (dict "repository" $root.Values.diagnostics.netshoot.image.repository "tag" $root.Values.diagnostics.netshoot.image.tag "digest" $root.Values.diagnostics.netshoot.image.digest "pullPolicy" $root.Values.diagnostics.netshoot.image.pullPolicy)
+  "command" (list "/bin/sh" "-c")
+  "args" (list (printf "until getent ahostsv4 %s >/dev/null; do sleep 2; done" $talkHpb.mediaHostname)))) -}}
+{{- $function := dict "name" "talk-hpb" "enabled" true "controller" $controller "services" $services "networking" $networking -}}
+{{- $functions = append $functions $function -}}
+{{- end -}}
+{{- range $function := $functions -}}
 {{- if (dig "enabled" true $function) -}}
 {{- $name := required "functions[].name is required" $function.name -}}
 {{- if not (regexMatch "^[a-z][a-z0-9-]*$" $name) -}}{{- fail "function names must be lowercase DNS labels" -}}{{- end -}}

@@ -102,3 +102,7 @@ loadBalancerClass: '{{ . }}'
 {{- $override := .Values.homer.hostname -}}
 {{- default (printf "homer.%s.%s.%s.resolvemy.host" .Values.cluster.name .Values.datacenter .Values.region) $override -}}
 {{- end -}}
+
+{{- define "avoip.talkHpb.enabled" -}}
+{{- if and .Values.talkHpb.enabled (eq .Values.cluster.name .Values.talkHpb.clusterName) -}}true{{- end -}}
+{{- end -}}

@@ -369,6 +369,44 @@ claim connection Secret key names, and downstream provider conditions. The
 current SSO platform documentation is the authoritative guide
 for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/README.md).
 
+## Nextcloud Talk high performance backend
+
+The chart runs the versioned
+[Nextcloud AIO Talk image](https://github.com/nextcloud/all-in-one/tree/main/Containers/talk)
+on `core-home1-talos-prod`, alongside the Office deployment. The image bundles
+the standalone [Talk signaling server](https://github.com/strukturag/nextcloud-spreed-signaling),
+[Janus](https://github.com/meetecho/janus-gateway), NATS and eturnal. The
+public signaling endpoint is `https://talk.mylogin.space` through the
+Home1 Gateway. `talk-media.mylogin.space:3478` is a separate public
+`kube-vip` LoadBalancer for TCP/UDP TURN media. The latter resolves before the
+pod starts so the bundled media services can advertise the public address;
+TLS TURN on port 5349 is not exposed.
+
+The backend reads the existing site TURN REST secret from the
+[NATPuncher Vault path](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/NATPuncher.yaml).
+ESO generates stable signaling and internal secrets in the `avoip-talk-hpb-bootstrap`
+Secret; the TURN secret is mirrored into `avoip-talk-hpb-turn`. The credentials
+are never rendered into manifests. The Nextcloud Talk admin settings still
+need the signaling URL and `SIGNALING_SECRET`, plus TURN at
+`talk-media.mylogin.space:3478` over UDP and TCP with shared-secret
+authentication using `TURN_SECRET` and the TURN-only mode. Configure
+`office.mylogin.space` as the
+backend's Nextcloud host. Retrieve secret values through the approved secret
+handling workflow; do not print them into logs or shell history.
+
+The signaling and internal credentials are pushed to the Vault key
+`AVoIP/Talk/YVR/Home1/Creds` and remain there when the AVoIP release is
+removed. Delete or rotate them only after updating the Nextcloud Talk settings;
+rotation restarts HPB and ends active calls.
+
+After the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+reconciles, verify both public DNS records, the Home1 Gateway route, the media
+LoadBalancer address, ExternalSecret readiness, and the HPB health check. In
+Nextcloud, confirm the HPB check is green and test a multi-participant call from
+outside the Home1 network. A rollout restarts signaling, Janus and eturnal and
+will end active calls. Roll back by disabling `talkHpb.enabled`; remove the
+Nextcloud Talk configuration separately only if the backend is being retired.
+
 Principal upstream projects:
 
 - [Asterisk](https://www.asterisk.org/) and its
@@ -393,6 +431,8 @@ Principal upstream projects:
   [source repository](https://github.com/speaches-ai/speaches)
 - [Jitsi Meet](https://jitsi.org/) and the
   [Jitsi Helm chart](https://github.com/jitsi-contrib/jitsi-helm)
+- [Nextcloud AIO Talk image and deployment](https://github.com/nextcloud/all-in-one/tree/main/Containers/talk)
+  and [Nextcloud Talk quick install and administration settings](https://nextcloud-talk.readthedocs.io/en/latest/quick-install/)
 
 ### Internal Asterisk SIP identity
 

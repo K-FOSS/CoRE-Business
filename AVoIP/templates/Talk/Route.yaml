@@ -1,0 +1,23 @@
+{{- if include "avoip.talkHpb.enabled" . | trim }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: '{{ include "avoip.fullname" . }}-talk-hpb'
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: '{{ .Values.talkHpb.hostname }}'
+    wan-mode: 'public'
+spec:
+  parentRefs:
+    - kind: 'Gateway'
+      name: '{{ .Values.gateway.name }}'
+      namespace: '{{ .Values.gateway.namespace }}'
+      sectionName: '{{ .Values.gateway.sectionName }}'
+  hostnames:
+    - '{{ .Values.talkHpb.hostname }}'
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ include "avoip.fullname" . }}-talk-hpb-signaling'
+          port: 8081
+{{- end }}

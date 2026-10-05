@@ -144,6 +144,13 @@ a durable MinIO service account and publishes its generated key pair to the
 Secret consumed by Nextcloud. The Workspace uses an `Orphan` deletion policy,
 so permanent removal requires explicit service-account revocation.
 
+Nextcloud Talk's high-performance backend is deployed from the AVoIP chart on
+Home1/YVR, alongside Office. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+owns the signaling Gateway route and public TURN/media LoadBalancer. The
+Nextcloud administrator still needs to register `https://talk.mylogin.space`
+with the generated signaling secret and configure the `talk-media.mylogin.space`
+TURN endpoint; see [AVoIP setup and verification](../AVoIP/README.md#nextcloud-talk-high-performance-backend).
+
 The active [Vaultwarden chart](../Passwords/VaultWarden/README.md), owned by the
 [VaultWarden ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml),
 runs the upstream Vaultwarden image through the BJW-S common library chart. A

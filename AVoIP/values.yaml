@@ -77,6 +77,16 @@ serviceOptions:
     annotations: {}
     labels: {}
     loadBalancerClass: ''
+  # The Home1 media Service uses its own public address for TURN traffic. The
+  # AIO image resolves this hostname during startup to advertise its endpoint.
+  talk-hpb-media:
+    type: 'LoadBalancer'
+    annotations:
+      kube-vip.io/forwardUPNP: 'true'
+      external-dns.alpha.kubernetes.io/hostname: 'talk-media.mylogin.space'
+    labels:
+      wan-mode: 'public'
+    loadBalancerClass: 'kube-vip.io/kube-vip-class'
 
 # Additional independent workloads (PBXs, organization services, voice workers).
 # Each entry has name, enabled, controller (BJW-S controller values), services,
@@ -107,6 +117,7 @@ cluster:
 gateway:
   name: 'main-gw'
   namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
 
 flowroute:
   # Carrier egress is selected at the SIP border; application peers never
@@ -388,6 +399,33 @@ homer:
     name: 'aaa-myloginspace-proxy'
     namespace: 'core-prod'
     port: 80
+
+# Nextcloud Talk HPB is colocated with the Home1 Office deployment. The cluster
+# guard in the renderer keeps this workload out of the DC1 AVoIP applications.
+talkHpb:
+  enabled: true
+  clusterName: 'core-home1-talos-prod'
+  hostname: 'talk.mylogin.space'
+  mediaHostname: 'talk-media.mylogin.space'
+  nextcloudHostname: 'office.mylogin.space'
+  turn:
+    port: 3478
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    remoteKey: 'Network/NATPuncher/yxl/dc1/core-dc1-talos-prod/TurnAuth'
+    remoteProperty: 'Secret'
+  secrets:
+    name: 'avoip-talk-hpb'
+    generatorName: 'avoip-talk-hpb-generator'
+    bootstrapName: 'avoip-talk-hpb-bootstrap'
+    turnName: 'avoip-talk-hpb-turn'
+    remoteKey: 'AVoIP/Talk/YVR/Home1/Creds'
+  image:
+    repository: 'ghcr.io/nextcloud-releases/aio-talk'
+    # Versioned AIO build containing signaling 2.1.1, Janus, NATS and eturnal.
+    tag: '20260916_075031'
+    pullPolicy: 'IfNotPresent'
 
 jitsi:
   domain: 'meet.mylogin.space'
