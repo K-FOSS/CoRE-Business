@@ -9,7 +9,6 @@ spec:
 
   psql:
     enabled: true
-    createUserDatabase: false
     databases:
       - 'simplelogin'
     crossplane:
