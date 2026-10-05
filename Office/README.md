@@ -62,12 +62,16 @@ pdf.mylogin.space HTTPRoute
   disabled. The values currently show both `internalDatabase.enabled` and
   `externalDatabase.enabled`; confirm the effective chart behavior before an
   upgrade rather than assuming only one is active.
-- Nextcloud sends mail as `nextcloud-core-prod@mail.mylogin.space` through
-  `mail.mylogin.space:465` with implicit TLS and SMTP `LOGIN` authentication.
-  The SMTP username and password are read from the `username` and `password`
-  keys of `office-nextcloud-creds`; no credential values are stored in chart
-  values. The same environment is available to the web, task-worker and cron
-  containers, and the chart's SMTP config consumes it for Nextcloud.
+- Nextcloud sends mail using `nextcloud.email`, currently
+  `nextcloud-core-prod@mail.mylogin.space`, through `mail.mylogin.space:465`
+  with implicit TLS and SMTP `LOGIN` authentication. The `mylogin.space` User
+  resource takes its email from that same value. `WORKLOAD_ENV` is generated
+  from `values.env`; both it and `nextcloud.email` are injected into the web,
+  task-worker and cron containers through `office-nextcloud-workload-env`. The
+  SMTP config checks that the sender's local part matches the workload
+  environment. The SMTP username and password are read from the `username` and
+  `password` keys of `office-nextcloud-creds`; no credential values are stored
+  in chart values.
 - `business-office-nextcloud-keys-prod` supplies Nextcloud administrator/token
   material. The custom encryption ExternalSecret reads platform-managed
   encryption configuration from `mainvault-core`.

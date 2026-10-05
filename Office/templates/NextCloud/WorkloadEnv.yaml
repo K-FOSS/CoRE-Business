@@ -1,0 +1,9 @@
+{{- if .Values.nextcloud.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: office-nextcloud-workload-env
+data:
+  WORKLOAD_ENV: {{ .Values.env | quote }}
+  NEXTCLOUD_EMAIL: {{ required "nextcloud.email is required" .Values.nextcloud.email | quote }}
+{{- end }}

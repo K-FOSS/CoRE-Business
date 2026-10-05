@@ -462,6 +462,8 @@ nextcloud:
     tag: '35.0.1-fpm-alpine@sha256:f77b02a52251e408a4fbc232f27817eaedeb4acbf3c3dbd0daf72cf1e1c88601'
     pullPolicy: Always
 
+  email: 'nextcloud-core-prod@mail.mylogin.space'
+
   deploymentAnnotations: {}
 
 
@@ -1018,11 +1020,30 @@ nextcloud:
       autoconfig.php: true
 
       # SMTP default configuration
-      smtp.config.php: true
+      smtp.config.php: false
 
     # Extra config files created in /var/www/html/config/
     # ref: https://docs.nextcloud.com/server/15/admin_manual/configuration_server/config_sample_php_parameters.html#multiple-config-php-file
     configs:
+      office-smtp.config.php: |-
+        <?php
+        $workloadEnv = getenv('WORKLOAD_ENV');
+        $nextcloudEmail = explode('@', getenv('NEXTCLOUD_EMAIL') ?: '', 2);
+        if (getenv('SMTP_HOST') && $workloadEnv && count($nextcloudEmail) === 2 && $nextcloudEmail[0] === 'nextcloud-core-' . $workloadEnv) {
+          $CONFIG = array (
+            'mail_smtpmode' => 'smtp',
+            'mail_smtphost' => getenv('SMTP_HOST'),
+            'mail_smtpport' => getenv('SMTP_PORT') ?: 465,
+            'mail_smtpsecure' => getenv('SMTP_SECURE') ?: 'ssl',
+            'mail_smtpauth' => getenv('SMTP_NAME') && getenv('SMTP_PASSWORD'),
+            'mail_smtpauthtype' => getenv('SMTP_AUTHTYPE') ?: 'LOGIN',
+            'mail_smtpname' => getenv('SMTP_NAME') ?: '',
+            'mail_smtppassword' => getenv('SMTP_PASSWORD') ?: '',
+            'mail_from_address' => $nextcloudEmail[0],
+            'mail_domain' => $nextcloudEmail[1],
+          );
+        }
+
       logging.config.php: |-
         <?php
         $CONFIG = array (
@@ -1178,11 +1199,17 @@ nextcloud:
       # Nextcloud SMTP delivery uses the existing Office service credentials.
       # The chart's mail.enabled helper expects the SMTP host in the credential
       # Secret, which only contains username/password, so provide the host here.
-      - name: MAIL_FROM_ADDRESS
-        value: 'nextcloud-core-prod'
+      - name: WORKLOAD_ENV
+        valueFrom:
+          configMapKeyRef:
+            name: office-nextcloud-workload-env
+            key: WORKLOAD_ENV
 
-      - name: MAIL_DOMAIN
-        value: 'mail.mylogin.space'
+      - name: NEXTCLOUD_EMAIL
+        valueFrom:
+          configMapKeyRef:
+            name: office-nextcloud-workload-env
+            key: NEXTCLOUD_EMAIL
 
       - name: SMTP_HOST
         value: 'mail.mylogin.space'
