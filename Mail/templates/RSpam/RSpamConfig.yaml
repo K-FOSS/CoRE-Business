@@ -40,6 +40,13 @@ data:
     autolearn = true;
     backend = "redis";
   {{ end }}
+  {{ if not .Values.rspamd.redis.enabled }}
+  statistics_group.conf: |
+    symbols = {
+      BAYES_SPAM { enabled = false; }
+      BAYES_HAM { enabled = false; }
+    }
+  {{ end }}
 
   dkim_signing.conf: |
     enabled = true;

@@ -63,7 +63,11 @@ Mail client IMAP :143/:993
   Dragonfly ExternalSecret and Redis mount, and enables Redis-backed Bayes,
   MX-check, URL-reputation and URL-tag features. With the default, those
   Redis-backed features are disabled and the Dragonfly credential is not
-  fetched by this chart.
+  fetched by this chart. Rspamd worker overrides mount under `override.d/`,
+  and module settings mount individually under `local.d/`, preserving the
+  packaged configuration tree. When Redis is disabled, the Bayes symbols are
+  disabled through the statistics group so Rspamd skips the Redis-backed
+  classifier.
 - Maddy provides an additional internal IMAP service. Its current CoRE `User`
   claim provisions the site-local PostgreSQL role/database and `mail-main` S3
   bucket plus a long-lived MinIO service account; the resulting connection

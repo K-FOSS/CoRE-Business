@@ -407,7 +407,33 @@ persistence:
     advancedMounts:
       rspamd:
         rspamd:
-          - path: '/etc/rspamd'
+          - path: '/etc/rspamd/override.d/worker-proxy.inc'
+            subPath: 'worker-proxy.inc'
+          - path: '/etc/rspamd/override.d/worker-normal.inc'
+            subPath: 'worker-normal.inc'
+          - path: '/etc/rspamd/override.d/worker-controller.inc'
+            subPath: 'worker-controller.inc'
+          - path: '/etc/rspamd/local.d/dkim_signing.conf'
+            subPath: 'dkim_signing.conf'
+          - path: '/etc/rspamd/local.d/mx_check.conf'
+            subPath: 'mx_check.conf'
+          - path: '/etc/rspamd/local.d/phishing.conf'
+            subPath: 'phishing.conf'
+          - path: '/etc/rspamd/local.d/replies.conf'
+            subPath: 'replies.conf'
+          - path: '/etc/rspamd/local.d/surbl.conf'
+            subPath: 'surbl.conf'
+          - path: '/etc/rspamd/local.d/url_reputation.conf'
+            subPath: 'url_reputation.conf'
+          - path: '/etc/rspamd/local.d/url_tags.conf'
+            subPath: 'url_tags.conf'
+          {{ if .Values.rspamd.redis.enabled }}
+          - path: '/etc/rspamd/local.d/classifier-bayes.conf'
+            subPath: 'classifier-bayes.conf'
+          {{ else }}
+          - path: '/etc/rspamd/local.d/statistics_group.conf'
+            subPath: 'statistics_group.conf'
+          {{ end }}
   {{ if .Values.rspamd.redis.enabled }}
   rspamd-dragonfly:
     type: secret
