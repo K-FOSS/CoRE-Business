@@ -69,17 +69,8 @@ data:
       login = yes
     }
 
-    imapc_features {
-      no-modseq = yes
-      no-fetch-bodystructure = yes
-    }
-
-
-    service imap {
-      imap_capability {	
-        CONDSTORE = no	
-        QRESYNC = no	
-      }
-    }
+    # Dovecot 2.4 automatically uses the upstream IMAP capabilities it
+    # supports. Do not disable MODSEQ/BODYSTRUCTURE or hard-code
+    # CONDSTORE/QRESYNC suppression without a documented compatibility issue.
 
     !include /etc/dovecot/namespaces/*.conf
