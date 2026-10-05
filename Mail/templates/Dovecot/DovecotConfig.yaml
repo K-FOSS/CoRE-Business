@@ -69,8 +69,22 @@ data:
       login = yes
     }
 
-    # Dovecot 2.4 automatically uses the upstream IMAP capabilities it
-    # supports. Do not disable MODSEQ/BODYSTRUCTURE or hard-code
-    # CONDSTORE/QRESYNC suppression without a documented compatibility issue.
+    # Maddy does not currently provide usable MODSEQ/HIGHESTMODSEQ semantics.
+    # Keep MODSEQ disabled in the IMAPC backend and do not expose
+    # CONDSTORE/QRESYNC to downstream clients such as Nextcloud Mail.
+    #
+    # Keep upstream BODYSTRUCTURE fetching enabled: normal metadata
+    # retrieval avoids downloading complete messages just to reconstruct
+    # message structure locally.
+    imapc_features {
+      no-modseq = yes
+    }
+
+    service imap {
+      imap_capability {
+        CONDSTORE = no
+        QRESYNC = no
+      }
+    }
 
     !include /etc/dovecot/namespaces/*.conf
