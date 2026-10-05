@@ -59,6 +59,7 @@
 {{- range $id, $service := default dict $function.services -}}
 {{- $key := printf "%s-%s" $name $id -}}
 {{- $svc := deepCopy $service -}}{{- $_ := set $svc "controller" $name -}}
+{{- if eq $name "talk-hpb" -}}{{- $_ := set $svc "forceRename" (printf "avoip-talk-hpb-%s" $id) -}}{{- end -}}
 {{- $_ := set $root.Values.service $key $svc -}}
 {{- end -}}
 {{- range $id, $volume := default dict $function.persistence -}}

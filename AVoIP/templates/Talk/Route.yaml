@@ -18,6 +18,6 @@ spec:
     - backendRefs:
         - group: ''
           kind: 'Service'
-          name: '{{ include "avoip.fullname" . }}-talk-hpb-signaling'
+          name: 'avoip-talk-hpb-signaling'
           port: 8081
 {{- end }}
