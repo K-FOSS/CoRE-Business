@@ -39,6 +39,9 @@ the stable `dovecot`, `maddy`, `postfix` and `rspamd` Service names remain the
 workload-facing endpoints. Spoke credential pulls reconcile in Argo CD sync
 wave `-1`, before the workloads that consume those Secrets; legacy Deployments
 are pruned only after the replacement resources become healthy.
+All Mail Deployments opt into [Stakater Reloader](https://docs.stakater.com/reloader/)
+automatic discovery, so changes to referenced ConfigMaps and Secrets trigger
+their normal Kubernetes rolling-update strategy.
 
 ```text
 Internet SMTP :25/:465/:587

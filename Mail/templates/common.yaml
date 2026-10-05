@@ -11,6 +11,8 @@ defaultPodOptions:
 
 controllers:
   dovecot:
+    annotations: &mailReloaderAnnotations
+      reloader.stakater.com/auto: 'true'
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -41,6 +43,7 @@ controllers:
             containerPort: 2525
 
   maddy:
+    annotations: *mailReloaderAnnotations
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -95,6 +98,7 @@ controllers:
             containerPort: 143
 
   postfix:
+    annotations: *mailReloaderAnnotations
     replicas: 2
     strategy: RollingUpdate
     rollingUpdate:
@@ -142,6 +146,7 @@ controllers:
             containerPort: 10025
 
   rspamd:
+    annotations: *mailReloaderAnnotations
     replicas: 1
     pod:
       labels:
@@ -175,6 +180,7 @@ controllers:
 
   {{- if .Values.simplelogin.enabled }}
   simplelogin-api:
+    annotations: *mailReloaderAnnotations
     replicas: 0
     pod:
       labels:
@@ -212,6 +218,7 @@ controllers:
             containerPort: 7777
 
   simplelogin-mailhandler:
+    annotations: *mailReloaderAnnotations
     replicas: 0
     pod:
       labels:
