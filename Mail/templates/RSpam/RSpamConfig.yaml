@@ -35,9 +35,11 @@ data:
     .include(try=true; priority=10) "$CONFDIR/override.d/worker-controller-password.inc"
     .include(try=true; priority=30) "$CONFDIR/override.d/worker-controller.custom.inc" 
 
+  {{ if .Values.rspamd.redis.enabled }}
   classifier-bayes.conf: |
     autolearn = true;
     backend = "redis";
+  {{ end }}
 
   dkim_signing.conf: |
     enabled = true;
@@ -88,7 +90,7 @@ data:
 
   mx_check.conf: |
     # checks if sender's domain has at least one connectable MX record
-    enabled = true;
+    enabled = {{ .Values.rspamd.redis.enabled }};
 
   phishing.conf: |
     # check messages against some anti-phishing databases
@@ -105,8 +107,8 @@ data:
 
   url_reputation.conf: |
     # check URLs within messages for spaminess
-    enabled = true;
+    enabled = {{ .Values.rspamd.redis.enabled }};
 
   url_tags.conf: |
     # cache some URL tags in redis
-    enabled = true;
+    enabled = {{ .Values.rspamd.redis.enabled }};

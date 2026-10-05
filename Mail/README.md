@@ -58,9 +58,12 @@ Mail client IMAP :143/:993
   LDAP and proxies/reads mailbox state according to the checked-in storage
   configuration.
 - Rspamd provides proxy, normal-worker and controller ports and uses the
-  site-local, TLS-enabled Dragonfly endpoint. An ExternalSecret renders its
-  password-bearing `redis.conf` from the platform credential without placing
-  the password in Git.
+  site-local, TLS-enabled Dragonfly endpoint when Redis support is enabled.
+  `rspamd.redis.enabled` defaults to `false`; enabling it renders the
+  Dragonfly ExternalSecret and Redis mount, and enables Redis-backed Bayes,
+  MX-check, URL-reputation and URL-tag features. With the default, those
+  Redis-backed features are disabled and the Dragonfly credential is not
+  fetched by this chart.
 - Maddy provides an additional internal IMAP service. Its current CoRE `User`
   claim provisions the site-local PostgreSQL role/database and `mail-main` S3
   bucket plus a long-lived MinIO service account; the resulting connection

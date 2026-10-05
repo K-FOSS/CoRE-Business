@@ -1,3 +1,4 @@
+{{- if .Values.rspamd.redis.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -32,3 +33,4 @@ spec:
       remoteRef:
         key: {{ .Values.site.dragonfly.remoteRef.key | quote }}
         property: {{ .Values.site.dragonfly.remoteRef.passwordProperty | quote }}
+{{- end }}

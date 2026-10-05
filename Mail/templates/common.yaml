@@ -408,6 +408,7 @@ persistence:
       rspamd:
         rspamd:
           - path: '/etc/rspamd'
+  {{ if .Values.rspamd.redis.enabled }}
   rspamd-dragonfly:
     type: secret
     name: 'business-mail-rspamd-dragonfly'
@@ -416,6 +417,7 @@ persistence:
         rspamd:
           - path: '/etc/rspamd/local.d/redis.conf'
             subPath: 'redis.conf'
+  {{ end }}
   tls-certs:
     type: secret
     name: {{ .Values.email.tls.secretName | quote }}
