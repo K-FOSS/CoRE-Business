@@ -8,6 +8,9 @@ components:
       image: quay.io/devfile/universal-developer-image:ubi10-latest
       memoryLimit: 8G
       memoryRequest: 2G
+      env:
+        - name: TZ
+          value: America/Vancouver
 
 attributes:
   pod-overrides:
