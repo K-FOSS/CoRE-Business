@@ -89,6 +89,13 @@ pdf.mylogin.space HTTPRoute
 - Gateway API exposes Nextcloud, while ExternalDNS publishes the Collabora
   ClusterIP Service. An Envoy Gateway BackendTrafficPolicy adjusts the
   Nextcloud backend behavior.
+- The post-render Kustomize patch sets the Nextcloud Service's `http` port
+  `appProtocol` to `kubernetes.io/ws`. This tells Envoy Gateway to use the
+  WebSocket-aware HTTP/1.1 backend protocol. Envoy Gateway enables WebSocket
+  upgrades by default; do not enable request buffering on the Nextcloud route,
+  because it is incompatible with protocol upgrades. See the Kubernetes
+  [Service appProtocol documentation](https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol)
+  and Envoy Gateway's [BackendTrafficPolicy API](https://gateway.envoyproxy.io/docs/api/extension_types/).
 - Collabora uses chart `1.3.1` and CODE image `26.04.3.1.1`. The Collabora
   service serves HTTPS directly on port 9980 using the site-local
   `myloginspace-default-certificates` Secret mounted read-only into the pod;
@@ -187,7 +194,7 @@ site-local certificate.
 
 ## Upstream projects
 
-- [Nextcloud website](https://nextcloud.com/), [administrator documentation](https://docs.nextcloud.com/server/latest/admin_manual/) and [Helm chart](https://github.com/nextcloud/helm/tree/main/charts/nextcloud)
+- [Nextcloud website](https://nextcloud.com/), [administrator documentation](https://docs.nextcloud.com/server/latest/admin_manual/) and [pinned Helm chart 9.4.0](https://github.com/nextcloud/helm/tree/nextcloud-9.4.0/charts/nextcloud)
 - [Nextcloud background-job documentation](https://docs.nextcloud.com/server/stable/admin_manual/configuration_server/background_jobs_configuration.html) and [AI task-processing worker documentation](https://docs.nextcloud.com/server/stable/admin_manual/ai/overview.html)
 - [Pinned Nextcloud 35 Alpine FPM image](https://hub.docker.com/layers/library/nextcloud/35.0.1-fpm-alpine/images/sha256-f77b02a52251e408a4fbc232f27817eaedeb4acbf3c3dbd0daf72cf1e1c88601)
 - [MinIO website](https://min.io/), [documentation](https://min.io/docs/minio/kubernetes/upstream/) and [`aminueza/minio` Terraform provider](https://registry.terraform.io/providers/aminueza/minio/3.40.1/docs)
