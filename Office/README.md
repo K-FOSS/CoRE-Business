@@ -85,7 +85,11 @@ pdf.mylogin.space HTTPRoute
 - Nextcloud cache, distributed locks and file locking use the site-local
   [Dragonfly](https://www.dragonflydb.io/) service over TLS. Its password is
   copied by an [External Secrets](https://external-secrets.io/) resource from
-  the Backplane-published `Storage/DragonFly/CoRE/.../Creds` path.
+  the Backplane-published `Storage/DragonFly/CoRE/.../Creds` path. The pinned
+  chart's external Redis settings use that same Secret, and the post-render
+  patches set its `REDIS_URL` to `rediss://` for the web, worker and CronJob.
+  The custom Nextcloud Redis config and PHP session handler use TLS with peer
+  and hostname verification.
 - Gateway API exposes Nextcloud, while ExternalDNS publishes the Collabora
   ClusterIP Service. An Envoy Gateway BackendTrafficPolicy adjusts the
   Nextcloud backend behavior.

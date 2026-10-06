@@ -1,0 +1,6 @@
+- op: test
+  path: /spec/template/spec/containers/0/env/5/name
+  value: 'REDIS_URL'
+- op: replace
+  path: /spec/template/spec/containers/0/env/5/value
+  value: 'rediss://:$(REDIS_HOST_PASSWORD)@$(REDIS_HOST):$(REDIS_HOST_PORT)'

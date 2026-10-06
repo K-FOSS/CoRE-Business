@@ -17,3 +17,21 @@ patches:
       version: v1
       kind: Service
       labelSelector: app.kubernetes.io/name=nextcloud,app.kubernetes.io/component=app
+  - path: patches/nextcloud-redis-tls-app.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      labelSelector: app.kubernetes.io/name=nextcloud,app.kubernetes.io/component=app
+  - path: patches/nextcloud-redis-tls-worker.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      labelSelector: app.kubernetes.io/name=nextcloud,app.kubernetes.io/component=nextcloud-task-worker
+  - path: patches/nextcloud-redis-tls-cron.yaml
+    target:
+      group: batch
+      version: v1
+      kind: CronJob
+      name: nextcloud-background-cron
