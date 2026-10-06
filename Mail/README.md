@@ -56,7 +56,13 @@ Mail client IMAP :143/:993
 
 - Postfix provides SMTP, implicit TLS, submission and an internal authenticated
   SMTP port. Its configuration combines ConfigMaps with ExternalSecrets for
-  LDAP and database-backed routing/authentication.
+  LDAP and database-backed routing/authentication. Authenticated LDAP users use
+  their `mail` attribute as the sender identity when present; users without
+  that attribute can send as `<cn>@<email.domain>` (currently
+  `<cn>@mail.mylogin.space`). A `postfix-exporter` sidecar exposes Postfix
+  queue size and age histograms on an internal metrics Service at port 9154.
+  The exporter shares only Postfix's pod-local `public` socket directory; its
+  log input is `/dev/null`, so log-derived delivery counters are not collected.
 - Dovecot provides IMAP/IMAPS, SASL and LMTP services. It authenticates through
   LDAP and proxies/reads mailbox state according to the checked-in storage
   configuration.
@@ -203,6 +209,7 @@ After reconciliation, verify at each site and then test cross-site behavior:
 ## Upstream projects
 
 - [Postfix website](https://www.postfix.org/) and [documentation](https://www.postfix.org/documentation.html)
+- [Postfix Exporter source and options](https://github.com/Hsn723/postfix_exporter)
 - [Dovecot website](https://www.dovecot.org/) and [documentation](https://doc.dovecot.org/latest/)
 - [Rspamd website](https://rspamd.com/) and [documentation](https://docs.rspamd.com/)
 - [Maddy website and documentation](https://maddy.email/) and [source](https://github.com/foxcpp/maddy)

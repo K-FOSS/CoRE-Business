@@ -11,6 +11,7 @@ spec:
     enabled: true
     databases:
       - 'simplelogin'
+
     crossplane:
       crossplaneProvider: {{ .Values.site.psql.crossplaneProvider | quote }}
       terraformProvider: {{ .Values.site.psql.terraformProvider | quote }}

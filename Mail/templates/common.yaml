@@ -144,6 +144,23 @@ controllers:
             containerPort: 587
           - name: smtp-auth
             containerPort: 10025
+      postfix-exporter:
+        image:
+          repository: 'ghcr.io/hsn723/postfix_exporter'
+          tag: '0.20.0'
+          pullPolicy: IfNotPresent
+        args:
+          - '--postfix.logfile_path=/dev/null'
+        resources:
+          requests:
+            cpu: '10m'
+            memory: '32Mi'
+          limits:
+            cpu: '100m'
+            memory: '64Mi'
+        ports:
+          - name: metrics
+            containerPort: 9154
 
   rspamd:
     annotations: *mailReloaderAnnotations
@@ -316,6 +333,19 @@ service:
         port: 10025
         targetPort: smtp-auth
 
+  postfix-metrics:
+    controller: 'postfix'
+    forceRename: 'postfix-metrics'
+    labels:
+      lan-mode: 'private'
+    annotations:
+      prometheus.io/scrape: 'true'
+      prometheus.io/port: '9154'
+    ports:
+      metrics:
+        port: 9154
+        targetPort: metrics
+
   rspamd:
     controller: 'rspamd'
     forceRename: 'rspamd'
@@ -396,6 +426,15 @@ persistence:
         postfix:
           - path: '/etc/postfix/master.cf'
             subPath: 'master.cf'
+  postfix-public-sockets:
+    type: emptyDir
+    advancedMounts:
+      postfix:
+        postfix:
+          - path: '/var/spool/postfix/public'
+        postfix-exporter:
+          - path: '/var/spool/postfix/public'
+            readOnly: true
   postfix-ldap:
     type: secret
     name: 'business-mail-postfix-auth-config'
