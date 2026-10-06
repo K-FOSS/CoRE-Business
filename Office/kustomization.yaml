@@ -12,3 +12,8 @@ patches:
       version: v1
       kind: Deployment
       labelSelector: app.kubernetes.io/name=nextcloud,app.kubernetes.io/component=app
+  - path: patches/nextcloud-websocket.yaml
+    target:
+      version: v1
+      kind: Service
+      labelSelector: app.kubernetes.io/name=nextcloud,app.kubernetes.io/component=app
