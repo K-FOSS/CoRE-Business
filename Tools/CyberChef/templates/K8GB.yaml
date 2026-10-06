@@ -1,0 +1,23 @@
+{{- if .Values.k8gb.enabled }}
+{{- range $index, $domain := .Values.cyberchef.domains }}
+{{- $gslbName := $.Release.Name | trunc 63 | trimSuffix "-" }}
+{{- if gt $index 0 }}
+{{- $gslbName = printf "%s-%d" ($.Release.Name | trunc 58 | trimSuffix "-") (add1 $index) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+---
+apiVersion: k8gb.io/v1beta1
+kind: Gslb
+metadata:
+  name: {{ $gslbName | quote }}
+  annotations:
+    k8gb.io/hostname: {{ $domain | quote }}
+spec:
+  resourceRef:
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    name: {{ $.Release.Name | quote }}
+  strategy:
+    type: {{ $.Values.k8gb.strategy | quote }}
+    dnsTtlSeconds: {{ $.Values.k8gb.dnsTtlSeconds }}
+{{- end }}
+{{- end }}

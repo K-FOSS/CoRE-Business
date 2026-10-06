@@ -1,6 +1,10 @@
 ---
 {{- include "bjw-s.common.loader.init" . }}
 
+{{- if empty .Values.cyberchef.domains }}
+{{- fail "cyberchef.domains must contain at least one hostname" }}
+{{- end }}
+
 {{- define "app-template.hardcodedValues" -}}
 global:
 {{ if not .Values.global.nameOverride }}
@@ -129,7 +133,9 @@ route:
         sectionName: {{ .Values.gateway.sectionName | quote }}
 
     hostnames:
-      - {{ .Values.cyberchef.domain | quote }}
+      {{- range .Values.cyberchef.domains }}
+      - {{ . | quote }}
+      {{- end }}
 
     rules:
       - matches:

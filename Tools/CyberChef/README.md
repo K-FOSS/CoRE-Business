@@ -1,9 +1,20 @@
 # CoRE CyberChef
 
 This chart deploys CyberChef through the bjw-s common library. It runs two
-replicas behind a ClusterIP Service and exposes `cyberchef.mylogin.space` with
-a Gateway API HTTPRoute carrying public and private network-policy labels. The
-route is annotated for discovery by the `core` Forecastle instance.
+replicas behind a ClusterIP Service and exposes each hostname in
+`cyberchef.domains` through one Gateway API HTTPRoute carrying public and
+private network-policy labels. The route is annotated for discovery by the
+`core` Forecastle instance.
+
+The chart also creates one `k8gb.io/v1beta1` `Gslb` for each hostname in each
+CyberChef cluster. Every resource references the generated HTTPRoute and uses
+round-robin DNS with a 30-second TTL across the production bare-metal
+infrastructure clusters selected by the owning ApplicationSet. This requires
+the K8GB controller's configured zones and DNS provider to cover every hostname,
+with the necessary DNS delegation already in place. This chart does not create
+a `ZoneDelegation`, so it does not change parent-zone delegation records. See the
+[K8GB resource reference documentation](https://www.k8gb.io/latest/resource_ref/)
+and [dynamic zone documentation](https://www.k8gb.io/latest/dynamic_zones/).
 
 [The Cyberchef ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) selects YVR bare-metal
 infrastructure clusters and deploys to `core-prod` without Lovely-injected
@@ -33,6 +44,8 @@ helm template core-business-cyberchef Tools/CyberChef --namespace core-prod --va
 
 Review the upstream [CyberChef project](https://github.com/gchq/CyberChef) and
 [bjw-s common chart](https://github.com/bjw-s-labs/helm-charts/tree/main/charts/library/common).
+Review the [K8GB project](https://github.com/k8gb-io/k8gb) before changing
+global DNS behavior.
 Validate the gateway parent/listener, service target port, probes, replica
 distribution and disruption behavior after deployment. Test browser loading,
 web workers, uploads, downloads and representative recipes while the egress

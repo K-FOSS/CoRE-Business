@@ -6,8 +6,14 @@ gateway:
   namespace: 'core-prod'
   sectionName: 'https-myloginspace'
 
+k8gb:
+  enabled: true
+  strategy: 'roundRobin'
+  dnsTtlSeconds: 30
+
 cyberchef:
-  domain: 'cyberchef.mylogin.space'
+  domains:
+    - 'cyberchef.mylogin.space'
   replicas: 2
 
   image:
