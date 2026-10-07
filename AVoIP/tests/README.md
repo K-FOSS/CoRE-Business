@@ -44,3 +44,65 @@ fixture is PCMU and does not emulate fax signaling or validate T.38/fax output.
 The scenarios are regression fixtures, not evidence of a live fix. They have
 not yet been run against a deployed Home1/DC1 stack; the acceptance steps above
 must be recorded after a reviewed GitOps rollout.
+
+## Authorization and outbound-call probes
+
+Run `./sip-security-render.sh` after changing site values. It renders both
+sites and checks that public UDP/TCP/TLS listeners retain the source ACL,
+registration is denied, unmatched FreeSWITCH public destinations are rejected,
+and the event socket remains bound to loopback. This is a configuration guard,
+not a substitute for SIP responses from the deployed stack.
+
+`sip-security-probes.py` sends negative SIP requests to a **non-production**
+deployment. Use a test DID and an unassigned, non-routable outbound number;
+capture each probe's Call-ID in Kamailio, FreeSWITCH, and Asterisk logs and
+confirm no outbound gateway INVITE or billable call was generated. The script
+prints response codes and Call-IDs and uses a deliberately wrong credential; do not
+pass or log production credentials. Set the runner's source IP so the ACL role
+under test is unambiguous. For example:
+
+```sh
+python3 sip-security-probes.py edge-denied \
+  --host "$TEST_KAMAILIO_IP" --port 5060 --transport udp \
+  --domain "$TEST_SIP_HOST" --did "$TEST_DID" \
+  --outbound-number "$UNASSIGNED_TEST_NUMBER"
+
+python3 sip-security-probes.py edge-allowed \
+  --host "$TEST_KAMAILIO_IP" --port 5060 --transport udp \
+  --domain "$TEST_SIP_HOST" --did "$TEST_DID" \
+  --outbound-number "$UNASSIGNED_TEST_NUMBER"
+
+python3 sip-security-probes.py private-auth \
+  --host "$TEST_FREESWITCH_IP" --port 5062 --transport tls \
+  --sni "$TEST_FREESWITCH_TLS_HOST" --ca "$TEST_CA_FILE" \
+  --domain "$TEST_FREESWITCH_TLS_HOST" --did "$TEST_DID" \
+  --outbound-number "$UNASSIGNED_TEST_NUMBER"
+
+python3 sip-security-probes.py asterisk-auth \
+  --host "$TEST_ASTERISK_IP" --port 5061 --transport tls \
+  --sni "$TEST_ASTERISK_TLS_HOST" --ca "$TEST_CA_FILE" \
+  --domain "$TEST_ASTERISK_TLS_HOST" --did "$TEST_DID" \
+  --outbound-number "$UNASSIGNED_TEST_NUMBER"
+```
+
+`edge-denied` must receive 403 for OPTIONS, REGISTER, MESSAGE, and both DID
+and outbound INVITEs, including a request with a bogus Authorization header.
+`edge-allowed` verifies that an ACL-authorized carrier still cannot REGISTER
+or dial an unmatched outbound destination. Carrier DID calls are intentionally
+authorized by source CIDR; they do not use SIP digest credentials. Run the
+edge probes over TLS as well (`--transport tls --port 5061 --sni ... --ca ...`)
+and over TCP/5060 where the site enables it. On TLS, validate the certificate
+hostname and chain through the supplied CA.
+
+`private-auth` and `asterisk-auth` require an initial 401/407 challenge and
+then rejection of a deliberately wrong digest for both the test DID and
+unassigned number. Run these from a test pod whose source is permitted by the
+private profile's ACL so a source denial cannot masquerade as a credential
+check. The current Asterisk endpoint config has `outbound_auth` but no
+inbound `auth` setting, and its identify rule matches broad private ranges;
+**do not mark the private credential boundary accepted until this probe passes
+and the backend configuration is corrected if it fails.**
+
+No live authorization probe has been run by these repository checks. Passing
+render assertions alone does not prove unauthenticated callers cannot reach
+a SIP endpoint or that invalid credentials are rejected.

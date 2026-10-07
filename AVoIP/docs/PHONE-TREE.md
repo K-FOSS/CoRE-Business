@@ -214,6 +214,11 @@ Before enabling the hub:
 4. Place an inbound call and verify the configured DID endpoint receives it.
 5. Place an outbound call through Asterisk and verify FreeSWITCH rejects an
    invalid credential or non-internal source.
+   Run the [negative SIP probes](../tests/README.md#authorization-and-outbound-call-probes)
+   from both denied and ACL-permitted test sources. The current Asterisk
+   endpoint has no inbound `auth` setting, so its direct private TLS listener
+   needs its own challenge/rejection result before treating that boundary as
+   credential protected.
 6. Verify RTP, DTMF, TLS certificate validation, and provider failure behavior.
 
 FreeSWITCH references: [official documentation](https://developer.signalwire.com/freeswitch/)

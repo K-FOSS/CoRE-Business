@@ -353,6 +353,10 @@ operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
 Inbound external SIP is restricted by the Flowroute signaling CIDRs configured
 under `flowroute.signalingCIDRs`; the public DID route does not
 accept arbitrary Internet SIP sources.
+The [SIP security probes](tests/README.md#authorization-and-outbound-call-probes)
+exercise denied sources, registration, unmatched outbound destinations, and
+bad private-peer credentials on an isolated deployment. Carrier DID calls use
+the source ACL rather than SIP digest authentication.
 FreeSWITCH voice outbound is disabled: the public context has an explicit
 catch-all rejection after the configured DID route. FreeSWITCH does not
 register to Flowroute; carrier signaling is accepted through Kamailio.
