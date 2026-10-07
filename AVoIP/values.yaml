@@ -683,7 +683,7 @@ freeswitch:
     # Temporary test mode: force G.711 and disable T.38 for the next fax
     # reception test. Restore false after the test.
     g711Only:
-      enabled: true
+      enabled: false
     persistence:
       enabled: true
       storageClass: 'longhorn'
