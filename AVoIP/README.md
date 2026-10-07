@@ -177,8 +177,10 @@ the carrier's Via advertises 5061. Kamailio and FreeSWITCH can be enabled indepe
 both are enabled, the default Kamailio backend is FreeSWITCH's private TLS-only
 SIP profile on port 5061. Kamailio uses TOPOS-backed two-sided topology state
 for the asymmetric edge: the internal route is Kamailio's private TLS Service
-on port 5062 and the external TLS route is the site's
-`sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` identity. TOPOS hides
+on port 5062. It selects the public route from the carrier's initial transport:
+UDP dialogs use `kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host:5060`
+over UDP; TCP dialogs use that host and port over TCP; TLS dialogs use the site's
+`sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` identity over TLS. TOPOS hides
 the private route and backend Contact from Flowroute without a second manual
 header-rewrite layer. Both sites can use the same DIDs through separate
 site-local value/secret injection; the site-specific dialog route keeps each
@@ -187,28 +189,31 @@ primary/YXL failover for new calls, while established dialogs remain local to
 their original site. After `loose_route_mode("1")` handles the public route,
 carrier-originated in-dialog requests are sent to FreeSWITCH over the private
 TLS service. Public 180, 183, and successful INVITE 2xx Contacts preserve their
-called user while using the originating site's SIPS
-host. FreeSWITCH uses that site host as its external SIP identity as well.
+called user, public port, and transport: UDP/TCP uses the direct Service host
+on 5060, and TLS uses the site's SIPS host on 5061. FreeSWITCH's backend-facing
+SIP profile remains private TLS; TOPOS removes that Contact before it reaches
+the carrier.
 Every in-dialog request, including 2xx ACK, follows the dialog Route set;
 Kamailio drops an ACK with an invalid route instead of guessing a backend.
 
-An optional `kamailio-pub` direct Service is controlled by
-`kamailio.publicExposure.sip.directService.enabled` (off by default). Its
+The `kamailio-pub` direct Service is required when public UDP or TCP dialogs are
+enabled; rendering fails if those transports are enabled without it. Its
 `external-dns.kubernetes.io/hostname` and legacy
 `external-dns.alpha.kubernetes.io/hostname` annotations both use
 `kamailio.publicExposure.sip.directService.hostname`, or derive
-`kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host`. When direct
-Service is enabled, UDP/TCP sockets advertise this identity; otherwise they
-advertise the existing `sip.<cluster>.<datacenter>.<region>.resolvemy.host`.
+`kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host`. The direct
+UDP/TCP sockets and TOPOS Contacts advertise this identity, while TLS continues
+to use the Gateway TLSRoute identity.
 Its ports
 follow `sip.enabled` (TLS/5061), `sip.tcpEnabled` (TCP/5060), and
 `sip.udpEnabled` (UDP/5060); it never exposes private TLS/5062. Configure its
 type, labels, annotations, and LoadBalancer class under
 `serviceOptions.kamailio-pub`. UDP and TCP/5060 are supported only through
 this direct Service; there is no Gateway UDPRoute.
-Direct TCP/TLS LoadBalancers must preserve the original client address and
-support the PROXY protocol expected by Kamailio. Prefer the Gateway path if the
-site LoadBalancer cannot meet those requirements.
+The direct Service uses `externalTrafficPolicy: Local` to preserve the
+carrier's source address for the ACL. Gateway TLS traffic carries the source
+in PROXY protocol v2. Use the Gateway path when a direct LoadBalancer cannot
+preserve the source address.
 
 New outbound Flowroute connections are source NATed by the site's VyOS
 WAN-GW/NAT VRRP pair. The hub's observed signaling source was
@@ -281,17 +286,20 @@ operator's all-node headless Service for RTPEngine's direct Redis client, which
 does not follow Redis Cluster redirects. Call-state restoration and switchover
 still require live verification after reconciliation, including RTPEngine and
 Valkey node failures.
-Public signaling is TLS-only. By default, Flowroute targets the configured
+Public TLS signaling uses the configured
 `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061;transport=tls` site
-route, and that site hostname remains the dialog identity. The chart now has an
+route. Where enabled, UDP/TCP signaling uses the direct `kamailio-pub` Service
+on port 5060 and keeps that original transport for the dialog. The active
+AVoIP values enable UDP at Home1 and UDP/TCP at DC1; the private FreeSWITCH
+leg remains TLS. The chart also has an
 opt-in [K8GB](https://www.k8gb.io/) failover mode that references the existing
-Gateway API `TLSRoute` for `sip.resolvemy.host`; when enabled, Kamailio advertises that global name in
-the public listener, Record-Route, and Contact while each site continues to
-publish its site-local route. Keep K8GB mode disabled until Backplane has
+Gateway API `TLSRoute` for `sip.resolvemy.host`. The global name supports
+new-call discovery; established dialogs retain the accepting site's Contact
+and route set. Keep K8GB mode disabled until Backplane has
 configured public DNS delegation and its authoritative provider path for the
 `sip.resolvemy.host` zone. The Backplane K8GB control plane currently installs
-no `Gslb` or `ZoneDelegation` resources. Kamailio has no UDP SIP listener; its
-private FreeSWITCH leg uses TLS.
+no `Gslb` or `ZoneDelegation` resources. Its TLSRoute only serves TLS calls;
+UDP/TCP calls use the direct Service, never a Gateway UDPRoute.
 
 Kamailio is the only public SIP border. The ordinary FreeSWITCH and Asterisk
 Services are private ClusterIP Services without `wan-mode: public` or
@@ -373,7 +381,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 | --- | --- | --- |
 | Speech recognition/synthesis | External dependency | Use Wyoming from the AI stack as the protocol adapter: TTS is backed by GPUStack and STT by Speaches. |
 | Asterisk | Site-controlled | When enabled, creates a rootless UID/GID 1000 workload with a service identity and ConfigMap-backed SIP configuration. Its generated User credentials are mounted only at runtime and used to authenticate the Asterisk peer to FreeSWITCH and its site-local PostgreSQL CDR database. Native `cdr_pgsql` is enabled; local CSV, SQLite, CEL, LDAP/PostgreSQL realtime, phone provisioning, audio hardware, music-on-hold, and IAX2 modules remain disabled. |
-| Kamailio | Independently enabled | When enabled on a cluster, Kamailio receives public SIP on that site's `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` TLSRoute. The Gateway passes TLS through; its SIPS fallback filter chain handles clients without SNI. Kamailio owns TLS, consumes Envoy PROXY protocol v2, verifies Flowroute source CIDRs, and forwards accepted SIP over TLS to its private backend. With FreeSWITCH enabled, that backend defaults to FreeSWITCH's TLS-only private SIP edge. |
+| Kamailio | Independently enabled | When enabled on a cluster, TLS SIP reaches the site's `sip.<cluster>.<datacenter>.<region>.resolvemy.host:5061` TLSRoute and UDP/TCP SIP can reach the public direct Service on 5060. The Gateway passes TLS through; its SIPS fallback filter chain handles clients without SNI. Kamailio owns TLS, consumes Envoy PROXY protocol v2 on that path, verifies Flowroute source CIDRs, and forwards accepted SIP over TLS to its private backend. TOPOS builds each dialog Contact and route set from the carrier's initial transport. With FreeSWITCH enabled, the backend is its TLS-only private SIP edge. |
 | FreeSWITCH | Site-controlled | When enabled, creates private TLS SIP services and External Secret-backed configuration. The `avoip.did` voice route remains ringing until Asterisk answers. A separate `fax.did` starts SpanDSP `rxfax`, with TIFFs stored on the configured PVC; the DID must be supplied by the site. Public media is proxied by RTPEngine. See [SIP identity and fax routing](docs/SIP-IDENTITY.md). |
 | RTPEngine | Site-controlled | Runs one pinned userspace media proxy by default, exposes the configured UDP range through a LoadBalancer Service whose provider settings are supplied by chart users, and receives Kamailio NG control traffic over a private ClusterIP Service. Shared call state uses Valkey through a primary-aware HAProxy endpoint. |
 | Homer 11 | Per-cluster opt-in | Runs the official all-in-one Homer 11 HEP ingest/API/UI service with persistent DuckLake/Parquet storage, local Kamailio HEPv3 capture, RTPEngine RTCP/NG capture when local RTPEngine is enabled, and Authentik-protected HTTPS access. See [HOMER.md](docs/HOMER.md). |

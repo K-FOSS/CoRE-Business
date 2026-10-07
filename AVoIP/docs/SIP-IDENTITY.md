@@ -6,7 +6,7 @@ The active chart owner is Backplane's [AVoIP ApplicationSet](https://github.com/
 
 | Traffic | Path | Carrier-facing identity at the hub |
 | --- | --- | --- |
-| Inbound INVITE and its reply | Flowroute ↔ Envoy TLS passthrough ↔ Kamailio | Site SIP hostname on port 5061 |
+| Inbound INVITE and its reply | Flowroute ↔ Kamailio direct Service over UDP/TCP, or Envoy TLS passthrough ↔ Kamailio over TLS | Direct Service hostname on UDP/TCP 5060, or site SIP hostname on TLS 5061 |
 | New outbound request, such as FreeSWITCH's BYE | Kamailio → VyOS WAN-GW/NAT VRRP pair → Flowroute | `66.165.222.97` observed on the BYE transaction |
 | RTP | Flowroute ↔ RTPEngine | `66.165.222.103` advertised in SDP |
 
@@ -14,11 +14,68 @@ The VyOS routers [source NAT](https://docs.vyos.io/en/latest/configuration/nat/n
 
 Flowroute can send an INVITE from an ephemeral TLS source port while its Via advertises 5061 without `rport`. The chart configures [`force_rport()`](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#force_rport) for authorized carrier requests so the answer targets the received port and can reuse the inbound Envoy/PROXY-protocol connection. New outbound requests still target Flowroute's port 5061. Confirm the resulting connection choice and ACK with a live call; the address logged at Kamailio's send boundary alone does not prove delivery.
 
-By default, `sip.siteHost` is the site-specific public SIP identity, supplied through `kamailio.advertisedHost` or derived as `sip.<cluster>.<datacenter>.<region>.resolvemy.host`. Kamailio advertises this identity for carrier-facing established dialogs and uses the private Kamailio Service FQDN on the backend-facing side. TOPOS `contact_mode=1` keeps the meaningful Contact user and places its opaque state key in `;tps=...`. TOPOS strips the paired Record-Route headers from both peers and restores dialog routing from shared site-local Dragonfly state. FreeSWITCH does not use the public carrier identity. This pins each dialog to the site that accepted it; Dragonfly sharing is per site, not cross-site, and does not replicate FreeSWITCH B2BUA state.
+## 2026-10-07 ACK-timeout investigation
+
+The supplied Home1 trace confirms FreeSWITCH answered Call-ID
+`4603026123-4000377119-1786145794@IRISMSC8.iristel.net`, retransmitted its
+200 OK, received no ACK, and timed out at about 32 seconds. RTP was flowing
+before `rxfax`, so no codec, fax, or RTPEngine change is indicated. A later
+Call-ID's same-branch ACKs appear to acknowledge non-2xx responses and do not
+establish the 2xx ACK path. Their response codes were not available in the
+retained Kamailio logs; obtain the matching final response before classifying
+those retries.
+
+The confirmed configuration defect is that `RR_CARRIER_TO_BACKEND` always
+inserted a public TLS/5061 Record-Route, regardless of the INVITE's ingress
+transport. Kamailio 6.1.4 TOPOS used that route identity to build the carrier
+Contact, so a UDP INVITE received a TLS/5061 Contact and TLS route set. The
+script also forced `public_tls` in `TO_CARRIER`, overriding the public socket
+selected by the restored route for backend-originated dialog requests. The
+patch selects UDP/5060 and `public_udp` for UDP ingress, TCP/5060 and
+`public_tcp` for TCP ingress, and retains site TLS/5061 and `public_tls` for
+TLS ingress. The private Record-Route and Kamailio-to-FreeSWITCH leg remain
+TLS/5062. The response's SIP transaction still returns over its original
+transport; the changed Contact controls later dialog requests.
+
+This proves why the UDP-originated dialog advertised TLS. It does not prove
+whether Flowroute attempted TLS and failed negotiation, did not attempt the
+advertised Contact, or lost the resulting ACK elsewhere: the supplied TCP
+capture has no SIP visibility and no ACK appears at either SIP endpoint. A
+live Call-ID-correlated trace after rollout is needed to establish where the
+ACK travels. The expected path is Flowroute UDP → public Service UDP/5060 →
+Kamailio (any replica) → private TLS/5062 → the single FreeSWITCH replica.
+
+No Gateway or RTPEngine resource change is needed for this fix. The active
+[Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml)
+configures Home1's `main-gw` Service at `10.1.1.84`. Its `sips-tls` listener
+uses TLS passthrough on 5061, the AVoIP TLSRoute targets Kamailio Service
+TCP/5061, and its BackendTrafficPolicy adds PROXY protocol v2 so Kamailio can
+enforce the carrier source ACL. The separate `kamailio-pub` Service uses
+KubeVIP on Home1 and exposes UDP/5060 and TCP/5061. The supplied
+`10.0.0.41` handoff trace therefore describes that direct KubeVIP path; it
+does not establish TLSRoute delivery or TLS negotiation. Kamailio presents
+the certificate on both TLS paths; the rendered Certificate includes the site
+and direct-Service hostnames. Read-only TLS 1.3 handshakes on 2026-10-07
+verified the certificate hostname and chain at the site hostname, direct
+KubeVIP hostname, and configured Gateway IP `10.1.1.84`. These checks do not
+prove this call's ACK delivery or the carrier's TLS behavior. UDP uses the direct Service with
+`externalTrafficPolicy: Local`; Flowroute
+source CIDRs are unchanged. TOPOS remains enabled and uses the site-local
+Dragonfly database 51 with a single `serverid=topos` on all replicas. The
+documented default branch retention is 180 seconds and dialog retention is
+three hours. FreeSWITCH remains one replica per site, preserving the local
+B2BUA dialog owner. RTPEngine offer/answer, deletion, codecs and fax settings
+are unchanged.
+
+For carrier TLS, `sip.siteHost` is the public SIP identity, supplied through `kamailio.advertisedHost` or derived as `sip.<cluster>.<datacenter>.<region>.resolvemy.host`. For carrier UDP/TCP, the public identity is the `kamailio-pub` direct Service hostname, derived as `kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host`. Initial transport selects the paired public Record-Route URI: UDP/5060, TCP/5060, or TLS/`kamailio.advertisedTLSPort`. The private side stays Kamailio Service TLS/5062 for every carrier transport. The direct public Service is required for UDP/TCP; Helm fails rendering when either transport is enabled without it.
+
+Kamailio 6.1.4 is pinned by `values.yaml`. Its version-specific [TOPOS documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/topos.html) documents `contact_mode=1`, `cparam_name`, event hooks, and deriving the Contact host from Record-Route. The chart keeps `contact_mode=1` and the `tps` token; it does not install a Contact rewrite callback. TOPOS derives public Contact host, port, and transport from the selected Record-Route URI, so a UDP dialog now produces a direct-Service UDP/5060 Contact with the opaque `tps` parameter. TLS dialogs continue to produce the site-host TLS Contact. The outgoing-send callback only observes serialized traffic and does not modify messages.
+
+TOPOS state uses a single site-local Dragonfly database and identical `serverid=topos` configuration on all Kamailio replicas; `event_mode=15` enables send and receive processing. The module's documented defaults retain unconfirmed branches for 180 seconds and confirmed dialogs for three hours, both longer than setup and typical calls. FreeSWITCH is one replica per site, so this chart's backend Service resolves to the same B2BUA that accepted the INVITE. An ACK can arrive at a different Kamailio pod over UDP; shared TOPOS state restores the hidden route and directs it to that same FreeSWITCH Service. This does not replicate transaction or FreeSWITCH dialog state and is not cross-site failover.
 
 The chart's opt-in `sip.globalRouting.enabled` mode provides a global [Gateway API TLSRoute](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.TLSRoute) and K8GB DNS identity for new-call discovery. The Contact identity produced by Kamailio remains site-specific even in this mode; do not make established dialogs globally load balanced until dialog state and B2BUA recovery are actually shared across sites. K8GB DNS failover directs new dialog setup; it does not replicate Kamailio, FreeSWITCH, or RTPEngine live state across sites.
 
-The public/private route pair is constructed once per direction with `record_route_preset()` and `r2=on`; `sockname_mode=1` associates its URIs with the named TLS sockets. TOPOS hides those Record-Routes externally and rewrites Contacts with the appropriate public site or private service host plus its `tps` token. One `loose_route_mode("1")` operation handles the paired route after TOPOS restoration. A 2xx INVITE ACK is a separate transaction and is routed as a dialog request; it must never depend on `t_check_trans()`. RTPEngine's SDP rewriting is independent of this SIP topology. The service-host helpers default to chart Service names under injected `cluster.domain`; owning site values may override them with the certificate/DNS-backed cluster-scoped identities.
+The public/private route pair is constructed once per direction with `record_route_preset()` and `r2=on`; `sockname_mode=1` associates its URIs with the named public and private sockets. TOPOS hides those Record-Routes externally and rewrites Contacts with the selected public host/port/transport or private service host plus its `tps` token. The in-dialog `loose_route_mode("1")` operation consumes the restored route. Carrier-facing in-dialog requests follow the socket encoded by that restored route; `TO_CARRIER` must not force TLS over a UDP/TCP route. A 2xx INVITE ACK is a separate transaction and is routed as a dialog request; it must never depend on `t_check_trans()`. RTPEngine's SDP rewriting is independent of this SIP topology. The service-host helpers default to chart Service names under injected `cluster.domain`; owning site values may override them with the certificate/DNS-backed cluster-scoped identities.
 
 The `sips-tls` Gateway listener uses TLS passthrough to the Kamailio `TLSRoute`; it does not terminate the SIP TLS session. Envoy Gateway normally matches the route hostname against SNI. The fallback [EnvoyPatchPolicy](https://gateway.envoyproxy.io/docs/tasks/extensibility/envoy-patch-policy/) removes the `server_names` match from the one SIPS filter chain, allowing no-SNI TLS clients to reach that same TLSRoute without changing the backend or terminating TLS. This relies on the SIPS listener having one TLSRoute/backend; adding another SIPS route requires revisiting the fallback so it cannot route unrelated SNI traffic incorrectly. Envoy prepends PROXY protocol v2, which Kamailio consumes before its native TLS handshake. Kamailio presents its chart-managed cert-manager certificate; its SAN list includes the site hostname, shared SIP alias, and private Kamailio service name. `sip.tls.issuerName` must issue publicly trusted certificates for the public names. Verify the Kamailio `Certificate` is Ready and run the TLS verification below before testing Flowroute. The private hops remain Kamailio to FreeSWITCH on TLS 5061 at the Kamailio service's private port 5062 and FreeSWITCH to Asterisk on TLS 5061; Sofia verifies the Asterisk server certificate.
 
@@ -83,7 +140,7 @@ message types. TCP ACK flags are not SIP ACK requests. Because SIP remains
 encrypted on the wire, confirm application-layer INVITE/200/ACK in Kamailio
 logs or Homer HEP after TLS is accepted by Kamailio.
 
-After deployment, place an inbound Flowroute call and keep it answered for at
+After a reviewed GitOps rollout, place an inbound Flowroute call and keep it answered for at
 least 60 seconds. Capture the Call-ID in Homer and verify this sequence:
 
 ```text
@@ -109,16 +166,17 @@ For temporary dialog diagnostics, set
 Call-ID, method, CSeq, From/To tags, source, receive socket/protocol,
 Request-URI, and top Route. The routing decision records the next hop and
 socket name; the serialized send marker records selected send protocol/socket
-and destination IP/port. Home1 public ingress should show `proto=tls` and
-`recv=...:5061`.
+and destination IP/port.
 Disable the switch after the capture to avoid persistent per-request
-diagnostic logging. On home1, filter logs using the test Call-ID with:
+diagnostic logging. Home1 UDP ingress should show `proto=udp` and `recv=...:5060`;
+a separate genuine TLS call should show `proto=tls` and `recv=...:5061`.
+Filter logs from every Kamailio replica using the test Call-ID:
 
 ```sh
 CALL_ID='<captured-call-id>'
 kubectl --context logged-user -n core-prod logs \
-  deploy/core-home1-talos-prod-business-avoip-prod-avoip-kamailio \
-  -c kamailio --since=10m | rg -F "$CALL_ID"
+  -l app=core-home1-talos-prod-business-avoip-prod-avoip-kamailio \
+  -c kamailio --max-log-requests=10 --prefix --since=10m | rg -F "$CALL_ID"
 kubectl --context logged-user -n core-prod logs \
   deploy/core-home1-talos-prod-business-avoip-prod-avoip-freeswitch \
   -c freeswitch --since=10m | rg -F "$CALL_ID"
@@ -136,3 +194,18 @@ For voice, call `avoip.did` and confirm a bridge to Asterisk without `rxfax`.
 For fax, call `fax.did` and confirm `rxfax`, a result log, and a TIFF under
 `freeswitch.fax.spoolPath` without an Asterisk bridge. Compare RTPEngine packet
 counts in both directions and verify Homer receives RTPEngine HEP on TCP 9061.
+
+The UDP and TLS SIPp scenarios, including steering the UDP dialog ACK and BYE
+to another Kamailio replica, are documented in [tests/README.md](../tests/README.md).
+Collect the Call-ID across all Kamailio pods with the command above, including
+the initial public receive and the other replica's TOPOS/loose-route and
+private-backend send, as well as FreeSWITCH.
+
+Acceptance requires the successful-answer ACK at FreeSWITCH, no repeated 200
+after that ACK and no `ACK Timeout`, an answered call lasting beyond 60 seconds,
+and a normal BYE/200 exchange in both directions. Fax completion and a received
+TIFF are a separate acceptance check. Rendered manifests and test fixtures are
+not live verification. Rollback is a reviewed Git revert followed by the
+normal scoped Argo CD sync; do not manually edit or apply production resources.
+Existing calls keep their established Contact and route set, so verify rollback
+with a fresh dialog.

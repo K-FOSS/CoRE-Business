@@ -7,6 +7,12 @@
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $rawSipLogging := or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound) -}}
 {{- $carrierTrafficLogging := default false .Values.kamailio.sipLogging.carrierTraffic -}}
+{{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled (not .Values.kamailio.publicExposure.sip.directService.enabled) -}}
+{{- fail "public UDP SIP dialogs require kamailio.publicExposure.sip.directService.enabled so the advertised UDP Contact is reachable" -}}
+{{- end -}}
+{{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled (not .Values.kamailio.publicExposure.sip.directService.enabled) -}}
+{{- fail "public TCP SIP dialogs require kamailio.publicExposure.sip.directService.enabled so the advertised TCP Contact is reachable" -}}
+{{- end -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -453,11 +459,26 @@ data:
     }
 
     route[RR_CARRIER_TO_BACKEND] {
-      # record_route_preset(outbound interface, inbound interface).
-      record_route_preset(
-        "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls;r2=on",
-        "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls;r2=on"
-      );
+      # Preserve the transport the carrier used for the dialog. TOPOS derives
+      # its public Contact route (including port and transport) from this RR.
+      # Home1 and DC1 have a directly reachable UDP/5060 Service, while the
+      # TLS listener remains available for SIPS-originated dialogs.
+      if ($proto == "udp") {
+        record_route_preset(
+          "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls;r2=on",
+          "{{ $kamailioPubHost }}:5060;transport=udp;sn=public_udp;r2=on"
+        );
+      } else if ($proto == "tcp") {
+        record_route_preset(
+          "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls;r2=on",
+          "{{ $kamailioPubHost }}:5060;transport=tcp;sn=public_tcp;r2=on"
+        );
+      } else {
+        record_route_preset(
+          "{{ $kamailioHost }}:5062;transport=tls;sn=private_tls;r2=on",
+          "{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }};transport=tls;sn=public_tls;r2=on"
+        );
+      }
     }
 
     route[RR_BACKEND_TO_CARRIER] {
@@ -586,8 +607,9 @@ data:
       if ($du == $null || $du == "") {
         $du = $ru;
       }
-
-      set_send_socket_name("public_tls");
+      # loose_route() selects the public socket from the restored RR's sn
+      # parameter. Do not override it: UDP/TCP dialogs must keep their
+      # established public transport, while TLS dialogs continue using TLS.
     }
 
     route[RELAY] {
@@ -668,10 +690,10 @@ data:
 
     onsend_route {
       {{- if $carrierTrafficLogging }}
-      if ($fsn == "public_tls") {
+      if ($fsn == "public_tls" || $fsn == "public_udp" || $fsn == "public_tcp") {
         xlog(
           "L_INFO",
-          "SIP FLOWROUTE TX pod=$env(POD_NAME) destination=$snd(ip):$snd(port) proto=$snd(proto) callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE TX BEGIN ---\n$snd(buf)\n--- SIP FLOWROUTE TX END ---\n"
+          "SIP FLOWROUTE TX pod=$env(POD_NAME) destination=$snd(ip):$snd(port) wire_proto=$snd(proto) socket_name=$fsn callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE TX BEGIN ---\n$snd(buf)\n--- SIP FLOWROUTE TX END ---\n"
         );
       }
       {{- end }}
