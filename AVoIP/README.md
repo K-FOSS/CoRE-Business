@@ -31,6 +31,9 @@ watched configuration changes.
 
 ## Named Kamailio instances
 
+See the [Kamailio values reference](docs/KAMAILIO-VALUES.md) for every
+supported instance option, default, role constraint, and site override.
+
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 supplies a complete `kamailio.instances` array for DC1, Home1, and
 `dc1-k3s-node1`. Site Helm values **replace the whole array**; include every
@@ -330,7 +333,7 @@ late replies and normally cannot discard final responses. See Kamailio's
 and [body-edit application](https://www.kamailio.org/docs/modules/6.1.x/modules/textopsx.html#textopsx.f.msg_apply_changes)
 documentation. The isolated [reply regression test](tests/README.md) checks
 the actual received SIP bodies, including repeated answers and rewrite errors.
-With `kamailio.sipLogging.diagnostics.sdp` enabled, `SIP wire SDP answer`
+With `kamailio.defaults.sipLogging.diagnostics.sdp` enabled, `SIP wire SDP answer`
 records the destination and SDP connection/media lines from `$snd(buf)` in
 `onsend_route`. This observes the serialized outgoing response for comparison
 across retransmissions without logging SIP authentication headers.
