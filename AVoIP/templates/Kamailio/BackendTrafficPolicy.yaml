@@ -1,15 +1,27 @@
-{{- if and .Values.kamailio.enabled .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
+{{- define "avoip.kamailio.render.BackendTrafficPolicy" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
-  name: {{ $fullName }}-kamailio-tls-proxy-protocol
+  name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "tls-proxy-protocol") }}
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: TLSRoute
-      name: {{ $fullName }}-kamailio
+      name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}
   proxyProtocol:
     version: V2
 {{- end }}
+{{ end }}
+{{- $root := . -}}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $root.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $root.Release "Chart" $root.Chart "Files" $root.Files "Capabilities" $root.Capabilities -}}
+{{ include "avoip.kamailio.render.BackendTrafficPolicy" $ctx }}
+{{ end }}
+{{ end }}

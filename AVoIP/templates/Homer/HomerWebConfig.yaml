@@ -1,4 +1,4 @@
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: v1

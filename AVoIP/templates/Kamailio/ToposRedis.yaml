@@ -1,4 +1,6 @@
-{{- if and .Values.kamailio.enabled .Values.kamailio.topology.enabled }}
+{{- define "avoip.kamailio.render.ToposRedis" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- if and .Values.kamailio.topology.enabled }}
 {{- $redis := .Values.kamailio.topology.redis }}
 {{- $remoteKey := default (printf "Storage/DragonFly/CoRE/%s/%s/%s/Creds" .Values.region .Values.datacenter .Values.cluster.name) $redis.remoteRef.key }}
 ---
@@ -28,3 +30,13 @@ spec:
         key: '{{ $remoteKey }}'
         property: '{{ $redis.remoteRef.property }}'
 {{- end }}
+{{ end }}
+{{- $root := . -}}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $root.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $root.Release "Chart" $root.Chart "Files" $root.Files "Capabilities" $root.Capabilities -}}
+{{ include "avoip.kamailio.render.ToposRedis" $ctx }}
+{{ end }}
+{{ end }}

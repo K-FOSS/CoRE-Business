@@ -48,7 +48,7 @@ data:
         </settings>
     </profile>
   external.xml: |
-  {{- if .Values.kamailio.enabled }}
+  {{- if (include "avoip.kamailio.carrier.enabled" . | trim) }}
     <!-- Public SIP terminates at Kamailio; do not start a second edge profile. -->
   {{- else }}
     <profile name="external">

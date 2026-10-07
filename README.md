@@ -17,6 +17,9 @@ owned by [CoRE Backplane](https://github.com/K-FOSS/CoRE-Backplane). Argo CD
 ApplicationSets under Backplane's `Apps/Business/` select clusters, choose a
 path in this repository and inject environment-specific values. Many use the
 `argocd-lovely-plugin` to combine Helm and Kustomize inputs.
+The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
+Kamailio as named instances; its active site lists are supplied by the
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 
 ```text
 CoRE-Backplane Apps/Business ApplicationSet

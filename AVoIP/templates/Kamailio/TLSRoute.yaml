@@ -1,10 +1,12 @@
-{{- if and .Values.kamailio.enabled .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
+{{- define "avoip.kamailio.render.TLSRoute" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: TLSRoute
 metadata:
-  name: {{ $fullName }}-kamailio
+  name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}
   annotations:
     external-dns.kubernetes.io/hostname: '{{ if .Values.sip.globalRouting.enabled }}{{ include "avoip.sip.siteHost" . }}{{ else }}{{ .Values.sip.globalHost }},{{ include "avoip.sip.siteHost" . }}{{ end }}'
     # TODO: Remove the legacy ExternalDNS annotation after all controllers use v0.22.0+.
@@ -27,7 +29,17 @@ spec:
     - backendRefs:
         - group: ""
           kind: Service
-          name: {{ $fullName }}-kamailio
+          name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}
           port: 5061
           weight: 1
 {{- end }}
+{{ end }}
+{{- $root := . -}}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $root.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $root.Release "Chart" $root.Chart "Files" $root.Files "Capabilities" $root.Capabilities -}}
+{{ include "avoip.kamailio.render.TLSRoute" $ctx }}
+{{ end }}
+{{ end }}

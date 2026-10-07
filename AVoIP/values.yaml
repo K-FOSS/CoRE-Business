@@ -151,108 +151,175 @@ fax:
   did: ''
 
 kamailio:
-  enabled: true
-  tcpChildren: 4
-  replicas: 3
-  rollingUpdate:
-    # BJW-S 5.0.1 uses the field name `surge`; keep zero quoted so its
-    # truthiness check still renders Kubernetes maxSurge: 0.
-    surge: '0'
-    unavailable: 1
-  podDisruptionBudget:
-    minAvailable: 2
-
-  topology:
-    enabled: true
-    redis:
-      # Site-local Dragonfly is the SIP topology store. This is intentionally
-      # separate from RTPEngine's Valkey state and from any cross-site store.
-      secretName: 'avoip-kamailio-topos'
-      serverKey: 'server'
-      # Empty derives the site-scoped Dragonfly identity used by other stacks:
-      # dragonfly.<cluster>.<datacenter>.<region>.mylogin.space
-      host: ''
-      port: 6379
-      proxyPort: 16379
-      tlsServerName: ''
-      database: 51
-      secretStoreRef:
-        kind: 'ClusterSecretStore'
-        name: 'corevault-rootsecrets'
-      remoteRef:
-        key: ''
-        property: 'Password'
-
-  sip:
-    serviceHost: ''
-
-  sipLogging:
-    # Optional compact request/response markers; ACK and failure logs remain on.
-    enabled: true
-
-    # Log complete authorized carrier-facing SIP messages in both directions.
-    # This includes Authorization, identity headers, SDP, and MESSAGE bodies;
-    # keep enabled only while investigating a carrier signaling issue.
-    carrierTraffic: true
-
-    # Temporary SIP wire diagnostics: PRE-TOPOS-STRIP replies plus corex's
-    # final network-send buffer for CSeq 1 INVITE 180/200 responses. Complete
-    # messages can contain PII/SDP; keep disabled outside a controlled trace.
-    postToposResponses: true
-
-    # Temporary full-message receive logging. Disable after the ACK investigation.
-    rawInbound: true
-    # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
-    diagnostics:
-      # Temporarily enabled while investigating the recurring 30-second call
-      # failure. This emits routing/transaction markers and no full SIP body.
-      enabled: true
-      # Kamailio core debug level used only while diagnostics are enabled.
-      coreDebug: 2
-      # Log sanitized SIP routing metadata and SDP before/after RTPEngine.
-      # Disable after the media investigation because SDP can expose endpoint
-      # addresses and codec details.
-      sdp: true
-  publicExposure:
-    enabled: true
-    sip:
-      # Enables the public SIPS/TLS Gateway route and TLS listener.
-      enabled: true
-      # Optional cleartext signaling transports; these do not affect RTP or
-      # RTPEngine's separate UDP media/control paths.
-      udpEnabled: false
-      tcpEnabled: false
-      directService:
-        # When enabled, create the kamailio-pub Service with only the public
-        # signaling transports enabled above. Private TLS/5062 is never added.
+  # Merge order: defaults, then selected roleDefaults, then each named instance.
+  # Site value files replace this whole instances list; copy every desired entry.
+  # Map values merge recursively; listeners, destinations and env lists replace.
+  roleDefaults:
+    carrier-sbc:
+      functions:
+        sanity: true
+        classification: true
+        transactions: true
+        dialog: true
+        authorization: true
+        recordRoute: true
+        backendSelection: true
+        topology: true
+        media: true
+        sipTrace: true
+    private-sbc:
+      publicExposure:
         enabled: false
-        # Empty derives kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host.
-        # Enabled UDP/TCP sockets advertise this direct carrier-facing identity.
-        hostname: ''
-  backend:
-    # The default backend is the chart's FreeSWITCH service when both are enabled.
-    serviceName: ''
-    # FreeSWITCH's kamailio profile is TLS-only on the private service port.
-    servicePort: 5061
-    # Coarse source guard for the private TLS listener. The chart NetworkPolicy
-    # limits port 5062 to FreeSWITCH pods when using the default backend.
-    podCIDR: '172.16.0.0/12'
-  networkPolicy:
-    envoy:
-      # Match the Envoy Gateway data-plane pods, not carrier source CIDRs.
-      # Override these labels if the installed GatewayClass uses different
-      # data-plane labels.
-      namespace: 'envoy-gateway-system'
-      podName: 'envoy'
-  # Legacy override; leave empty to derive the site SIP identity.
-  advertisedHost: ''
-  advertisedTLSPort: 5061
-  image:
-    # renovate: datasource=docker depName=ghcr.io/kamailio/kamailio
-    repository: 'ghcr.io/kamailio/kamailio'
-    tag: '6.1.4-bookworm'
-    digest: 'sha256:c54f770ab74ae64588cc174e206aa337108cc777b6162d738189d1cb0c32d116'
-    pullPolicy: 'IfNotPresent'
+      podDisruptionBudget:
+        minAvailable: 0
+      functions:
+        sanity: true
+        classification: true
+        transactions: true
+        dialog: true
+        authorization: true
+        recordRoute: true
+        backendSelection: true
+        topology: true
+        media: false
+        sipTrace: true
+  instances:
+    - name: 'carrier'
+      enabled: true
+      role: 'carrier-sbc'
+      replicas: 3
+  defaults:
+    # Optional per-instance workload overrides. Empty values preserve the
+    # existing carrier manifest. extraEnv is a replace-only list; entries may
+    # use secretKeyRef, never inline credentials.
+    serviceAccountName: 'default'
+    podAnnotations: {}
+    podLabels: {}
+    resources: {}
+    securityContext:
+      pod: {}
+      container: {}
+    scheduling:
+      nodeSelector: {}
+      tolerations: []
+      affinity: {}
+      topologySpreadConstraints: []
+    extraEnv: []
+    services:
+      private:
+        annotations: {}
+        labels: {}
+        type: ''
+      public:
+        annotations: {}
+        labels: {}
+        type: ''
+        loadBalancerClass: ''
+    # Listener transport enablement and the direct Service host live under
+    # publicExposure.sip; the private TLS listener remains mandatory.
+    listeners:
+      bindAddress: '0.0.0.0'
+    tcpChildren: 4
+    replicas: 3
+    rollingUpdate:
+      # BJW-S 5.0.1 uses the field name `surge`; keep zero quoted so its
+      # truthiness check still renders Kubernetes maxSurge: 0.
+      surge: '0'
+      unavailable: 1
+    podDisruptionBudget:
+      minAvailable: 2
+
+    topology:
+      enabled: true
+      redis:
+        # Site-local Dragonfly is the SIP topology store. This is intentionally
+        # separate from RTPEngine's Valkey state and from any cross-site store.
+        secretName: 'avoip-kamailio-topos'
+        serverKey: 'server'
+        # Empty derives the site-scoped Dragonfly identity used by other stacks:
+        # dragonfly.<cluster>.<datacenter>.<region>.mylogin.space
+        host: ''
+        port: 6379
+        proxyPort: 16379
+        tlsServerName: ''
+        database: 51
+        secretStoreRef:
+          kind: 'ClusterSecretStore'
+          name: 'corevault-rootsecrets'
+        remoteRef:
+          key: ''
+          property: 'Password'
+
+    sip:
+      serviceHost: ''
+
+    sipLogging:
+      # Optional compact request/response markers; ACK and failure logs remain on.
+      enabled: true
+
+      # Log complete authorized carrier-facing SIP messages in both directions.
+      # This includes Authorization, identity headers, SDP, and MESSAGE bodies;
+      # keep enabled only while investigating a carrier signaling issue.
+      carrierTraffic: true
+
+      # Temporary SIP wire diagnostics: PRE-TOPOS-STRIP replies plus corex's
+      # final network-send buffer for CSeq 1 INVITE 180/200 responses. Complete
+      # messages can contain PII/SDP; keep disabled outside a controlled trace.
+      postToposResponses: true
+
+      # Temporary full-message receive logging. Disable after the ACK investigation.
+      rawInbound: true
+      # Adds socket/ACL/transaction decision markers without dumping SIP bodies.
+      diagnostics:
+        # Temporarily enabled while investigating the recurring 30-second call
+        # failure. This emits routing/transaction markers and no full SIP body.
+        enabled: true
+        # Kamailio core debug level used only while diagnostics are enabled.
+        coreDebug: 2
+        # Log sanitized SIP routing metadata and SDP before/after RTPEngine.
+        # Disable after the media investigation because SDP can expose endpoint
+        # addresses and codec details.
+        sdp: true
+    publicExposure:
+      enabled: true
+      sip:
+        # Enables the public SIPS/TLS Gateway route and TLS listener.
+        enabled: true
+        # Optional cleartext signaling transports; these do not affect RTP or
+        # RTPEngine's separate UDP media/control paths.
+        udpEnabled: false
+        tcpEnabled: false
+        directService:
+          # When enabled, create the kamailio-pub Service with only the public
+          # signaling transports enabled above. Private TLS/5062 is never added.
+          enabled: false
+          # Empty derives kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host.
+          # Enabled UDP/TCP sockets advertise this direct carrier-facing identity.
+          hostname: ''
+    backend:
+      # The default backend is the chart's FreeSWITCH service when both are enabled.
+      serviceName: ''
+      # FreeSWITCH's kamailio profile is TLS-only on the private service port.
+      servicePort: 5061
+      # Coarse source guard for the private TLS listener. The chart NetworkPolicy
+      # limits port 5062 to FreeSWITCH pods when using the default backend.
+      podCIDR: '172.16.0.0/12'
+    networkPolicy:
+      envoy:
+        # Match the Envoy Gateway data-plane pods, not carrier source CIDRs.
+        # Override these labels if the installed GatewayClass uses different
+        # data-plane labels.
+        namespace: 'envoy-gateway-system'
+        podName: 'envoy'
+    # Legacy override; leave empty to derive the site SIP identity.
+    advertisedHost: ''
+    advertisedTLSPort: 5061
+    image:
+      # renovate: datasource=docker depName=ghcr.io/kamailio/kamailio
+      repository: 'ghcr.io/kamailio/kamailio'
+      tag: '6.1.4-bookworm'
+      digest: 'sha256:c54f770ab74ae64588cc174e206aa337108cc777b6162d738189d1cb0c32d116'
+      pullPolicy: 'IfNotPresent'
 
 rtpengine:
   # Enable RTPEngine per cluster, including spokes that provide local media

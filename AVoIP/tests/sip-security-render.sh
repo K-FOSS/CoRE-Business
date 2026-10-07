@@ -11,9 +11,13 @@ render_and_assert() {
   helm template "$site" "$chart_dir" --namespace core-prod \
     --set-string cluster.name="$site" --set-string cluster.domain="$domain" \
     --set-string datacenter="$datacenter" --set-string region="$region" \
-    --set kamailio.publicExposure.sip.udpEnabled=true \
-    --set kamailio.publicExposure.sip.directService.enabled=true \
-    --set kamailio.publicExposure.sip.tcpEnabled="$tcp_enabled" \
+    --set-string kamailio.instances[0].name=carrier \
+    --set-string kamailio.instances[0].role=carrier-sbc \
+    --set kamailio.instances[0].enabled=true \
+    --set kamailio.instances[0].replicas=3 \
+    --set kamailio.instances[0].publicExposure.sip.udpEnabled=true \
+    --set kamailio.instances[0].publicExposure.sip.directService.enabled=true \
+    --set kamailio.instances[0].publicExposure.sip.tcpEnabled="$tcp_enabled" \
     --show-only templates/Kamailio/KamailioConfig.yaml \
     --show-only templates/FreeSwitch/FreeSwitchSIPConfig.yaml \
     --show-only templates/FreeSwitch/FreeSwitchDialplanConfig.yaml \

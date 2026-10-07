@@ -1,4 +1,4 @@
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.storage.persistence.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.storage.persistence.enabled }}
 {{- if ne .Values.homer.storage.persistence.storageClass .Values.homer.storage.storageClass.name }}
 {{- fail "Homer persistence and StorageClass names must match" }}
 {{- end }}

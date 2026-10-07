@@ -67,7 +67,7 @@ three hours. FreeSWITCH remains one replica per site, preserving the local
 B2BUA dialog owner. RTPEngine offer/answer, deletion, codecs and fax settings
 are unchanged.
 
-For carrier TLS, `sip.siteHost` is the public SIP identity, supplied through `kamailio.advertisedHost` or derived as `sip.<cluster>.<datacenter>.<region>.resolvemy.host`. For carrier UDP/TCP, the public identity is the `kamailio-pub` direct Service hostname, derived as `kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host`. Initial transport selects the paired public Record-Route URI: UDP/5060, TCP/5060, or TLS/`kamailio.advertisedTLSPort`. The private side stays Kamailio Service TLS/5062 for every carrier transport. The direct public Service is required for UDP/TCP; Helm fails rendering when either transport is enabled without it.
+For carrier TLS, `sip.siteHost` is the public SIP identity, supplied through the carrier entry's `advertisedHost` or derived as `sip.<cluster>.<datacenter>.<region>.resolvemy.host`. For carrier UDP/TCP, the public identity is the `kamailio-pub` direct Service hostname, derived as `kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host`. Initial transport selects the paired public Record-Route URI: UDP/5060, TCP/5060, or TLS/`kamailio.defaults.advertisedTLSPort`. The private side stays Kamailio Service TLS/5062 for every carrier transport. The direct public Service is required for UDP/TCP; Helm fails rendering when either transport is enabled without it.
 
 Kamailio 6.1.4 is pinned by `values.yaml`. Its version-specific [TOPOS documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/topos.html) documents `contact_mode=1`, `cparam_name`, event hooks, and deriving the Contact host from Record-Route. The chart keeps `contact_mode=1` and the `tps` token; it does not install a Contact rewrite callback. TOPOS derives public Contact host, port, and transport from the selected Record-Route URI, so a UDP dialog now produces a direct-Service UDP/5060 Contact with the opaque `tps` parameter. TLS dialogs continue to produce the site-host TLS Contact. The outgoing-send callback only observes serialized traffic and does not modify messages.
 
@@ -92,7 +92,13 @@ helm template core-home1-talos-prod-business-avoip-prod . -n core-prod -f values
   --set cluster.type=spoke --set cluster.name=core-home1-talos-prod \
   --set cluster.domain=k8s.home1.resolvemy.host \
   --set datacenter=home1 --set region=yvr \
-  --set kamailio.advertisedHost=sip.core-home1-talos-prod.home1.yvr.resolvemy.host \
+  --set-string kamailio.instances[0].name=carrier \
+  --set-string kamailio.instances[0].role=carrier-sbc \
+  --set kamailio.instances[0].enabled=true \
+  --set kamailio.instances[0].replicas=3 \
+  --set-string kamailio.instances[0].advertisedHost=sip.core-home1-talos-prod.home1.yvr.resolvemy.host \
+  --set kamailio.instances[0].publicExposure.sip.udpEnabled=true \
+  --set kamailio.instances[0].publicExposure.sip.directService.enabled=true \
   --set freeswitch.enabled=true --set asterisk.enabled=true \
   --set rtpengine.media.address=24.86.197.63 \
   --set-string avoip.did=voice-fixture --set-string fax.did=fax-fixture \
@@ -162,7 +168,7 @@ verify its SIP ACK in Homer; a fax completing in under 32 seconds is not proof
 of this signaling fix.
 
 For temporary dialog diagnostics, set
-`kamailio.sipLogging.diagnostics.enabled=true`. The request marker includes
+`kamailio.defaults.sipLogging.diagnostics.enabled=true`. The request marker includes
 Call-ID, method, CSeq, From/To tags, source, receive socket/protocol,
 Request-URI, and top Route. The routing decision records the next hop and
 socket name; the serialized send marker records selected send protocol/socket

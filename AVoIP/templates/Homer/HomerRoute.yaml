@@ -1,4 +1,4 @@
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy

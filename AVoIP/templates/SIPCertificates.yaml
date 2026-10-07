@@ -1,14 +1,15 @@
-{{- if .Values.kamailio.enabled }}
+{{- define "avoip.kamailio.certificate" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
+  name: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}'
 spec:
-  secretName: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
+  secretName: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}'
   dnsNames:
-    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "kamailio") }}'
-    {{- if .Values.kamailio.publicExposure.sip.enabled }}
+    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) }}'
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
     - '{{ include "avoip.sip.siteHost" . }}'
     - '{{ .Values.sip.globalHost }}'
     {{- end }}
@@ -18,7 +19,16 @@ spec:
   issuerRef:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
-{{- end }}
+{{ end }}
+{{- $root := . -}}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $root.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $root.Release "Chart" $root.Chart "Files" $root.Files "Capabilities" $root.Capabilities -}}
+{{ include "avoip.kamailio.certificate" $ctx }}
+{{ end }}
+{{ end }}
 {{- if .Values.freeswitch.enabled }}
 ---
 apiVersion: cert-manager.io/v1

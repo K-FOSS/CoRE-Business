@@ -29,6 +29,74 @@ live verification:
 Changes flow through Git and Argo CD; Reloader restarts workloads when their
 watched configuration changes.
 
+## Named Kamailio instances
+
+The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+supplies a complete `kamailio.instances` array for DC1, Home1, and
+`dc1-k3s-node1`. Site Helm values **replace the whole array**; include every
+desired instance at each site. The chart merges maps in this order:
+`kamailio.defaults` → `kamailio.roleDefaults[role]` → the named instance.
+Lists, including `instances`, `extraEnv`, scheduling tolerations, and any
+future listener or destination lists, replace rather than append. The template
+deep copies each layer before merging it. An instance name is a stable DNS
+label; never rename it to reorder the array.
+
+The current `carrier-sbc` profile owns the existing `carrier` instance, its
+three replicas, public UDP/TCP/TLS and private TLS listeners, carrier CIDR ACL,
+TOPOS state, and RTPEngine behavior. The `private-sbc` profile provides a
+private TLS Service with the same request, authorization, dialog, and backend
+routing functions and no public Service or Gateway route. Its media integration
+is off by default. Registration and LDAP/RADIUS authentication are not
+implemented; `REGISTER` remains rejected. The role validator rejects disabled
+core routing functions, invalid roles/names, duplicate names, and TOPOS
+database or Secret reuse between enabled instances.
+
+For an isolated test values file, add a second entry alongside the complete
+carrier entry:
+
+```yaml
+kamailio:
+  instances:
+    - name: 'carrier'
+      enabled: true
+      role: 'carrier-sbc'
+      replicas: 3
+    - name: 'internal'
+      enabled: true
+      role: 'private-sbc'
+      replicas: 1
+      topology:
+        redis:
+          database: 52
+          secretName: 'avoip-kamailio-internal-topos'
+```
+
+Each enabled instance gets its own Deployment, ConfigMap, private Service,
+certificate, TOPOS Secret reference, and applicable NetworkPolicy, disruption
+budget, and public routes. Resources use the name, never its array position.
+The carrier's existing names and immutable Deployment selector remain intact;
+new roles use their own controller and instance selector labels. Per-instance
+settings include image, replicas, resources, pod and container security,
+scheduling, annotations, extra environment entries, Service options,
+listener bind address and transport enablement, advertised SIP identity,
+backend destination, and TOPOS configuration. Keep credential values in the
+existing External Secret integration; `extraEnv` must use Secret references
+for credentials.
+
+Run `tests/kamailio-instances.sh` and `tests/sip-security-render.sh` before
+publishing. To roll out this refactor, publish the chart and its owning
+ApplicationSet values, review the rendered carrier resource names/selectors
+and source ACL, then reconcile only the affected AVoIP child Applications.
+The changed ConfigMap and added pod instance label cause a carrier Deployment
+rollout, but do not replace the Deployment or its Service. Watch each pod
+become ready and correlate a test Call-ID across the public Kamailio leg,
+private Kamailio leg, and FreeSWITCH; require a 2xx ACK at FreeSWITCH and
+BYE/200 completion after more than 60 seconds. Fax completion is a separate
+check. For rollback, revert both the chart and ApplicationSet commits and
+reconcile the same child Applications. Do not enable the example internal
+instance in production until its destination, ACL, identity, and TOPOS store
+have been reviewed.
+
 ## Deployment ownership
 
 Optional interface profiles for every enabled workload and the named YAML
@@ -48,7 +116,7 @@ uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
 `ServerSideApply=true`, and injects the following Helm merge values:
 
 - `env`, `datacenter`, `region`, and `cluster` identity/type/domain metadata.
-- `asterisk.enabled`, `kamailio.enabled`, `freeswitch.enabled`,
+- `asterisk.enabled`, `kamailio.instances`, `freeswitch.enabled`,
   `rtpengine.enabled`, and public exposure settings per cluster. RTPEngine is
   independently deployable; media integration is conditional on the relevant
   SIP workloads also being enabled.
@@ -200,7 +268,7 @@ The `kamailio-pub` direct Service is required when public UDP or TCP dialogs are
 enabled; rendering fails if those transports are enabled without it. Its
 `external-dns.kubernetes.io/hostname` and legacy
 `external-dns.alpha.kubernetes.io/hostname` annotations both use
-`kamailio.publicExposure.sip.directService.hostname`, or derive
+`kamailio.instances[].publicExposure.sip.directService.hostname`, or derive
 `kamailio-pub.<cluster>.<datacenter>.<region>.resolvemy.host`. The direct
 UDP/TCP sockets and TOPOS Contacts advertise this identity, while TLS continues
 to use the Gateway TLSRoute identity.
@@ -223,7 +291,7 @@ See [SIP identity and egress](docs/SIP-IDENTITY.md) for the distinct paths.
 The shared SIP hostname remains available as a DNS alias. This prevents wildcard
 bind addresses such as `0.0.0.0` from being advertised in dialog routing. Compact
 Kamailio request, relay, response, rejection, and loose-route markers are
-enabled by default through `kamailio.sipLogging.enabled`; the logging avoids
+enabled by default through `kamailio.defaults.sipLogging.enabled`; the logging avoids
 full SIP/SDP dumps and can be disabled for quieter production logs.
 The private TLS listener/client behavior follows Kamailio's
 [TLS module configuration](https://www.kamailio.org/docs/modules/stable/modules/tls.html),

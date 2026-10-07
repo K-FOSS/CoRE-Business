@@ -1,4 +1,6 @@
-{{- if and .Values.kamailio.enabled .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.sip.globalRouting.enabled }}
+{{- define "avoip.kamailio.render.K8GB" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.sip.globalRouting.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $gslbName := printf "%s-sip" $fullName | trunc 63 | trimSuffix "-" -}}
 {{- $parentZone := regexReplaceAll "^[^.]+\\." .Values.sip.globalHost "" -}}
@@ -19,7 +21,7 @@ spec:
   resourceRef:
     apiVersion: gateway.networking.k8s.io/v1
     kind: TLSRoute
-    name: {{ printf "%s-kamailio-global" $fullName | trunc 63 | trimSuffix "-" }}
+    name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "global") }}
   strategy:
     type: failover
     dnsTtlSeconds: {{ .Values.sip.globalRouting.dnsTtlSeconds }}
@@ -35,3 +37,13 @@ spec:
   dnsZoneNegTTL: {{ .Values.sip.globalRouting.dnsZoneNegTTL }}
   doFinalize: {{ .Values.sip.globalRouting.doFinalize }}
 {{- end }}
+{{ end }}
+{{- $root := . -}}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $root.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $root.Release "Chart" $root.Chart "Files" $root.Files "Capabilities" $root.Capabilities -}}
+{{ include "avoip.kamailio.render.K8GB" $ctx }}
+{{ end }}
+{{ end }}

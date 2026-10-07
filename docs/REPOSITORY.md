@@ -147,6 +147,9 @@ so permanent removal requires explicit service-account revocation.
 Nextcloud Talk's high-performance backend is deployed from the AVoIP chart on
 Home1/YVR, alongside Office. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 owns the signaling Gateway route and public TURN/media LoadBalancer. The
+same ApplicationSet supplies the complete
+[named Kamailio instance list](../AVoIP/README.md#named-kamailio-instances)
+for each AVoIP site. The
 Nextcloud administrator still needs to register `https://talk.mylogin.space`
 with the generated signaling secret and configure the `talk-media.mylogin.space`
 TURN endpoint; see [AVoIP setup and verification](../AVoIP/README.md#nextcloud-talk-high-performance-backend).

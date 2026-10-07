@@ -1,5 +1,11 @@
 # AVoIP signaling regression scenarios
 
+`./kamailio-instances.sh` renders two named instances, checks independent
+Deployments, selectors, private Service, configuration and TOPOS identity,
+then checks disabled and invalid instance arrays. It uses the pinned chart
+dependencies and no cluster connection. The site-specific security render
+guard below runs separately.
+
 `udp-carrier-ack-bye.xml` exercises a UDP INVITE through one Kamailio replica,
 checks that the 200 Contact is public UDP/5060 with a TOPOS token, and directs
 the 2xx ACK and BYE to a second Kamailio pod. This verifies cross-replica

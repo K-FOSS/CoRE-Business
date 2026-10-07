@@ -1,31 +1,10 @@
-{{- include "bjw-s.common.loader.init" . }}
-
-{{- define "avoip.common.values" -}}
-{{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
-{{- if .Values.kamailio.topology.enabled }}
-{{- if not .Values.kamailio.topology.redis.secretName }}{{- fail "kamailio.topology.redis.secretName is required when topology hiding is enabled" }}{{- end }}
-{{- if not .Values.kamailio.topology.redis.serverKey }}{{- fail "kamailio.topology.redis.serverKey is required when topology hiding is enabled" }}{{- end }}
-{{- if lt (int .Values.kamailio.topology.redis.database) 1 }}{{- fail "kamailio.topology.redis.database must be a non-zero site-local Dragonfly allocation" }}{{- end }}
-{{- end }}
-{{- if or (lt (int .Values.freeswitch.sipLogging.sofiaDebug) 0) (gt (int .Values.freeswitch.sipLogging.sofiaDebug) 9) }}{{- fail "freeswitch.sipLogging.sofiaDebug must be between 0 and 9" }}{{- end }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
-{{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
-{{- if ne (clean .Values.freeswitch.media.diagnostics.callRecording.path) (clean .Values.freeswitch.fax.spoolPath) }}{{- fail "FreeSWITCH callRecording.path must match fax.spoolPath when Homer playback is enabled" }}{{- end }}
-{{- end }}
-global:
-  nameOverride: '{{ .Release.Name }}'
-  createDefaultServiceAccount: false
-
-defaultPodOptions:
-  labels:
-    logs: loki-myloginspace
-
-configMaps:
+{{- define "avoip.kamailio.common.configMaps" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
 {{- if and .Values.kamailio.enabled .Values.kamailio.topology.enabled }}
-  kamailio-topos-tls-proxy:
-    forceRename: '{{ include "avoip.fullname" . }}-kamailio-topos-tls-proxy'
+  {{ $component }}-topos-tls-proxy:
+    forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "topos-tls-proxy") }}'
     includeChecksumInControllers:
-      - 'kamailio'
+      - '{{ $component }}'
     data:
       haproxy.cfg: |
         global
@@ -46,6 +25,505 @@ configMaps:
         backend dragonfly
           server dragonfly {{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.kamailio.topology.redis.host }}:{{ .Values.kamailio.topology.redis.port }} check ssl verify required ca-file /etc/ssl/certs/ca-certificates.crt sni str({{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.kamailio.topology.redis.tlsServerName }})
 {{- end }}
+{{- end -}}
+
+{{- define "avoip.kamailio.common.networkpolicies" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- if and .Values.kamailio.enabled .Values.freeswitch.enabled (not .Values.kamailio.backend.serviceName) }}
+  {{ $component }}-sip-ingress:
+    controller: {{ $component }}
+    policyTypes:
+      - Ingress
+      - Egress
+    rules:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: '{{ .Values.kamailio.networkPolicy.envoy.namespace }}'
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: '{{ .Values.kamailio.networkPolicy.envoy.podName }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: freeswitch
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 5062
+      egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: freeswitch
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+{{- if .Values.kamailio.functions.media }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: rtpengine
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: UDP
+              port: {{ .Values.rtpengine.controlPort }}
+{{- end }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: dragonfly
+                  app.kubernetes.io/instance: dragonfly-core
+          ports:
+            - protocol: TCP
+              port: 6379
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: kube-system
+              podSelector:
+                matchLabels:
+                  k8s-app: kube-dns
+          ports:
+            - protocol: UDP
+              port: 53
+            - protocol: TCP
+              port: 53
+{{- range .Values.flowroute.signalingCIDRs }}
+        - to:
+            - ipBlock:
+                cidr: '{{ . }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+{{- end }}
+{{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: homer-web
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 9061
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "avoip.kamailio.common.controllers" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{ if .Values.kamailio.enabled }}
+  {{ $component }}:
+    forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+    strategy: RollingUpdate
+    rollingUpdate:
+      surge: '{{ .Values.kamailio.rollingUpdate.surge }}'
+      unavailable: '{{ .Values.kamailio.rollingUpdate.unavailable }}'
+    replicas: {{ .Values.kamailio.replicas }}
+    podDisruptionBudget:
+      minAvailable: {{ .Values.kamailio.podDisruptionBudget.minAvailable }}
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: '{{ .Values.kamailio.serviceAccountName }}'
+    pod:
+      {{- if .Values.kamailio.securityContext.pod }}
+      securityContext:
+{{ toYaml .Values.kamailio.securityContext.pod | nindent 8 }}
+      {{- else }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      {{- end }}
+      labels:
+        app: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+        avoip.mylogin.space/kamailio-instance: '{{ .Values.kamailio.name }}'
+{{- with .Values.kamailio.podLabels }}
+{{ toYaml . | nindent 8 }}
+{{- end }}
+      annotations:
+        kubectl.kubernetes.io/default-container: '{{ $component }}'
+        kubectl.kubernetes.io/default-logs-container: '{{ $component }}'
+        # Restart Kamailio when its generated routing/TLS configuration or the
+        # shared certificate material changes so listeners and media routes are
+        # loaded from one consistent configuration set.
+        configmap.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "config") }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
+{{- with .Values.kamailio.podAnnotations }}
+{{ toYaml . | nindent 8 }}
+{{- end }}
+      terminationGracePeriodSeconds: 60
+{{- with .Values.kamailio.scheduling.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.kamailio.scheduling.tolerations }}
+      tolerations:
+{{ toYaml . | nindent 8 }}
+{{- end }}
+{{- if .Values.kamailio.scheduling.affinity }}
+      affinity:
+{{ toYaml .Values.kamailio.scheduling.affinity | nindent 8 }}
+{{- else }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+              topologyKey: kubernetes.io/hostname
+{{- end }}
+{{- if .Values.kamailio.scheduling.topologySpreadConstraints }}
+      topologySpreadConstraints:
+{{ toYaml .Values.kamailio.scheduling.topologySpreadConstraints | nindent 8 }}
+{{- else }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+{{- end }}
+    initContainers:
+{{- if .Values.freeswitch.enabled }}
+      tls-ca:
+        image:
+          repository: '{{ .Values.kamailio.image.repository }}'
+          tag: '{{ .Values.kamailio.image.tag }}'
+          digest: '{{ .Values.kamailio.image.digest }}'
+          pullPolicy: '{{ .Values.kamailio.image.pullPolicy }}'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            set -eu
+            cp /etc/ssl/certs/ca-certificates.crt /tls-output/ca-certificates.crt
+            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-peer/tls.crt >> /tls-output/ca-certificates.crt
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+{{- end }}
+    containers:
+{{- if .Values.kamailio.topology.enabled }}
+      topos-tls-proxy:
+        command:
+          - /usr/local/sbin/haproxy
+        args:
+          - '-W'
+          - '-db'
+          - '-f'
+          - /usr/local/etc/haproxy/haproxy.cfg
+        image:
+          repository: '{{ .Values.rtpengine.valkey.proxy.image.repository }}'
+          tag: '{{ .Values.rtpengine.valkey.proxy.image.tag }}'
+          digest: '{{ .Values.rtpengine.valkey.proxy.image.digest }}'
+          pullPolicy: '{{ .Values.rtpengine.valkey.proxy.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        probes:
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - nc -z 127.0.0.1 {{ .Values.kamailio.topology.redis.proxyPort }}
+              periodSeconds: 5
+              timeoutSeconds: 2
+              failureThreshold: 6
+        ports:
+          - name: topos-redis
+            containerPort: {{ .Values.kamailio.topology.redis.proxyPort }}
+            protocol: TCP
+{{- end }}
+      {{ $component }}:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - >-
+            /usr/sbin/kamailio -c -f /etc/kamailio/kamailio.cfg &&
+            exec /usr/sbin/kamailio -DD -E -P /tmp/kamailio.pid
+            -f /etc/kamailio/kamailio.cfg
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+{{- if .Values.kamailio.topology.enabled }}
+          - name: TOPOS_REDIS_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.kamailio.topology.redis.secretName }}'
+                key: '{{ .Values.kamailio.topology.redis.serverKey }}'
+{{- end }}
+{{- with .Values.kamailio.extraEnv }}
+{{ toYaml . | nindent 10 }}
+{{- end }}
+        image:
+          repository: '{{ .Values.kamailio.image.repository }}'
+          tag: '{{ .Values.kamailio.image.tag }}'
+          digest: '{{ .Values.kamailio.image.digest }}'
+          pullPolicy: '{{ .Values.kamailio.image.pullPolicy }}'
+        securityContext:
+{{- if .Values.kamailio.securityContext.container }}
+{{ toYaml .Values.kamailio.securityContext.container | nindent 10 }}
+{{- else }}
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+{{- end }}
+{{- with .Values.kamailio.resources }}
+        resources:
+{{ toYaml . | nindent 10 }}
+{{- end }}
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 18
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
+              periodSeconds: 10
+              timeoutSeconds: 3
+              failureThreshold: 3
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - test -s /tmp/kamailio.pid && kill -0 1
+              periodSeconds: 30
+              timeoutSeconds: 3
+              failureThreshold: 3
+        ports:
+        {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+          - name: udp-public
+            containerPort: 5060
+            protocol: UDP
+        {{- end }}
+        {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+          - name: tcp-public
+            containerPort: 5060
+            protocol: TCP
+        {{- end }}
+          - name: tls-public
+            containerPort: 5061
+            protocol: TCP
+          - name: tls-private
+            containerPort: 5062
+            protocol: TCP
+{{- if .Values.diagnostics.netshoot.enabled }}
+      netshoot:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - sleep infinity
+        image:
+          repository: '{{ .Values.diagnostics.netshoot.image.repository }}'
+          tag: '{{ .Values.diagnostics.netshoot.image.tag }}'
+          digest: '{{ .Values.diagnostics.netshoot.image.digest }}'
+          pullPolicy: '{{ .Values.diagnostics.netshoot.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+{{- end }}
+{{ end }}
+{{- end -}}
+
+{{- define "avoip.kamailio.common.services" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- $privateService := .Values.kamailio.services.private -}}
+{{- $publicService := .Values.kamailio.services.public -}}
+{{- if .Values.kamailio.enabled }}
+  {{ $component }}:
+    forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+    controller: {{ $component }}
+    {{- if ne .Values.kamailio.name "carrier" }}
+    extraSelectorLabels:
+      avoip.mylogin.space/kamailio-instance: '{{ .Values.kamailio.name }}'
+    {{- end }}
+{{- include "avoip.service.options" (dict "root" $ "name" $component "annotations" $privateService.annotations "labels" $privateService.labels "type" $privateService.type "preferInstance" true) | nindent 4 }}
+    ports:
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+      sip-public-udp:
+        port: 5060
+        targetPort: udp-public
+        protocol: UDP
+    {{- end }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+      sip-public-tcp:
+        port: 5060
+        targetPort: tcp-public
+        protocol: TCP
+    {{- end }}
+    {{- if .Values.kamailio.publicExposure.enabled }}
+      sip-public:
+        port: 5061
+        targetPort: tls-public
+        protocol: TCP
+    {{- end }}
+      tls-private:
+        port: 5062
+        targetPort: tls-private
+        protocol: TCP
+{{ if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
+{{ $kamailioPubHost := include "avoip.sip.kamailioPubHost" . }}
+  {{ $component }}-pub:
+    forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "pub") }}'
+    controller: {{ $component }}
+    {{- if ne .Values.kamailio.name "carrier" }}
+    extraSelectorLabels:
+      avoip.mylogin.space/kamailio-instance: '{{ .Values.kamailio.name }}'
+    {{- end }}
+    {{- if eq (include "avoip.service.type" (dict "root" $ "name" (printf "%s-pub" $component) "type" $publicService.type) | trim) "LoadBalancer" }}
+    # Preserve client source addresses for Kamailio's carrier CIDR checks.
+    externalTrafficPolicy: Local
+    {{- end }}
+{{- $publicAnnotations := mergeOverwrite (dict "external-dns.kubernetes.io/hostname" $kamailioPubHost "external-dns.alpha.kubernetes.io/hostname" $kamailioPubHost) (deepCopy $publicService.annotations) -}}
+{{- include "avoip.service.options" (dict "root" $ "name" (printf "%s-pub" $component) "annotations" $publicAnnotations "labels" $publicService.labels "type" $publicService.type "loadBalancerClass" $publicService.loadBalancerClass "preferInstance" true) | nindent 4 }}
+    ports:
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
+      udp-sip:
+        port: 5060
+        targetPort: udp-public
+        protocol: UDP
+    {{- end }}
+    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
+      tcp-sip:
+        port: 5060
+        targetPort: tcp-public
+        protocol: TCP
+    {{- end }}
+    {{- if .Values.kamailio.publicExposure.sip.enabled }}
+      tls-sips:
+        port: 5061
+        targetPort: tls-public
+        protocol: TCP
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- define "avoip.kamailio.common.persistence" -}}
+{{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- if .Values.kamailio.enabled }}
+  {{ $component }}-config:
+    type: configMap
+    name: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "config") }}'
+    advancedMounts:
+      {{ $component }}:
+        {{ $component }}:
+          - path: /etc/kamailio/kamailio.cfg
+            subPath: kamailio.cfg
+          - path: /etc/kamailio/tls.cfg
+            subPath: tls.cfg
+{{- if .Values.kamailio.topology.enabled }}
+  {{ $component }}-topos-tls-proxy-config:
+    type: configMap
+    name: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "topos-tls-proxy") }}'
+    advancedMounts:
+      {{ $component }}:
+        topos-tls-proxy:
+          - path: /usr/local/etc/haproxy/haproxy.cfg
+            subPath: haproxy.cfg
+{{- end }}
+  {{ $component }}-tls:
+    type: secret
+    name: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}'
+    advancedMounts:
+      {{ $component }}:
+        {{ $component }}:
+          - path: /etc/kamailio/tls
+  {{ $component }}-tmp:
+    type: emptyDir
+    advancedMounts:
+      {{ $component }}:
+        {{ $component }}:
+          - path: /tmp
+{{- if .Values.freeswitch.enabled }}
+  {{ $component }}-freeswitch-tls:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
+    advancedMounts:
+      {{ $component }}:
+        tls-ca:
+          - path: /tls-peer
+  {{ $component }}-tls-ca:
+    type: emptyDir
+    advancedMounts:
+      {{ $component }}:
+        tls-ca:
+          - path: /tls-output
+        {{ $component }}:
+          - path: /etc/kamailio/tls-ca
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- include "bjw-s.common.loader.init" . }}
+
+{{- define "avoip.common.values" -}}
+{{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
+{{- if or (lt (int .Values.freeswitch.sipLogging.sofiaDebug) 0) (gt (int .Values.freeswitch.sipLogging.sofiaDebug) 9) }}{{- fail "freeswitch.sipLogging.sofiaDebug must be between 0 and 9" }}{{- end }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
+{{- if ne (clean .Values.freeswitch.media.diagnostics.callRecording.path) (clean .Values.freeswitch.fax.spoolPath) }}{{- fail "FreeSWITCH callRecording.path must match fax.spoolPath when Homer playback is enabled" }}{{- end }}
+{{- end }}
+global:
+  nameOverride: '{{ .Release.Name }}'
+  createDefaultServiceAccount: false
+
+defaultPodOptions:
+  labels:
+    logs: loki-myloginspace
+
+configMaps:
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $.Release "Chart" $.Chart "Files" $.Files "Capabilities" $.Capabilities -}}
+{{- include "avoip.kamailio.common.configMaps" $ctx }}
+{{ end }}
+{{ end }}
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
 {{- if ne (int .Values.rtpengine.valkey.shards) 1 }}{{- fail "RTPEngine Valkey proxy requires exactly one Valkey shard" }}{{- end }}
 {{- if ne (int .Values.rtpengine.valkey.database) 0 }}{{- fail "Valkey Cluster requires RTPEngine database 0" }}{{- end }}
@@ -94,7 +572,7 @@ configMaps:
           monitor-uri /healthz
           monitor fail if { nbsrv(valkey_primary) lt 1 }
 {{- end }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
   homer-recordings:
     forceRename: '{{ include "avoip.fullname" . }}-homer-recordings'
     includeChecksumInControllers:
@@ -109,88 +587,14 @@ configMaps:
 {{- end }}
 
 networkpolicies:
-{{- if and .Values.kamailio.enabled .Values.freeswitch.enabled (not .Values.kamailio.backend.serviceName) }}
-  kamailio-sip-ingress:
-    controller: kamailio
-    policyTypes:
-      - Ingress
-      - Egress
-    rules:
-      ingress:
-        - from:
-            - namespaceSelector:
-                matchLabels:
-                  kubernetes.io/metadata.name: '{{ .Values.kamailio.networkPolicy.envoy.namespace }}'
-              podSelector:
-                matchLabels:
-                  app.kubernetes.io/name: '{{ .Values.kamailio.networkPolicy.envoy.podName }}'
-          ports:
-            - protocol: TCP
-              port: 5061
-        - from:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/controller: freeswitch
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
-          ports:
-            - protocol: TCP
-              port: 5062
-      egress:
-        - to:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/controller: freeswitch
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
-          ports:
-            - protocol: TCP
-              port: 5061
-        - to:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/controller: rtpengine
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
-          ports:
-            - protocol: UDP
-              port: {{ .Values.rtpengine.controlPort }}
-        - to:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/name: dragonfly
-                  app.kubernetes.io/instance: dragonfly-core
-          ports:
-            - protocol: TCP
-              port: 6379
-        - to:
-            - namespaceSelector:
-                matchLabels:
-                  kubernetes.io/metadata.name: kube-system
-              podSelector:
-                matchLabels:
-                  k8s-app: kube-dns
-          ports:
-            - protocol: UDP
-              port: 53
-            - protocol: TCP
-              port: 53
-{{- range .Values.flowroute.signalingCIDRs }}
-        - to:
-            - ipBlock:
-                cidr: '{{ . }}'
-          ports:
-            - protocol: TCP
-              port: 5061
-{{- end }}
-{{- if include "avoip.homer.enabled" . | trim }}
-        - to:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/controller: homer-web
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
-          ports:
-            - protocol: TCP
-              port: 9061
-{{- end }}
-{{- end }}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $.Release "Chart" $.Chart "Files" $.Files "Capabilities" $.Capabilities -}}
+{{- include "avoip.kamailio.common.networkpolicies" $ctx }}
+{{ end }}
+{{ end }}
 
 controllers:
 {{- if .Values.asterisk.enabled }}
@@ -415,213 +819,13 @@ controllers:
           allowPrivilegeEscalation: false
 {{- end }}
 {{ end }}
-{{ if .Values.kamailio.enabled }}
-  kamailio:
-    forceRename: '{{ include "avoip.fullname" . }}-kamailio'
-    strategy: RollingUpdate
-    rollingUpdate:
-      surge: '{{ .Values.kamailio.rollingUpdate.surge }}'
-      unavailable: '{{ .Values.kamailio.rollingUpdate.unavailable }}'
-    replicas: {{ .Values.kamailio.replicas }}
-    podDisruptionBudget:
-      minAvailable: {{ .Values.kamailio.podDisruptionBudget.minAvailable }}
-    revisionHistoryLimit: 3
-    serviceAccount:
-      name: default
-    pod:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        seccompProfile:
-          type: RuntimeDefault
-      labels:
-        app: '{{ include "avoip.fullname" . }}-kamailio'
-      annotations:
-        kubectl.kubernetes.io/default-container: 'kamailio'
-        kubectl.kubernetes.io/default-logs-container: 'kamailio'
-        # Restart Kamailio when its generated routing/TLS configuration or the
-        # shared certificate material changes so listeners and media routes are
-        # loaded from one consistent configuration set.
-        configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-config'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-kamailio-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
-      terminationGracePeriodSeconds: 60
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: '{{ include "avoip.fullname" . }}-kamailio'
-              topologyKey: kubernetes.io/hostname
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: DoNotSchedule
-          labelSelector:
-            matchLabels:
-              app: '{{ include "avoip.fullname" . }}-kamailio'
-    initContainers:
-{{- if .Values.freeswitch.enabled }}
-      tls-ca:
-        image:
-          repository: '{{ .Values.kamailio.image.repository }}'
-          tag: '{{ .Values.kamailio.image.tag }}'
-          digest: '{{ .Values.kamailio.image.digest }}'
-          pullPolicy: '{{ .Values.kamailio.image.pullPolicy }}'
-        command:
-          - /bin/sh
-          - -c
-        args:
-          - |
-            set -eu
-            cp /etc/ssl/certs/ca-certificates.crt /tls-output/ca-certificates.crt
-            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-peer/tls.crt >> /tls-output/ca-certificates.crt
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-{{- end }}
-    containers:
-{{- if .Values.kamailio.topology.enabled }}
-      topos-tls-proxy:
-        command:
-          - /usr/local/sbin/haproxy
-        args:
-          - '-W'
-          - '-db'
-          - '-f'
-          - /usr/local/etc/haproxy/haproxy.cfg
-        image:
-          repository: '{{ .Values.rtpengine.valkey.proxy.image.repository }}'
-          tag: '{{ .Values.rtpengine.valkey.proxy.image.tag }}'
-          digest: '{{ .Values.rtpengine.valkey.proxy.image.digest }}'
-          pullPolicy: '{{ .Values.rtpengine.valkey.proxy.image.pullPolicy }}'
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop:
-              - ALL
-        probes:
-          readiness:
-            enabled: true
-            custom: true
-            spec:
-              exec:
-                command:
-                  - /bin/sh
-                  - -c
-                  - nc -z 127.0.0.1 {{ .Values.kamailio.topology.redis.proxyPort }}
-              periodSeconds: 5
-              timeoutSeconds: 2
-              failureThreshold: 6
-        ports:
-          - name: topos-redis
-            containerPort: {{ .Values.kamailio.topology.redis.proxyPort }}
-            protocol: TCP
-{{- end }}
-      kamailio:
-        command:
-          - /bin/sh
-          - -c
-        args:
-          - >-
-            /usr/sbin/kamailio -c -f /etc/kamailio/kamailio.cfg &&
-            exec /usr/sbin/kamailio -DD -E -P /tmp/kamailio.pid
-            -f /etc/kamailio/kamailio.cfg
-        env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-{{- if .Values.kamailio.topology.enabled }}
-          - name: TOPOS_REDIS_SERVER
-            valueFrom:
-              secretKeyRef:
-                name: '{{ .Values.kamailio.topology.redis.secretName }}'
-                key: '{{ .Values.kamailio.topology.redis.serverKey }}'
-{{- end }}
-        image:
-          repository: '{{ .Values.kamailio.image.repository }}'
-          tag: '{{ .Values.kamailio.image.tag }}'
-          digest: '{{ .Values.kamailio.image.digest }}'
-          pullPolicy: '{{ .Values.kamailio.image.pullPolicy }}'
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop:
-              - ALL
-        probes:
-          startup:
-            enabled: true
-            custom: true
-            spec:
-              exec:
-                command:
-                  - /bin/sh
-                  - -c
-                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
-              periodSeconds: 5
-              timeoutSeconds: 3
-              failureThreshold: 18
-          readiness:
-            enabled: true
-            custom: true
-            spec:
-              exec:
-                command:
-                  - /bin/sh
-                  - -c
-                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
-              periodSeconds: 10
-              timeoutSeconds: 3
-              failureThreshold: 3
-          liveness:
-            enabled: true
-            custom: true
-            spec:
-              exec:
-                command:
-                  - /bin/sh
-                  - -c
-                  - test -s /tmp/kamailio.pid && kill -0 1
-              periodSeconds: 30
-              timeoutSeconds: 3
-              failureThreshold: 3
-        ports:
-        {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
-          - name: udp-public
-            containerPort: 5060
-            protocol: UDP
-        {{- end }}
-        {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
-          - name: tcp-public
-            containerPort: 5060
-            protocol: TCP
-        {{- end }}
-          - name: tls-public
-            containerPort: 5061
-            protocol: TCP
-          - name: tls-private
-            containerPort: 5062
-            protocol: TCP
-{{- if .Values.diagnostics.netshoot.enabled }}
-      netshoot:
-        command:
-          - /bin/sh
-          - -c
-        args:
-          - sleep infinity
-        image:
-          repository: '{{ .Values.diagnostics.netshoot.image.repository }}'
-          tag: '{{ .Values.diagnostics.netshoot.image.tag }}'
-          digest: '{{ .Values.diagnostics.netshoot.image.digest }}'
-          pullPolicy: '{{ .Values.diagnostics.netshoot.image.pullPolicy }}'
-        securityContext:
-          allowPrivilegeEscalation: false
-{{- end }}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $.Release "Chart" $.Chart "Files" $.Files "Capabilities" $.Capabilities -}}
+{{- include "avoip.kamailio.common.controllers" $ctx }}
+{{ end }}
 {{ end }}
 {{- if (include "avoip.rtpengine.enabled" . | trim) }}
   rtpengine:
@@ -681,7 +885,7 @@ controllers:
             --active-switchover
 {{- end }}
 {{- end }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
             --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepTCPPort }}
             --homer-protocol=tcp
             --homer-id=102
@@ -1072,7 +1276,7 @@ controllers:
           - name: udp-sip-edge
             containerPort: 5090
             protocol: UDP
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
       recordings:
         image:
           repository: '{{ .Values.homer.recordings.image.repository }}'
@@ -1116,7 +1320,7 @@ controllers:
 {{- end }}
 
 {{ end }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
   homer-web:
     forceRename: '{{ include "avoip.fullname" . }}-homer-web'
     # Homer writes SQLite and DuckDB catalogs; Recreate prevents two pods from
@@ -1218,65 +1422,14 @@ service:
         targetPort: tls-sips
         protocol: TCP
 {{- end }}
-{{- if .Values.kamailio.enabled }}
-{{- if .Values.kamailio.publicExposure.enabled }}
-  kamailio:
-    forceRename: '{{ include "avoip.fullname" . }}-kamailio'
-    controller: kamailio
-{{- include "avoip.service.options" (dict "root" $ "name" "kamailio") | nindent 4 }}
-    ports:
-    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
-      sip-public-udp:
-        port: 5060
-        targetPort: udp-public
-        protocol: UDP
-    {{- end }}
-    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
-      sip-public-tcp:
-        port: 5060
-        targetPort: tcp-public
-        protocol: TCP
-    {{- end }}
-      sip-public:
-        port: 5061
-        targetPort: tls-public
-        protocol: TCP
-      tls-private:
-        port: 5062
-        targetPort: tls-private
-        protocol: TCP
-{{ if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
-{{ $kamailioPubHost := include "avoip.sip.kamailioPubHost" . }}
-  kamailio-pub:
-    forceRename: '{{ include "avoip.fullname" . }}-kamailio-pub'
-    controller: kamailio
-    {{- if eq (include "avoip.service.type" (dict "root" $ "name" "kamailio-pub") | trim) "LoadBalancer" }}
-    # Preserve client source addresses for Kamailio's carrier CIDR checks.
-    externalTrafficPolicy: Local
-    {{- end }}
-{{- include "avoip.service.options" (dict "root" $ "name" "kamailio-pub" "annotations" (dict "external-dns.kubernetes.io/hostname" $kamailioPubHost "external-dns.alpha.kubernetes.io/hostname" $kamailioPubHost)) | nindent 4 }}
-    ports:
-    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
-      udp-sip:
-        port: 5060
-        targetPort: udp-public
-        protocol: UDP
-    {{- end }}
-    {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
-      tcp-sip:
-        port: 5060
-        targetPort: tcp-public
-        protocol: TCP
-    {{- end }}
-    {{- if .Values.kamailio.publicExposure.sip.enabled }}
-      tls-sips:
-        port: 5061
-        targetPort: tls-public
-        protocol: TCP
-    {{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $.Release "Chart" $.Chart "Files" $.Files "Capabilities" $.Capabilities -}}
+{{- include "avoip.kamailio.common.services" $ctx }}
+{{ end }}
+{{ end }}
 {{- if .Values.freeswitch.enabled }}
   freeswitch:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
@@ -1299,7 +1452,7 @@ service:
         port: 5061
         targetPort: tls-sips
         protocol: TCP
-{{- if and .Values.freeswitch.publicExposure.enabled (or (not (include "avoip.rtpengine.enabled" . | trim)) (not .Values.kamailio.enabled)) }}
+{{- if and .Values.freeswitch.publicExposure.enabled (or (not (include "avoip.rtpengine.enabled" . | trim)) (not (include "avoip.kamailio.carrier.enabled" . | trim))) }}
   freeswitch-rtp:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
     controller: freeswitch
@@ -1356,7 +1509,7 @@ service:
         targetPort: health
         protocol: TCP
 {{- end }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
   homer-heplify:
     forceRename: '{{ include "avoip.fullname" . }}-homer-heplify'
     controller: homer-web
@@ -1498,58 +1651,14 @@ persistence:
         asterisk:
           - path: /var/spool/asterisk
 {{- end }}
-{{- if .Values.kamailio.enabled }}
-  kamailio-config:
-    type: configMap
-    name: '{{ include "avoip.fullname" . }}-kamailio-config'
-    advancedMounts:
-      kamailio:
-        kamailio:
-          - path: /etc/kamailio/kamailio.cfg
-            subPath: kamailio.cfg
-          - path: /etc/kamailio/tls.cfg
-            subPath: tls.cfg
-{{- if .Values.kamailio.topology.enabled }}
-  kamailio-topos-tls-proxy-config:
-    type: configMap
-    name: '{{ include "avoip.fullname" . }}-kamailio-topos-tls-proxy'
-    advancedMounts:
-      kamailio:
-        topos-tls-proxy:
-          - path: /usr/local/etc/haproxy/haproxy.cfg
-            subPath: haproxy.cfg
-{{- end }}
-  kamailio-tls:
-    type: secret
-    name: '{{ include "avoip.fullname" . }}-kamailio-sip-tls'
-    advancedMounts:
-      kamailio:
-        kamailio:
-          - path: /etc/kamailio/tls
-  kamailio-tmp:
-    type: emptyDir
-    advancedMounts:
-      kamailio:
-        kamailio:
-          - path: /tmp
-{{- if .Values.freeswitch.enabled }}
-  kamailio-freeswitch-tls:
-    type: secret
-    name: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
-    advancedMounts:
-      kamailio:
-        tls-ca:
-          - path: /tls-peer
-  kamailio-tls-ca:
-    type: emptyDir
-    advancedMounts:
-      kamailio:
-        tls-ca:
-          - path: /tls-output
-        kamailio:
-          - path: /etc/kamailio/tls-ca
-{{- end }}
-{{- end }}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+{{- if $instance.enabled -}}
+{{- $values := deepCopy $.Values -}}
+{{- $_ := set $values "kamailio" $instance -}}
+{{- $ctx := dict "Values" $values "Release" $.Release "Chart" $.Chart "Files" $.Files "Capabilities" $.Capabilities -}}
+{{- include "avoip.kamailio.common.persistence" $ctx }}
+{{ end }}
+{{ end }}
 {{- if .Values.freeswitch.enabled }}
   freeswitch-config:
     type: configMap
@@ -1649,11 +1758,11 @@ persistence:
       freeswitch:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
         recordings:
           - path: /recordings
 {{- end }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
   homer-recordings-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-homer-recordings'
@@ -1665,7 +1774,7 @@ persistence:
           - path: /usr/share/nginx/html/recordings
 {{- end }}
 {{- end }}
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
   homer-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-homer-config'

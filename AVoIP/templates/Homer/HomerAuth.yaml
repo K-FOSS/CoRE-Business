@@ -1,4 +1,4 @@
-{{- if and (include "avoip.homer.enabled" . | trim) .Values.kamailio.enabled }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
 {{- $oidc := .Values.homer.oidc -}}
 {{- $forwardAuth := .Values.homer.forwardAuth -}}
 {{- $oidcSlug := printf "%s-%s-%s-%s-managed" $oidc.applicationSlug $.Values.region $.Values.datacenter $.Values.cluster.name -}}
