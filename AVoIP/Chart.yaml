@@ -18,3 +18,9 @@ dependencies:
     version: 1.2.2
     condition: jitsi-meet.enabled
     repository: https://jitsi-contrib.github.io/jitsi-helm/
+  # Official LiveKit Server chart. Its UDP/TCP media Service and pod host
+  # networking are configured by the site-local values below.
+  - name: livekit-server
+    version: 1.9.0
+    condition: livekit.enabled
+    repository: https://helm.livekit.io

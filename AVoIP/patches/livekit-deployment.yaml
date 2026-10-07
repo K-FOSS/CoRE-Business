@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livekit-server
+spec:
+  template:
+    metadata:
+      labels:
+        logs: 'loki-myloginspace'
+      annotations:
+        secret.reloader.stakater.com/reload: 'avoip-livekit-keys,avoip-livekit-redis'
+    spec:
+      containers:
+        - name: livekit-server
+          env:
+            - name: LIVEKIT_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: 'avoip-livekit-redis'
+                  key: 'password'
+          volumeMounts:
+            - name: 'keys-volume'
+              mountPath: '/etc/livekit/keys.yaml'
+              subPath: 'keys.yaml'
+      volumes:
+        - name: 'keys-volume'
+          secret:
+            secretName: 'avoip-livekit-keys'
+            items:
+              - key: 'keys.yaml'
+                path: 'keys.yaml'

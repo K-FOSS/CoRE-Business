@@ -41,7 +41,7 @@ directories may be inactive, transitional or manually deployed.
 | Collaboration and productivity | `Office/`, `Communication/`, `Projects/`, `Tasks/` | Nextcloud, Collabora, Mattermost, Matrix, OpenProject and task services. |
 | Identity-facing utilities | `Passwords/`, `Desktop/`, `Terminal/`, `Tools/` | Vaultwarden, Kasm, browser terminals, CyberChef and Draw.io. |
 | Business systems | `ERP/`, `Finances/`, `Analytics/`, `Medical/`, `Education/` | ERPNext, finance, analytics, health and learning workloads. |
-| Communications | `Mail/`, `AVoIP/`, `Voice/` | Mail, SIP, Asterisk, FreeSWITCH and conferencing. |
+| Communications | `Mail/`, `AVoIP/`, `Voice/` | Mail, SIP, Asterisk, FreeSWITCH, conferencing and the standalone LiveKit WebRTC SFU. |
 | Other application domains | `Family/`, `Feeds/`, `Knowledge/`, `Sharing/`, `Ambient/`, `Browsers/` | Knowledge, feeds, file sharing, ambient audio and browser automation. |
 | Standalone/older manifests | `Apps/`, `Avatars/`, `HPSchool/`, `LocalAI/` | Raw manifests and earlier deployment layouts. |
 | Experimental material | `Testing/`, `TMP/` | Validation workloads and temporary/legacy content. |

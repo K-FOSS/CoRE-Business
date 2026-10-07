@@ -1,0 +1,76 @@
+{{- if .Values.livekit.enabled }}
+{{- $livekit := .Values.livekit }}
+{{- $hostname := default (printf "livekit-%s.mylogin.space" .Values.region) .Values.livekit.hostname }}
+{{- $mediaServiceName := printf "%s-livekit-server-media" .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- $signalingRouteName := printf "%s-livekit-signaling" .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- $livekitServiceName := printf "%s-livekit-server" .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- $mediaService := .Values.livekit.media.service }}
+{{- $livekitValues := index .Values "livekit-server" }}
+{{- $redisConfig := $livekitValues.livekit.redis }}
+{{- $rtcConfig := $livekitValues.livekit.rtc }}
+{{- if not .Values.cluster.name }}{{- fail "cluster.name is required when LiveKit is enabled" }}{{- end }}
+{{- if not .Values.datacenter }}{{- fail "datacenter is required when LiveKit is enabled" }}{{- end }}
+{{- if not .Values.region }}{{- fail "region is required when LiveKit is enabled" }}{{- end }}
+{{- if not $livekit.redis.secretName }}{{- fail "livekit.redis.secretName is required when LiveKit is enabled" }}{{- end }}
+{{- if not $hostname }}{{- fail "livekit.hostname is required when LiveKit is enabled" }}{{- end }}
+{{- if not $redisConfig.address }}{{- fail "livekit-server.livekit.redis.address is required when LiveKit is enabled" }}{{- end }}
+{{- if not $redisConfig.tls.server_name }}{{- fail "livekit-server.livekit.redis.tls.server_name is required when LiveKit is enabled" }}{{- end }}
+{{- if not (hasKey $mediaService "loadBalancerClass") }}{{- fail "livekit.media.service.loadBalancerClass must be set for the site's external media service" }}{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: '{{ $mediaServiceName }}'
+  labels:
+    app.kubernetes.io/name: 'livekit-server'
+    app.kubernetes.io/instance: '{{ .Release.Name }}'
+    wan-mode: 'public'
+{{- with $mediaService.labels }}
+{{ toYaml . | nindent 4 }}
+{{- end }}
+{{- with $mediaService.annotations }}
+  annotations:
+{{ toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  type: 'LoadBalancer'
+{{- if $mediaService.loadBalancerClass }}
+  loadBalancerClass: '{{ $mediaService.loadBalancerClass }}'
+{{- end }}
+  externalTrafficPolicy: 'Local'
+  selector:
+    app.kubernetes.io/name: 'livekit-server'
+    app.kubernetes.io/instance: '{{ .Release.Name }}'
+  ports:
+    - name: 'rtc-udp'
+      port: {{ $rtcConfig.udp_port }}
+      targetPort: {{ $rtcConfig.udp_port }}
+      protocol: UDP
+    - name: 'rtc-tcp'
+      port: {{ $rtcConfig.tcp_port }}
+      targetPort: {{ $rtcConfig.tcp_port }}
+      protocol: TCP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: '{{ $signalingRouteName }}'
+  labels:
+    wan-mode: 'public'
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: '{{ $hostname }}'
+spec:
+  parentRefs:
+    - kind: 'Gateway'
+      name: '{{ .Values.gateway.name }}'
+      namespace: '{{ .Values.gateway.namespace }}'
+      sectionName: '{{ .Values.gateway.sectionName }}'
+  hostnames:
+    - '{{ $hostname }}'
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ $livekitServiceName }}'
+          port: 80
+{{- end }}

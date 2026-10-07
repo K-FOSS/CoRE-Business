@@ -432,6 +432,79 @@ jitsi:
   tls:
     secretName: 'myloginspace-default-certificates'
 
+# LiveKit is an independent WebRTC SFU. Site selection and the public signaling
+# hostname/media Service allocation are injected by the owning ApplicationSet.
+livekit:
+  enabled: false
+  hostname: ''
+  redis:
+    secretName: 'avoip-livekit-redis'
+    passwordKey: 'password'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    remoteRef:
+      key: ''
+      property: 'Password'
+  secrets:
+    name: 'avoip-livekit-keys'
+    generatorName: 'avoip-livekit-keys-generator'
+    bootstrapName: 'avoip-livekit-keys-bootstrap'
+    remoteKey: ''
+  media:
+    service:
+      loadBalancerClass: ''
+      annotations: {}
+      labels: {}
+
+# Official upstream chart defaults are overridden for CoRE site networking.
+livekit-server:
+  replicaCount: 1
+  podHostNetwork: true
+  terminationGracePeriodSeconds: 18000
+  deploymentStrategy:
+    type: Recreate
+  serviceAccount:
+    create: false
+    name: 'default'
+  resources:
+    requests:
+      cpu: '2000m'
+      memory: '2Gi'
+    limits:
+      cpu: '4000m'
+      memory: '4Gi'
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - topologyKey: 'kubernetes.io/hostname'
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: 'livekit-server'
+  livekit:
+    port: 7880
+    log_level: 'info'
+    rtc:
+      tcp_port: 7881
+      udp_port: 7882
+      # The single UDP mux port replaces the upstream 50000-60000 range.
+      port_range_start: null
+      port_range_end: null
+      use_external_ip: true
+    redis:
+      address: ''
+      db: 155
+      username: 'default'
+      tls:
+        enabled: true
+        insecure: false
+        server_name: ''
+    key_file: '/etc/livekit/keys.yaml'
+  storeKeysInSecret:
+    enabled: true
+    existingSecret: 'avoip-livekit-keys'
+    keys: {}
+
 network:
   externalIP: '66.165.222.101'
   egressIP: ''
