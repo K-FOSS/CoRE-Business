@@ -14,7 +14,8 @@ render_sipcore() {
     --set-string asterisk.sipCore.extensions[0].number=7101 \
     --set-string asterisk.sipCore.extensions[0].secret.remoteKey=unit/test/7101 \
     --set-string asterisk.sipCore.extensions[0].secret.property=Password \
-    --set-string asterisk.sipCore.extensions[0].allowCallsTo[0]=9090 "$@"
+    --set-string asterisk.sipCore.extensions[0].allowCallsTo[0]=9090 \
+    --set-string asterisk.sipCore.extensions[0].allowCallsTo[1]=1234 "$@"
 }
 
 helm template siptest "$chart_dir" --namespace core-prod > "$tmp_dir/sipcore-disabled.yaml"
@@ -81,6 +82,7 @@ grep -Fq 'exten => 9090,1,Answer()' "$tmp_dir/empty-matches.yaml" || fail 'SIP C
 grep -Fq 'Echo()' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core echo dialplan is missing'
 grep -Fq 'Dial(PJSIP/gg-audio@freeswitch,30,g)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk GG extension does not continue to Hangup after the FreeSWITCH audio leg ends'
 grep -Fq 'exten => 1234,1,Answer()' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback service extension 1234 is missing'
+grep -Fq 'Dial(PJSIP/1234,30)' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk callback service extension 1234 was shadowed by generic allowCallsTo routing'
 grep -Fq 'Playback(hello-world)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback service does not play the greeting'
 grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-callback-7101,s,1)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback is not scheduled by a hangup handler'
 grep -Fq '[sipcore-callback-7101]' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback context is not scoped to SIP Core extension 7101'

@@ -114,7 +114,7 @@ data:
     ; Each SIP Core account has its own context and exact extension allowlist.
     [from-sipcore-{{ .number }}]
     {{- range .allowCallsTo }}
-    {{- if and (ne (toString .) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension)) }}
+    {{- if and (ne (toString .) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension)) }}
     exten => {{ . }},1,Dial(PJSIP/{{ . }},30)
       same => n,Hangup()
     {{- end }}
