@@ -103,10 +103,10 @@ The active SIP profiles are defined in
   SIP digest authentication and enters the dedicated `from-asterisk` dialplan
   context without a broad private-network ACL bypass. The
   profile listens on its dedicated TLS port `5064` (the Kamailio-facing
-  FreeSWITCH profile uses `5061`) and requires Asterisk's client certificate
-  with the configured subject. The Asterisk certificate requests both server
-  and client authentication usages. Digest remains required after TLS
-  verification.
+  FreeSWITCH profile uses `5061`). The hop uses TLS and the profile requires
+  SIP Digest. It does not request Asterisk's current public server certificate
+  as a client certificate; mTLS requires a separate certificate from an
+  approved internal CA. The chart keeps the current Digest check active.
   The
   peer username/password come from a Kubernetes Secret mounted into the SIP
   processes, so neither credential is rendered into Git-managed configuration.

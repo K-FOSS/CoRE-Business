@@ -122,11 +122,13 @@ behavior.
   `gg-audio` to the authenticated FreeSWITCH peer on its dedicated TLS port
   `5064`. This listener is separate from the Kamailio-facing FreeSWITCH TLS
   listener on `5061`, which uses the public context. The Asterisk profile
-  requires both SIP Digest and Asterisk's TLS client certificate, restricted
-  by certificate subject. The Asterisk certificate requests both `server auth`
-  and `client auth` usages from cert-manager so FreeSWITCH can validate it as a
-  TLS client certificate; the existing service DNS SAN remains the peer
-  identity. SIP Digest is still required after TLS verification. The
+  uses TLS on a dedicated internal port and requires SIP Digest. The
+  currently selected public ACME issuer returns a server-auth-only certificate,
+  so FreeSWITCH does not request it as a client certificate. Asterisk still
+  verifies FreeSWITCH's TLS server certificate, and FreeSWITCH's `auth-calls`
+  setting validates the peer's Digest credentials before entering
+  `from-asterisk`. A future mTLS configuration needs a separate client
+  certificate issued by an approved internal CA and trusted by FreeSWITCH. The
   destination is configurable with `asterisk.sipCore.ggAudioDestination`.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk
