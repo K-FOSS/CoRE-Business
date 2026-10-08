@@ -65,6 +65,28 @@
     {{- end -}}
   {{- end -}}
 {{- end -}}
+{{- if .Values.asterisk.turn.enabled -}}
+  {{- if not (regexMatch "^[A-Za-z0-9.-]+$" .Values.asterisk.turn.hostname) -}}
+    {{- fail "asterisk.turn.hostname must be a DNS hostname when TURN is enabled" -}}
+  {{- end -}}
+  {{- if or (lt (int .Values.asterisk.turn.port) 1) (gt (int .Values.asterisk.turn.port) 65535) -}}
+    {{- fail "asterisk.turn.port must be between 1 and 65535" -}}
+  {{- end -}}
+  {{- if not (regexMatch "^[A-Za-z0-9._-]+$" .Values.asterisk.turn.username) -}}
+    {{- fail "asterisk.turn.username must contain only letters, digits, dot, underscore, or hyphen" -}}
+  {{- end -}}
+  {{- if or (lt (int .Values.asterisk.turn.credentialLifetimeSeconds) 86400) (gt (int .Values.asterisk.turn.credentialLifetimeSeconds) 31536000) -}}
+    {{- fail "asterisk.turn.credentialLifetimeSeconds must be between one day and one year" -}}
+  {{- end -}}
+  {{- $_ := required "asterisk.turn.secret.name is required when TURN is enabled" .Values.asterisk.turn.secret.name -}}
+  {{- $_ := required "asterisk.turn.secret.secretStoreRef.kind is required when TURN is enabled" .Values.asterisk.turn.secret.secretStoreRef.kind -}}
+  {{- $_ := required "asterisk.turn.secret.secretStoreRef.name is required when TURN is enabled" .Values.asterisk.turn.secret.secretStoreRef.name -}}
+  {{- $_ := required "asterisk.turn.secret.remoteKey is required when TURN is enabled" .Values.asterisk.turn.secret.remoteKey -}}
+  {{- $_ := required "asterisk.turn.secret.remoteProperty is required when TURN is enabled" .Values.asterisk.turn.secret.remoteProperty -}}
+  {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" .Values.asterisk.turn.secret.name) -}}
+    {{- fail "asterisk.turn.secret.name must be a Kubernetes Secret name" -}}
+  {{- end -}}
+{{- end -}}
 ---
 apiVersion: v1
 kind: ConfigMap

@@ -89,6 +89,9 @@ data:
     rtpstart={{ .Values.asterisk.rtp.min }}
     rtpend={{ .Values.asterisk.rtp.max }}
     icesupport=true
+    {{- if .Values.asterisk.turn.enabled }}
+    #include /tmp/avoip-turn.conf
+    {{- end }}
 
   extensions.conf: |
     [general]

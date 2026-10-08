@@ -682,7 +682,7 @@ controllers:
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ if .Values.asterisk.turn.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
     initContainers:
 {{- if .Values.asterisk.cdr.enabled }}
       cdr-schema:
@@ -799,6 +799,21 @@ controllers:
             } >> /tmp/avoip-sipcore-pjsip.conf
             unset sip_password
             {{- end }}
+            {{- end }}
+            {{- if .Values.asterisk.turn.enabled }}
+            turn_shared_secret="$(cat /run/avoip/turn/TURN_SHARED_SECRET)"
+            if [ -z "$turn_shared_secret" ]; then echo 'CoTURN shared secret is empty' >&2; exit 1; fi
+            if ! command -v openssl >/dev/null 2>&1; then echo 'openssl is required to derive CoTURN REST credentials' >&2; exit 1; fi
+            turn_expiry=$(( $(date +%s) + {{ int .Values.asterisk.turn.credentialLifetimeSeconds }} ))
+            turn_username="${turn_expiry}:{{ .Values.asterisk.turn.username }}"
+            turn_password="$(printf '%s' "$turn_username" | openssl dgst -sha1 -hmac "$turn_shared_secret" -binary | openssl base64 -A)"
+            if [ -z "$turn_password" ]; then echo 'CoTURN REST credential generation failed' >&2; exit 1; fi
+            {
+              printf '[general]\nstunaddr={{ .Values.asterisk.turn.hostname }}:{{ .Values.asterisk.turn.port }}\n'
+              printf 'turnaddr={{ .Values.asterisk.turn.hostname }}:{{ .Values.asterisk.turn.port }}\n'
+              printf 'turnusername=%s\nturnpassword=%s\n' "$turn_username" "$turn_password"
+            } > /tmp/avoip-turn.conf
+            unset turn_shared_secret turn_username turn_password turn_expiry
             {{- end }}
             {{- if .Values.asterisk.cdr.enabled }}
             printf '[global]\n' > /tmp/avoip-cdr_pgsql.conf
@@ -1828,6 +1843,16 @@ persistence:
       asterisk:
         asterisk:
           - path: /etc/asterisk/tls
+{{- if .Values.asterisk.turn.enabled }}
+  asterisk-turn-secret:
+    type: secret
+    name: '{{ .Values.asterisk.turn.secret.name }}'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /run/avoip/turn
+            readOnly: true
+{{- end }}
 {{- if .Values.asterisk.sipCore.enabled }}
 {{- range .Values.asterisk.sipCore.extensions }}
   asterisk-sipcore-{{ .number }}:

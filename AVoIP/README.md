@@ -302,6 +302,24 @@ keys, and a separate public address. External media reachability still needs
 verification after reconciliation. See [LiveKit deployment, prerequisites,
 verification, and recovery](docs/LIVEKIT.md).
 
+## Asterisk WebRTC media relay candidates
+
+The [Asterisk RTP/ICE configuration](https://docs.asterisk.org/Configuration/Miscellaneous/Interactive-Connectivity-Establishment-ICE-in-Asterisk/)
+uses the existing CoTURN service at `nat.mylogin.space:3478` for STUN
+discovery and TURN relay candidates. Its REST shared secret is sourced from
+the same Vault property as Social/Matrix through a separate AVoIP
+ExternalSecret. Asterisk derives a time-limited TURN username/password at
+startup and stores the generated include only in its runtime `/tmp`; no
+credential is rendered into a ConfigMap or Helm values. The credential lifetime
+is configurable up to one year, so restart Asterisk before the expiry.
+
+This provides ICE candidates for Asterisk's media socket. The Home Assistant
+signaling path remains WSS through Envoy and Kamailio, and browser media remains
+relayed through the existing RTPEngine. CoTURN does not replace RTPEngine or
+provide credentials to the browser. See
+[the SIP Core media notes](docs/SIPCORE-HASS.md#media-reachability) before
+diagnosing two-way audio.
+
 ## Nextcloud Talk high performance backend
 
 The chart runs the versioned

@@ -54,7 +54,9 @@ This does not establish trust in XFF. Any policy change on the shared Envoy Gate
 which is outside this task's scope. RTPEngine media handling is separate from
 WebSocket signaling: Kamailio sends SDP control to the existing RTPEngine and
 the browser's ICE/DTLS-SRTP media is relayed through it. CoTURN/NATPuncher is a
-separate TURN service and is not changed here.
+separate media service. Asterisk's RTP ICE configuration uses the existing
+CoTURN service for STUN discovery and TURN relay candidates; it does not change
+the Kamailio signaling path or replace RTPEngine.
 
 FreeSWITCH peer identification does not use source IP. The Asterisk endpoint is
 selected by its fixed SIP `From` username. A 64-character random hexadecimal
@@ -151,15 +153,21 @@ relays the browser media leg using its configured public media interface and
 UDP range. Keep `asterisk.sipCore.media.enabled` disabled: the chart rejects
 direct Asterisk RTP exposure while SIP Core is enabled. This change reuses the
 existing RTPEngine deployment and does not create another media topology.
-CoTURN/NATPuncher remains a separate TURN service and is not modified here.
+Asterisk reads the same CoTURN REST signing secret source used by Social/Matrix
+through its own `avoip-asterisk-turn-auth` ExternalSecret. At startup, it
+derives a CoTURN-compatible, time-limited username and password in the
+container's private `/tmp` and includes them in `rtp.conf`; no secret or derived
+password is placed in Helm values or a ConfigMap. The generated credential is
+valid for up to one year. Restart Asterisk before that expiry to generate a
+fresh credential. STUN discovery uses the configured CoTURN hostname and port.
 
-The integration's `ice_config` can include TURN servers, but do not configure
-the shared NATPuncher REST signing secret in Home Assistant. Short-lived
-browser TURN credentials for this SIP consumer still need a dedicated issuance
-path. Until either a verified direct UDP path or scoped TURN credentials are
-available, WSS registration may work while external two-way audio does not.
-Test from outside the cluster, inspect the selected ICE candidate pair, and
-confirm bidirectional RTP and DTLS-SRTP before calling the feature live.
+This configures Asterisk's media ICE agent only. It does not provide TURN
+credentials to Home Assistant, and it does not alter the existing
+Kamailio→RTPEngine media path. The Home Assistant SIP endpoint continues to
+use RTPEngine for browser media; CoTURN is an additional server-side ICE relay
+candidate for Asterisk. If two-way audio still fails, inspect the negotiated
+ICE candidates on both legs and RTPEngine's available relay ports. Registration
+alone does not prove media works.
 
 ## Rollback and verification
 
@@ -172,6 +180,12 @@ Accepted, Kamailio loaded `websocket.so` and `rtpengine.so`, `pjsip show
 transports` lists `transport-tls`, and `pjsip show contacts` lists the
 registered extension. Then test the echo target and confirm the selected ICE
 pair and bidirectional audio from an external browser network.
+
+For TURN verification, confirm `ExternalSecret/avoip-asterisk-turn-auth` is
+Ready without printing Secret contents, then inspect the Asterisk log for
+successful ICE/TURN candidate creation with PJSIP packet tracing disabled.
+Never copy the generated TURN password or SIP Authorization data into logs or
+support output.
 
 This static extension pilot is separate from the planned dynamic SIP registrar,
 Authentik credential broker, and first-party webphone. It does not satisfy the

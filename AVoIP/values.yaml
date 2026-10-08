@@ -726,6 +726,19 @@ asterisk:
   rtp:
     min: 10000
     max: 10100
+  turn:
+    enabled: true
+    hostname: 'nat.mylogin.space'
+    port: 3478
+    username: 'asterisk'
+    credentialLifetimeSeconds: '31536000'
+    secret:
+      name: 'avoip-asterisk-turn-auth'
+      secretStoreRef:
+        kind: 'ClusterSecretStore'
+        name: 'corevault-rootsecrets'
+      remoteKey: 'Network/NATPuncher/yxl/dc1/core-dc1-talos-prod/TurnAuth'
+      remoteProperty: 'Secret'
 
 freeswitch:
   enabled: true
