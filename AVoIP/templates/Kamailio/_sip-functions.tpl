@@ -240,10 +240,6 @@
         exit;
       }
 
-      if (is_method("INVITE") && !has_totag()) {
-        record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
-      }
-
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal")) {
           xlog("L_ERR", "RTPEngine SIP Core SDP handling failed callid=$ci method=$rm\n");
@@ -257,6 +253,10 @@
         }
       } else if (is_method("BYE")) {
         rtpengine_manage();
+      }
+
+      if (is_method("INVITE") && !has_totag()) {
+        record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
       }
 
       route(TO_SIPCORE_ASTERISK);

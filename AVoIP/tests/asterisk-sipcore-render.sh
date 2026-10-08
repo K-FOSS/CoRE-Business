@@ -50,6 +50,11 @@ grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio S
 grep -Fq 'fix_nated_register' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core route calls nathelper REGISTER helper without Kamailio registrar configuration'
 grep -Fq 'route[TO_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS route is missing'
 grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" || fail 'Home Assistant media is not relayed through RTPEngine'
+rtpengine_sdp_line="$(grep -n 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
+record_route_line="$(grep -n 'record_route_preset("sip:sipcore.example.net:443;transport=wss")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
+if [[ -z "$rtpengine_sdp_line" || -z "$record_route_line" || "$rtpengine_sdp_line" -ge "$record_route_line" ]]; then
+  fail 'RTPEngine SDP updates must happen before adding Record-Route'
+fi
 grep -Fq 'password must be hexadecimal' "$tmp_dir/empty-matches.yaml" || fail 'startup hexadecimal password validation is missing'
 grep -Fq 'at least 32 characters' "$tmp_dir/empty-matches.yaml" || fail 'startup password length validation is missing'
 grep -Fq 'secretKeyRef:' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core secret is not mounted from a Secret'
