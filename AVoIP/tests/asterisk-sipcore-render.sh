@@ -50,6 +50,9 @@ grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio S
 grep -Fq 'fix_nated_register' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core route calls nathelper REGISTER helper without Kamailio registrar configuration'
 grep -Fq 'route[TO_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS route is missing'
 grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" || fail 'Home Assistant media is not relayed through RTPEngine'
+grep -Fq 'SIP RX RAW pod=' "$tmp_dir/empty-matches.yaml" && fail 'Kamailio raw SIP logging could expose Digest Authorization headers'
+grep -Fq 'SIP FLOWROUTE RX BEGIN' "$tmp_dir/empty-matches.yaml" && fail 'Kamailio raw carrier logging remains enabled with SIP Core'
+grep -Fq 'loadmodule "siptrace.so"' "$tmp_dir/empty-matches.yaml" && fail 'Kamailio SIP tracing could capture SIP Core Digest headers'
 rtpengine_sdp_line="$(grep -n 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 record_route_line="$(grep -n 'record_route_preset("sip:sipcore.example.net:443;transport=wss")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 if [[ -z "$rtpengine_sdp_line" || -z "$record_route_line" || "$rtpengine_sdp_line" -ge "$record_route_line" ]]; then

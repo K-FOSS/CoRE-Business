@@ -6,8 +6,9 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $rawSipLogging := or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound) -}}
-{{- $carrierTrafficLogging := default false .Values.kamailio.sipLogging.carrierTraffic -}}
+{{- $sipCoreEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled -}}
+{{- $rawSipLogging := and (or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound)) (not $sipCoreEnabled) -}}
+{{- $carrierTrafficLogging := and (not $sipCoreEnabled) (default false .Values.kamailio.sipLogging.carrierTraffic) -}}
 {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled (not .Values.kamailio.publicExposure.sip.directService.enabled) -}}
 {{- fail "public UDP SIP dialogs require kamailio.publicExposure.sip.directService.enabled so the advertised UDP Contact is reachable" -}}
 {{- end -}}
@@ -146,7 +147,7 @@ data:
     loadmodule "topos_redis.so"
     {{- end }}
 
-    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreEnabled) }}
     loadmodule "siptrace.so"
     {{- end }}
 
@@ -271,7 +272,7 @@ data:
     }
     {{- end }}
 
-    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreEnabled) }}
     modparam("siptrace", "trace_on", 1)
     modparam("siptrace", "trace_mode", 1)
     modparam("siptrace", "trace_to_database", 0)

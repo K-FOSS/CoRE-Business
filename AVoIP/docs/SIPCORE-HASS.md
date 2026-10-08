@@ -27,7 +27,9 @@ endpoint keeps its private `from-sipcore-7101` context and exact
 `X-Forwarded-For` value cannot select the endpoint, authenticate SIP, or change
 the actual PJSIP transport peer.
 PJSIP packet logging is suppressed while SIP Core is enabled because raw SIP
-traces can include Digest Authorization headers.
+traces can include Digest Authorization headers. Kamailio's raw receive logs,
+full carrier packet logs, and Homer SIP trace are also disabled while this
+feature is enabled; sanitized routing and SDP metadata remain available.
 
 Stock Asterisk's PJSIP WebSocket transport does not retain the HTTP upgrade's
 forwarded headers as SIP metadata. This design does not pass XFF to Kamailio or
