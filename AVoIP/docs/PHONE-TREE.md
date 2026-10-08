@@ -86,6 +86,8 @@ both the SMS modules and the External Secret-backed Flowroute SMS configuration.
 
 FreeSWITCH loads the LDAP directory integration from
 [FreeSwitchMiscConfig.yaml](../templates/FreeSwitch/FreeSwitchMiscConfig.yaml).
+The LDAPS server hostname is selected from the chart's `datacenter` value as
+`ldap-<datacenter>.mylogin.space`.
 The directory maps the current mylogin.space user attributes for identity,
 password, dial string, number alias, call group, ACL, and caller ID fields for
 authenticated internal SIP users.

@@ -46,6 +46,7 @@ render_and_assert() {
   grep -Fq '<profile name="kamailio">' "$output"
   grep -Fq '<param name="apply-inbound-acl" value="kamailio"/>' "$output"
   grep -Fq '<param name="auth-calls" value="true"/>' "$output"
+  grep -Fq "ldaps://ldap-$datacenter.mylogin.space" "$output"
   grep -Fq '<param name="listen-ip" value="127.0.0.1"/>' "$output"
   ! grep -Fq '<param name="accept-blind-auth" value="true"/>' "$output"
   printf 'PASS %s rendered SIP source, registration, dialplan, and local event-socket guards\n' "$site"

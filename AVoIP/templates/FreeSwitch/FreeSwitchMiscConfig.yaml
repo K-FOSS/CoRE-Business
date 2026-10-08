@@ -17,21 +17,12 @@ data:
       <bindings>
         <binding name="directory">
           <param name="filter" value="(&amp;(objectClass=user)(cn=%s))" bindings="directory"/>
-          <param name="basedn" value="ou=%s,ou=users,dc=ldap,dc=mylogin,dc=space"/>
-          <param name="url" value="ldaps://ldap.mylogin.space"/>
+          <param name="basedn" value="ou=users,dc=ldap,dc=mylogin,dc=space"/>
+          <param name="url" value="ldaps://ldap-{{ .Values.datacenter }}.mylogin.space"/>
           <param name="binddn" value="cn=$${username},ou=users,dc=ldap,dc=mylogin,dc=space"/>
           <param name="bindpass" value="$${password}"/>
           <trans>
             <tran name="id" mapfrom="uid"/>
-            <tran name="cidr" mapfrom="fsCIDR"/>
-            <tran name="number-alias" mapfrom="fsNumberAlias"/>
-            <tran name="dial-string" mapfrom="fsDialString"/>
-            <tran name="password" mapfrom="fsPassword"/>
-            <tran name="a1-hash" mapfrom="fsA1Hash"/>
-            <tran name="user_context" mapfrom="fsUserContext"/>
-            <tran name="callgroup" mapfrom="fsCallGroup"/>
-            <tran name="effective_caller_id_number" mapfrom="fsEffectiveCallerIDNumber"/>
-            <tran name="effective_caller_id_name" mapfrom="fsEffectiveCallerIDName"/>
           </trans>
         </binding>
       </bindings>
