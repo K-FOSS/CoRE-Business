@@ -440,6 +440,7 @@
         port: {{ $.Values.asterisk.sipCore.httpPort }}
         targetPort: sipcore-ws
         protocol: TCP
+        appProtocol: kubernetes.io/ws
       sipcore-tls:
         port: {{ $.Values.asterisk.sipCore.privateEgressPort }}
         targetPort: sipcore-tls
