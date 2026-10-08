@@ -13,6 +13,8 @@ metadata:
   name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sipcore-wss") }}'
   annotations:
     external-dns.alpha.kubernetes.io/hostname: '{{ $hostname }}'
+
+  labels:
     wan-mode: 'public'
 spec:
   parentRefs:

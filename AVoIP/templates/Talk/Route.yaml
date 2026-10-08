@@ -5,6 +5,7 @@ metadata:
   name: '{{ include "avoip.fullname" . }}-talk-hpb'
   annotations:
     external-dns.alpha.kubernetes.io/hostname: '{{ .Values.talkHpb.hostname }}'
+  labels:
     wan-mode: 'public'
 spec:
   parentRefs:
@@ -20,4 +21,7 @@ spec:
           kind: 'Service'
           name: 'avoip-talk-hpb-signaling'
           port: 8081
+      timeouts:
+        backendRequest: 30m
+        request: 1h
 {{- end }}

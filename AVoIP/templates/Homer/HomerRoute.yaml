@@ -43,6 +43,7 @@ metadata:
   name: '{{ include "avoip.fullname" . }}-homer'
   annotations:
     external-dns.alpha.kubernetes.io/hostname: '{{ include "avoip.homer.hostname" . }}'
+  labels:
     wan-mode: 'public'
 spec:
   parentRefs:
