@@ -168,8 +168,15 @@ kamailio:
         media: true
         sipTrace: true
     private-sbc:
+      replicas: 1
       publicExposure:
         enabled: false
+      # This role has no carrier route and accepts no peer until explicitly
+      # configured for a site. Direct TLS peers never send PROXY headers.
+      privateRouting:
+        peers: []
+        destinations: []
+        routes: []
       podDisruptionBudget:
         minAvailable: 0
       functions:
@@ -182,7 +189,7 @@ kamailio:
         backendSelection: true
         topology: true
         media: false
-        sipTrace: true
+        sipTrace: false
   instances:
     - name: 'carrier'
       enabled: true
@@ -304,6 +311,17 @@ kamailio:
       # Coarse source guard for the private TLS listener. The chart NetworkPolicy
       # limits port 5062 to FreeSWITCH pods when using the default backend.
       podCIDR: '172.16.0.0/12'
+    carrierOutbound:
+      # Remains off until peer authentication, caller policy and quotas are
+      # implemented; the private FreeSWITCH listener still handles dialogs.
+      enabled: false
+    privateRouting:
+      # peers: [{cidr: '10.0.0.10/32', sanHostname: 'pbx.example', controller: 'asterisk', name: 'pbx', allowedUsers: ['1000']}]
+      # destinations: [{setId: 10, uri: 'sips:pbx.example:5061', controller: 'asterisk'}]
+      # routes: [{user: '1000', setId: 10}]
+      peers: []
+      destinations: []
+      routes: []
     networkPolicy:
       envoy:
         # Match the Envoy Gateway data-plane pods, not carrier source CIDRs.

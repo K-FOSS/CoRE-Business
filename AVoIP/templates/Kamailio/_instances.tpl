@@ -43,13 +43,46 @@
   {{- if and (eq $role "carrier-sbc") (or (not $functions.media) (not $effective.publicExposure.enabled)) -}}
     {{- fail (printf "Kamailio %s carrier-sbc requires media and public exposure" $name) -}}
   {{- end -}}
+  {{- if and (eq $role "carrier-sbc") $effective.carrierOutbound.enabled -}}
+    {{- fail "carrierOutbound cannot be enabled before authenticated peer ingress, destination authorization and quotas are implemented" -}}
+  {{- end -}}
   {{- if and (eq $role "private-sbc") $effective.publicExposure.enabled -}}
     {{- fail (printf "Kamailio %s private-sbc must not expose public SIP" $name) -}}
+  {{- end -}}
+  {{- if eq $role "private-sbc" -}}
+    {{- if gt (int $effective.replicas) 1 -}}
+      {{- fail (printf "Kamailio %s private-sbc must start with one replica until dialog affinity is validated" $name) -}}
+    {{- end -}}
+    {{- $sets := dict -}}
+    {{- range $destination := $effective.privateRouting.destinations -}}
+      {{- if or (lt (int $destination.setId) 1) (not (regexMatch "^sips:[a-zA-Z0-9.-]+:[0-9]+$" (toString $destination.uri))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $destination.controller))) -}}
+        {{- fail (printf "Kamailio %s privateRouting destination requires a positive setId, literal sips host:port and controller" $name) -}}
+      {{- end -}}
+      {{- $_ := set $sets (toString $destination.setId) true -}}
+    {{- end -}}
+    {{- range $route := $effective.privateRouting.routes -}}
+      {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $route.user))) (not (hasKey $sets (toString $route.setId))) -}}
+        {{- fail (printf "Kamailio %s privateRouting route requires a numeric user and configured destination set" $name) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- range $peer := $effective.privateRouting.peers -}}
+      {{- if or (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $peer.name))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $peer.controller))) (not (regexMatch "^[0-9a-fA-F:.]+/[0-9]{1,3}$" (toString $peer.cidr))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $peer.sanHostname))) -}}
+        {{- fail (printf "Kamailio %s privateRouting peer requires name, controller, literal CIDR and certificate sanHostname" $name) -}}
+      {{- end -}}
+      {{- range $user := $peer.allowedUsers -}}
+        {{- if not (regexMatch "^[0-9]{2,8}$" (toString $user)) -}}
+          {{- fail (printf "Kamailio %s privateRouting peer %s allowedUsers must contain only numeric extensions" $name $peer.name) -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
   {{- end -}}
   {{- if ne (toString $functions.topology) (toString $effective.topology.enabled) -}}
     {{- fail (printf "Kamailio %s functions.topology and topology.enabled must agree" $name) -}}
   {{- end -}}
   {{- if and $effective.enabled $effective.topology.enabled -}}
+    {{- if and (eq $role "private-sbc") (or (eq (int $effective.topology.redis.database) 51) (eq $effective.topology.redis.secretName "avoip-kamailio-topos")) -}}
+      {{- fail (printf "Kamailio %s private-sbc requires a dedicated TOPOS database and Secret" $name) -}}
+    {{- end -}}
     {{- if not $effective.topology.redis.secretName -}}{{- fail (printf "Kamailio %s requires topology.redis.secretName" $name) -}}{{- end -}}
     {{- if hasKey $redisSecrets $effective.topology.redis.secretName -}}{{- fail (printf "Kamailio %s shares TOPOS Secret %s with %s" $name $effective.topology.redis.secretName (index $redisSecrets $effective.topology.redis.secretName)) -}}{{- end -}}
     {{- $_ := set $redisSecrets $effective.topology.redis.secretName $name -}}

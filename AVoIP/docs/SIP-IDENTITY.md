@@ -21,10 +21,15 @@ Flowroute can send an INVITE from an ephemeral TLS source port while its Via adv
 The inbound-call failure that ended answered calls after approximately 32
 seconds has been reported resolved on 2026-10-07. The transport-specific
 public Record-Route and sending-socket correction below is the associated
-configuration change. This records the operational outcome, not a substitute
-for retained call evidence: add the successful Call-ID, ACKs observed at both
-Kamailio and FreeSWITCH, a call duration greater than 60 seconds, and the
-normal terminating BYE/200 exchange when those records are available.
+configuration change. The operator correlated Call-ID
+`4611692164-4000414305-968465085@IRISMSC8.iristel.net` in Homer and
+reported approximately 120 seconds of conversation, 129 seconds total, and a
+complete recording. That is a concrete beyond-60-second voice observation;
+the Homer trace and recording were not exported into this repository or
+independently reviewed here. Retain the Call-ID-correlated 2xx ACK at both
+Kamailio and FreeSWITCH and the terminating BYE/200 exchange before closing
+the full SIP regression gate. The recording alone does not prove those
+signaling exchanges or fax reception.
 
 The supplied Home1 trace confirms FreeSWITCH answered Call-ID
 `4603026123-4000377119-1786145794@IRISMSC8.iristel.net`, retransmitted its

@@ -274,6 +274,14 @@
         exit;
       }
 
+      # The current private FreeSWITCH leg is required for inbound dialogs,
+      # but it must not create a new carrier call without a separate verified
+      # outbound identity and destination policy.
+      {{- if not .Values.kamailio.carrierOutbound.enabled }}
+      sl_send_reply("403", "Outbound Calling Disabled");
+      exit;
+      {{- end }}
+
       # Trusted application-originated requests leave only through the
       # configured Flowroute TLS edge. FreeSWITCH does not choose a carrier.
       route(INITIAL_CARRIER);

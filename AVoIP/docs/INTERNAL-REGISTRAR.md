@@ -2,15 +2,15 @@
 
 ## Current state
 
-Backplane references below were inspected at checkout commit `d5587d0` on
-2026-10-07. Refresh that repository and verify the active cluster state before
-enabling an instance; network access did not permit a fresh fetch for this
-review.
+Backplane references below were inspected at commit
+`df212a6f87c83b330380de2073b3ce3b2c287347` on 2026-10-07. Verify the
+active cluster state before enabling an instance.
 
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 injects only the `carrier` Kamailio instance at DC1, Home1, and the legacy
 DC1 cluster. Its public listener rejects `REGISTER` with 403. The chart's
-`private-sbc` role also uses the carrier routing script and does not implement
+`private-sbc` role has a separate, opt-in mutual-TLS routing script with exact
+destination rules and a dedicated Cilium policy. It does not implement
 registration or subscriber authentication. No internal registrar is enabled.
 
 The [Backplane `User` XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)

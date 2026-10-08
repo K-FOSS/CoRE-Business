@@ -45,8 +45,8 @@ data:
     onsend_route_reply=1
     {{- end }}
 
-    # Envoy TLS passthrough + PROXY v2.
-    tcp_accept_haproxy=yes
+    # Envoy TLS passthrough + PROXY v2 for the carrier role only.
+    tcp_accept_haproxy={{ if eq .Values.kamailio.role "carrier-sbc" }}yes{{ else }}no{{ end }}
     enable_tls=1
 
     # Public carrier-facing identity.
@@ -56,15 +56,19 @@ data:
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
     listen=tcp:{{ .Values.kamailio.listeners.bindAddress }}:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_tcp"
     {{- end }}
+    {{- if eq .Values.kamailio.role "carrier-sbc" }}
     listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"
+    {{- end }}
 
     # Private application/B2BUA-facing identity.
     listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
 
+    {{- if eq .Values.kamailio.role "carrier-sbc" }}
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
     alias="{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
     {{- if .Values.kamailio.publicExposure.sip.directService.enabled }}
     alias="{{ $kamailioPubHost }}:5060"
+    {{- end }}
     {{- end }}
     alias="{{ $kamailioHost }}:5062"
 
@@ -79,6 +83,12 @@ data:
     loadmodule "textops.so"
     loadmodule "xlog.so"
     loadmodule "tls.so"
+    {{- if eq .Values.kamailio.role "private-sbc" }}
+    loadmodule "dispatcher.so"
+    modparam("dispatcher", "list_file", "/etc/kamailio/dispatcher.list")
+    modparam("dispatcher", "ds_ping_interval", 10)
+    modparam("dispatcher", "ds_probing_mode", 1)
+    {{- end }}
 
     {{- if .Values.kamailio.topology.enabled }}
     loadmodule "ndb_redis.so"
@@ -209,16 +219,29 @@ data:
     }
     {{- end }}
 
+{{ if eq .Values.kamailio.role "private-sbc" }}
+{{ include "avoip.kamailio.sip.private" . | nindent 4 }}
+{{ else }}
 {{ include "avoip.kamailio.sip.sanityAndClassification" . }}
 {{ include "avoip.kamailio.sip.authorizationAndTransactions" . }}
 {{ include "avoip.kamailio.sip.topologyAndBackend" . }}
 {{ include "avoip.kamailio.sip.dialogRouting" . }}
 {{ include "avoip.kamailio.sip.relayAndObservability" . }}
+{{ end }}
+{{ if eq .Values.kamailio.role "private-sbc" }}
+  dispatcher.list: |
+    {{ range .Values.kamailio.privateRouting.destinations }}
+    {{ .setId }} {{ .uri }} 0
+    {{ end }}
+{{ end }}
   tls.cfg: |
     [server:default]
     method = TLSv1.2+
-    verify_certificate = no
-    require_certificate = no
+    verify_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
+    require_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
+    {{- if eq .Values.kamailio.role "private-sbc" }}
+    ca_list = /etc/kamailio/tls-ca/ca-certificates.crt
+    {{- end }}
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 
@@ -227,6 +250,10 @@ data:
     verify_certificate = yes
     require_certificate = no
     ca_list = {{ if .Values.freeswitch.enabled }}/etc/kamailio/tls-ca/ca-certificates.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
+    {{- if eq .Values.kamailio.role "private-sbc" }}
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
+    {{- end }}
 {{ end }}
 {{- $root := . -}}
 {{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}

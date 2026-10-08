@@ -13,7 +13,7 @@ render() {
     --set-string fax.did=1000000001 "$@"
 }
 
-instances='[{"name":"carrier","enabled":true,"role":"carrier-sbc","replicas":3},{"name":"internal","enabled":true,"role":"private-sbc","replicas":2,"image":{"tag":"6.1.4-bookworm"},"topology":{"redis":{"database":52,"secretName":"avoip-kamailio-internal-topos"}},"resources":{"requests":{"cpu":"100m"}},"podLabels":{"role.example.com/name":"internal"},"extraEnv":[{"name":"INSTANCE_MARKER","value":"internal"}]}]'
+instances='[{"name":"carrier","enabled":true,"role":"carrier-sbc","replicas":3},{"name":"internal","enabled":true,"role":"private-sbc","replicas":1,"image":{"tag":"6.1.4-bookworm"},"topology":{"redis":{"database":52,"secretName":"avoip-kamailio-internal-topos"}},"resources":{"requests":{"cpu":"100m"}},"podLabels":{"role.example.com/name":"internal"},"extraEnv":[{"name":"INSTANCE_MARKER","value":"internal"}]}]'
 render --set-json "kamailio.instances=$instances" > "$tmp_dir/two.yaml"
 yq -s 'map(select(. != null))' "$tmp_dir/two.yaml" > "$tmp_dir/two.json"
 
@@ -25,13 +25,25 @@ jq -e '
   ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.selector.matchLabels["app.kubernetes.io/controller"] == "kamailio-internal") and
   ([.[] | select(.kind == "Service" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.selector["avoip.mylogin.space/kamailio-instance"] == "internal") and
   ([.[] | select(.kind == "Service" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.ports | all(.port == 5062)) and
-  ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.replicas == 2) and
+  ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.replicas == 1) and
   ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.template.spec.containers[] | select(.name == "kamailio-internal") | .resources.requests.cpu == "100m") and
   ([.[] | select(.kind == "ExternalSecret" and .metadata.name == "avoip-kamailio-internal-topos")][0].spec.target.template.data.server | contains("db=52;")) and
-  ([.[] | select(.kind == "ConfigMap" and (.metadata.name | endswith("-kamailio-internal-config")))][0].data["kamailio.cfg"] | contains("Registration Disabled") and (contains("loadmodule \"rtpengine.so\"") | not))
+  ([.[] | select(.kind == "ConfigMap" and (.metadata.name | endswith("-kamailio-internal-config")))][0].data["kamailio.cfg"] | contains("Registration Disabled") and contains("tcp_accept_haproxy=no") and (contains("loadmodule \"rtpengine.so\"") | not) and (contains("flowroute.outboundHost") | not))
 ' "$tmp_dir/two.json" > /dev/null
 jq -e '[.[] | select(.kind == "TLSRoute" and (.metadata.name | contains("kamailio-internal")))] | length == 0' "$tmp_dir/two.json" > /dev/null
 jq -e '[.[] | select(.metadata.name? | contains("kamailio-internal"))] | length > 0' "$tmp_dir/two.json" > /dev/null
+jq -e '
+  [.[] | select(.kind == "CiliumNetworkPolicy" and (.metadata.name | endswith("-kamailio-internal-sip-policy")))][0].spec.ingress == []
+' "$tmp_dir/two.json" > /dev/null
+
+pilot='[{"name":"carrier","enabled":true,"role":"carrier-sbc"},{"name":"internal","enabled":true,"role":"private-sbc","topology":{"redis":{"database":52,"secretName":"avoip-kamailio-internal-topos"}},"privateRouting":{"peers":[{"name":"pbx","controller":"asterisk","cidr":"10.0.0.10/32","sanHostname":"pbx.test.invalid","allowedUsers":["1000"]}],"destinations":[{"setId":10,"uri":"sips:pbx.test.invalid:5061","controller":"asterisk"}],"routes":[{"user":"1000","setId":10}]}}]'
+render --set-json "kamailio.instances=$pilot" > "$tmp_dir/pilot.yaml"
+yq -s 'map(select(. != null))' "$tmp_dir/pilot.yaml" > "$tmp_dir/pilot.json"
+jq -e '
+  ([.[] | select(.kind == "ConfigMap" and (.metadata.name | endswith("-kamailio-internal-config")))][0].data["kamailio.cfg"] | contains("$tls_peer_verified != 1") and contains("$tls_peer_san_hostname == \"pbx.test.invalid\"") and contains("$var(peer_name) == \"pbx\" && $rU == \"1000\"") and contains("ds_select_dst") and (contains("us-west-or.sip.flowroute.com") | not)) and
+  ([.[] | select(.kind == "ConfigMap" and (.metadata.name | endswith("-kamailio-internal-config")))][0].data["dispatcher.list"] | contains("10 sips:pbx.test.invalid:5061 0")) and
+  ([.[] | select(.kind == "CiliumNetworkPolicy" and (.metadata.name | endswith("-kamailio-internal-sip-policy")))][0].spec.ingress[0].fromEndpoints[0].matchLabels["app.kubernetes.io/controller"] == "asterisk")
+' "$tmp_dir/pilot.json" > /dev/null
 
 render --set-json 'kamailio.instances=[{"name":"carrier","enabled":false,"role":"carrier-sbc"}]' > "$tmp_dir/disabled.yaml"
 yq -s 'map(select(. != null))' "$tmp_dir/disabled.yaml" > "$tmp_dir/disabled.json"
@@ -50,7 +62,10 @@ expect_invalid 'duplicate Kamailio instance name' '[{"name":"carrier","role":"ca
 expect_invalid 'invalid Kamailio instance name' '[{"name":"Bad_Name","role":"carrier-sbc"}]'
 expect_invalid 'unsupported Kamailio role' '[{"name":"registrar","role":"endpoint-registrar"}]'
 expect_invalid 'requires function authorization' '[{"name":"carrier","role":"carrier-sbc","functions":{"authorization":false}}]'
+expect_invalid 'carrierOutbound cannot be enabled' '[{"name":"carrier","role":"carrier-sbc","carrierOutbound":{"enabled":true}}]'
 expect_invalid 'private-sbc must not expose public SIP' '[{"name":"internal","role":"private-sbc","publicExposure":{"enabled":true}}]'
-expect_invalid 'shares TOPOS database' '[{"name":"carrier","enabled":true,"role":"carrier-sbc"},{"name":"internal","enabled":true,"role":"private-sbc","topology":{"redis":{"secretName":"avoip-kamailio-internal-topos"}}}]'
-expect_invalid 'shares TOPOS Secret' '[{"name":"carrier","enabled":true,"role":"carrier-sbc"},{"name":"internal","enabled":true,"role":"private-sbc","topology":{"redis":{"database":52}}}]'
+expect_invalid 'private-sbc must start with one replica' '[{"name":"internal","role":"private-sbc","replicas":2}]'
+expect_invalid 'privateRouting route requires a numeric user and configured destination set' '[{"name":"internal","role":"private-sbc","privateRouting":{"routes":[{"user":"+12125550100","setId":10}]}}]'
+expect_invalid 'requires a dedicated TOPOS database and Secret' '[{"name":"carrier","enabled":true,"role":"carrier-sbc"},{"name":"internal","enabled":true,"role":"private-sbc","topology":{"redis":{"secretName":"avoip-kamailio-internal-topos"}}}]'
+expect_invalid 'requires a dedicated TOPOS database and Secret' '[{"name":"carrier","enabled":true,"role":"carrier-sbc"},{"name":"internal","enabled":true,"role":"private-sbc","topology":{"redis":{"database":52}}}]'
 printf 'PASS Kamailio instance resources, isolation, disabled state, and invalid values\n'

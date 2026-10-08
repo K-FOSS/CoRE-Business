@@ -29,7 +29,7 @@
 
 {{- define "avoip.kamailio.common.networkpolicies" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
-{{- if and .Values.kamailio.enabled .Values.freeswitch.enabled (not .Values.kamailio.backend.serviceName) }}
+{{- if and .Values.kamailio.enabled (eq .Values.kamailio.role "carrier-sbc") .Values.freeswitch.enabled (not .Values.kamailio.backend.serviceName) }}
   {{ $component }}-sip-ingress:
     controller: {{ $component }}
     policyTypes:
@@ -193,7 +193,7 @@
               app: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
 {{- end }}
     initContainers:
-{{- if .Values.freeswitch.enabled }}
+{{- if or .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") }}
       tls-ca:
         image:
           repository: '{{ .Values.kamailio.image.repository }}'
@@ -207,7 +207,9 @@
           - |
             set -eu
             cp /etc/ssl/certs/ca-certificates.crt /tls-output/ca-certificates.crt
+            {{- if .Values.freeswitch.enabled }}
             awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-peer/tls.crt >> /tls-output/ca-certificates.crt
+            {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -453,6 +455,10 @@
         {{ $component }}:
           - path: /etc/kamailio/kamailio.cfg
             subPath: kamailio.cfg
+          {{- if eq .Values.kamailio.role "private-sbc" }}
+          - path: /etc/kamailio/dispatcher.list
+            subPath: dispatcher.list
+          {{- end }}
           - path: /etc/kamailio/tls.cfg
             subPath: tls.cfg
 {{- if .Values.kamailio.topology.enabled }}
@@ -486,6 +492,8 @@
       {{ $component }}:
         tls-ca:
           - path: /tls-peer
+{{- end }}
+{{- if or .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") }}
   {{ $component }}-tls-ca:
     type: emptyDir
     advancedMounts:

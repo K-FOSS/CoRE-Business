@@ -229,13 +229,20 @@ An instance receives `defaults`, then its role defaults, then its own
 overrides. Site Helm values replace the entire instances array.
 
 The `carrier-sbc` role preserves the existing public SIP border and private
-TLS backend. The `private-sbc` role renders a separate private Service
-without public exposure. Each enabled instance has its own Deployment,
-configuration, certificate, and TOPOS Secret reference. New roles need a
-separate Dragonfly database and Secret; `REGISTER` remains rejected until
-authentication and authorization are implemented. The values reference includes
-a test-only second-instance example. No second instance is enabled at a live
-site.
+TLS backend. An opt-in `private-sbc` instance now has its own TLS/5062 Service,
+Deployment, certificate, TOPOS Secret, Cilium policy, and routing script. It
+requires a verified client certificate and an explicitly listed peer address
+and certificate DNS SAN. Exact extension rules select probed dispatcher
+destinations; unmatched requests and `REGISTER` fail closed. It does not load
+RTPEngine or forward to Flowroute. Unlike the carrier role, direct private
+connections do not require an Envoy PROXY header. The private role is limited
+to one replica until dialog affinity is tested. See the [Kamailio values](docs/KAMAILIO-VALUES.md).
+
+No private instance is enabled by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+The carrier's existing private listener still uses its current CIDR guard for
+dialog traffic; new carrier-originated outbound calls now receive 403 while
+the authenticated outbound path remains under development. No registrar,
+WSS endpoint, OIDC webphone, or PSTN pilot is deployed by this change.
 
 The [internal registrar integration contract](docs/INTERNAL-REGISTRAR.md)
 records the required identity and extension data, SIP Digest verifier design,
@@ -372,7 +379,8 @@ the end-to-end voice and failover paths still need live verification:
 
 1. Confirm an inbound Flowroute INVITE receives an ACK at FreeSWITCH and stays
    up for at least 60 seconds. The prior approximately 32-second `ACK Timeout`
-   is reported resolved; retain a Call-ID-correlated ACK and clean BYE/200
+   is reported resolved; one [operator-correlated 129-second call](docs/SIP-IDENTITY.md)
+   had a complete recording. Retain a Call-ID-correlated ACK and clean BYE/200
    trace as acceptance evidence. See [SIP identity and call verification](docs/SIP-IDENTITY.md).
 2. Verify an ordinary voice call bridges to Asterisk. For YVR fax, capture
    the `rxfax` result, TIFF, G.711 mode, and ACK on both SIP hops. Test T.38

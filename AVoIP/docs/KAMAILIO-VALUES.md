@@ -28,12 +28,12 @@ than append.
 | `role` | `carrier-sbc` | Supported roles are `carrier-sbc` for the instance named `carrier` and `private-sbc` for other names. An endpoint registrar role is not implemented. |
 | `replicas` | `3` | Independent Deployment replica count; an enabled instance needs at least one. |
 
-The `carrier-sbc` role enables all required SIP functions, media integration,
-and public exposure. The `private-sbc` role defaults public exposure and
-media integration to off and sets disruption budget `minAvailable` to `0`.
-Both roles retain sanity, source classification, transaction, dialog,
-authorization, Record-Route, backend selection, and TOPOS functions.
-`REGISTER` receives 403; there is no LDAP/RADIUS or SIP digest registrar.
+The `carrier-sbc` role enables media integration and public exposure. The
+`private-sbc` role has a separate routing script, defaults public exposure and
+media integration to off, and starts with one replica and disruption budget
+`minAvailable: 0`. Its direct TLS listener requires a verified client
+certificate and a configured source CIDR plus certificate DNS SAN. It rejects
+`REGISTER`; SIP Digest registration is not implemented yet.
 
 | Current site | Carrier instances and exposure |
 | --- | --- |
@@ -76,7 +76,7 @@ checksum and Reloader references cause a rollout when configuration changes.
 | `listeners.bindAddress` | `'0.0.0.0'` | Bind address for the four configured SIP listeners. The ports are fixed by this chart. |
 | `tcpChildren` | `4` | Kamailio `tcp_children`. |
 | `publicExposure.enabled` | `true` for carrier; `false` for private | Gates public Service ports and Gateway resources. The private Service always includes TLS/5062. A private role cannot turn this on. |
-| `publicExposure.sip.enabled` | `true` | Enables the TLSRoute and TLS/5061 port on the direct public Service if that Service is enabled. The TLS/5061 socket still binds inside the pod when public exposure is off; it has no public Service or Gateway route in the private role. |
+| `publicExposure.sip.enabled` | `true` | Enables the TLSRoute and TLS/5061 port on the direct public Service if that Service is enabled. The private role does not bind the public TLS socket. |
 | `publicExposure.sip.udpEnabled` | `false` | Adds UDP/5060 listener and Service port. Requires the direct public Service. |
 | `publicExposure.sip.tcpEnabled` | `false` | Adds TCP/5060 listener and Service port. Requires the direct public Service. |
 | `publicExposure.sip.directService.enabled` | `false` | Creates the `kamailio-pub` Service for enabled public transports. UDP/TCP require it so the Contact is reachable. A LoadBalancer Service uses `externalTrafficPolicy: Local` to retain the carrier source IP. |
@@ -117,9 +117,11 @@ resources:
 | `flowroute.signalingCIDRs` | Carrier source allowlist. Requests from other sources or sockets receive 403, except ACKs are silently dropped. Keep it narrow. |
 | `freeswitch.enabled`, `rtpengine.enabled`, `homer.enabled` | Gate backend, media, and HEP behavior together with the instance function switches. |
 
-The generated Kamailio NetworkPolicy is present only while FreeSWITCH is
-enabled and `backend.serviceName` is empty. Custom backend targets therefore
-need their own ingress and egress policy review.
+The carrier NetworkPolicy is present while FreeSWITCH is enabled and
+`backend.serviceName` is empty. An enabled private instance gets a dedicated
+`CiliumNetworkPolicy` selecting its pod and the configured peer/destination
+controller labels. Custom targets require matching controller labels and a
+review of DNS and TLS certificate identity.
 
 ## Backend, topology, and logging
 
@@ -128,6 +130,10 @@ need their own ingress and egress policy review.
 | `backend.serviceName` | `''` | Empty selects the chart's FreeSWITCH Service. A custom name disables the default FreeSWITCH NetworkPolicy rule; provide an appropriate network policy and verify the backend target before use. |
 | `backend.servicePort` | `5061` | Backend TLS port. |
 | `backend.podCIDR` | `'172.16.0.0/12'` | Coarse source guard on the private TLS/5062 listener, in addition to the default pod selector NetworkPolicy. |
+| `carrierOutbound.enabled` | `false` | The carrier rejects new application-originated calls. Enabling fails rendering until verified ingress identity, destination rules and quotas are implemented. Existing carrier dialogs still use the private listener. |
+| `privateRouting.peers[]` | `[]` | Private role peer `name`, `controller`, literal `cidr`, certificate `sanHostname`, and `allowedUsers` (exact numeric destination extensions). Source address, verified TLS DNS SAN, and per-peer destination permission must all match. Empty `allowedUsers` denies initial calls. |
+| `privateRouting.destinations[]` | `[]` | Private role dispatcher `setId`, literal `sips:<host>:<port>` `uri`, and destination pod `controller`. OPTIONS probing excludes failed destinations from new selection. |
+| `privateRouting.routes[]` | `[]` | Exact numeric `user` to configured `setId` mapping. No default external route or prefix match exists. |
 | `networkPolicy.envoy.namespace`, `networkPolicy.envoy.podName` | `envoy-gateway-system`, `envoy` | Labels used to permit Gateway data-plane ingress to public TLS/5061. Match the installed Gateway pods. |
 | `topology.enabled` | `true` | Enables Redis-backed TOPOS and its local TLS bridge. Both supported roles require this; disabling it fails role validation. |
 | `topology.redis.secretName`, `topology.redis.serverKey` | `avoip-kamailio-topos`, `server` | Secret containing the Redis server string consumed by Kamailio. Enabled instances need different Secret names. |

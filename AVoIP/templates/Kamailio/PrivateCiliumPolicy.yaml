@@ -1,0 +1,58 @@
+{{- $root := . -}}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if and $instance.enabled (eq $instance.role "private-sbc") }}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: {{ include "avoip.kamailio.resourceName" (dict "root" $root "instance" $instance "suffix" "sip-policy") }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}'
+      app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+  ingress:
+    {{- if not $instance.privateRouting.peers }} []
+    {{- else }}
+    {{- range $peer := $instance.privateRouting.peers }}
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: '{{ $peer.controller }}'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '5062'
+              protocol: 'TCP'
+    {{- end }}
+    {{- end }}
+  egress:
+    {{- range $destination := $instance.privateRouting.destinations }}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: '{{ $destination.controller }}'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ trimPrefix "sips:" $destination.uri | splitList ":" | last }}'
+              protocol: 'TCP'
+    {{- end }}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: 'dragonfly'
+            app.kubernetes.io/instance: 'dragonfly-core'
+      toPorts:
+        - ports:
+            - port: '6379'
+              protocol: 'TCP'
+    - toEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': 'kube-system'
+            k8s-app: 'kube-dns'
+      toPorts:
+        - ports:
+            - port: '53'
+              protocol: 'UDP'
+            - port: '53'
+              protocol: 'TCP'
+{{- end }}
+{{- end }}
