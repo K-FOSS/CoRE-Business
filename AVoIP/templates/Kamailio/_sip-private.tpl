@@ -89,6 +89,10 @@
         {{- end }}
         if ($var(registered_destination) == 1 &&
             $(ru{uri.host}) == "{{ .Values.kamailio.registrar.realm }}") {
+          if (!is_subscriber("$ru", "active_subscriber", "3")) {
+            sl_send_reply("404", "User Not Available");
+            exit;
+          }
           if (!lookup("location")) {
             sl_send_reply("404", "User Not Registered");
             exit;
@@ -169,7 +173,7 @@
         sl_send_reply("403", "AoR Not Authorized");
         exit;
       }
-      if (!www_authorize("{{ .Values.kamailio.registrar.realm }}", "subscriber")) {
+      if (!www_authorize("{{ .Values.kamailio.registrar.realm }}", "active_subscriber")) {
         www_challenge("{{ .Values.kamailio.registrar.realm }}", "1");
         exit;
       }
@@ -196,7 +200,7 @@
         sl_send_reply("403", "Caller Not Authorized");
         return;
       }
-      if (!proxy_authorize("{{ .Values.kamailio.registrar.realm }}", "subscriber")) {
+      if (!proxy_authorize("{{ .Values.kamailio.registrar.realm }}", "active_subscriber")) {
         proxy_challenge("{{ .Values.kamailio.registrar.realm }}", "1");
         return;
       }

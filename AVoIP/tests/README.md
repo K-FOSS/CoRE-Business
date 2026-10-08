@@ -20,6 +20,9 @@ ordered schema Job, Digest-gated AoR route, Secret references and database
 egress policy. It performs no REGISTER or database write. The rendered
 Kamailio configuration has also passed the pinned 6.1.4 parser; live Digest,
 contact and revocation tests remain required.
+An isolated PostgreSQL 17 check executed the generated migration twice and
+verified the active-subscriber filter plus contact purge on disable and HA1
+rotation. It is not a live REGISTER or Authentik revocation test.
 
 `udp-carrier-ack-bye.xml` exercises a UDP INVITE through one Kamailio replica,
 checks that the 200 Contact is public UDP/5060 with a TOPOS token, and directs

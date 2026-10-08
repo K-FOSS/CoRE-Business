@@ -906,6 +906,32 @@ controllers:
                 RAISE EXCEPTION 'Unsupported Kamailio registrar schema version';
               END IF;
             END $$;
+            ALTER TABLE subscriber ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT false;
+            ALTER TABLE subscriber ADD COLUMN IF NOT EXISTS expires_at timestamptz NOT NULL DEFAULT 'epoch';
+            CREATE OR REPLACE VIEW active_subscriber AS
+              SELECT id, username, domain, password, ha1, ha1b
+              FROM subscriber WHERE enabled AND expires_at > now();
+            CREATE OR REPLACE FUNCTION avoip_purge_revoked_contacts() RETURNS trigger
+              LANGUAGE plpgsql AS $$
+            BEGIN
+              IF TG_OP = 'DELETE' THEN
+                DELETE FROM location WHERE username = OLD.username AND domain = OLD.domain;
+                RETURN OLD;
+              END IF;
+              IF NEW.enabled IS NOT TRUE OR NEW.expires_at <= now() OR
+                 NEW.username IS DISTINCT FROM OLD.username OR
+                 NEW.domain IS DISTINCT FROM OLD.domain OR
+                 NEW.ha1 IS DISTINCT FROM OLD.ha1 OR
+                 NEW.ha1b IS DISTINCT FROM OLD.ha1b THEN
+                DELETE FROM location WHERE username = OLD.username AND domain = OLD.domain;
+              END IF;
+              RETURN NEW;
+            END;
+            $$;
+            DROP TRIGGER IF EXISTS avoip_revoke_contacts ON subscriber;
+            CREATE TRIGGER avoip_revoke_contacts
+              AFTER UPDATE OF username, domain, enabled, expires_at, ha1, ha1b OR DELETE ON subscriber
+              FOR EACH ROW EXECUTE FUNCTION avoip_purge_revoked_contacts();
             COMMIT;
             SQL
         env:

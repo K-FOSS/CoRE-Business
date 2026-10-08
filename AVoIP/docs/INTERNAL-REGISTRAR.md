@@ -47,12 +47,18 @@ the registrar workload; deleting an instance is not credential revocation.
 
 The pilot requires a verified TLS peer and exact source CIDR before any
 REGISTER or initial INVITE. `auth_db` verifies a precomputed realm-specific
-HA1 in `subscriber`; the client authenticates REGISTER and initial INVITE,
+HA1 through an `active_subscriber` view that excludes disabled and expired
+rows; the client authenticates REGISTER and initial INVITE,
 and the authenticated username must match the To/From AoR. Only explicitly
 listed pilot users may register or call another listed registered AoR.
 `registrar` limits contacts and expiry; `usrloc` mode 3 reads/writes the
 site-local PostgreSQL `location` table. No browser ingress, public route,
 Flowroute ACL addition, PSTN entitlement or second media anchor is created.
+Disabling a verifier, moving its expiry into the past, rotating HA1 or
+deleting it purges stored contacts in the same database transaction. An
+already-expired verifier is also filtered from caller and callee checks.
+These database rules are a revocation foundation, not an Authentik-driven
+credential issuer.
 The Kamailio connector and migration client require hostname-verified TLS to
 PostgreSQL; confirm the site-local `psql-int` certificate chain and hostname
 are trusted by the pinned container before attempting to enable the pilot.
@@ -64,8 +70,9 @@ and [`usrloc`](https://www.kamailio.org/docs/modules/6.1.x/modules/usrloc.html)
 documentation.
 
 This is **not yet an operational user registrar**. There is no SIP HA1
-credential broker, immutable-user mapping, credential expiry or automated
-revocation/contact invalidation. The Backplane `User` claim provisions only
+credential broker, immutable-user mapping or Authentik-driven revocation.
+The database enforces expiry and revocation state once a verifier is
+provisioned, but does not issue or refresh one. The Backplane `User` claim provisions only
 the database identity, not SIP subscribers. WSS Path/connection ownership,
 keepalives and reconnection are untested, so the pilot must remain off in
 production until these gaps are closed. Do not insert primary LDAP passwords
@@ -83,8 +90,11 @@ configuration also passed `kamailio -c` in the pinned 6.1.4 image (only the
 expected networkless Service DNS warning). The rendered Cilium policies
 passed a server-side dry run against the DC1 CRD. The generated schema Job
 was executed twice against an isolated PostgreSQL 17 container: the first
-run created `version`, `subscriber`, `location`, and `location_attrs`, and the
-second committed without recreating them. The disposable container was
+run created the standard tables plus the active view and purge trigger; the
+second committed without recreating tables. Fixture checks showed a disabled
+verifier changed active rows from one to zero and contacts from one to zero;
+an expired verifier was invisible and HA1 rotation removed its contact. The
+disposable container was
 stopped. These checks do not prove live Home1 database provisioning, SIP
 Digest acceptance, contact routing, reconnection or call audio.
 

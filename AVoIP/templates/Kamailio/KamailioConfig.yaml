@@ -111,6 +111,8 @@ data:
     modparam("auth_db", "calculate_ha1", 0)
     modparam("auth_db", "password_column", "ha1")
     modparam("auth_db", "load_credentials", "")
+    # The active_subscriber view filters disabled and expired verifiers.
+    modparam("auth_db", "version_table", 0)
     modparam("usrloc", "db_url", REGISTRAR_DB_URL)
     modparam("usrloc", "db_mode", 3)
     modparam("usrloc", "use_domain", 1)

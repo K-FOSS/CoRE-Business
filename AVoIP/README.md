@@ -250,8 +250,9 @@ live carrier call. No registrar, WSS endpoint or OIDC webphone is deployed.
 The [internal registrar integration contract](docs/INTERNAL-REGISTRAR.md)
 records an opt-in private registrar implementation: a dedicated PostgreSQL
 `User` claim and migration Job, Digest-checked REGISTER and initial INVITE,
-and exact pilot AoR policy. It has passed render and Kamailio syntax checks,
-not live registration. Credential issuance, expiry/revocation automation,
+and exact pilot AoR policy. The database filters expired/disabled verifiers
+and purges contacts on revocation or HA1 rotation. It has passed render,
+isolated database and Kamailio syntax checks, not live registration. Credential issuance and Authentik-driven revocation,
 NAT/WSS connection ownership and the browser phone are still pending. The
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 does not enable it at any site.
