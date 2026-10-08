@@ -295,10 +295,11 @@ Nextcloud Talk configuration separately only if the backend is being retired.
 
 ## Internal Asterisk SIP identity
 
-The internal Asterisk PJSIP TLS transport advertises the generated Asterisk
-Service FQDN from `avoip.sip.serviceHost`; its cert-manager Certificate uses
-the same hostname as a DNS SAN. FreeSWITCH continues to target that Service
-identity on TLS/5061. The pod template hashes the rendered PJSIP ConfigMap and
+The internal Asterisk PJSIP TLS transport sets the generated Asterisk Service
+FQDN from `avoip.sip.serviceHost` as
+[`external_signaling_address`](https://docs.asterisk.org/Latest_API/API_Documentation/Module_Configuration/res_pjsip/);
+its cert-manager Certificate uses the same hostname as a DNS SAN. FreeSWITCH
+continues to target that Service identity on TLS/5061. The pod template hashes the rendered PJSIP ConfigMap and
 also watches it with Stakater Reloader so transport changes restart Asterisk,
 which is required to apply PJSIP transport options. The transport does not set
 `local_net`: Asterisk otherwise classifies the FreeSWITCH pod as local and
@@ -396,12 +397,14 @@ for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane
 
 - [Asterisk](https://www.asterisk.org/) and its
   [documentation](https://docs.asterisk.org/)
-- The deployed Asterisk image is the `core-docker/asterisk:20.21.0` package
-  from the site-local [Core-Docker project](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker),
+- The deployed Asterisk image is currently `core-docker/asterisk:20.20.1` from
+  the `core-docker/asterisk:20` tag, from the site-local
+  [Core-Docker project](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker),
   built from the upstream [andrius/asterisk image source](https://github.com/andrius/asterisk).
-  This Asterisk 20 release provides PJSIP's `external_signaling_hostname`;
-  the upstream [20.21.0 release notes](https://downloads.asterisk.org/pub/telephony/asterisk/ChangeLog-20.21.0.html)
-  describe the release. Backups are maintained at
+  It uses PJSIP's compatible `external_signaling_address` option;
+  `external_signaling_hostname` is introduced in
+  [Asterisk 20.21.0](https://downloads.asterisk.org/pub/telephony/asterisk/ChangeLog-20.21.0.html).
+  Backups are maintained at
   [GitHub](https://github.com/K-FOSS/Core-Docker) and
   [slop.writemy.codes](https://slop.writemy.codes/CoRE/Core-Docker).
 

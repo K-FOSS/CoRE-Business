@@ -19,7 +19,7 @@ data:
     type=transport
     protocol=tls
     bind=0.0.0.0:5061
-    external_signaling_hostname={{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}
+    external_signaling_address={{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}
     external_signaling_port=5061
     cert_file=/etc/asterisk/tls/tls.crt
     priv_key_file=/etc/asterisk/tls/tls.key
@@ -28,7 +28,7 @@ data:
     verify_client=no
     verify_server=yes
     ; Do not mark the FreeSWITCH pod subnet local on this transport: PJSIP
-    ; otherwise skips external_signaling_hostname Contact rewriting for it.
+    ; otherwise skips external_signaling_address Contact rewriting for it.
 {{- with $.Values.asterisk.externalMediaAddress }}
     external_media_address={{ . }}
 {{- end }}
