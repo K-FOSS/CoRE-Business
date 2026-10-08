@@ -731,8 +731,8 @@ asterisk:
     min: 10000
     max: 10100
   turn:
-    # SIP Core uses Social/Matrix's existing TURN Secret in the shared namespace.
-    enabled: true
+    # Enable only after the Asterisk image includes openssl for REST credential generation.
+    enabled: false
     hostname: 'nat.mylogin.space'
     port: 3478
     username: 'asterisk'

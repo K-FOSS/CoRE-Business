@@ -33,16 +33,17 @@ fi
 if render_sipcore --set asterisk.sipCore.media.enabled=true >"$tmp_dir/direct-media.yaml" 2>&1; then
   fail 'SIP Core rendered direct Asterisk media instead of RTPEngine'
 fi
-if render_sipcore --set asterisk.turn.port=0 >"$tmp_dir/invalid-turn-port.yaml" 2>&1; then
+if render_sipcore --set asterisk.turn.enabled=true --set asterisk.turn.port=0 >"$tmp_dir/invalid-turn-port.yaml" 2>&1; then
   fail 'Asterisk TURN rendered with an invalid port'
 fi
-if render_sipcore --set-string asterisk.turn.credentialLifetimeSeconds=31536001 >"$tmp_dir/invalid-turn-lifetime.yaml" 2>&1; then
+if render_sipcore --set asterisk.turn.enabled=true --set-string asterisk.turn.credentialLifetimeSeconds=31536001 >"$tmp_dir/invalid-turn-lifetime.yaml" 2>&1; then
   fail 'Asterisk TURN rendered with a credential lifetime over one year'
 fi
 if render_sipcore --set asterisk.sipCore.privateEgressPort=5061 >"$tmp_dir/invalid-private-egress-port.yaml" 2>&1; then
   fail 'SIP Core private TLS egress port collided with the existing TLS listener'
 fi
 render_sipcore --set asterisk.turn.enabled=false > "$tmp_dir/turn-disabled.yaml"
+render_sipcore --set asterisk.turn.enabled=true > "$tmp_dir/turn-enabled.yaml"
 grep -Fq 'matrix-turn-auth' "$tmp_dir/sipcore-disabled.yaml" && fail 'Asterisk TURN depends on the Matrix Secret when SIP Core is disabled'
 grep -Fq 'endpoint_identifier_order=username,auth_username,ip,anonymous' "$tmp_dir/empty-matches.yaml" || fail 'PJSIP identifier order is incorrect'
 grep -Fq 'require = res_pjsip_endpoint_identifier_user.so' "$tmp_dir/empty-matches.yaml" || fail 'username identifier module is not required'
@@ -84,14 +85,16 @@ grep -Fq 'secretKeyRef:' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core secret 
 grep -Fq 'remoteRef:' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core password is not sourced from External Secrets'
 grep -Fq "key: 'unit/test/7101'" "$tmp_dir/empty-matches.yaml" || fail 'configured extension password remote key is not preserved'
 grep -Fq 'pjsip set logger on' "$tmp_dir/empty-matches.yaml" && fail 'SIP packet logging could expose SIP Authorization headers'
-grep -Fq 'secretName: matrix-turn-auth' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk does not mount the existing Social/Matrix TURN Secret'
-grep -Fq 'cat /run/avoip/turn/TURN_SHARED_SECRET' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk TURN shared secret key is incorrect'
-grep -Fq 'mountPath: /run/avoip/turn' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk TURN Secret mount is missing'
-grep -Fq 'openssl dgst -sha1 -hmac "$turn_shared_secret" -binary' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk REST TURN credential derivation is missing'
-grep -Fq 'turnaddr=nat.mylogin.space:3478' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk TURN server config is missing'
-grep -Fq 'stunaddr=nat.mylogin.space:3478' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk STUN server config is missing'
-grep -Fq '#include /tmp/avoip-turn.conf' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk runtime TURN config include is missing'
-if grep -Eq '^[[:space:]]*turnpassword=' "$tmp_dir/empty-matches.yaml"; then
+grep -Fq 'matrix-turn-auth' "$tmp_dir/empty-matches.yaml" && fail 'default Asterisk TURN unexpectedly mounts the Social/Matrix Secret'
+grep -Fq 'avoip-turn.conf' "$tmp_dir/empty-matches.yaml" && fail 'default Asterisk TURN unexpectedly generates runtime configuration'
+grep -Fq 'openssl dgst -sha1 -hmac "$turn_shared_secret" -binary' "$tmp_dir/turn-enabled.yaml" || fail 'optional Asterisk REST TURN credential derivation is missing'
+grep -Fq 'secretName: matrix-turn-auth' "$tmp_dir/turn-enabled.yaml" || fail 'enabled Asterisk TURN does not mount the existing Social/Matrix Secret'
+grep -Fq 'cat /run/avoip/turn/TURN_SHARED_SECRET' "$tmp_dir/turn-enabled.yaml" || fail 'Asterisk TURN shared secret key is incorrect'
+grep -Fq 'mountPath: /run/avoip/turn' "$tmp_dir/turn-enabled.yaml" || fail 'Asterisk TURN Secret mount is missing'
+grep -Fq 'turnaddr=nat.mylogin.space:3478' "$tmp_dir/turn-enabled.yaml" || fail 'Asterisk TURN server config is missing'
+grep -Fq 'stunaddr=nat.mylogin.space:3478' "$tmp_dir/turn-enabled.yaml" || fail 'Asterisk STUN server config is missing'
+grep -Fq '#include /tmp/avoip-turn.conf' "$tmp_dir/turn-enabled.yaml" || fail 'Asterisk runtime TURN config include is missing'
+if grep -Eq '^[[:space:]]*turnpassword=' "$tmp_dir/turn-enabled.yaml"; then
   fail 'Asterisk TURN password was rendered into a Kubernetes manifest'
 fi
 grep -Fq 'matrix-turn-auth' "$tmp_dir/turn-disabled.yaml" && fail 'disabled Asterisk TURN still mounts the existing Secret'

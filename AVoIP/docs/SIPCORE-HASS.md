@@ -160,21 +160,22 @@ relays the browser media leg using its configured public media interface and
 UDP range. Keep `asterisk.sipCore.media.enabled` disabled: the chart rejects
 direct Asterisk RTP exposure while SIP Core is enabled. This change reuses the
 existing RTPEngine deployment and does not create another media topology.
-Asterisk mounts the existing `matrix-turn-auth` Secret from Social/Matrix
-using its `TURN_SHARED_SECRET` key. At startup, it
-derives a CoTURN-compatible, time-limited username and password in the
-container's private `/tmp` and includes them in `rtp.conf`; no secret or derived
-password is placed in Helm values or a ConfigMap. The generated credential is
-valid for up to one year. Restart Asterisk before that expiry to generate a
-fresh credential. STUN discovery uses the configured CoTURN hostname and port.
+The optional Asterisk-side CoTURN credential integration is disabled by
+default because its startup generator requires `openssl` in the Asterisk
+container image. The current image does not provide that capability. When the
+image is updated and verified, it can be enabled with
+`asterisk.turn.enabled: true`; it mounts Social/Matrix's existing
+`matrix-turn-auth` Secret and generates a time-limited credential in the
+container's private `/tmp`, never in Helm values or a ConfigMap. STUN/TURN
+settings here apply only to Asterisk's media ICE agent.
 
-This configures Asterisk's media ICE agent only. It does not provide TURN
-credentials to Home Assistant, and it does not alter the existing
+This does not provide TURN credentials to Home Assistant or alter the existing
 Kamailio→RTPEngine media path. The Home Assistant SIP endpoint continues to
-use RTPEngine for browser media; CoTURN is an additional server-side ICE relay
-candidate for Asterisk. If two-way audio still fails, inspect the negotiated
-ICE candidates on both legs and RTPEngine's available relay ports. Registration
-alone does not prove media works.
+use RTPEngine for browser media. Re-enabling Asterisk-side CoTURN is optional
+and must wait for an image with the required `openssl` support. If two-way
+audio still fails, inspect negotiated ICE candidates on both legs and
+RTPEngine's available relay ports. Registration alone does not prove media
+works.
 
 ## Rollback and verification
 
@@ -191,12 +192,11 @@ workload policy rule. Then test an Asterisk-originated call to the extension,
 the SIP Core echo target, and confirm the selected ICE pair and bidirectional
 audio from an external browser network.
 
-For TURN verification, confirm `ExternalSecret/matrix-turn-auth` is Ready
-without printing Secret contents, then inspect the Asterisk log for
-successful ICE/TURN candidate creation with PJSIP packet tracing disabled.
-Never copy the generated TURN password or SIP Authorization data into logs or
-support output. The Secret remains owned by Social/Matrix, so leave its
-lifecycle and rotation there; Asterisk only mounts it read-only.
+When Asterisk-side TURN is explicitly enabled after the image update, verify
+`ExternalSecret/matrix-turn-auth` is Ready without printing Secret contents,
+then inspect Asterisk ICE/TURN candidate creation with PJSIP packet tracing
+disabled. Never copy the generated TURN password or SIP Authorization data
+into logs or support output. The Secret remains owned by Social/Matrix.
 
 This static extension pilot is separate from the planned dynamic SIP registrar,
 Authentik credential broker, and first-party webphone. It does not satisfy the
