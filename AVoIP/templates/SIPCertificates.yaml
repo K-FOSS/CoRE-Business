@@ -57,6 +57,11 @@ metadata:
   name: '{{ include "avoip.fullname" . }}-asterisk-sip-tls'
 spec:
   secretName: '{{ include "avoip.fullname" . }}-asterisk-sip-tls'
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}'
   issuerRef:

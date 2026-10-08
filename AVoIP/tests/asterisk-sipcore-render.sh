@@ -153,6 +153,7 @@ grep -Fq 'asterisk_tls_port=5064' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWI
 grep -Fq 'tls-sip-port" value="$${asterisk_tls_port}"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not listen on its dedicated TLS port'
 grep -Fq 'tls-verify-policy" value="subjects_all"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not validate incoming and outgoing TLS certificates'
 grep -Fq 'tls-verify-in-subjects" value="siptest-avoip-asterisk.core-prod.svc.cluster.local"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not restrict inbound mTLS to the Asterisk certificate identity'
+yq -e 'select(.kind == "Certificate" and .metadata.name == "siptest-avoip-asterisk-sip-tls") | .spec.usages | contains(["server auth", "client auth"])' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'Asterisk TLS Certificate does not request both server and client authentication usages'
 grep -Fq 'cert_file=/etc/asterisk/tls/tls.crt' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk PJSIP does not present its TLS client certificate'
 grep -Fq 'priv_key_file=/etc/asterisk/tls/tls.key' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk PJSIP TLS client certificate has no private key configured'
 yq -e 'select(.kind == "Service" and .metadata.name == "siptest-avoip-freeswitch") | any(.spec.ports[]; .name == "tls-asterisk" and .port == 5064 and .targetPort == "tls-asterisk")' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'FreeSWITCH dedicated Asterisk TLS Service port is missing'

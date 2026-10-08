@@ -123,7 +123,10 @@ behavior.
   `5064`. This listener is separate from the Kamailio-facing FreeSWITCH TLS
   listener on `5061`, which uses the public context. The Asterisk profile
   requires both SIP Digest and Asterisk's TLS client certificate, restricted
-  by certificate subject. The
+  by certificate subject. The Asterisk certificate requests both `server auth`
+  and `client auth` usages from cert-manager so FreeSWITCH can validate it as a
+  TLS client certificate; the existing service DNS SAN remains the peer
+  identity. SIP Digest is still required after TLS verification. The
   destination is configurable with `asterisk.sipCore.ggAudioDestination`.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk
