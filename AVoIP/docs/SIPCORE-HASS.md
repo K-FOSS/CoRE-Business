@@ -117,7 +117,20 @@ behavior.
   listener is added.
 - Places every SIP Core extension in its own dialplan context. `allowCallsTo`
   lists exact local extension numbers and may include the configured echo
-  extension for a loopback audio check. No wildcard or PSTN route is created.
+  extension for a loopback audio check. The reserved `ggAudioExtension`
+  (default `66`) is available to SIP Core callers as a local test destination.
+  Asterisk sends only that destination over its existing TLS and Digest
+  authenticated FreeSWITCH peer; FreeSWITCH requires the authenticated
+  `freeswitch` SIP identity and plays the configured
+  `freeswitch.preBridgeAudio.url` using the same `shout://` playback path used
+  by its existing pre-bridge audio. This keeps the GG MP3 playback off the
+  Asterisk image, which has `app_mp3` but no `mpg123` executable; Asterisk's
+  [MP3Player application](https://docs.asterisk.org/Certified-Asterisk_20.7_Documentation/API_Documentation/Dialplan_Applications/MP3Player/)
+  requires that executable. FreeSWITCH uses its
+  [mod_shout streaming support](https://developer.signalwire.com/freeswitch/media-and-codecs/audio-files/).
+  The public carrier path does not satisfy the GG route's service identity
+  check, and the GG route additionally requires a channel from the dedicated
+  Asterisk profile. No wildcard or PSTN route is created.
 
 The chart does not enable this feature at a site. Set
 `asterisk.sipCore.kamailioInstance` to the name of an enabled `private-sbc`
@@ -139,6 +152,7 @@ asterisk:
     hostname: 'sipcore.mylogin.space'
     gatewaySectionName: 'https-myloginspace'
     allowedOrigins: ['https://ha.mylogin.space']
+    ggAudioExtension: '66'
     extensions:
       - number: '7101'
         secret:
@@ -152,7 +166,10 @@ not put it in ApplicationSet values. The rendered `ExternalSecret` syncs the
 externally managed password to a namespace-local Secret with key `password`.
 The chart fails rendering for
 missing password references, invalid or duplicate extension numbers, and
-destinations that are not configured extensions or the echo extension. A
+destinations that are not configured extensions or reserved test extensions.
+A SIP Core caller can dial `9090` for the echo test or the configured
+`ggAudioExtension` (default `66`) to hear the GG audio; the latter call ends
+after playback and does not need to be added to `allowCallsTo`. A
 changed password triggers an Asterisk restart so PJSIP auth and endpoint state
 are regenerated together.
 

@@ -697,6 +697,7 @@ asterisk:
     # on 5062; this port is restricted to the Asterisk workload.
     privateEgressPort: 5063
     echoExtension: '9090'
+    ggAudioExtension: '66'
     secretStoreRef:
       kind: 'ClusterSecretStore'
       name: 'corevault-rootsecrets'
@@ -719,8 +720,9 @@ asterisk:
     # not the SIP/WSS hostname (for example: ['https://ha.example.net']).
     #
     # Endpoint secrets must be random 32+ character hexadecimal passwords.
-    # `allowCallsTo` is an exact destination allowlist and must name another
-    # configured extension or `echoExtension`; it can never match a PSTN dial.
+    # The chart reserves `echoExtension` and `ggAudioExtension` as local test
+    # destinations. `allowCallsTo` may name another configured extension; it
+    # can never match a PSTN dial.
   # Stable locally administered Asterisk Entity ID; do not derive it from the
   # pod network interface because pod MAC addresses are not deployment state.
   entityID: '02:dc:1a:22:2a:01'

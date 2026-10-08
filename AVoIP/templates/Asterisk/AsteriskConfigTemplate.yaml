@@ -17,6 +17,9 @@
   {{- if not .Values.freeswitch.enabled -}}
     {{- fail "Asterisk SIP Core requires the existing media-enabled AVoIP stack" -}}
   {{- end -}}
+  {{- if not (or (hasPrefix "http://" .Values.freeswitch.preBridgeAudio.url) (hasPrefix "https://" .Values.freeswitch.preBridgeAudio.url)) -}}
+    {{- fail "freeswitch.preBridgeAudio.url must be an HTTP(S) URL when SIP Core is enabled for GG audio" -}}
+  {{- end -}}
   {{- if .Values.asterisk.sipCore.media.enabled -}}
     {{- fail "Asterisk SIP Core media must use RTPEngine; disable asterisk.sipCore.media direct Asterisk exposure" -}}
   {{- end -}}
@@ -43,6 +46,12 @@
   {{- if not (regexMatch "^[0-9]{2,8}$" (toString .Values.asterisk.sipCore.echoExtension)) -}}
     {{- fail "asterisk.sipCore.echoExtension must be 2-8 digits when SIP Core is enabled" -}}
   {{- end -}}
+  {{- if not (regexMatch "^[0-9]{2,8}$" (toString .Values.asterisk.sipCore.ggAudioExtension)) -}}
+    {{- fail "asterisk.sipCore.ggAudioExtension must be 2-8 digits when SIP Core is enabled" -}}
+  {{- end -}}
+  {{- if eq (toString .Values.asterisk.sipCore.ggAudioExtension) (toString .Values.asterisk.sipCore.echoExtension) -}}
+    {{- fail "asterisk.sipCore.ggAudioExtension must differ from echoExtension" -}}
+  {{- end -}}
   {{- if or (not .Values.asterisk.sipCore.secretStoreRef.kind) (not .Values.asterisk.sipCore.secretStoreRef.name) -}}
     {{- fail "asterisk.sipCore.secretStoreRef kind and name are required when SIP Core is enabled" -}}
   {{- end -}}
@@ -59,6 +68,9 @@
     {{- if eq (toString $extension.number) (toString $.Values.asterisk.sipCore.echoExtension) -}}
       {{- fail "asterisk.sipCore.echoExtension must not be assigned to a SIP Core user" -}}
     {{- end -}}
+    {{- if eq (toString $extension.number) (toString $.Values.asterisk.sipCore.ggAudioExtension) -}}
+      {{- fail "asterisk.sipCore.ggAudioExtension must not be assigned to a SIP Core user" -}}
+    {{- end -}}
     {{- if or (lt (int (default 2 $extension.maxContacts)) 1) (gt (int (default 2 $extension.maxContacts)) 10) -}}
       {{- fail (printf "Asterisk SIP Core extension %s maxContacts must be between 1 and 10" $extension.number) -}}
     {{- end -}}
@@ -68,8 +80,8 @@
   {{- end -}}
   {{- range $extension := .Values.asterisk.sipCore.extensions -}}
     {{- range $target := $extension.allowCallsTo -}}
-      {{- if and (ne (toString $target) (toString $.Values.asterisk.sipCore.echoExtension)) (not (hasKey $sipExtensions (toString $target))) -}}
-        {{- fail (printf "Asterisk SIP Core extension %s may call only configured extensions or echoExtension; invalid target %s" $extension.number $target) -}}
+      {{- if and (ne (toString $target) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString $target) (toString $.Values.asterisk.sipCore.ggAudioExtension)) (not (hasKey $sipExtensions (toString $target))) -}}
+        {{- fail (printf "Asterisk SIP Core extension %s may call only configured extensions or reserved test destinations; invalid target %s" $extension.number $target) -}}
       {{- end -}}
       {{- if not (regexMatch "^[0-9]{2,8}$" (toString $target)) -}}
         {{- fail (printf "Asterisk SIP Core target %s must be 2-8 digits" $target) -}}
