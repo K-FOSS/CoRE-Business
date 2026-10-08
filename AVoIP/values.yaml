@@ -191,6 +191,9 @@ kamailio:
         carrierTraffic: false
         postToposResponses: false
         rawInbound: false
+        # Log sanitized SIP Core ingress, Asterisk return traffic, and replies.
+        # This omits SIP message bodies and authentication headers.
+        sipCore: true
         diagnostics:
           enabled: false
           sdp: false

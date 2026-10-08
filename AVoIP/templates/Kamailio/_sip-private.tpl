@@ -11,12 +11,24 @@
       {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) }}
       # SIP Core WebSocket signaling has its own listener and handshake policy.
       if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+        {{- if .Values.kamailio.sipLogging.sipCore }}
+        xlog(
+          "L_INFO",
+          "SIPCORE FLOW stage=websocket-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto user=$fU target=$rU cseq=$hdr(CSeq)\n"
+        );
+        {{- end }}
         route(FROM_SIPCORE);
         exit;
       }
       # This dedicated listener uses server-authenticated TLS. Cilium's
       # workload-identity policy restricts its source to the Asterisk pods.
       if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.privateEgressPort }}) {
+        {{- if .Values.kamailio.sipLogging.sipCore }}
+        xlog(
+          "L_INFO",
+          "SIPCORE FLOW stage=asterisk-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto user=$fU target=$rU cseq=$hdr(CSeq)\n"
+        );
+        {{- end }}
         route(FROM_SIPCORE_ASTERISK);
         exit;
       }

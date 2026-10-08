@@ -32,7 +32,11 @@ the actual PJSIP transport peer.
 PJSIP packet logging is suppressed while SIP Core is enabled because raw SIP
 traces can include Digest Authorization headers. Kamailio's raw receive logs,
 full carrier packet logs, and Homer SIP trace are also disabled while this
-feature is enabled; sanitized routing and SDP metadata remain available.
+feature is enabled. The internal Kamailio instance emits concise `SIPCORE FLOW`
+markers for WebSocket requests, Asterisk return requests, and SIP responses.
+These include Call-ID, method/status, socket peer, extension user/target, and
+CSeq, without SIP bodies or authorization headers. SDP diagnostics remain a
+separate setting and can include endpoint addresses and codec details.
 
 Stock Asterisk's PJSIP WebSocket transport does not retain the HTTP upgrade's
 forwarded headers as SIP metadata. This design does not pass XFF to Kamailio or

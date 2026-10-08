@@ -268,6 +268,12 @@
       }
 
       route(TO_SIPCORE_ASTERISK);
+      {{- if $.Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=forward-to-asterisk pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du target=$rU cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       route(RELAY);
       exit;
     }
@@ -315,6 +321,12 @@
         }
       }
 
+      {{- if $.Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=forward-to-websocket pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du target=$rU cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin internal external")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound SDP handling failed callid=$ci method=$rm\n");
@@ -331,6 +343,12 @@
     }
 
     onreply_route[SIPCORE_ASTERISK_REPLY] {
+      {{- if $.Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
@@ -340,6 +358,12 @@
     }
 
     onreply_route[SIPCORE_WS_REPLY] {
+      {{- if $.Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=websocket-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin internal external")) {
           xlog("L_ERR", "RTPEngine SIP Core WebSocket answer handling failed callid=$ci status=$rs\n");
