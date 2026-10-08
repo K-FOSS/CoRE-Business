@@ -118,14 +118,14 @@ and [Composition](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/
 together before changing identity or database behavior; this chart also uses
 the supported PostgreSQL claim fields.
 
-When both voice services are enabled, FreeSWITCH authenticates the internal
-Asterisk peer against the LDAP-backed directory using the username/password
-from Asterisk's generated User connection Secret. The Asterisk container
-creates its local PJSIP auth object at startup from mounted Secret files; the
-credentials are not present in the chart ConfigMap or Helm values. FreeSWITCH
-keeps Flowroute inbound traffic on its separate source-ACL-protected external
-profile, so carrier ingress does not bypass application authentication. See
-[PHONE-TREE.md](docs/PHONE-TREE.md) for the call paths and verification checks.
+The application `User` claims remain responsible for their existing
+application identity and database connection needs. FreeSWITCH SIP peer Digest
+credentials use a separate random External Secrets generated password, mounted
+as a Secret to Asterisk and FreeSWITCH; it is not sourced from a User resource,
+ConfigMap, or Helm value. FreeSWITCH keeps Flowroute inbound traffic on its
+separate source-ACL-protected external profile, so carrier ingress does not
+bypass application authentication. See [PHONE-TREE.md](docs/PHONE-TREE.md)
+for the call paths and verification checks.
 
 The Asterisk `freeswitch` endpoint is identified by its SIP username and
 authenticates inbound requests with SIP Digest. An External Secrets Password
@@ -273,12 +273,14 @@ disabled in the YVR configuration. Enabling the private SBC does not enable
 registration, create SIP subscribers, or prove that its database claim has
 been provisioned.
 
-The chart also includes a disabled-by-default Asterisk WSS/WebRTC path for the
+The chart also includes a disabled-by-default SIP Core WebRTC path for the
 [SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration).
 It provisions static PJSIP extensions from External Secrets, serves WSS through
-the existing Gateway, and allows only exact configured internal destinations.
-It is enabled by the Home1/YVR ApplicationSet. Public UDP media exposure is a
-separate opt-in because the Gateway carries only WebSocket signaling. See
+Envoy to the existing Kamailio carrier instance, and allows only exact
+configured internal destinations. Kamailio relays signaling to Asterisk over
+private TLS and controls the existing RTPEngine for the Home Assistant media
+leg. The enabled pilot is site-specific; inspect the owning ApplicationSet
+before changing its rollout values. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md).
 
 Run `tests/kamailio-instances.sh`, `tests/sip-registrar-render.sh`, `tests/sip-outbound-render.sh`, and

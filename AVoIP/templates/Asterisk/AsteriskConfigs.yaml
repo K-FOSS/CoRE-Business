@@ -21,11 +21,6 @@ data:
     require = res_pjsip_endpoint_identifier_user.so
     require = res_pjsip_endpoint_identifier_ip.so
     require = res_pjsip_endpoint_identifier_anonymous.so
-    {{- if .Values.asterisk.sipCore.enabled }}
-    require = res_http_websocket.so
-    require = res_pjsip_transport_websocket.so
-    require = res_crypto.so
-    {{- end }}
     require = res_http_media_cache.so
     noload => chan_iax2.so
     noload => chan_alsa.so
@@ -132,12 +127,4 @@ data:
     {{- end }}
     {{- end }}
 
-  {{- if .Values.asterisk.sipCore.enabled }}
-  http.conf: |
-    [general]
-    enabled=yes
-    bindaddr=0.0.0.0
-    bindport={{ .Values.asterisk.sipCore.httpPort }}
-    tlsenable=no
-  {{- end }}
 {{- end }}

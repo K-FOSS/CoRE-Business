@@ -2,6 +2,18 @@
 {{- $fullName := include "avoip.fullname" . -}}
 {{- if .Values.asterisk.sipCore.enabled -}}
   {{- $sipExtensions := dict -}}
+  {{- if not (include "avoip.rtpengine.enabled" . | trim) -}}
+    {{- fail "Asterisk SIP Core requires the existing RTPEngine for WebRTC media" -}}
+  {{- end -}}
+  {{- if not (include "avoip.kamailio.carrier.enabled" . | trim) -}}
+    {{- fail "Asterisk SIP Core requires the enabled Kamailio carrier instance for WebSocket ingress and RTPEngine control" -}}
+  {{- end -}}
+  {{- if not .Values.freeswitch.enabled -}}
+    {{- fail "Asterisk SIP Core requires the existing media-enabled AVoIP stack" -}}
+  {{- end -}}
+  {{- if .Values.asterisk.sipCore.media.enabled -}}
+    {{- fail "Asterisk SIP Core media must use RTPEngine; disable asterisk.sipCore.media direct Asterisk exposure" -}}
+  {{- end -}}
   {{- if not (regexMatch "^[a-zA-Z0-9.-]+$" .Values.asterisk.sipCore.hostname) -}}
     {{- fail "asterisk.sipCore.hostname must be a DNS hostname when SIP Core is enabled" -}}
   {{- end -}}
@@ -68,8 +80,9 @@ data:
     type=global
     endpoint_identifier_order=username,auth_username,ip,anonymous
 
-    ; The entrypoint writes this auth object from the mylogin.space User
-    ; connection Secret at startup. Credentials never enter this ConfigMap.
+    ; The entrypoint writes outbound and inbound SIP Digest auth objects from
+    ; the External Secrets generated peer Secret at startup. Credentials never
+    ; enter this ConfigMap.
     #include /tmp/avoip-pjsip-auth.conf
 
     [transport-tls]
@@ -91,11 +104,9 @@ data:
     {{- end }}
     {{- if .Values.asterisk.sipCore.enabled }}
 
-    ; Envoy Gateway terminates WSS and upgrades to WebSocket on the cluster hop.
-    [transport-ws]
-    type=transport
-    protocol=ws
-    bind=0.0.0.0
+    ; Envoy terminates WSS and proxies WebSocket to Kamailio. Kamailio sends
+    ; SIP to this endpoint over private TLS and controls browser media through
+    ; the existing RTPEngine.
 
     ; The WebRTC credentials and endpoints are materialized from mounted
     ; Secret files by the Asterisk startup wrapper.

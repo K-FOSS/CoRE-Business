@@ -75,6 +75,7 @@
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $carrierTrafficLogging := default false .Values.kamailio.sipLogging.carrierTraffic }}
+{{- $sipCoreEnabled := and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     request_route {
       if (is_method("ACK")) {
         xlog(
@@ -97,6 +98,17 @@
         }
         exit;
       }
+
+      {{- if $sipCoreEnabled }}
+      # SIP Core arrives only on the dedicated WebSocket listener. The HTTP
+      # handshake has already enforced the configured origin list. PJSIP's
+      # endpoint Digest object remains the authentication authority.
+      if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+        $var(side) = "sipcore";
+        route(FROM_SIPCORE);
+        exit;
+      }
+      {{- end }}
 
       {{- if .Values.kamailio.carrierOutbound.enabled }}
       # Internal outbound uses the existing Envoy SIPS entry, which supplies
@@ -192,6 +204,74 @@
 
       exit;
     }
+
+    {{- if $sipCoreEnabled }}
+    route[FROM_SIPCORE] {
+      if (!is_method("REGISTER|INVITE|ACK|BYE|CANCEL|OPTIONS|UPDATE|INFO|PRACK|REFER|NOTIFY|MESSAGE")) {
+        sl_send_reply("405", "Method Not Allowed");
+        exit;
+      }
+
+      force_rport();
+      if (nat_uac_test(64)) {
+        if (is_method("REGISTER")) {
+          fix_nated_register();
+        } else if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
+          if (!add_contact_alias()) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
+        }
+      }
+
+      t_on_reply("SIPCORE_WS_REPLY");
+
+      if (is_method("CANCEL")) {
+        rtpengine_manage();
+        $var(cancel_result) = t_relay_cancel();
+        if ($var(cancel_result) > 0) {
+          sl_send_reply("481", "Call Does Not Exist");
+        } else if ($var(cancel_result) < 0) {
+          sl_reply_error();
+        }
+        exit;
+      }
+
+      if (has_totag() && !loose_route()) {
+        if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
+        exit;
+      }
+
+      if (is_method("INVITE") && !has_totag()) {
+        record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
+      }
+
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("WebRTC replace-origin external internal")) {
+          xlog("L_ERR", "RTPEngine SIP Core SDP handling failed callid=$ci method=$rm\n");
+          if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
+          exit;
+        }
+        if (!msg_apply_changes()) {
+          xlog("L_ERR", "RTPEngine SIP Core SDP update failed callid=$ci method=$rm\n");
+          if (!is_method("ACK")) sl_send_reply("488", "Media Relay Unavailable");
+          exit;
+        }
+      } else if (is_method("BYE")) {
+        rtpengine_manage();
+      }
+
+      route(TO_SIPCORE_ASTERISK);
+      route(RELAY);
+      exit;
+    }
+
+    onreply_route[SIPCORE_WS_REPLY] {
+      if (nat_uac_test(64) && is_present_hf("Contact")) {
+        add_contact_alias();
+      }
+    }
+    {{- end }}
 
 {{ end }}
 
@@ -310,6 +390,7 @@
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $carrierTrafficLogging := default false .Values.kamailio.sipLogging.carrierTraffic }}
+{{- $sipCoreEnabled := and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     route[RR_CARRIER_TO_BACKEND] {
       # Preserve the transport the carrier used for the dialog. TOPOS derives
       # its public Contact route (including port and transport) from this RR.
@@ -363,6 +444,7 @@
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $carrierTrafficLogging := default false .Values.kamailio.sipLogging.carrierTraffic }}
+{{- $sipCoreEnabled := and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     route[IN_DIALOG] {
       if (!is_method("ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY")) {
         route(REJECT_DIALOG);
@@ -460,6 +542,14 @@
       $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
       set_send_socket_name("private_tls");
     }
+
+    {{- if $sipCoreEnabled }}
+    route[TO_SIPCORE_ASTERISK] {
+      $du = "sip:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}:5061;transport=tls";
+      $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}";
+      set_send_socket_name("private_tls");
+    }
+    {{- end }}
 
     {{- if .Values.kamailio.carrierOutbound.enabled }}
     route[TO_OUTBOUND_PEER] {

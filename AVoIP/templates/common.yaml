@@ -47,6 +47,10 @@
           ports:
             - protocol: TCP
               port: 5061
+          {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
+            - protocol: TCP
+              port: {{ .Values.asterisk.sipCore.httpPort }}
+          {{- end }}
         - from:
             - podSelector:
                 matchLabels:
@@ -74,6 +78,16 @@
           ports:
             - protocol: TCP
               port: 5061
+        {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: asterisk
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+        {{- end }}
 {{- if .Values.kamailio.functions.media }}
         - to:
             - podSelector:
@@ -373,6 +387,11 @@
           - name: tls-private
             containerPort: 5062
             protocol: TCP
+        {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+          - name: sipcore-ws
+            containerPort: {{ $.Values.asterisk.sipCore.httpPort }}
+            protocol: TCP
+        {{- end }}
 {{- if .Values.diagnostics.netshoot.enabled }}
       netshoot:
         command:
@@ -427,6 +446,12 @@
         port: 5062
         targetPort: tls-private
         protocol: TCP
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+      sipcore-ws:
+        port: {{ $.Values.asterisk.sipCore.httpPort }}
+        targetPort: sipcore-ws
+        protocol: TCP
+    {{- end }}
 {{ if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
 {{ $kamailioPubHost := include "avoip.sip.kamailioPubHost" . }}
   {{ $component }}-pub:
@@ -750,11 +775,8 @@ controllers:
         args:
           - |
             umask 077
-            printf '[freeswitch-auth]\n' > /tmp/avoip-pjsip-auth.conf
-            printf 'type=auth\n' >> /tmp/avoip-pjsip-auth.conf
-            printf 'auth_type=userpass\n' >> /tmp/avoip-pjsip-auth.conf
-            printf 'username=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-pjsip-auth.conf
-            printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-pjsip-auth.conf
+            printf '[freeswitch-auth]\ntype=auth\nauth_type=userpass\nusername=freeswitch\npassword=%s\n' \
+              "$(cat /tmp/avoip-freeswitch-peer-password)" > /tmp/avoip-pjsip-auth.conf
             {{- if .Values.freeswitch.enabled }}
             printf '\n[freeswitch-inbound-auth]\ntype=auth\nauth_type=userpass\nusername=freeswitch\npassword=%s\n' \
               "$(cat /tmp/avoip-freeswitch-peer-password)" >> /tmp/avoip-pjsip-auth.conf
@@ -770,7 +792,7 @@ controllers:
             {
               printf '[{{ .number }}]\ntype=auth\nauth_type=userpass\nusername={{ .number }}\npassword=%s\n\n' "$sip_password"
               printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\n\n'
-              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-ws\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
+              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
               {{- if and $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.media.enabled }}
               printf 'media_address={{ $.Values.asterisk.sipCore.media.address }}\n'
               {{- end }}
@@ -847,11 +869,6 @@ controllers:
           - name: tls-sips
             containerPort: 5061
             protocol: TCP
-{{- if .Values.asterisk.sipCore.enabled }}
-          - name: http-ws
-            containerPort: {{ .Values.asterisk.sipCore.httpPort }}
-            protocol: TCP
-{{- end }}
 {{- $asteriskRtpPorts := untilStep (.Values.asterisk.rtp.min | int) (.Values.asterisk.rtp.max | int) 1 -}}
 {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled -}}
 {{- $asteriskRtpPorts = untilStep (.Values.asterisk.rtp.min | int) (add (.Values.asterisk.rtp.max | int) 1 | int) 1 -}}
@@ -1595,12 +1612,6 @@ service:
         port: 5061
         targetPort: tls-sips
         protocol: TCP
-{{- if .Values.asterisk.sipCore.enabled }}
-      http-ws:
-        port: {{ .Values.asterisk.sipCore.httpPort }}
-        targetPort: http-ws
-        protocol: TCP
-{{- end }}
 {{- end }}
 {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled }}
   asterisk-rtp:
@@ -1782,10 +1793,6 @@ persistence:
             subPath: modules.conf
           - path: /etc/asterisk/asterisk.conf
             subPath: asterisk.conf
-{{- if .Values.asterisk.sipCore.enabled }}
-          - path: /etc/asterisk/http.conf
-            subPath: http.conf
-{{- end }}
   asterisk-pjsip-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-asterisk-config-tpl'

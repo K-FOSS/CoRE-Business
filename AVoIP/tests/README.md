@@ -27,7 +27,8 @@ rotation. It is not a live REGISTER or Authentik revocation test.
 `./asterisk-sipcore-render.sh` checks the Asterisk 20 PJSIP identifier order,
 username-based SIP Core and FreeSWITCH endpoint selection, the External
 Secrets generated peer Digest password, SIP Core password validation, HTTPRoute
-`/ws` forwarding, and retained FreeSWITCH fax configuration. Its spoofed
+`/ws` forwarding through Kamailio, RTPEngine SDP control for SIP Core media,
+and retained FreeSWITCH fax configuration. Its spoofed
 `X-Forwarded-For` regression is a static configuration check: HTTP upgrade
 headers do not change the WebSocket socket peer or SIP identity. It does not
 perform a live SIP registration or call.

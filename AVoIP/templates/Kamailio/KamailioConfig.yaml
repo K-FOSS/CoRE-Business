@@ -52,6 +52,10 @@ data:
     # Envoy TLS passthrough + PROXY v2 for the carrier role only.
     tcp_accept_haproxy={{ if eq .Values.kamailio.role "carrier-sbc" }}yes{{ else }}no{{ end }}
     enable_tls=1
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    tcp_accept_no_cl=yes
+    listen=tcp:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.httpPort }} name "sipcore_ws"
+    {{- end }}
 
     # Public carrier-facing identity.
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
@@ -70,6 +74,9 @@ data:
     {{- if eq .Values.kamailio.role "carrier-sbc" }}
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
     alias="{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
+    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    alias="{{ $.Values.asterisk.sipCore.hostname }}:443"
+    {{- end }}
     {{- if .Values.kamailio.publicExposure.sip.directService.enabled }}
     alias="{{ $kamailioPubHost }}:5060"
     {{- end }}
@@ -78,6 +85,15 @@ data:
 
     loadmodule "tm.so"
     loadmodule "sl.so"
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    loadmodule "nathelper.so"
+    loadmodule "outbound.so"
+    loadmodule "xhttp.so"
+    loadmodule "websocket.so"
+    modparam("websocket", "cors_mode", 0)
+    modparam("websocket", "keepalive_mechanism", 1)
+    modparam("websocket", "keepalive_timeout", 60)
+    {{- end }}
     loadmodule "rr.so"
     loadmodule "corex.so"
     loadmodule "maxfwd.so"
@@ -137,6 +153,42 @@ data:
     {{- if and .Values.kamailio.functions.media (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
     loadmodule "rtpengine.so"
     loadmodule "textopsx.so"
+    {{- end }}
+
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    event_route[xhttp:request] {
+      set_reply_close();
+      set_reply_no_connect();
+
+      if ($Rp != {{ $.Values.asterisk.sipCore.httpPort }} || $rm != "GET" || $hu != "/ws") {
+        xhttp_reply("404", "Not Found", "", "");
+        exit;
+      }
+
+      if ($hdrc(Host) != 1 ||
+          ($(hdr(Host){s.tolower}) != "{{ $.Values.asterisk.sipCore.hostname }}" &&
+           $(hdr(Host){s.tolower}) != "{{ $.Values.asterisk.sipCore.hostname }}:443")) {
+        xhttp_reply("403", "Host Not Allowed", "", "");
+        exit;
+      }
+
+      if ($hdrc(Origin) != 1) {
+        xhttp_reply("403", "Origin Required", "", "");
+        exit;
+      }
+
+      $var(sipcore_origin_allowed) = 0;
+      {{- range $.Values.asterisk.sipCore.allowedOrigins }}
+      if ($hdr(Origin) == "{{ . }}") $var(sipcore_origin_allowed) = 1;
+      {{- end }}
+      if ($var(sipcore_origin_allowed) != 1) {
+        xhttp_reply("403", "Origin Not Allowed", "", "");
+        exit;
+      }
+
+      if (ws_handle_handshake()) exit;
+      exit;
+    }
     {{- end }}
 
     modparam("tls", "config", "/etc/kamailio/tls.cfg")
@@ -256,11 +308,11 @@ data:
 {{ if eq .Values.kamailio.role "private-sbc" }}
 {{ include "avoip.kamailio.sip.private" . | nindent 4 }}
 {{ else }}
-{{ include "avoip.kamailio.sip.sanityAndClassification" . }}
-{{ include "avoip.kamailio.sip.authorizationAndTransactions" . }}
-{{ include "avoip.kamailio.sip.topologyAndBackend" . }}
-{{ include "avoip.kamailio.sip.dialogRouting" . }}
-{{ include "avoip.kamailio.sip.relayAndObservability" . }}
+{{ include "avoip.kamailio.sip.sanityAndClassification" . | nindent 4 }}
+{{ include "avoip.kamailio.sip.authorizationAndTransactions" . | nindent 4 }}
+{{ include "avoip.kamailio.sip.topologyAndBackend" . | nindent 4 }}
+{{ include "avoip.kamailio.sip.dialogRouting" . | nindent 4 }}
+{{ include "avoip.kamailio.sip.relayAndObservability" . | nindent 4 }}
 {{ if .Values.kamailio.carrierOutbound.enabled }}
 {{ include "avoip.kamailio.sip.outbound" . | nindent 4 }}
 {{ end }}
