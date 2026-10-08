@@ -61,7 +61,7 @@ grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamail
 grep -Fq 'outbound_proxy=sip:siptest-avoip-kamailio.core-prod.svc.cluster.local:5063\\;transport=tls\\;lr' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core endpoint does not route outbound calls through Kamailio TLS'
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio WebSocket listener was not rendered'
 grep -Fq 'listen=tls:0.0.0.0:5063 advertise "siptest-avoip-kamailio.core-prod.svc.cluster.local":5063 name "sipcore_private_tls"' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk-only Kamailio TLS return listener is missing'
-grep -Fq 'name: sipcore-private-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio private TLS return Service port is missing'
+grep -Fq 'name: sipcore-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio private TLS return Service port is missing'
 grep -Fq 'route[FROM_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio Asterisk-to-WebSocket route is missing'
 grep -Fq 'handle_ruri_alias()' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio does not route calls through the registered WebSocket flow'
 grep -Fq 'if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*")' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio does not preserve a WebSocket route alias on registration'

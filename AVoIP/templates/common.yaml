@@ -401,7 +401,7 @@
           - name: sipcore-ws
             containerPort: {{ $.Values.asterisk.sipCore.httpPort }}
             protocol: TCP
-          - name: sipcore-private-tls
+          - name: sipcore-tls
             containerPort: {{ $.Values.asterisk.sipCore.privateEgressPort }}
             protocol: TCP
         {{- end }}
@@ -464,9 +464,9 @@
         port: {{ $.Values.asterisk.sipCore.httpPort }}
         targetPort: sipcore-ws
         protocol: TCP
-      sipcore-private-tls:
+      sipcore-tls:
         port: {{ $.Values.asterisk.sipCore.privateEgressPort }}
-        targetPort: sipcore-private-tls
+        targetPort: sipcore-tls
         protocol: TCP
     {{- end }}
 {{ if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
