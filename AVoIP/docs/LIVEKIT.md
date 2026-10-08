@@ -11,8 +11,8 @@ It is enabled for the DC1 hub and Home1 by the active
 The chart is configured for one
 [official `livekit/livekit-server` image](https://hub.docker.com/r/livekit/livekit-server)
 replica per enabled site, pinned to multi-platform image digest
-`sha256:3602a85840d51981808d0519aefca170a3dbe3dec7bc8c5b87cbd52a503ea89f`, with host networking,
-required hostname anti-affinity, `Recreate` deployment strategy, and `2` CPU / `2Gi`
+`sha256:3602a85840d51981808d0519aefca170a3dbe3dec7bc8c5b87cbd52a503ea89f`, without host networking
+or host ports, `Recreate` deployment strategy, and `2` CPU / `2Gi`
 requests (`4` CPU / `4Gi` limits). The separate media LoadBalancer uses the
 site's existing public-service allocation mechanism: PureLB `core-public` in
 YXL and kube-vip with UPnP forwarding in YVR. It receives its address from the
@@ -27,8 +27,11 @@ The gateway HTTPRoute carries signaling only. Media uses UDP `7882` (LiveKit UDP
 mux) and ICE/TCP fallback `7881` on the separate public LoadBalancer; TCP `7880`
 is the in-cluster HTTP/signaling backend. The UDP mux avoids using LiveKit's
 default UDP range, and both media ports are distinct from the AVoIP RTP ranges.
-The chart uses host networking and required pod anti-affinity so the bound ports
-cannot collide with another LiveKit replica on the same node.
+The LiveKit pod uses normal pod networking. UDP `7882` and TCP `7881` are
+exposed only through the dedicated media LoadBalancer; the chart's upstream
+host-port fields are removed by a Kustomize JSON patch. The Service's
+`externalTrafficPolicy: Local` preserves the source address for a node hosting
+the LiveKit endpoint.
 
 Redis is configured to use the site's TLS Dragonfly endpoint on `6379`,
 database `155`, allocated
@@ -54,7 +57,7 @@ site-local authenticated TLS Dragonfly endpoint, a public DNS record for each
 signaling hostname, a valid certificate on the existing Gateway listener, and
 an available public address in each site's PureLB or kube-vip pool. Firewalls
 and NAT must permit inbound UDP `7882` and TCP `7881` to the media Service and
-the provider must route those ports to its local host-network endpoint. Clients
+the provider must route those ports to a node with a ready LiveKit endpoint. Clients
 need outbound access to STUN for external-address discovery. TURN is disabled;
 clients behind restrictive NATs may require an independently operated TURN
 service, which is not part of this LiveKit Server-only deployment.

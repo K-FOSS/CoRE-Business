@@ -527,7 +527,9 @@ livekit:
 # Official upstream chart defaults are overridden for CoRE site networking.
 livekit-server:
   replicaCount: 1
-  podHostNetwork: true
+  # Media uses the dedicated LoadBalancer Service. Do not bind the LiveKit pod
+  # to the node network or reserve host ports.
+  podHostNetwork: false
   terminationGracePeriodSeconds: 18000
   deploymentStrategy:
     type: Recreate
@@ -541,13 +543,7 @@ livekit-server:
     limits:
       cpu: '4000m'
       memory: '4Gi'
-  affinity:
-    podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        - topologyKey: 'kubernetes.io/hostname'
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: 'livekit-server'
+  affinity: {}
   livekit:
     port: 7880
     log_level: 'info'

@@ -13,3 +13,11 @@ patches:
       version: v1
       kind: Deployment
       labelSelector: app.kubernetes.io/name=livekit-server
+  # The upstream chart unconditionally adds hostPort for RTC ports. Remove
+  # those fields so media is exposed only by the dedicated LoadBalancer.
+  - path: patches/livekit-deployment-no-host-ports.json
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      labelSelector: app.kubernetes.io/name=livekit-server

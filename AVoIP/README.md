@@ -38,7 +38,8 @@ uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
   SIP workloads also being enabled.
 - `livekit.enabled` and the per-site LiveKit public media Service provider.
   LiveKit is enabled for the DC1 hub and Home1; `dc1-k3s-node1` stays
-  disabled.
+  disabled. LiveKit uses pod networking; its UDP and TCP media ports are
+  exposed only through the site media LoadBalancer.
 - `hub` metadata for spoke clusters.
 - `gateway.name`, `gateway.namespace`, and `gateway.sectionName`.
 - `jitsi.domain` and `jitsi.tls.secretName`.
