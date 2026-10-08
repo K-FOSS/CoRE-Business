@@ -147,6 +147,8 @@ grep -Fq 'type=identify' "$tmp_dir/empty-matches.yaml" && fail 'FreeSWITCH endpo
 grep -Fq 'auth=freeswitch-inbound-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH inbound Digest auth is missing'
 grep -Fq 'identify_by=username,auth_username' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH endpoint is not selected by SIP identity'
 grep -Fq 'outbound_auth=freeswitch-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH outbound authentication was removed'
+grep -Fq 'from_user=freeswitch' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk does not identify itself as the configured FreeSWITCH Digest peer'
+grep -Fq 'from_domain=siptest-avoip-freeswitch.core-prod.svc.cluster.local' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk does not use the FreeSWITCH service domain for its peer identity'
 grep -Fq 'contact=sip:siptest-avoip-freeswitch.core-prod.svc.cluster.local:5064;transport=tls' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk FreeSWITCH peer does not use its dedicated Service TLS port'
 grep -Fq 'internal_tls_port=5061' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH internal TLS port does not match its Service target'
 grep -Fq 'asterisk_tls_port=5064' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH dedicated Asterisk TLS port is missing'
