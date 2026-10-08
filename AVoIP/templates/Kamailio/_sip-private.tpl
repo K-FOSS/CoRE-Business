@@ -11,6 +11,7 @@
       {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) }}
       # SIP Core WebSocket signaling has its own listener and handshake policy.
       if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+        $var(side) = "sipcore";
         {{- if .Values.kamailio.sipLogging.sipCore }}
         xlog(
           "L_INFO",
@@ -23,6 +24,7 @@
       # This dedicated listener uses server-authenticated TLS. Cilium's
       # workload-identity policy restricts its source to the Asterisk pods.
       if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.privateEgressPort }}) {
+        $var(side) = "sipcore";
         {{- if .Values.kamailio.sipLogging.sipCore }}
         xlog(
           "L_INFO",
@@ -224,6 +226,12 @@
         record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
       }
       route(TO_SIPCORE_ASTERISK);
+      {{- if .Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=forward-to-asterisk pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du target=$rU cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       route(PRIVATE_RELAY);
     }
 
@@ -265,9 +273,18 @@
         rtpengine_manage();
       }
       if (is_method("BYE")) {
-        xlog("L_INFO", "SIP Core BYE received from Asterisk for WebSocket relay\n");
+        xlog(
+          "L_INFO",
+          "SIPCORE FLOW stage=asterisk-bye pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp target=$rU cseq=$hdr(CSeq)\n"
+        );
       }
       t_on_reply("SIPCORE_ASTERISK_REPLY");
+      {{- if .Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=forward-to-websocket pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du target=$rU cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       route(PRIVATE_RELAY);
     }
 
@@ -279,8 +296,19 @@
 
     onreply_route[SIPCORE_ASTERISK_REPLY] {
       if ($rm == "BYE") {
-        xlog("L_INFO", "SIP Core WebSocket BYE response status=$rs\n");
+        xlog(
+          "L_INFO",
+          "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+        );
       }
+      {{- if .Values.kamailio.sipLogging.sipCore }}
+      if ($rm != "BYE") {
+        xlog(
+          "L_INFO",
+          "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+        );
+      }
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
@@ -290,6 +318,12 @@
     }
 
     onreply_route[SIPCORE_WS_REPLY] {
+      {{- if .Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=websocket-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin internal external")) {
           xlog("L_ERR", "RTPEngine SIP Core WebSocket answer handling failed callid=$ci status=$rs\n");
@@ -302,6 +336,14 @@
 
     route[PRIVATE_RELAY] {
       if (!t_relay()) {
+        {{- if .Values.kamailio.sipLogging.sipCore }}
+        if ($var(side) == "sipcore") {
+          xlog(
+            "L_ERR",
+            "SIPCORE FLOW stage=relay-failure pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du socket=$fsn cseq=$hdr(CSeq)\n"
+          );
+        }
+        {{- end }}
         if (!is_method("ACK")) sl_reply_error();
       }
       exit;
