@@ -156,6 +156,10 @@ grep -Fq 'immutable: true' "$tmp_dir/empty-matches.yaml" || fail 'generated peer
 grep -Fq 'password" value="$${asterisk_peer_password}"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH gateway Digest password is not sourced from its Secret'
 grep -Fq 'pjsip set logger on' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk SIP packet logging could expose Digest headers'
 grep -Fq '<param name="sip-trace" value="false"/>' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile SIP packet tracing is not disabled'
+asterisk_profile="$(sed -n '/<profile name="asterisk">/,/<\/profile>/p' "$tmp_dir/empty-matches.yaml")"
+grep -Fq '<param name="auth-calls" value="true"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not require SIP Digest authentication'
+grep -Fq '<param name="context" value="from-asterisk"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not use its restricted dialplan context'
+grep -Fq '<param name="apply-inbound-acl" value="asterisk"/>' <<<"$asterisk_profile" && fail 'FreeSWITCH Asterisk profile can bypass Digest through a broad private-network ACL'
 grep -Fq 'type=aor' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH AOR configuration was removed'
 grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH TLS transport was removed'
 grep -Fq 'application="rxfax"' "$tmp_dir/empty-matches.yaml" || fail 'existing FreeSWITCH fax receive configuration was removed'

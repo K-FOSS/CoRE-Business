@@ -121,10 +121,10 @@ behavior.
   (default `66`) is available to SIP Core callers as a local test destination.
   Asterisk sends only that destination over its existing TLS and Digest
   authenticated FreeSWITCH peer on the Service's TLS port `5061`. FreeSWITCH
-  loads a `freeswitch` directory identity whose password comes from the same
-  generated Secret used by Asterisk's outbound Digest auth. That identity is
-  assigned to a dedicated `from-asterisk` dialplan context, which only accepts
-  the configured GG extension. FreeSWITCH plays the configured
+  requires SIP Digest on its dedicated Asterisk TLS profile and assigns that
+  profile to `from-asterisk`, which only accepts the configured GG extension.
+  The peer password is mounted from its Secret into both SIP processes; the
+  private-network ACL does not bypass Digest authentication. FreeSWITCH plays
   `freeswitch.preBridgeAudio.url` using the same `shout://` playback path used
   by its existing pre-bridge audio. This keeps the GG MP3 playback off the
   Asterisk image, which has `app_mp3` but no `mpg123` executable; Asterisk's

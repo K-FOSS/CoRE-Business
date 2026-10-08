@@ -97,18 +97,17 @@ The active SIP profiles are defined in
 
 - `external` listens on SIP `5080` and TLS SIP `5081`, advertises the configured
   external addresses, and uses the `public` context.
-- `asterisk` remains an internal, ACL-restricted peer for Asterisk. It requires
-  SIP digest authentication and resolves the supplied username with the LDAP
-  `cn=%s` filter; it is not a public fallback route. Asterisk obtains its
-  username/password from its generated mylogin.space `User` connection Secret
-  at startup, so neither credential is rendered into Git-managed configuration.
+- `asterisk` is a private TLS-only profile for the Asterisk peer. It requires
+  SIP digest authentication, uses the restricted `from-asterisk` dialplan
+  context, and does not bypass Digest through a broad private-network ACL. The
+  peer username/password come from a Kubernetes Secret mounted into the SIP
+  processes, so neither credential is rendered into Git-managed configuration.
 - The image's default `internal`, `internal-ipv6`, and `external-ipv6` Sofia
   profiles are overlaid with empty files so they cannot compete for SIP port
   `5060` or create an unintended additional listener.
 
-Outbound authorization therefore has two independent gates: the request must
-come from the internal Asterisk ACL, and its username/password must validate
-against the LDAP-backed FreeSWITCH directory. Flowroute traffic uses the
+The internal peer call must validate SIP Digest before reaching its restricted
+context. Flowroute traffic uses the
 separate external profile and source CIDR ACL; inbound Flowroute calls are
 bridged to Asterisk without LDAP authentication.
 

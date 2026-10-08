@@ -42,10 +42,9 @@ data:
             <param name="tls-verify-date" value="true"/>
             <param name="tls-verify-policy" value="subjects_out"/>
             <param name="tls-verify-depth" value="3"/>
-            <param name="apply-inbound-acl" value="asterisk"/>
             <param name="auth-calls" value="true"/>
             <param name="sip-trace" value="false"/>
-            <param name="context" value="public"/>
+            <param name="context" value="from-asterisk"/>
             <param name="rtp-ip" value="$${local_ip_v4}"/>
             <param name="sip-ip" value="$${local_ip_v4}"/>
             <param name="sip-domain" value="$${private_sip_host}"/>
