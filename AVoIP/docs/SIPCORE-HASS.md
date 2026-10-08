@@ -91,8 +91,12 @@ behavior.
   directly to the browser's `transport=ws` Contact because Kamailio owns that
   WebSocket connection. The chart stores a Kamailio Contact alias on REGISTER,
   gives Asterisk a dedicated private TLS return port (default `5063`), and
-  routes calls from Asterisk back over the existing WebSocket flow. A
-  Cilium policy permits that port only from this release's Asterisk workload.
+  routes calls from Asterisk back over the existing WebSocket flow. Its TLS
+  profile does not request a client certificate: the ACME certificate used by
+  Asterisk is its server identity, while a Cilium pod-identity policy restricts
+  port `5063` to this release's Asterisk workload. The private peer listener on
+  `5062` continues to require strict mutual TLS. Record-Route uses the internal
+  Kamailio TLS listener because Asterisk cannot route dialogs over browser WSS.
   RTPEngine relays the reverse media offer and answer too.
 - Reads each extension's random SIP password from an ExternalSecret sourced
   from the configured CoreVault-backed SecretStore. At startup, it writes a
@@ -189,8 +193,8 @@ works.
 ## Rollback and verification
 
 Rollback by setting `asterisk.sipCore.enabled: false`. This removes the WSS
-route, internal Kamailio listener/handshake policy, endpoint configuration,
-and ExternalSecret resources;
+route, internal Kamailio listener and port-specific TLS policy, endpoint
+configuration, and ExternalSecret resources;
 ExternalSecret targets use `deletionPolicy: Retain`, so explicitly audit the
 retained Kubernetes Secrets and Vault values before deleting them. The carrier
 SBC remains responsible for carrier and FreeSWITCH fax signaling. After a rollout, verify the route is

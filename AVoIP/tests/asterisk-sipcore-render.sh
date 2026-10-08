@@ -25,6 +25,7 @@ fail() {
 }
 
 render_sipcore > "$tmp_dir/empty-matches.yaml"
+yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio-internal-config") | .data["tls.cfg"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/internal-tls.cfg"
 if render_sipcore --set-string asterisk.sipCore.extensions[0].secret.remoteKey= >"$tmp_dir/missing-secret.yaml" 2>&1; then
   fail 'SIP Core rendered without an ExternalSecret password reference'
 fi
@@ -63,6 +64,11 @@ grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamail
 grep -Fq 'outbound_proxy=sip:siptest-avoip-kamailio-internal.core-prod.svc.cluster.local:5063\\;transport=tls\\;lr' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core endpoint does not route outbound calls through the internal Kamailio TLS listener'
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio WebSocket listener was not rendered'
 grep -Fq 'listen=tls:0.0.0.0:5063 advertise "siptest-avoip-kamailio-internal.core-prod.svc.cluster.local":5063 name "sipcore_private_tls"' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk-only internal Kamailio TLS return listener is missing'
+grep -Fq '[server:0.0.0.0:5063]' "$tmp_dir/internal-tls.cfg" || fail 'Asterisk return listener is missing its dedicated TLS profile'
+grep -A5 -F '[server:0.0.0.0:5063]' "$tmp_dir/internal-tls.cfg" | grep -Fq 'verify_certificate = no' || fail 'Asterisk return listener still verifies an incompatible client certificate'
+grep -A5 -F '[server:0.0.0.0:5063]' "$tmp_dir/internal-tls.cfg" | grep -Fq 'require_certificate = no' || fail 'Asterisk return listener still requests a client certificate'
+grep -A5 -F '[server:default]' "$tmp_dir/internal-tls.cfg" | grep -Fq 'require_certificate = yes' || fail 'the private peer TLS listener lost strict mTLS'
+grep -Fq 'if ($proto == "tls" && $Rp == 5063)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk return route still requires an incompatible client certificate'
 grep -Fq 'name: sipcore-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio private TLS return Service port is missing'
 grep -Fq 'route[FROM_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio Asterisk-to-WebSocket route is missing'
 grep -Fq 'handle_ruri_alias()' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio does not route calls through the registered WebSocket flow'
@@ -77,7 +83,7 @@ grep -Fq 'fix_nated_register' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core ro
 grep -Fq 'route[TO_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS route is missing'
 grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" || fail 'Home Assistant media is not relayed through RTPEngine'
 rtpengine_sdp_line="$(grep -n 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
-record_route_line="$(grep -n 'record_route_preset("sip:sipcore.example.net:443;transport=wss")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
+record_route_line="$(grep -n 'record_route_preset("sip:siptest-avoip-kamailio-internal.core-prod.svc.cluster.local:5063;transport=tls")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 if [[ -z "$rtpengine_sdp_line" || -z "$record_route_line" || "$rtpengine_sdp_line" -ge "$record_route_line" ]]; then
   fail 'RTPEngine SDP updates must happen before adding Record-Route'
 fi

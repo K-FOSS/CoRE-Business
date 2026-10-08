@@ -1,6 +1,7 @@
 {{- define "avoip.kamailio.sip.private" -}}
-    # Private role: mutual TLS and an explicit peer list are both required.
-    # No carrier URI, Flowroute ACL, or public socket is reachable here.
+{{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" (include "avoip.kamailio.component" .Values.kamailio) "override" .Values.kamailio.sip.serviceHost) -}}
+    # The private peer listener uses strict mTLS and an explicit allowlist.
+    # The separate SIP Core return listener uses Cilium workload identity.
     request_route {
       if (!sanity_check("1511", "7") || !mf_process_maxfwd_header("10")) {
         if (!is_method("ACK")) sl_send_reply("400", "Invalid Request");
@@ -13,9 +14,9 @@
         route(FROM_SIPCORE);
         exit;
       }
-      # Asterisk's reverse signaling leg is restricted by mTLS and Cilium to
-      # the Asterisk workload on this dedicated port.
-      if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.privateEgressPort }} && $tls_peer_verified == 1) {
+      # This dedicated listener uses server-authenticated TLS. Cilium's
+      # workload-identity policy restricts its source to the Asterisk pods.
+      if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.privateEgressPort }}) {
         route(FROM_SIPCORE_ASTERISK);
         exit;
       }
@@ -208,7 +209,7 @@
         rtpengine_manage();
       }
       if (is_method("INVITE") && !has_totag()) {
-        record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
+        record_route_preset("sip:{{ $kamailioHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
       }
       route(TO_SIPCORE_ASTERISK);
       route(PRIVATE_RELAY);
@@ -245,7 +246,7 @@
           exit;
         }
         if (is_method("INVITE") && !has_totag()) {
-          record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
+          record_route_preset("sip:{{ $kamailioHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
         }
       }
       if (has_body("application/sdp")) {
