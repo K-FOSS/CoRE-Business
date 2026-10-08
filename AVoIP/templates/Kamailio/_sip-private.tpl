@@ -252,6 +252,9 @@
       } else if (is_method("BYE")) {
         rtpengine_manage();
       }
+      if (is_method("BYE")) {
+        xlog("L_INFO", "SIP Core BYE received from Asterisk for WebSocket relay\n");
+      }
       t_on_reply("SIPCORE_ASTERISK_REPLY");
       route(PRIVATE_RELAY);
     }
@@ -263,6 +266,9 @@
     }
 
     onreply_route[SIPCORE_ASTERISK_REPLY] {
+      if ($rm == "BYE") {
+        xlog("L_INFO", "SIP Core WebSocket BYE response status=$rs\n");
+      }
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
