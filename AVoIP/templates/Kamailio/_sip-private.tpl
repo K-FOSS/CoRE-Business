@@ -1,5 +1,5 @@
 {{- define "avoip.kamailio.sip.private" -}}
-{{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" (include "avoip.kamailio.component" .Values.kamailio) "override" .Values.kamailio.sip.serviceHost) -}}
+{{- $sipCoreReturnHost := include "avoip.sip.sipCoreReturnHost" (dict "root" .) -}}
     # The private peer listener uses strict mTLS and an explicit allowlist.
     # The separate SIP Core return listener uses Cilium workload identity.
     request_route {
@@ -209,7 +209,7 @@
         rtpengine_manage();
       }
       if (is_method("INVITE") && !has_totag()) {
-        record_route_preset("sip:{{ $kamailioHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
+        record_route_preset("sip:{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
       }
       route(TO_SIPCORE_ASTERISK);
       route(PRIVATE_RELAY);
@@ -246,7 +246,7 @@
           exit;
         }
         if (is_method("INVITE") && !has_totag()) {
-          record_route_preset("sip:{{ $kamailioHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
+          record_route_preset("sip:{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
         }
       }
       if (has_body("application/sdp")) {

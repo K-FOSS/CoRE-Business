@@ -9,6 +9,9 @@ spec:
   secretName: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}'
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) }}'
+    {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) }}
+    - '{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}'
+    {{- end }}
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
     - '{{ include "avoip.sip.siteHost" . }}'
     - '{{ .Values.sip.globalHost }}'

@@ -341,7 +341,8 @@ data:
     # Asterisk's ACME certificate is a server certificate, not a client
     # identity. Its dedicated return listener relies on Cilium's workload
     # identity policy; the other private TLS listener keeps strict mTLS.
-    [server:{{ .Values.kamailio.listeners.bindAddress }}:{{ .Values.asterisk.sipCore.privateEgressPort }}]
+    [server:any]
+    server_name = {{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}
     method = TLSv1.2+
     verify_certificate = no
     require_certificate = no

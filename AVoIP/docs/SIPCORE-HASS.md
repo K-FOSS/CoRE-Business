@@ -92,11 +92,13 @@ behavior.
   WebSocket connection. The chart stores a Kamailio Contact alias on REGISTER,
   gives Asterisk a dedicated private TLS return port (default `5063`), and
   routes calls from Asterisk back over the existing WebSocket flow. Its TLS
-  profile does not request a client certificate: the ACME certificate used by
-  Asterisk is its server identity, while a Cilium pod-identity policy restricts
-  port `5063` to this release's Asterisk workload. The private peer listener on
-  `5062` continues to require strict mutual TLS. Record-Route uses the internal
-  Kamailio TLS listener because Asterisk cannot route dialogs over browser WSS.
+  return Service has its own internal DNS name and certificate SAN so Kamailio
+  can select a port-specific TLS profile by SNI. That profile does not request
+  a client certificate: the ACME certificate used by Asterisk is its server
+  identity, while a Cilium pod-identity policy restricts port `5063` to this
+  release's Asterisk workload. The private peer listener on `5062` continues
+  to require strict mutual TLS. Record-Route uses the internal Kamailio TLS
+  return Service because Asterisk cannot route dialogs over browser WSS.
   RTPEngine relays the reverse media offer and answer too.
 - Reads each extension's random SIP password from an ExternalSecret sourced
   from the configured CoreVault-backed SecretStore. At startup, it writes a
