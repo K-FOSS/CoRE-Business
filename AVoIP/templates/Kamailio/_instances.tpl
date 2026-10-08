@@ -99,7 +99,7 @@
   {{- end -}}
   {{- if eq $role "private-sbc" -}}
     {{- if gt (int $effective.replicas) 1 -}}
-      {{- fail (printf "Kamailio %s private-sbc must start with one replica until dialog affinity is validated" $name) -}}
+      {{- fail (printf "Kamailio %s private-sbc cannot use multiple replicas until SIP Core WSS connection-owner routing is implemented and validated; TOPOS does not share live WebSocket sockets or SIP transaction state" $name) -}}
     {{- end -}}
     {{- $sets := dict -}}
     {{- $routes := dict -}}

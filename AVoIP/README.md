@@ -57,6 +57,14 @@ ApplicationSet's Lovely-injected values select each site's actual components,
 hostnames, media addresses, and DIDs. Inspect both layers before changing a
 site deployment.
 
+The private SBC is currently limited to one replica by chart validation.
+Multiple Kamailio pods do not share live WebSocket connections or SIP
+transaction state, and Asterisk's SIP return traffic must reach the pod that
+owns each registered WebSocket flow. Kubernetes client-IP affinity alone does
+not establish that ownership because Envoy and Asterisk are different clients.
+See the [private-SBC scale gate](docs/SIP-STATEFUL-HA.md#private-sbc-replica-gate)
+for the routing work and evidence required before enabling a second replica.
+
 Home1/YVR fax reception has been reported working over G.711. The owning
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 sets `freeswitch.fax.g711Only.enabled: true` for that site, which disables

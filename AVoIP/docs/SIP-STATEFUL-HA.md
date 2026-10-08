@@ -70,6 +70,52 @@ At initial call setup, assign an immutable owning site, a winning FreeSWITCH end
 | FreeSWITCH application/channel sessions | Local to one FreeSWITCH process | Pin the live call to that endpoint; evaluate service-specific recovery in Phase 5 | Voice, IVR and fax sessions do not migrate with SIP state. |
 | RTPEngine media sessions, ports and public address | Local packet processing with configured Valkey persistence; one control Service and one site public media Service | Pin NG commands and RTP delivery to an individually addressable media owner. Evaluate restoration/takeover separately | Shared keys alone do not transfer socket/port ownership or peer RTP destination. |
 
+## Private-SBC replica gate
+
+The private SBC serving SIP Core WebSockets remains limited to one replica by
+`templates/Kamailio/_instances.tpl`. Home1's live private Service currently
+has `sessionAffinity: None` and selects one ready pod. SIP Core's WebSocket
+transport and its connection aliases are owned by the Kamailio process that
+accepted the Envoy upgrade. Asterisk-originated INVITEs, OPTIONS, and in-dialog
+requests enter through a separate TLS Service. If that request reaches another
+pod, shared TOPOS data cannot give that pod the live WebSocket socket or the
+originating pod's transaction state. TOPOS carries dialog topology; it is not
+a transport or transaction replication mechanism.
+
+Adding Kubernetes client-IP affinity is insufficient on its own: WebSocket
+upstream connections arrive from Envoy, while Asterisk's SIP return traffic
+arrives from Asterisk. Their source addresses do not provide a common affinity
+key. Nor does a long-lived WebSocket guarantee that a separate SIP request
+will select its owning Kamailio pod.
+
+Before allowing two active replicas, implement and validate a flow-owner path
+that sends every request targeting a registered WSS contact to the exact
+Kamailio pod holding that connection. A promising first pilot is SIP Path:
+Kamailio's [Path module](https://www.kamailio.org/docs/modules/6.1.x/modules/path.html)
+can attach a route to REGISTER, and Asterisk's PJSIP AOR
+[`support_path` setting](https://docs.asterisk.org/Asterisk_20_Documentation/API_Documentation/Module_Configuration/res_pjsip/)
+can store and use that route. The Path must name a stable, individually
+routable Kamailio pod identity; pointing it at the shared Service would still
+load-balance to a pod that may not own the socket. Per-pod addressing also
+needs a verified TLS identity and certificate chain. Confirm these behaviors
+against the pinned Kamailio and Asterisk images before enabling the setting.
+Today, `path.so` is loaded only for the optional Kamailio registrar, the SIP
+Core request route does not add Path, and its generated PJSIP AOR does not set
+`support_path`; those pieces need a scoped implementation and parser checks.
+
+The flow-owner design must cover registration expiry and pod drain, and
+behavior when the owner disappears. Keep SIP transaction handling on its
+owning pod; do not retry an answered call on another pod. Share dialog topology
+only for the fields TOPOS documents and do not use it as proof of socket
+ownership.
+
+Acceptance requires both pods to accept WSS registrations and demonstrate
+callback/INVITE delivery to contacts on either pod, correct ACK/re-INVITE/BYE
+routing, no cross-pod WebSocket relay failures, and bounded reconnect and
+reregistration after owner loss. Also verify rolling upgrades and pod drain
+with an active call. Until those checks pass, the replica validation is
+intentional and the site should remain at one active private-SBC pod.
+
 The current [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml) marks Home1 writable and DC1 standby; promotion and partition writes have not been proven for this use. The [storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml) describes site storage/backup inputs, not a cross-site SIP state guarantee. A new application data identity must follow the [User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml) and its actual Composition behavior. The existing RTPEngine Valkey store must not silently become the SIP owner registry. Validate required Redis commands, TLS/ACL behavior, keyspace notifications, persistence and client reconnects against the selected Valkey or site-local Dragonfly implementation before relying on it.
 
 The implementation must be checked against the upstream [Kamailio documentation](https://www.kamailio.org/docs/), [FreeSWITCH documentation](https://developer.signalwire.com/freeswitch/), [RTPEngine source and documentation](https://github.com/sipwise/rtpengine), [Envoy Gateway TLS routing documentation](https://gateway.envoyproxy.io/docs/tasks/traffic/tls-passthrough/), and [K8GB documentation](https://www.k8gb.io/). Their presence in a proposed path does not prove a feature works with the pinned images or site configuration.
