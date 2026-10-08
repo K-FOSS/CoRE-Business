@@ -458,6 +458,9 @@ rtpengine:
     address: '66.165.222.103'
     min: 11000
     max: 13050
+    # Route public RTP/UDPTL through any node to a ready RTPEngine endpoint.
+    # Unlike carrier SIP, RTPEngine media does not authorize source CIDRs.
+    externalTrafficPolicy: 'Cluster'
   logging:
     # Temporary T.38 troubleshooting verbosity. Disable after the fax test.
     enabled: true
