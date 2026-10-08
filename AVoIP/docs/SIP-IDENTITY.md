@@ -115,14 +115,14 @@ helm template core-home1-talos-prod-business-avoip-prod . -n core-prod -f values
   --set kamailio.instances[0].publicExposure.sip.udpEnabled=true \
   --set kamailio.instances[0].publicExposure.sip.directService.enabled=true \
   --set freeswitch.enabled=true --set asterisk.enabled=true \
-  --set rtpengine.media.address=24.86.197.63 \
+  --set rtpengine.media.address=1.1.1.1 \
   --set-string avoip.did=voice-fixture --set-string fax.did=fax-fixture \
   > /tmp/avoip-render.yaml
 python3 tests/sip_identity_render.py /tmp/avoip-render.yaml \
   --voice-did voice-fixture --fax-did fax-fixture \
   --site-host sip.core-home1-talos-prod.home1.yvr.resolvemy.host \
   --cluster-name core-home1-talos-prod \
-  --cluster-domain k8s.home1.resolvemy.host --media-address 24.86.197.63
+  --cluster-domain k8s.home1.resolvemy.host --media-address 1.1.1.1
 ```
 
 Set `SITE_SIP_HOST` to the current site route (for example, `sip.core-home1-talos-prod.home1.yvr.resolvemy.host` or `sip.core-dc1-talos-prod.dc1.yxl.resolvemy.host`). For the carrier-side DNS and TLS checks, run:
