@@ -147,6 +147,10 @@ behavior.
   FreeSWITCH plays the GG audio. This service extension is not a SIP account
   and has no password; the callback target comes from the authenticated
   extension's dedicated dialplan context, not caller-supplied Caller ID.
+  The callback uses Asterisk's `PJSIP_DIAL_CONTACTS()` to ring all currently
+  registered contacts for that extension in parallel. If no contacts are
+  registered, it ends without attempting a call. The answered device is then
+  sent through the same extension context to the GG audio route.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk
   profile requires SIP Digest and selects `from-asterisk`; the private-network

@@ -138,8 +138,14 @@ data:
       same => n,Hangup()
     exten => _X!,1,Hangup(21)
     [sipcore-callback-{{ .number }}]
-    exten => s,1,Originate(PJSIP/{{ .number }},exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,30,a)
+    exten => s,1,Originate(Local/s@sipcore-callback-ringall-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,30,a)
       same => n,Return()
+    ; Expand the AOR's current registrations so every active device rings.
+    [sipcore-callback-ringall-{{ .number }}]
+    exten => s,1,Set(SIPCORE_CALLBACK_CONTACTS=${PJSIP_DIAL_CONTACTS({{ .number }})})
+      same => n,GotoIf($["${SIPCORE_CALLBACK_CONTACTS}"=""]?no-contacts)
+      same => n,Dial(${SIPCORE_CALLBACK_CONTACTS},30)
+      same => n(no-contacts),Hangup()
     {{- end }}
     {{- end }}
 
