@@ -712,6 +712,7 @@ asterisk:
     echoExtension: '9090'
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
+    helloCallbackExtension: '1234'
     secretStoreRef:
       kind: 'ClusterSecretStore'
       name: 'corevault-rootsecrets'

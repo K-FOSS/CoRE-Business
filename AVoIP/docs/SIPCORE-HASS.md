@@ -135,6 +135,14 @@ behavior.
   `from-asterisk`. A future mTLS configuration needs a separate client
   certificate issued by an approved internal CA and trusted by FreeSWITCH. The
   destination is configurable with `asterisk.sipCore.ggAudioDestination`.
+  The reserved `asterisk.sipCore.helloCallbackExtension` (default `1234`)
+  plays Asterisk's `hello-world` prompt, hangs up the incoming leg, and runs a
+  hangup handler that asynchronously calls the same configured SIP Core
+  extension's registered PJSIP AOR. If that device answers, Asterisk sends the
+  call into the existing `ggAudioExtension` route (default `66`) so
+  FreeSWITCH plays the GG audio. This service extension is not a SIP account
+  and has no password; the callback target comes from the authenticated
+  extension's dedicated dialplan context, not caller-supplied Caller ID.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk
   profile requires SIP Digest and selects `from-asterisk`; the private-network

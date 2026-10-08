@@ -130,7 +130,16 @@ data:
     ; and streams the configured GG audio to this SIP Core caller.
     exten => {{ $.Values.asterisk.sipCore.ggAudioExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30,g)
       same => n,Hangup()
+    ; Reserved callback service: greet the authenticated source extension, end
+    ; that leg, then originate its PJSIP AOR into the existing GG audio route.
+    exten => {{ $.Values.asterisk.sipCore.helloCallbackExtension }},1,Answer()
+      same => n,Playback(hello-world)
+      same => n,Set(CHANNEL(hangup_handler_push)=sipcore-callback-{{ .number }},s,1)
+      same => n,Hangup()
     exten => _X!,1,Hangup(21)
+    [sipcore-callback-{{ .number }}]
+    exten => s,1,Originate(PJSIP/{{ .number }},exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,30,a)
+      same => n,Return()
     {{- end }}
     {{- end }}
 

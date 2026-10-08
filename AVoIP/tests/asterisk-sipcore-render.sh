@@ -53,6 +53,9 @@ fi
 if render_sipcore --set-string asterisk.sipCore.ggAudioDestination='bad destination' >"$tmp_dir/invalid-gg-destination.yaml" 2>&1; then
   fail 'invalid FreeSWITCH GG audio SIP destination rendered'
 fi
+if render_sipcore --set-string asterisk.sipCore.helloCallbackExtension=9090 >"$tmp_dir/colliding-callback-extension.yaml" 2>&1; then
+  fail 'SIP Core hello callback extension collided with the echo extension'
+fi
 if render_sipcore --set-string asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout=0 >"$tmp_dir/invalid-wss-timeout.yaml" 2>&1; then
   fail 'invalid SIP Core WebSocket stream idle timeout rendered'
 fi
@@ -77,6 +80,11 @@ grep -Fq 'context=from-sipcore-7101' "$tmp_dir/empty-matches.yaml" || fail 'SIP 
 grep -Fq 'exten => 9090,1,Answer()' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core echo destination is missing'
 grep -Fq 'Echo()' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core echo dialplan is missing'
 grep -Fq 'Dial(PJSIP/gg-audio@freeswitch,30,g)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk GG extension does not continue to Hangup after the FreeSWITCH audio leg ends'
+grep -Fq 'exten => 1234,1,Answer()' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback service extension 1234 is missing'
+grep -Fq 'Playback(hello-world)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback service does not play the greeting'
+grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-callback-7101,s,1)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback is not scheduled by a hangup handler'
+grep -Fq '[sipcore-callback-7101]' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback context is not scoped to SIP Core extension 7101'
+grep -Fq 'Originate(PJSIP/7101,exten,from-sipcore-7101,66,1,30,a)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback does not call the authenticated source extension into GG audio'
 grep -Fq 'Dial(PJSIP/custom-audio@freeswitch,30,g)' "$tmp_dir/custom-gg-destination.yaml" || fail 'Asterisk GG destination is not configurable or does not hang up after playback'
 grep -Fq 'destination_number" expression="^custom-audio$"' "$tmp_dir/custom-gg-destination.yaml" || fail 'FreeSWITCH does not use the configured GG SIP destination'
 grep -Fq 'max_contacts=2' "$tmp_dir/empty-matches.yaml" || fail 'existing AOR contact limit was not rendered'
