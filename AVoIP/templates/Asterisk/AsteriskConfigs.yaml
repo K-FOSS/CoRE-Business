@@ -128,7 +128,7 @@ data:
     {{- end }}
     ; FreeSWITCH authenticates this request against the Asterisk peer identity
     ; and streams the configured GG audio to this SIP Core caller.
-    exten => {{ $.Values.asterisk.sipCore.ggAudioExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30)
+    exten => {{ $.Values.asterisk.sipCore.ggAudioExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30,g)
       same => n,Hangup()
     exten => _X!,1,Hangup(21)
     {{- end }}
