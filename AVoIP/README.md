@@ -308,9 +308,8 @@ The [Asterisk RTP/ICE configuration](https://docs.asterisk.org/Configuration/Mis
 uses the existing [CoTURN](https://github.com/coturn/coturn) service at
 `nat.mylogin.space:3478` for STUN discovery and TURN relay candidates. Its
 [REST shared secret](https://github.com/coturn/coturn/blob/master/README.turnserver)
-is sourced from
-the same Vault property as Social/Matrix through a separate AVoIP
-ExternalSecret. Asterisk derives a time-limited TURN username/password at
+is mounted directly from the existing `matrix-turn-auth` Secret created by
+Social/Matrix. Asterisk derives a time-limited TURN username/password at
 startup and stores the generated include only in its runtime `/tmp`; no
 credential is rendered into a ConfigMap or Helm values. The credential lifetime
 is configurable up to one year, so restart Asterisk before the expiry.

@@ -727,7 +727,7 @@ asterisk:
     min: 10000
     max: 10100
   turn:
-    # CoTURN is deployed by NATPuncher; reuse its REST shared secret source.
+    # SIP Core uses Social/Matrix's existing TURN Secret in the shared namespace.
     enabled: true
     hostname: 'nat.mylogin.space'
     port: 3478
@@ -735,12 +735,8 @@ asterisk:
     # Asterisk loads fixed TURN credentials at startup; restart before expiry.
     credentialLifetimeSeconds: '31536000'
     secret:
-      name: 'avoip-asterisk-turn-auth'
-      secretStoreRef:
-        kind: 'ClusterSecretStore'
-        name: 'corevault-rootsecrets'
-      remoteKey: 'Network/NATPuncher/yxl/dc1/core-dc1-talos-prod/TurnAuth'
-      remoteProperty: 'Secret'
+      name: 'matrix-turn-auth'
+      key: 'TURN_SHARED_SECRET'
 
 freeswitch:
   enabled: true

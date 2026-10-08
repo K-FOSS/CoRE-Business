@@ -65,7 +65,7 @@
     {{- end -}}
   {{- end -}}
 {{- end -}}
-{{- if .Values.asterisk.turn.enabled -}}
+{{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled -}}
   {{- if not (regexMatch "^[A-Za-z0-9.-]+$" .Values.asterisk.turn.hostname) -}}
     {{- fail "asterisk.turn.hostname must be a DNS hostname when TURN is enabled" -}}
   {{- end -}}
@@ -79,12 +79,12 @@
     {{- fail "asterisk.turn.credentialLifetimeSeconds must be between one day and one year" -}}
   {{- end -}}
   {{- $_ := required "asterisk.turn.secret.name is required when TURN is enabled" .Values.asterisk.turn.secret.name -}}
-  {{- $_ := required "asterisk.turn.secret.secretStoreRef.kind is required when TURN is enabled" .Values.asterisk.turn.secret.secretStoreRef.kind -}}
-  {{- $_ := required "asterisk.turn.secret.secretStoreRef.name is required when TURN is enabled" .Values.asterisk.turn.secret.secretStoreRef.name -}}
-  {{- $_ := required "asterisk.turn.secret.remoteKey is required when TURN is enabled" .Values.asterisk.turn.secret.remoteKey -}}
-  {{- $_ := required "asterisk.turn.secret.remoteProperty is required when TURN is enabled" .Values.asterisk.turn.secret.remoteProperty -}}
+  {{- $_ := required "asterisk.turn.secret.key is required when TURN is enabled" .Values.asterisk.turn.secret.key -}}
   {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" .Values.asterisk.turn.secret.name) -}}
     {{- fail "asterisk.turn.secret.name must be a Kubernetes Secret name" -}}
+  {{- end -}}
+  {{- if not (regexMatch "^[A-Za-z0-9._-]+$" .Values.asterisk.turn.secret.key) -}}
+    {{- fail "asterisk.turn.secret.key must be a valid Kubernetes Secret data key" -}}
   {{- end -}}
 {{- end -}}
 ---

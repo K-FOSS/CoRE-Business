@@ -153,8 +153,8 @@ relays the browser media leg using its configured public media interface and
 UDP range. Keep `asterisk.sipCore.media.enabled` disabled: the chart rejects
 direct Asterisk RTP exposure while SIP Core is enabled. This change reuses the
 existing RTPEngine deployment and does not create another media topology.
-Asterisk reads the same CoTURN REST signing secret source used by Social/Matrix
-through its own `avoip-asterisk-turn-auth` ExternalSecret. At startup, it
+Asterisk mounts the existing `matrix-turn-auth` Secret from Social/Matrix
+using its `TURN_SHARED_SECRET` key. At startup, it
 derives a CoTURN-compatible, time-limited username and password in the
 container's private `/tmp` and includes them in `rtp.conf`; no secret or derived
 password is placed in Helm values or a ConfigMap. The generated credential is
@@ -181,12 +181,12 @@ transports` lists `transport-tls`, and `pjsip show contacts` lists the
 registered extension. Then test the echo target and confirm the selected ICE
 pair and bidirectional audio from an external browser network.
 
-For TURN verification, confirm `ExternalSecret/avoip-asterisk-turn-auth` is
-Ready without printing Secret contents, then inspect the Asterisk log for
+For TURN verification, confirm `ExternalSecret/matrix-turn-auth` is Ready
+without printing Secret contents, then inspect the Asterisk log for
 successful ICE/TURN candidate creation with PJSIP packet tracing disabled.
 Never copy the generated TURN password or SIP Authorization data into logs or
-support output. The Secret is retained if the AVoIP ExternalSecret is removed;
-review it through the approved secret workflow before deleting or rotating it.
+support output. The Secret remains owned by Social/Matrix, so leave its
+lifecycle and rotation there; Asterisk only mounts it read-only.
 
 This static extension pilot is separate from the planned dynamic SIP registrar,
 Authentik credential broker, and first-party webphone. It does not satisfy the
