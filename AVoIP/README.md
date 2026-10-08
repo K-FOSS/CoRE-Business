@@ -37,7 +37,7 @@ uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
   independently deployable; media integration is conditional on the relevant
   SIP workloads also being enabled.
 - `livekit.enabled` and the per-site LiveKit public media Service provider.
-  LiveKit is enabled for the DC1 hub and Home1; `dc1-k3s-node1` stays
+  LiveKit is enabled for Home1/YVR; DC1/YXL and `dc1-k3s-node1` stay
   disabled. LiveKit uses pod networking; its UDP and TCP media ports are
   exposed only through the site media LoadBalancer.
 - `hub` metadata for spoke clusters.
@@ -107,7 +107,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 | FreeSWITCH | Private call control, voice DID, fax `rxfax`, and Secret-backed configuration. | [Call path](docs/PHONE-TREE.md), [fax verification](docs/SIP-IDENTITY.md) |
 | RTPEngine | Public media anchor with private NG control and Valkey recovery state. | [RTPEngine HA](docs/avoip/rtpengine-ha.md) |
 | Homer 11 | Internal HEP capture and Authentik-protected UI where enabled. | [Homer](docs/HOMER.md), [audio playback](docs/HOMER-AUDIO.md) |
-| LiveKit | Independent WebRTC signaling and media stack on DC1 and Home1. | [LiveKit deployment](docs/LIVEKIT.md) |
+| LiveKit | Independent WebRTC signaling and media stack on Home1/YVR. | [LiveKit deployment](docs/LIVEKIT.md) |
 | Speech | External dependency from the AI stack; no local Vosk or Mycroft workload. | [Speech architecture](#speech-architecture-and-todos) |
 | Jitsi Meet | Pinned dependency, disabled by default. | [Upstream chart](https://github.com/jitsi-contrib/jitsi-helm) |
 
@@ -248,7 +248,7 @@ and owning ApplicationSet values if a site instance change must be reverted.
 ## LiveKit Server
 
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-enables LiveKit for DC1 and Home1. It has its own HTTPS signaling route and
+enables LiveKit for Home1/YVR. It has its own HTTPS signaling route and
 public UDP/TCP media Service; it does not share Kamailio or RTPEngine media.
 The rendered configuration uses site-local TLS Dragonfly, Secret-backed API
 keys, and a separate public address. External media reachability still needs

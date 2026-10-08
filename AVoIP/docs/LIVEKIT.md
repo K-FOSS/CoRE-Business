@@ -6,7 +6,7 @@ verified.
 
 The [official LiveKit Server Helm chart](https://github.com/livekit/livekit-helm/tree/master/livekit-server)
 is pinned to chart `1.9.0` from the [official `helm.livekit.io` chart repository](https://helm.livekit.io).
-It is enabled for the DC1 hub and Home1 by the active
+It is enabled for Home1/YVR by the active
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The chart is configured for one
 [official `livekit/livekit-server` image](https://hub.docker.com/r/livekit/livekit-server)
