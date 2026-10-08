@@ -169,6 +169,8 @@ data:
     outbound_auth=freeswitch-auth
     auth=freeswitch-inbound-auth
     trust_id_outbound=yes
+    from_user=freeswitch
+    from_domain={{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
     identify_by=username,auth_username
     aors=freeswitch
     context=from-external
