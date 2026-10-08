@@ -5,6 +5,10 @@
 {{- $freeswitchRtpEnd = sub (.Values.rtpengine.media.max | int) 1 -}}
 {{- end }}
 {{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host -}}
+{{- $ldapDirectoryFilter := "(&amp;(objectClass=user)(cn=%s)" -}}
+{{- if .Values.asterisk.enabled -}}
+{{- $ldapDirectoryFilter = printf "%s(!(cn=freeswitch))" $ldapDirectoryFilter -}}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -16,7 +20,7 @@ data:
     <configuration name="xml_ldap.conf" description="LDAP directory gateway">
       <bindings>
         <binding name="directory">
-          <param name="filter" value="(&amp;(objectClass=user)(cn=%s))" bindings="directory"/>
+          <param name="filter" value="{{ $ldapDirectoryFilter }})" bindings="directory"/>
           <param name="basedn" value="ou=users,dc=ldap,dc=mylogin,dc=space"/>
           <param name="url" value="ldaps://ldap-{{ .Values.datacenter }}.mylogin.space"/>
           <param name="binddn" value="cn=$${username},ou=users,dc=ldap,dc=mylogin,dc=space"/>

@@ -228,3 +228,9 @@ and the [XML dialplan documentation](https://developer.signalwire.com/freeswitch
 The LDAP lookup behavior follows [mod_xml_ldap](https://developer.signalwire.com/freeswitch/module-reference/xml-interfaces/mod_xml_ldap/),
 and the profile authentication boundary follows the [Sofia SIP profile
 documentation](https://developer.signalwire.com/freeswitch/users-and-endpoints/sip-profiles/).
+When Asterisk is enabled, the reserved `freeswitch` peer is excluded from the
+LDAP directory filter so FreeSWITCH uses its mounted static directory entry
+and the Secret-backed Digest password. Other directory lookups continue using
+LDAP. This keeps the Asterisk peer authentication lookup separate from LDAP
+call routing and avoids sending this dedicated peer through the LDAP XML
+callback.

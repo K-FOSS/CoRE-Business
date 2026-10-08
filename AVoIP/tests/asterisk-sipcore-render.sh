@@ -168,6 +168,7 @@ yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch")
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.spec.initContainers[]? | any(.env[]?; .name == "ASTERISK_PEER_PASSWORD")' "$tmp_dir/empty-matches.yaml" >/dev/null && fail 'Asterisk peer password is exposed to an unrelated FreeSWITCH init container'
 grep -Fq '<user id="freeswitch">' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH has no static peer directory identity for the Secret-backed Asterisk Digest credential'
 grep -Fq 'value="$${asterisk_peer_password}"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH peer directory password is not sourced from the generated Secret'
+grep -Fq '(cn=%s)(!(cn=freeswitch)))' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk peer lookup is still sent to LDAP instead of the static Secret-backed directory entry'
 grep -Fq '<context name="from-asterisk">' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH dedicated Asterisk dialplan interface is missing'
 grep -Fq '<extension name="gg-audio">' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH gg-audio dialplan user is missing'
 grep -Fq 'destination_number" expression="^gg-audio$"' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH does not match the gg-audio destination'
