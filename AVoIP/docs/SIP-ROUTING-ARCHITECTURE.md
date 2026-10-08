@@ -146,7 +146,9 @@ accounts, group membership, extension assignment, and revocation. SIP
 HA1 verifier for a fixed realm or a server that can verify the full SIP digest
 challenge. The existing FreeSWITCH LDAP integration maps the custom
 `fsPassword` and `fsA1Hash` attributes; its current private Asterisk profile
-queries that directory with the chart's `User` claim. The Backplane
+no longer queries that directory while `freeswitch.ldap.enabled` is false.
+LDAP-backed SIP directory lookups are temporarily unavailable; the dedicated
+Asterisk peer instead uses its static Secret-backed Digest account. The Backplane
 [User implementation](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/README.md)
 says its `AVoIP` claim field is not consumed, so the presence and lifecycle of
 those custom SIP verifier attributes must be verified before relying on them.

@@ -62,6 +62,7 @@ fi
 render_sipcore --set-string asterisk.sipCore.ggAudioDestination=custom-audio > "$tmp_dir/custom-gg-destination.yaml"
 render_sipcore --set asterisk.turn.enabled=false > "$tmp_dir/turn-disabled.yaml"
 render_sipcore --set asterisk.turn.enabled=true > "$tmp_dir/turn-enabled.yaml"
+render_sipcore --set freeswitch.ldap.enabled=true > "$tmp_dir/ldap-enabled.yaml"
 grep -Fq 'matrix-turn-auth' "$tmp_dir/sipcore-disabled.yaml" && fail 'Asterisk TURN depends on the Matrix Secret when SIP Core is disabled'
 grep -Fq 'endpoint_identifier_order=username,auth_username,ip,anonymous' "$tmp_dir/empty-matches.yaml" || fail 'PJSIP identifier order is incorrect'
 grep -Fq 'require = res_pjsip_endpoint_identifier_user.so' "$tmp_dir/empty-matches.yaml" || fail 'username identifier module is not required'
@@ -77,6 +78,9 @@ grep -Fq 'Dial(PJSIP/custom-audio@freeswitch,30)' "$tmp_dir/custom-gg-destinatio
 grep -Fq 'destination_number" expression="^custom-audio$"' "$tmp_dir/custom-gg-destination.yaml" || fail 'FreeSWITCH does not use the configured GG SIP destination'
 grep -Fq 'max_contacts=2' "$tmp_dir/empty-matches.yaml" || fail 'existing AOR contact limit was not rendered'
 grep -Fq 'webrtc=yes' "$tmp_dir/empty-matches.yaml" || fail 'WebRTC endpoint settings are missing'
+if awk '/^\[freeswitch\]$/ { section++; active = (section == 1); next } active && /^\[/ { active = 0 } active && /^ice_support=/ { found = 1 } END { exit !found }' "$chart_dir/templates/Asterisk/AsteriskConfigTemplate.yaml"; then
+  fail 'FreeSWITCH Asterisk peer must not negotiate browser ICE on its server-to-server media leg'
+fi
 grep -Fq 'direct_media=no' "$tmp_dir/empty-matches.yaml" || fail 'direct_media=no was not preserved'
 grep -Fq 'allow=ulaw,alaw' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core codecs were not preserved'
 grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS transport was not rendered'
@@ -168,7 +172,6 @@ yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch")
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.spec.initContainers[]? | any(.env[]?; .name == "ASTERISK_PEER_PASSWORD")' "$tmp_dir/empty-matches.yaml" >/dev/null && fail 'Asterisk peer password is exposed to an unrelated FreeSWITCH init container'
 grep -Fq '<user id="freeswitch">' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH has no static peer directory identity for the Secret-backed Asterisk Digest credential'
 grep -Fq 'value="$${asterisk_peer_password}"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH peer directory password is not sourced from the generated Secret'
-grep -Fq '(cn=%s)(!(cn=freeswitch)))' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk peer lookup is still sent to LDAP instead of the static Secret-backed directory entry'
 grep -Fq '<context name="from-asterisk">' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH dedicated Asterisk dialplan interface is missing'
 grep -Fq '<extension name="gg-audio">' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH gg-audio dialplan user is missing'
 grep -Fq 'destination_number" expression="^gg-audio$"' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH does not match the gg-audio destination'
@@ -184,9 +187,15 @@ grep -Fq 'immutable: true' "$tmp_dir/empty-matches.yaml" || fail 'generated peer
 grep -Fq 'password" value="$${asterisk_peer_password}"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH gateway Digest password is not sourced from its Secret'
 grep -Fq 'pjsip set logger on' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk SIP packet logging could expose Digest headers'
 grep -Fq '<param name="sip-trace" value="false"/>' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile SIP packet tracing is not disabled'
+if grep -Fq 'mod_xml_ldap' "$tmp_dir/empty-matches.yaml"; then
+  fail 'FreeSWITCH LDAP directory is active while freeswitch.ldap.enabled is false'
+fi
+grep -Fq '<load module="mod_xml_ldap"/>' "$tmp_dir/ldap-enabled.yaml" || fail 'FreeSWITCH LDAP module cannot be re-enabled through values'
 asterisk_profile="$(sed -n '/<profile name="asterisk">/,/<\/profile>/p' "$tmp_dir/empty-matches.yaml")"
 grep -Fq '<param name="auth-calls" value="true"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not require SIP Digest authentication'
 grep -Fq '<param name="context" value="from-asterisk"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not use its dedicated dialplan context'
+grep -Fq '<param name="inbound-codec-prefs" value="PCMU"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not accept the Asterisk peer ulaw/PCMU codec'
+grep -Fq '<param name="outbound-codec-prefs" value="PCMU"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not offer the Asterisk peer ulaw/PCMU codec'
 grep -Fq '<param name="apply-inbound-acl" value="asterisk"/>' <<<"$asterisk_profile" && fail 'FreeSWITCH Asterisk profile can bypass Digest through a broad private-network ACL'
 grep -Fq 'type=aor' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH AOR configuration was removed'
 grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH TLS transport was removed'

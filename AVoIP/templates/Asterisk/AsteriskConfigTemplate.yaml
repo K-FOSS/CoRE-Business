@@ -177,7 +177,6 @@ data:
     disallow=all
     allow=ulaw
     direct_media=no
-    ice_support=yes
 
     [freeswitch]
     type=aor

@@ -75,24 +75,30 @@ Flowroute SMS/SIP MESSAGE handling is provided by the
 External Secret `freeswitch-sms` at
 `/etc/freeswitch/autoload_configs/sms_flowroute.conf.xml`.
 
-The module is explicitly loaded in the reduced `modules.conf.xml` alongside
-Sofia, XML LDAP, XML dialplan, logging, command, DTMF/application, and Opus
-support. Messages are not sent through the voice dialplan; they are handled by
-the Flowroute SMS module and the registered directory identity.
+The reduced `modules.conf.xml` loads Sofia, XML dialplan, logging, command,
+DTMF/application, and Opus support. `mod_xml_ldap` is temporarily disabled by
+default because it crashes on the dedicated Asterisk authentication lookup.
+The Flowroute SMS module remains loaded, but directory-backed user lookups are
+unavailable while LDAP is disabled.
 SMS is enabled by default through `freeswitch.sms.enabled`; disabling it omits
 both the SMS modules and the External Secret-backed Flowroute SMS configuration.
 
 ## Registration and directory
 
-FreeSWITCH loads the LDAP directory integration from
-[FreeSwitchMiscConfig.yaml](../templates/FreeSwitch/FreeSwitchMiscConfig.yaml).
-The LDAPS server hostname is selected from the chart's `datacenter` value as
-`ldap-<datacenter>.mylogin.space`.
-The directory maps the current mylogin.space user attributes for identity,
-password, dial string, number alias, call group, ACL, and caller ID fields for
-authenticated internal SIP users.
-The FreeSWITCH `User` claim supplies the service identity credentials used by
-the container; production Secret values are intentionally not documented.
+FreeSWITCH LDAP directory integration is temporarily disabled by default with
+`freeswitch.ldap.enabled: false`. This omits the `mod_xml_ldap` module and its
+configuration mount. Re-enabling the value loads the LDAP directory from
+[FreeSwitchMiscConfig.yaml](../templates/FreeSwitch/FreeSwitchMiscConfig.yaml);
+the LDAPS server hostname is selected from `datacenter` as
+`ldap-<datacenter>.mylogin.space`. The directory maps mylogin.space user
+attributes for identity, password, dial string, number alias, call group, ACL,
+and caller ID fields. Dynamic LDAP-backed SIP users are unavailable while the
+integration is disabled.
+
+The Asterisk peer uses its separate static directory entry, whose Digest
+password comes from the shared Secret. It does not require the LDAP directory.
+The FreeSWITCH `User` claim remains for the service identity credentials used
+by the container; production Secret values are intentionally not documented.
 
 The active SIP profiles are defined in
 [FreeSwitchSIPConfig.yaml](../templates/FreeSwitch/FreeSwitchSIPConfig.yaml):
@@ -228,9 +234,3 @@ and the [XML dialplan documentation](https://developer.signalwire.com/freeswitch
 The LDAP lookup behavior follows [mod_xml_ldap](https://developer.signalwire.com/freeswitch/module-reference/xml-interfaces/mod_xml_ldap/),
 and the profile authentication boundary follows the [Sofia SIP profile
 documentation](https://developer.signalwire.com/freeswitch/users-and-endpoints/sip-profiles/).
-When Asterisk is enabled, the reserved `freeswitch` peer is excluded from the
-LDAP directory filter so FreeSWITCH uses its mounted static directory entry
-and the Secret-backed Digest password. Other directory lookups continue using
-LDAP. This keeps the Asterisk peer authentication lookup separate from LDAP
-call routing and avoids sending this dedicated peer through the LDAP XML
-callback.

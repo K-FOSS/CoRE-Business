@@ -125,7 +125,10 @@ as a Secret to Asterisk and FreeSWITCH; it is not sourced from a User resource,
 ConfigMap, or Helm value. FreeSWITCH keeps Flowroute inbound traffic on its
 separate source-ACL-protected external profile, so carrier ingress does not
 bypass application authentication. See [PHONE-TREE.md](docs/PHONE-TREE.md)
-for the call paths and verification checks.
+for the call paths and verification checks. The LDAP-backed FreeSWITCH
+directory is temporarily disabled by default with `freeswitch.ldap.enabled`;
+dynamic directory users are unavailable until it is re-enabled after the
+authentication lookup failure is resolved.
 
 The Asterisk `freeswitch` endpoint is identified by its SIP username and
 authenticates inbound requests with SIP Digest. An External Secrets Password
