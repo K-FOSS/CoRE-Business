@@ -209,7 +209,7 @@
         rtpengine_manage();
       }
       if (is_method("INVITE") && !has_totag()) {
-        record_route_preset("sip:{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
+        record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
       }
       route(TO_SIPCORE_ASTERISK);
       route(PRIVATE_RELAY);
@@ -240,7 +240,7 @@
           exit;
         }
         if (is_method("INVITE") && !has_totag()) {
-          record_route_preset("sip:{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
+          record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
         }
       }
       if (has_body("application/sdp")) {

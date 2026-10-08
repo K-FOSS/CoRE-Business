@@ -89,8 +89,11 @@ grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir
 if grep -Eq 'record_route_preset\("sip:[^"]+;transport=wss"\)' "$tmp_dir/empty-matches.yaml"; then
   fail 'Kamailio passes an unsupported WSS Record-Route transport to Asterisk'
 fi
+if grep -Fq 'record_route_preset("sip:' "$tmp_dir/empty-matches.yaml"; then
+  fail 'Kamailio record_route_preset incorrectly includes a scheme that the function adds itself'
+fi
 rtpengine_sdp_line="$(grep -n 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
-record_route_line="$(grep -n 'record_route_preset("sip:siptest-avoip-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063;transport=tls")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
+record_route_line="$(grep -n 'record_route_preset("siptest-avoip-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063;transport=tls")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 if [[ -z "$rtpengine_sdp_line" || -z "$record_route_line" || "$rtpengine_sdp_line" -ge "$record_route_line" ]]; then
   fail 'RTPEngine SDP updates must happen before adding Record-Route'
 fi
