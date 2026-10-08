@@ -35,6 +35,9 @@
   {{- if or (eq (int .Values.asterisk.sipCore.privateEgressPort) 5060) (eq (int .Values.asterisk.sipCore.privateEgressPort) 5061) (eq (int .Values.asterisk.sipCore.privateEgressPort) 5062) (eq (int .Values.asterisk.sipCore.privateEgressPort) (int .Values.asterisk.sipCore.httpPort)) -}}
     {{- fail "asterisk.sipCore.privateEgressPort must not collide with the existing SIP or WebSocket ports" -}}
   {{- end -}}
+  {{- if not (regexMatch "^[1-9][0-9]*(s|m|h)$" (toString .Values.asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout)) -}}
+    {{- fail "asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout must be a positive duration in seconds, minutes, or hours" -}}
+  {{- end -}}
   {{- if not .Values.asterisk.sipCore.allowedOrigins -}}
     {{- fail "asterisk.sipCore.allowedOrigins must include the Home Assistant HTTPS origin when SIP Core is enabled" -}}
   {{- end -}}

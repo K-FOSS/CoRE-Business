@@ -701,6 +701,10 @@ asterisk:
     gatewaySectionName: ''
     allowedOrigins: []
     httpPort: 8088
+    backendTrafficPolicy:
+      # Keep a quiet but connected WebSocket stream open; Kamailio sends
+      # client keepalive pings every 15 seconds on the private role.
+      streamIdleTimeout: '1h'
     # Private TLS ingress used only for Asterisk-originated calls to registered
     # SIP Core WebSocket contacts. The normal Kamailio/FreeSWITCH listener stays
     # on 5062; this port is restricted to the Asterisk workload.

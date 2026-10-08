@@ -1,5 +1,6 @@
 {{- define "avoip.kamailio.render.BackendTrafficPolicy" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- $sipCoreEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) -}}
 {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 ---
@@ -14,6 +15,21 @@ spec:
       name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}
   proxyProtocol:
     version: V2
+{{- end }}
+{{- if $sipCoreEnabled }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-wss-timeouts") }}
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sipcore-wss") }}'
+  timeout:
+    http:
+      streamIdleTimeout: '{{ .Values.asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout }}'
 {{- end }}
 {{ end }}
 {{- $root := . -}}

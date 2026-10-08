@@ -53,6 +53,9 @@ fi
 if render_sipcore --set-string asterisk.sipCore.ggAudioDestination='bad destination' >"$tmp_dir/invalid-gg-destination.yaml" 2>&1; then
   fail 'invalid FreeSWITCH GG audio SIP destination rendered'
 fi
+if render_sipcore --set-string asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout=0 >"$tmp_dir/invalid-wss-timeout.yaml" 2>&1; then
+  fail 'invalid SIP Core WebSocket stream idle timeout rendered'
+fi
 if helm template siptest "$chart_dir" --set freeswitch.asterisk.tlsPort=5061 >"$tmp_dir/colliding-freeswitch-port.yaml" 2>&1; then
   fail 'FreeSWITCH Asterisk TLS listener rendered on the public/Kamailio TLS port'
 fi
@@ -208,6 +211,10 @@ grep -Fq 'allowedOrigins: []' "$chart_dir/values.yaml" || fail 'configurable WSS
 grep -Fq "value: '/ws'" "$tmp_dir/empty-matches.yaml" || fail 'SIP Core route no longer matches /ws'
 grep -Fq 'port: 8088' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core route no longer targets port 8088'
 grep -Fq "name: 'siptest-avoip-kamailio-internal'" "$tmp_dir/empty-matches.yaml" || fail 'SIP Core HTTPRoute does not target the internal Kamailio Service'
+yq -e 'select(.kind == "BackendTrafficPolicy" and .metadata.name == "siptest-avoip-kamailio-internal-sipcore-wss-timeouts") | .spec.targetRefs[0].kind == "HTTPRoute" and .spec.targetRefs[0].name == "siptest-avoip-sipcore-wss" and .spec.timeout.http.streamIdleTimeout == "1h"' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'SIP Core stream idle policy is missing or targets the wrong HTTPRoute'
+if yq -e 'select(.kind == "BackendTrafficPolicy" and .spec.targetRefs[0].kind == "HTTPRoute")' "$tmp_dir/sipcore-disabled.yaml" >/dev/null; then
+  fail 'SIP Core WebSocket BackendTrafficPolicy is present while SIP Core is disabled'
+fi
 yq -e 'select(.kind == "Service" and .metadata.name == "siptest-avoip-kamailio-internal-sipcore-return") | any(.spec.ports[]; .port == 5063 and .targetPort == "sipcore-tls")' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'Asterisk return listener lacks its dedicated SNI Service'
 yq -e 'select(.kind == "Certificate" and .metadata.name == "siptest-avoip-kamailio-internal-sip-tls") | .spec.dnsNames | contains(["siptest-avoip-kamailio-internal-sipcore-return.core-prod.svc.cluster.local"])' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'internal Kamailio certificate does not cover the Asterisk return SNI'
 

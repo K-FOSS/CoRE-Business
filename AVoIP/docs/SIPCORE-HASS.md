@@ -112,7 +112,12 @@ behavior.
   a ConfigMap. Use at least 32 hexadecimal characters.
 - Adds a public HTTPRoute for only `/ws` on the existing Gateway HTTPS listener.
   It forwards the WebSocket to the selected private Kamailio Service on port
-  8088. The private policy admits the Envoy data-plane on that port and the
+  8088. A route-scoped Envoy Gateway
+  [BackendTrafficPolicy](https://gateway.envoyproxy.io/docs/concepts/gateway_api_extensions/backend-traffic-policy/)
+  sets the WebSocket stream idle timeout from
+  `asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout` (default `1h`);
+  Kamailio keepalive pings are configured separately. The
+  private policy admits the Envoy data-plane on that port and the
   Asterisk workload on the TLS return port. No public Asterisk SIP or AMI
   listener is added.
 - Places every SIP Core extension in its own dialplan context. `allowCallsTo`
