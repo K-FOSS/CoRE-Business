@@ -29,6 +29,9 @@ yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-misc-configs") | .data["asterisk-peer.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/asterisk-peer.xml"
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/public.xml"
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/asterisk.xml"
+if grep -Fq 'gg-audio' "$tmp_dir/sipcore-disabled.yaml"; then
+  fail 'FreeSWITCH GG audio route is present while SIP Core is disabled'
+fi
 if render_sipcore --set-string asterisk.sipCore.extensions[0].secret.remoteKey= >"$tmp_dir/missing-secret.yaml" 2>&1; then
   fail 'SIP Core rendered without an ExternalSecret password reference'
 fi
@@ -47,6 +50,10 @@ fi
 if render_sipcore --set asterisk.sipCore.privateEgressPort=5061 >"$tmp_dir/invalid-private-egress-port.yaml" 2>&1; then
   fail 'SIP Core private TLS egress port collided with the existing TLS listener'
 fi
+if render_sipcore --set-string asterisk.sipCore.ggAudioDestination='bad destination' >"$tmp_dir/invalid-gg-destination.yaml" 2>&1; then
+  fail 'invalid FreeSWITCH GG audio SIP destination rendered'
+fi
+render_sipcore --set-string asterisk.sipCore.ggAudioDestination=custom-audio > "$tmp_dir/custom-gg-destination.yaml"
 render_sipcore --set asterisk.turn.enabled=false > "$tmp_dir/turn-disabled.yaml"
 render_sipcore --set asterisk.turn.enabled=true > "$tmp_dir/turn-enabled.yaml"
 grep -Fq 'matrix-turn-auth' "$tmp_dir/sipcore-disabled.yaml" && fail 'Asterisk TURN depends on the Matrix Secret when SIP Core is disabled'
@@ -59,6 +66,9 @@ grep -Fq 'auth={{ .number }}' "$tmp_dir/empty-matches.yaml" || grep -Fq 'auth=71
 grep -Fq 'context=from-sipcore-7101' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core extension context is missing'
 grep -Fq 'exten => 9090,1,Answer()' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core echo destination is missing'
 grep -Fq 'Echo()' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core echo dialplan is missing'
+grep -Fq 'Dial(PJSIP/gg-audio@freeswitch,30)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk GG extension does not transfer to gg-audio@freeswitch'
+grep -Fq 'Dial(PJSIP/custom-audio@freeswitch,30)' "$tmp_dir/custom-gg-destination.yaml" || fail 'Asterisk GG destination is not configurable'
+grep -Fq 'destination_number" expression="^custom-audio$"' "$tmp_dir/custom-gg-destination.yaml" || fail 'FreeSWITCH does not use the configured GG SIP destination'
 grep -Fq 'max_contacts=2' "$tmp_dir/empty-matches.yaml" || fail 'existing AOR contact limit was not rendered'
 grep -Fq 'webrtc=yes' "$tmp_dir/empty-matches.yaml" || fail 'WebRTC endpoint settings are missing'
 grep -Fq 'direct_media=no' "$tmp_dir/empty-matches.yaml" || fail 'direct_media=no was not preserved'
@@ -144,10 +154,11 @@ yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch")
 grep -Fq '<user id="freeswitch">' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH has no static peer directory identity for the Secret-backed Asterisk Digest credential'
 grep -Fq 'value="$${asterisk_peer_password}"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH peer directory password is not sourced from the generated Secret'
 grep -Fq '<context name="from-asterisk">' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH dedicated Asterisk dialplan interface is missing'
-grep -Fq 'Add site-specific destinations and transfer scripts here' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH Asterisk dialplan customization point is undocumented'
-if grep -Eq 'ggAudioExtension|expression="\^66\$"|asterisk-gg-audio' "$tmp_dir/asterisk.xml"; then
-  fail 'FreeSWITCH Asterisk interface is hard-coded to GG extension 66'
-fi
+grep -Fq '<extension name="gg-audio">' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH gg-audio dialplan user is missing'
+grep -Fq 'destination_number" expression="^gg-audio$"' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH does not match the gg-audio destination'
+grep -Fq 'sip_auth_username}" expression="^freeswitch$"' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH GG audio route is not restricted to the authenticated Asterisk peer'
+grep -Fq 'data="shout://' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH GG audio route does not play the configured audio'
+grep -Fq 'Add other site-specific destinations and transfer scripts here' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH Asterisk dialplan customization point is undocumented'
 grep -Fq 'mountPath: /etc/freeswitch/dialplan/asterisk.xml' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH dedicated Asterisk dialplan file is not mounted'
 grep -Fq 'from-user" value="freeswitch' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH From identity does not select the named Asterisk endpoint'
 grep -Fq 'kind: Password' "$tmp_dir/empty-matches.yaml" || fail 'random peer password generator is missing'

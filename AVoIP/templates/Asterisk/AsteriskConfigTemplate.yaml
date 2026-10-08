@@ -49,6 +49,9 @@
   {{- if not (regexMatch "^[0-9]{2,8}$" (toString .Values.asterisk.sipCore.ggAudioExtension)) -}}
     {{- fail "asterisk.sipCore.ggAudioExtension must be 2-8 digits when SIP Core is enabled" -}}
   {{- end -}}
+  {{- if not (regexMatch "^[a-zA-Z0-9_.-]+$" (toString .Values.asterisk.sipCore.ggAudioDestination)) -}}
+    {{- fail "asterisk.sipCore.ggAudioDestination must be a valid SIP user when SIP Core is enabled" -}}
+  {{- end -}}
   {{- if eq (toString .Values.asterisk.sipCore.ggAudioExtension) (toString .Values.asterisk.sipCore.echoExtension) -}}
     {{- fail "asterisk.sipCore.ggAudioExtension must differ from echoExtension" -}}
   {{- end -}}

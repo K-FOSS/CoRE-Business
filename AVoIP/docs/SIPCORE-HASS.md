@@ -118,16 +118,18 @@ behavior.
 - Places every SIP Core extension in its own dialplan context. `allowCallsTo`
   lists exact local extension numbers and may include the configured echo
   extension for a loopback audio check. The configured `ggAudioExtension`
-  (default `66`) remains an Asterisk entry point that transfers into the
-  authenticated FreeSWITCH peer on TLS port `5061`. FreeSWITCH does not contain
-  a built-in route for `66` or any other test number. Its dedicated Asterisk
+  (default `66`) remains an Asterisk entry point that transfers the SIP user
+  `gg-audio` to the authenticated FreeSWITCH peer on TLS port `5061`. The
+  destination is configurable with `asterisk.sipCore.ggAudioDestination`.
+  FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
+  plays the configured GG audio. Its dedicated Asterisk
   profile requires SIP Digest and selects `from-asterisk`; the private-network
   ACL does not bypass authentication. The peer password is mounted from its
   Secret into both SIP processes. Add site-specific destinations and scripts
   to the `asterisk.xml` dialplan in
   [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
-  The `from-asterisk` context starts empty and has no catch-all or PSTN route,
-  so calls fail closed until a matching site-specific extension is added.
+  The `from-asterisk` context has no catch-all or PSTN route; only the explicit
+  `gg-audio` route is included by default.
 
 The chart does not enable this feature at a site. Set
 `asterisk.sipCore.kamailioInstance` to the name of an enabled `private-sbc`
@@ -165,9 +167,9 @@ The chart fails rendering for
 missing password references, invalid or duplicate extension numbers, and
 destinations that are not configured extensions or reserved test extensions.
 A SIP Core caller can dial `9090` for the echo test or the configured
-`ggAudioExtension` (default `66`) to transfer into FreeSWITCH's `from-asterisk`
-context. Add an explicit route in the FreeSWITCH `asterisk.xml` dialplan to
-select the behavior for that or any other transferred destination. A
+`ggAudioExtension` (default `66`) to transfer to the configurable SIP user
+`ggAudioDestination` (default `gg-audio`) on FreeSWITCH. Other transfer
+destinations can be added to the FreeSWITCH `asterisk.xml` dialplan. A
 changed password triggers an Asterisk restart so PJSIP auth and endpoint state
 are regenerated together.
 

@@ -698,6 +698,7 @@ asterisk:
     privateEgressPort: 5063
     echoExtension: '9090'
     ggAudioExtension: '66'
+    ggAudioDestination: 'gg-audio'
     secretStoreRef:
       kind: 'ClusterSecretStore'
       name: 'corevault-rootsecrets'

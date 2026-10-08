@@ -135,7 +135,20 @@ data:
   asterisk.xml: |
     <include>
       <context name="from-asterisk">
-        <!-- Add site-specific destinations and transfer scripts here. -->
+        {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+        <extension name="gg-audio">
+          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
+          <condition field="${sip_authorized}" expression="^true$"/>
+          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
+          <condition field="destination_number" expression="^{{ $.Values.asterisk.sipCore.ggAudioDestination }}$">
+            <action application="log" data="INFO AVoIP authenticated Asterisk GG audio request"/>
+            <action application="answer"/>
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
+            <action application="hangup"/>
+          </condition>
+        </extension>
+        {{- end }}
+        <!-- Add other site-specific destinations and transfer scripts here. -->
       </context>
     </include>
 
