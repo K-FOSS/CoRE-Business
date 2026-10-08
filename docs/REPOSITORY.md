@@ -153,9 +153,13 @@ for each AVoIP site. Home1/YVR uses G.711-only reception for its dedicated
 fax DID after a reported successful G.711 fax; T.38 has not worked there.
 The [AVoIP fax call path](../AVoIP/docs/PHONE-TREE.md) records the separate
 voice and fax routes and retained spool. The
-chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md) and
-[restricted outbound service-peer pilot](../AVoIP/docs/OUTBOUND-PILOT.md) are opt-in
-and is not enabled by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md),
+[restricted outbound service-peer pilot](../AVoIP/docs/OUTBOUND-PILOT.md) and
+[private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md)
+are opt-in and are not enabled by the
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+The registrar pilot requires a site-local `User` database claim and migration
+Job; it is not yet an operational SIP user service or WSS ingress.
 The Nextcloud administrator still needs to register `https://talk.mylogin.space`
 with the generated signaling secret and configure the `talk-media.mylogin.space`
 TURN endpoint; see [AVoIP setup and verification](../AVoIP/README.md#nextcloud-talk-high-performance-backend).

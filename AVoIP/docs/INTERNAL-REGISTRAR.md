@@ -9,9 +9,9 @@ active cluster state before enabling an instance.
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 injects only the `carrier` Kamailio instance at DC1, Home1, and the legacy
 DC1 cluster. Its public listener rejects `REGISTER` with 403. The chart's
-`private-sbc` role has a separate, opt-in mutual-TLS routing script with exact
-destination rules and a dedicated Cilium policy. It does not implement
-registration or subscriber authentication. No internal registrar is enabled.
+`private-sbc` role now contains a disabled-by-default registrar pilot with
+mutual-TLS ingress, Digest checks, exact allowed AoRs, database-only contact
+storage and a dedicated Cilium policy. No internal registrar is deployed.
 
 The [Backplane `User` XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
 has an `AVoIP` field, but its
@@ -22,6 +22,71 @@ currently makes Home1 writable and DC1 a standby; shared contact writes
 cannot be assumed independently available at both sites. The
 [storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
 does not supply a Kamailio registration database.
+
+## Implemented opt-in pilot and safety boundary
+
+Set `registrar.enabled: true` on one named `private-sbc` instance only after
+providing `realm`, `accessPeerName`, `allowedUsers`, and the
+`registrar.database` host, username and Secret name. The mTLS access peer must
+also appear in `privateRouting.peers` with its exact source CIDR, certificate
+DNS SAN and pod controller label. Keep the carrier entry in the complete
+`kamailio.instances[]` list. Home1 is the initial writable PostgreSQL site;
+the [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
+shows DC1 as a standby, so do not enable a DC1 registrar against that writer.
+
+When enabled, the chart creates a per-instance private Deployment, TLS
+Service/certificate, a `User.mylogin.space` PostgreSQL service claim, a
+stable connection Secret reference, a BJW-S migration Job and two Cilium
+policies. The Job applies the pinned Kamailio 6.1.4 `standard`, `auth_db` and
+`usrloc` PostgreSQL schemas under an advisory transaction lock; it checks
+schema versions and fails instead of silently replacing unknown tables.
+Argo CD runs the claim at wave -2, migration at wave 0 and registrar Deployment
+at wave 1. Resource-selective sync skips hooks: use a scoped full application
+sync when first provisioning the schema. The database and claim can outlive
+the registrar workload; deleting an instance is not credential revocation.
+
+The pilot requires a verified TLS peer and exact source CIDR before any
+REGISTER or initial INVITE. `auth_db` verifies a precomputed realm-specific
+HA1 in `subscriber`; the client authenticates REGISTER and initial INVITE,
+and the authenticated username must match the To/From AoR. Only explicitly
+listed pilot users may register or call another listed registered AoR.
+`registrar` limits contacts and expiry; `usrloc` mode 3 reads/writes the
+site-local PostgreSQL `location` table. No browser ingress, public route,
+Flowroute ACL addition, PSTN entitlement or second media anchor is created.
+The Kamailio connector and migration client require hostname-verified TLS to
+PostgreSQL; confirm the site-local `psql-int` certificate chain and hostname
+are trusted by the pinned container before attempting to enable the pilot.
+Raw SIP logging is disabled and rejected for an enabled registrar so Digest
+responses are not written to pod logs. Module behavior follows the pinned
+[Kamailio `auth_db`](https://www.kamailio.org/docs/modules/6.1.x/modules/auth_db.html),
+[`registrar`](https://www.kamailio.org/docs/modules/6.1.x/modules/registrar.html),
+and [`usrloc`](https://www.kamailio.org/docs/modules/6.1.x/modules/usrloc.html)
+documentation.
+
+This is **not yet an operational user registrar**. There is no SIP HA1
+credential broker, immutable-user mapping, credential expiry or automated
+revocation/contact invalidation. The Backplane `User` claim provisions only
+the database identity, not SIP subscribers. WSS Path/connection ownership,
+keepalives and reconnection are untested, so the pilot must remain off in
+production until these gaps are closed. Do not insert primary LDAP passwords
+into `subscriber`. Rollback is to disable the named instance in the owning
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
+allow contacts to expire, and explicitly audit the retained database, Secret
+and service identity before any deletion. Carrier and fax resources remain
+separate.
+
+CI-safe checks are `helm lint AVoIP`,
+`./AVoIP/tests/kamailio-instances.sh`,
+`./AVoIP/tests/sip-security-render.sh` and
+`./AVoIP/tests/sip-registrar-render.sh`. On 2026-10-07 the opt-in private
+configuration also passed `kamailio -c` in the pinned 6.1.4 image (only the
+expected networkless Service DNS warning). The rendered Cilium policies
+passed a server-side dry run against the DC1 CRD. The generated schema Job
+was executed twice against an isolated PostgreSQL 17 container: the first
+run created `version`, `subscriber`, `location`, and `location_attrs`, and the
+second committed without recreating them. The disposable container was
+stopped. These checks do not prove live Home1 database provisioning, SIP
+Digest acceptance, contact routing, reconnection or call audio.
 
 ## Required identity and data contract
 
@@ -78,11 +143,9 @@ schema must be extended or a controlled reconciler added before live use.
    Confirm whether devices can use separate SIP credentials. Do not enable
    the registrar until this contract is fixed.
 2. Implement the credential issuer and extension projection with a revocation
-   path. Provision a dedicated `User.mylogin.space` service claim and stable
-   connection Secret for its PostgreSQL database. Use the pinned Kamailio
-   6.1 schema migration for `subscriber` and `location`, not a pod startup
-   script or a chart-private database. Check the database's actual write
-   authority at each pilot site.
+   path. The dedicated `User.mylogin.space` database claim and pinned schema
+   migration now render but have not been reconciled. Check the database's
+   actual write authority at the pilot site before enabling the instance.
 3. Add a named internal registrar role with only private TLS ingress, a
    distinct Service and certificate, narrowly scoped NetworkPolicy and source
    authorization, `auth_db`/`registrar`/`usrloc` configuration, and no public

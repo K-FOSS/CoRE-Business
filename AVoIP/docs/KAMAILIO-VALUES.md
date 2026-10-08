@@ -8,7 +8,7 @@ for workloads and Services. It runs the pinned
 [Kamailio 6.1.4 image](https://github.com/kamailio/kamailio-docker) and uses
 [TOPOS](https://www.kamailio.org/docs/modules/6.1.x/modules/topos.html) with a
 site-local Redis-compatible store. This page describes what the templates
-currently render; it does not describe a future registrar.
+currently render, including the disabled private registrar pilot.
 
 ## Value layers and instance identity
 
@@ -33,7 +33,8 @@ The `carrier-sbc` role enables media integration and public exposure. The
 media integration to off, and starts with one replica and disruption budget
 `minAvailable: 0`. Its direct TLS listener requires a verified client
 certificate and a configured source CIDR plus certificate DNS SAN. It rejects
-`REGISTER`; SIP Digest registration is not implemented yet.
+`REGISTER` unless the registrar pilot is explicitly enabled with a dedicated
+PostgreSQL service identity and named mTLS access peer.
 
 | Current site | Carrier instances and exposure |
 | --- | --- |
@@ -138,6 +139,9 @@ review of DNS and TLS certificate identity.
 | `privateRouting.peers[]` | `[]` | Private role peer `name`, `controller`, literal `cidr`, certificate `sanHostname`, and `allowedUsers` (exact numeric destination extensions). Source address, verified TLS DNS SAN, and per-peer destination permission must all match. Empty `allowedUsers` denies initial calls. |
 | `privateRouting.destinations[]` | `[]` | Private role dispatcher `setId`, literal `sips:<host>:<port>` `uri`, and destination pod `controller`. OPTIONS probing excludes failed destinations from new selection. |
 | `privateRouting.routes[]` | `[]` | Exact numeric `user` to configured `setId` mapping. No default external route or prefix match exists. |
+| `registrar.enabled`, `realm`, `accessPeerName`, `allowedUsers` | `false`, `''`, `''`, `[]` | Private-only Digest pilot. Requires a configured mTLS access peer and explicit numeric AoRs; browser/WSS ingress is not present. A Digest-authenticated peer can call only another listed registered AoR, never PSTN. |
+| `registrar.database.host`, `port`, `username`, `secretName`, `terraformProvider`, `crossplaneProvider` | `''`, `5432`, `''`, `''`, `''`, `''` | Site-local PostgreSQL service identity via the existing `User` Composition. The stable Secret supplies `psqlURI`, `username`, `password`, and `database`; no SIP secret is stored in it. Empty provider fields derive from site values. |
+| `registrar.maxContacts`, `minExpires`, `maxExpires` | `2`, `120`, `600` | Registrar contact and refresh limits; these do not substitute for credential expiry or active-contact revocation. |
 | `networkPolicy.envoy.namespace`, `networkPolicy.envoy.podName` | `envoy-gateway-system`, `envoy` | Labels used to permit Gateway data-plane ingress to public TLS/5061. Match the installed Gateway pods. |
 | `topology.enabled` | `true` | Enables Redis-backed TOPOS and its local TLS bridge. Both supported roles require this; disabling it fails role validation. |
 | `topology.redis.secretName`, `topology.redis.serverKey` | `avoip-kamailio-topos`, `server` | Secret containing the Redis server string consumed by Kamailio. Enabled instances need different Secret names. |

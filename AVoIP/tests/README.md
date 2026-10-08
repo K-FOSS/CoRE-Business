@@ -14,6 +14,13 @@ it only renders manifests and never sends SIP or places a public call. The
 quota Lua was additionally exercised against an isolated Dragonfly v1.39.0
 container; the separate operator call procedure is in the pilot document.
 
+`./sip-registrar-render.sh` checks the disabled-by-default private
+[registrar pilot](../docs/INTERNAL-REGISTRAR.md), its `User` PostgreSQL claim,
+ordered schema Job, Digest-gated AoR route, Secret references and database
+egress policy. It performs no REGISTER or database write. The rendered
+Kamailio configuration has also passed the pinned 6.1.4 parser; live Digest,
+contact and revocation tests remain required.
+
 `udp-carrier-ack-bye.xml` exercises a UDP INVITE through one Kamailio replica,
 checks that the 200 Contact is public UDP/5060 with a TOPOS token, and directs
 the 2xx ACK and BYE to a second Kamailio pod. This verifies cross-replica

@@ -1,0 +1,29 @@
+{{- $root := . -}}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if and $instance.enabled $instance.registrar.enabled -}}
+{{- $database := $instance.registrar.database -}}
+---
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: '{{ include "avoip.kamailio.resourceName" (dict "root" $root "instance" $instance "suffix" "registrar-db") }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+spec:
+  name: 'AVoIP {{ $instance.name }} registrar database'
+  username: '{{ $database.username }}'
+  serviceAccount: true
+  groups:
+    - 'LDAPService'
+  psql:
+    enabled: true
+    createUserDatabase: true
+    hostname: '{{ $database.host }}'
+    uri: 'postgres://'
+    crossplane:
+      terraformProvider: '{{ default (printf "psql-%s-%s" $root.Values.datacenter $root.Values.region) $database.terraformProvider }}'
+      crossplaneProvider: '{{ default (printf "psql-%s-%s" $root.Values.datacenter $root.Values.region) $database.crossplaneProvider }}'
+  writeConnectionSecretToRef:
+    name: '{{ $database.secretName }}'
+{{- end -}}
+{{- end -}}

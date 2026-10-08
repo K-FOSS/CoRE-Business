@@ -130,6 +130,10 @@
 {{ if .Values.kamailio.enabled }}
   {{ $component }}:
     forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+    {{- if .Values.kamailio.registrar.enabled }}
+    annotations:
+      argocd.argoproj.io/sync-wave: '1'
+    {{- end }}
     strategy: RollingUpdate
     rollingUpdate:
       surge: '{{ .Values.kamailio.rollingUpdate.surge }}'
@@ -285,6 +289,13 @@
               secretKeyRef:
                 name: '{{ .Values.kamailio.topology.redis.secretName }}'
                 key: '{{ .Values.kamailio.topology.redis.serverKey }}'
+{{- end }}
+{{- if .Values.kamailio.registrar.enabled }}
+          - name: REGISTRAR_DB_URL
+            valueFrom:
+              secretKeyRef:
+                name: '{{ .Values.kamailio.registrar.database.secretName }}'
+                key: 'psqlURI'
 {{- end }}
 {{- with .Values.kamailio.extraEnv }}
 {{ toYaml . | nindent 10 }}
@@ -843,6 +854,86 @@ controllers:
 {{- $_ := set $values "kamailio" $instance -}}
 {{- $ctx := dict "Values" $values "Release" $.Release "Chart" $.Chart "Files" $.Files "Capabilities" $.Capabilities -}}
 {{- include "avoip.kamailio.common.controllers" $ctx }}
+{{- if $instance.registrar.enabled }}
+  {{ include "avoip.kamailio.component" $instance }}-registrar-schema:
+    enabled: true
+    type: 'job'
+    forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance "suffix" "registrar-schema") }}'
+    serviceAccount:
+      name: '{{ $instance.serviceAccountName }}'
+    annotations:
+      argocd.argoproj.io/hook: 'Sync'
+      argocd.argoproj.io/hook-delete-policy: 'BeforeHookCreation,HookSucceeded'
+      argocd.argoproj.io/sync-wave: '0'
+    pod:
+      restartPolicy: 'OnFailure'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: 'RuntimeDefault'
+    containers:
+      migrate:
+        image:
+          repository: '{{ $instance.image.repository }}'
+          tag: '{{ $instance.image.tag }}'
+          digest: '{{ $instance.image.digest }}'
+          pullPolicy: '{{ $instance.image.pullPolicy }}'
+        command: ['/bin/sh', '-c']
+        args:
+          - |
+            set -eu
+            psql -v ON_ERROR_STOP=1 -h '{{ $instance.registrar.database.host }}' -p '{{ $instance.registrar.database.port }}' <<'SQL'
+            BEGIN;
+            SELECT pg_advisory_xact_lock(670061, 6104);
+            SELECT CASE WHEN to_regclass('public.version') IS NULL THEN 'true' ELSE 'false' END AS create_version \gset
+            \if :create_version
+            \i /usr/share/kamailio/postgres/standard-create.sql
+            \endif
+            SELECT CASE WHEN to_regclass('public.subscriber') IS NULL THEN 'true' ELSE 'false' END AS create_subscriber \gset
+            \if :create_subscriber
+            \i /usr/share/kamailio/postgres/auth_db-create.sql
+            \endif
+            SELECT CASE WHEN to_regclass('public.location') IS NULL THEN 'true' ELSE 'false' END AS create_location \gset
+            \if :create_location
+            \i /usr/share/kamailio/postgres/usrloc-create.sql
+            \endif
+            DO $$ BEGIN
+              IF (SELECT table_version FROM version WHERE table_name='subscriber') IS DISTINCT FROM 7 OR
+                 (SELECT table_version FROM version WHERE table_name='location') IS DISTINCT FROM 9 OR
+                 (SELECT table_version FROM version WHERE table_name='location_attrs') IS DISTINCT FROM 1 THEN
+                RAISE EXCEPTION 'Unsupported Kamailio registrar schema version';
+              END IF;
+            END $$;
+            COMMIT;
+            SQL
+        env:
+          - name: PGSSLMODE
+            value: 'verify-full'
+          - name: PGCONNECT_TIMEOUT
+            value: '5'
+          - name: PGUSER
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $instance.registrar.database.secretName }}'
+                key: 'username'
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $instance.registrar.database.secretName }}'
+                key: 'password'
+          - name: PGDATABASE
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $instance.registrar.database.secretName }}'
+                key: 'database'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+{{- end }}
 {{ end }}
 {{ end }}
 {{- if (include "avoip.rtpengine.enabled" . | trim) }}

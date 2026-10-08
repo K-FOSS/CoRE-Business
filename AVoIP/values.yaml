@@ -171,12 +171,34 @@ kamailio:
       replicas: 1
       publicExposure:
         enabled: false
+      sipLogging:
+        carrierTraffic: false
+        postToposResponses: false
+        rawInbound: false
+        diagnostics:
+          enabled: false
+          sdp: false
       # This role has no carrier route and accepts no peer until explicitly
       # configured for a site. Direct TLS peers never send PROXY headers.
       privateRouting:
         peers: []
         destinations: []
         routes: []
+      registrar:
+        enabled: false
+        realm: ''
+        accessPeerName: ''
+        allowedUsers: []
+        database:
+          host: ''
+          port: 5432
+          username: ''
+          secretName: ''
+          terraformProvider: ''
+          crossplaneProvider: ''
+        maxContacts: 2
+        minExpires: 120
+        maxExpires: 600
       podDisruptionBudget:
         minAvailable: 0
       functions:
@@ -340,6 +362,21 @@ kamailio:
       peers: []
       destinations: []
       routes: []
+    registrar:
+      enabled: false
+      realm: ''
+      accessPeerName: ''
+      allowedUsers: []
+      database:
+        host: ''
+        port: 5432
+        username: ''
+        secretName: ''
+        terraformProvider: ''
+        crossplaneProvider: ''
+      maxContacts: 2
+      minExpires: 120
+      maxExpires: 600
     networkPolicy:
       envoy:
         # Match the Envoy Gateway data-plane pods, not carrier source CIDRs.

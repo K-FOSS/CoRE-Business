@@ -26,6 +26,14 @@ spec:
     {{- end }}
     {{- end }}
   egress:
+    {{- if $instance.registrar.enabled }}
+    - toFQDNs:
+        - matchName: '{{ $instance.registrar.database.host }}'
+      toPorts:
+        - ports:
+            - port: '{{ $instance.registrar.database.port }}'
+              protocol: 'TCP'
+    {{- end }}
     {{- if $instance.carrierOutbound.enabled }}
     - toEndpoints:
         - matchLabels:
@@ -66,5 +74,38 @@ spec:
               protocol: 'UDP'
             - port: '53'
               protocol: 'TCP'
-{{- end }}
-{{- end }}
+{{ end }}
+{{ end }}
+{{ $root := . }}
+{{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+{{- if and $instance.enabled $instance.registrar.enabled -}}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: '{{ include "avoip.kamailio.resourceName" (dict "root" $root "instance" $instance "suffix" "registrar-schema-policy") }}'
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}-registrar-schema'
+      app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+  ingress: []
+  egress:
+    - toFQDNs:
+        - matchName: '{{ $instance.registrar.database.host }}'
+      toPorts:
+        - ports:
+            - port: '{{ $instance.registrar.database.port }}'
+              protocol: 'TCP'
+    - toEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': 'kube-system'
+            k8s-app: 'kube-dns'
+      toPorts:
+        - ports:
+            - port: '53'
+              protocol: 'UDP'
+            - port: '53'
+              protocol: 'TCP'
+{{- end -}}
+{{- end -}}

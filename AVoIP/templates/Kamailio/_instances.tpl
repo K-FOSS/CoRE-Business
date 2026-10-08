@@ -28,7 +28,7 @@
   {{- range $reserved := list "app" "avoip.mylogin.space/kamailio-instance" "app.kubernetes.io/controller" -}}
     {{- if hasKey ($effective.podLabels | default dict) $reserved -}}{{- fail (printf "Kamailio %s podLabels may not override %s" $name $reserved) -}}{{- end -}}
   {{- end -}}
-  {{- $envNames := dict "POD_NAME" true "TOPOS_REDIS_SERVER" true -}}
+  {{- $envNames := dict "POD_NAME" true "TOPOS_REDIS_SERVER" true "REGISTRAR_DB_URL" true -}}
   {{- range $entry := $effective.extraEnv -}}
     {{- $envName := required (printf "Kamailio %s extraEnv entry requires name" $name) $entry.name -}}
     {{- if hasKey $envNames $envName -}}{{- fail (printf "Kamailio %s has duplicate or reserved environment variable %s" $name $envName) -}}{{- end -}}
@@ -65,6 +65,31 @@
   {{- end -}}
   {{- if and (eq $role "private-sbc") $effective.publicExposure.enabled -}}
     {{- fail (printf "Kamailio %s private-sbc must not expose public SIP" $name) -}}
+  {{- end -}}
+  {{- if $effective.registrar.enabled -}}
+    {{- if or $effective.sipLogging.rawInbound $effective.sipLogging.postToposResponses $effective.sipLogging.carrierTraffic $effective.sipLogging.diagnostics.enabled $effective.sipLogging.diagnostics.sdp -}}
+      {{- fail (printf "Kamailio %s registrar forbids raw SIP and diagnostic logging of Digest credentials" $name) -}}
+    {{- end -}}
+    {{- if or (ne $role "private-sbc") (not $effective.enabled) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.registrar.realm))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.database.username))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.registrar.database.host))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.database.secretName))) -}}
+      {{- fail (printf "Kamailio %s registrar requires an enabled private-sbc, realm and dedicated PostgreSQL host, username and Secret" $name) -}}
+    {{- end -}}
+    {{- if or (lt (int $effective.registrar.maxContacts) 1) (lt (int $effective.registrar.minExpires) 60) (lt (int $effective.registrar.maxExpires) (int $effective.registrar.minExpires)) -}}
+      {{- fail (printf "Kamailio %s registrar requires positive contact and registration expiry limits" $name) -}}
+    {{- end -}}
+    {{- if eq $effective.registrar.database.secretName $effective.topology.redis.secretName -}}
+      {{- fail (printf "Kamailio %s registrar database Secret must differ from TOPOS Secret" $name) -}}
+    {{- end -}}
+    {{- if not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.accessPeerName)) -}}
+      {{- fail (printf "Kamailio %s registrar requires a dedicated access peer" $name) -}}
+    {{- end -}}
+    {{- if not $effective.registrar.allowedUsers -}}
+      {{- fail (printf "Kamailio %s registrar requires at least one authorized pilot AoR" $name) -}}
+    {{- end -}}
+    {{- range $user := $effective.registrar.allowedUsers -}}
+      {{- if not (regexMatch "^[0-9]{2,8}$" (toString $user)) -}}
+        {{- fail (printf "Kamailio %s registrar allowedUsers must contain numeric extensions" $name) -}}
+      {{- end -}}
+    {{- end -}}
   {{- end -}}
   {{- if eq $role "private-sbc" -}}
     {{- if gt (int $effective.replicas) 1 -}}
@@ -103,6 +128,11 @@
         {{- if not (hasKey $routes (toString $user)) -}}
           {{- fail (printf "Kamailio %s privateRouting peer %s allowedUsers contains unconfigured extension %s" $name $peer.name $user) -}}
         {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if $effective.registrar.enabled -}}
+      {{- if not (hasKey $peers $effective.registrar.accessPeerName) -}}
+        {{- fail (printf "Kamailio %s registrar access peer must be a configured mTLS privateRouting peer" $name) -}}
       {{- end -}}
     {{- end -}}
     {{- if $effective.carrierOutbound.enabled -}}

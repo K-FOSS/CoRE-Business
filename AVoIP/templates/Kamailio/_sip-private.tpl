@@ -26,7 +26,11 @@
       }
 
       if (is_method("REGISTER")) {
+        {{- if .Values.kamailio.registrar.enabled }}
+        route(PRIVATE_REGISTER);
+        {{- else }}
         sl_send_reply("403", "Registration Disabled");
+        {{- end }}
         exit;
       }
       if (is_method("OPTIONS") && !has_totag()) {
@@ -74,6 +78,30 @@
         sl_send_reply("405", "Method Not Allowed");
         exit;
       }
+
+      {{- if .Values.kamailio.registrar.enabled }}
+      if ($var(peer_name) == "{{ .Values.kamailio.registrar.accessPeerName }}") {
+        route(PRIVATE_AUTH_DEVICE);
+        if ($var(auth_device) != 1) exit;
+        $var(registered_destination) = 0;
+        {{- range .Values.kamailio.registrar.allowedUsers }}
+        if ($rU == "{{ . }}") $var(registered_destination) = 1;
+        {{- end }}
+        if ($var(registered_destination) == 1 &&
+            $(ru{uri.host}) == "{{ .Values.kamailio.registrar.realm }}") {
+          if (!lookup("location")) {
+            sl_send_reply("404", "User Not Registered");
+            exit;
+          }
+          record_route();
+          route(PRIVATE_RELAY);
+          exit;
+        }
+        # A Digest-authenticated registration grants no application/PSTN route.
+        sl_send_reply("403", "Destination Not Authorized");
+        exit;
+      }
+      {{- end }}
 
       {{- if .Values.kamailio.carrierOutbound.enabled }}
       # The pilot is a single exact extension and destination. Registration
@@ -123,6 +151,62 @@
       }
       exit;
     }
+
+    {{- if .Values.kamailio.registrar.enabled }}
+    route[PRIVATE_REGISTER] {
+      if ($var(peer_name) != "{{ .Values.kamailio.registrar.accessPeerName }}" ||
+          $tU == $null || $tU != $au && $au != $null ||
+          $(tu{uri.host}) != "{{ .Values.kamailio.registrar.realm }}" ||
+          $(ru{uri.host}) != "{{ .Values.kamailio.registrar.realm }}") {
+        sl_send_reply("403", "AoR Not Authorized");
+        exit;
+      }
+      $var(pilot_user) = 0;
+      {{- range .Values.kamailio.registrar.allowedUsers }}
+      if ($tU == "{{ . }}") $var(pilot_user) = 1;
+      {{- end }}
+      if ($var(pilot_user) != 1) {
+        sl_send_reply("403", "AoR Not Authorized");
+        exit;
+      }
+      if (!www_authorize("{{ .Values.kamailio.registrar.realm }}", "subscriber")) {
+        www_challenge("{{ .Values.kamailio.registrar.realm }}", "1");
+        exit;
+      }
+      if ($au != $tU || $fd != "{{ .Values.kamailio.registrar.realm }}") {
+        sl_send_reply("403", "AoR Not Authorized");
+        exit;
+      }
+      # registrar.save() sends its own 200 or error response.
+      save("location");
+      exit;
+    }
+
+    route[PRIVATE_AUTH_DEVICE] {
+      $var(auth_device) = 0;
+      if ($fd != "{{ .Values.kamailio.registrar.realm }}") {
+        sl_send_reply("403", "Caller Not Authorized");
+        return;
+      }
+      $var(pilot_user) = 0;
+      {{- range .Values.kamailio.registrar.allowedUsers }}
+      if ($fU == "{{ . }}") $var(pilot_user) = 1;
+      {{- end }}
+      if ($var(pilot_user) != 1) {
+        sl_send_reply("403", "Caller Not Authorized");
+        return;
+      }
+      if (!proxy_authorize("{{ .Values.kamailio.registrar.realm }}", "subscriber")) {
+        proxy_challenge("{{ .Values.kamailio.registrar.realm }}", "1");
+        return;
+      }
+      if ($au != $fU) {
+        sl_send_reply("403", "Caller Not Authorized");
+        return;
+      }
+      $var(auth_device) = 1;
+    }
+    {{- end }}
 
     {{- if .Values.kamailio.carrierOutbound.enabled }}
     route[PRIVATE_TO_CARRIER_GATEWAY] {

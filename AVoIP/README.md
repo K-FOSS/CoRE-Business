@@ -233,7 +233,7 @@ TLS backend. An opt-in `private-sbc` instance now has its own TLS/5062 Service,
 Deployment, certificate, TOPOS Secret, Cilium policy, and routing script. It
 requires a verified client certificate and an explicitly listed peer address
 and certificate DNS SAN. Exact extension rules select probed dispatcher
-destinations; unmatched requests and `REGISTER` fail closed. It does not load
+destinations; unmatched requests and, by default, `REGISTER` fail closed. It does not load
 RTPEngine or forward to Flowroute. Unlike the carrier role, direct private
 connections do not require an Envoy PROXY header. The private role is limited
 to one replica until dialog affinity is tested. See the [Kamailio values](docs/KAMAILIO-VALUES.md).
@@ -248,10 +248,15 @@ rate/concurrency quotas. It is disabled at both sites and has not passed a
 live carrier call. No registrar, WSS endpoint or OIDC webphone is deployed.
 
 The [internal registrar integration contract](docs/INTERNAL-REGISTRAR.md)
-records the required identity and extension data, SIP Digest verifier design,
-and private pilot rollout sequence. No internal registrar is enabled.
+records an opt-in private registrar implementation: a dedicated PostgreSQL
+`User` claim and migration Job, Digest-checked REGISTER and initial INVITE,
+and exact pilot AoR policy. It has passed render and Kamailio syntax checks,
+not live registration. Credential issuance, expiry/revocation automation,
+NAT/WSS connection ownership and the browser phone are still pending. The
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+does not enable it at any site.
 
-Run `tests/kamailio-instances.sh`, `tests/sip-outbound-render.sh`, and
+Run `tests/kamailio-instances.sh`, `tests/sip-registrar-render.sh`, `tests/sip-outbound-render.sh`, and
 `tests/sip-security-render.sh` before
 publishing a change. Review the rendered carrier selector, public Contact,
 source ACL, and private target before scoped Argo CD reconciliation. For live

@@ -25,8 +25,11 @@ selects [G.711-only reception](AVoIP/docs/PHONE-TREE.md) for that site's
 dedicated fax DID. T.38 remains unverified there.
 The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES.md)
 and [restricted outbound service-peer pilot](AVoIP/docs/OUTBOUND-PILOT.md)
-for authenticated service peers; the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-does not enable either at any site. Registrar, WSS and webphone work remains open.
+for authenticated service peers. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
+now renders a site-local PostgreSQL service identity and schema migration, but
+credential issuance and live registration are still open. The
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+does not enable these pilots at any site; WSS and webphone work remains open.
 
 ```text
 CoRE-Backplane Apps/Business ApplicationSet

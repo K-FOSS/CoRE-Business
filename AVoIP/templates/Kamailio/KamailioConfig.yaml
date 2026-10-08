@@ -27,6 +27,10 @@ data:
     # name=topos;addr=dragonfly;port=6379;db=51;pass=...;tls=1
     #!defenvs TOPOS_REDIS_SERVER
     {{- end }}
+    {{- if .Values.kamailio.registrar.enabled }}
+    # Database URI is supplied by the dedicated User claim's connection Secret.
+    #!defenvs REGISTRAR_DB_URL
+    {{- end }}
 
     debug={{ if .Values.kamailio.sipLogging.diagnostics.enabled }}{{ .Values.kamailio.sipLogging.diagnostics.coreDebug }}{{ else }}0{{ end }}
     corelog=-1
@@ -93,6 +97,29 @@ data:
     modparam("dispatcher", "list_file", "/etc/kamailio/dispatcher.list")
     modparam("dispatcher", "ds_ping_interval", 10)
     modparam("dispatcher", "ds_probing_mode", 1)
+    {{- if .Values.kamailio.registrar.enabled }}
+    loadmodule "db_postgres.so"
+    modparam("db_postgres", "con_param", "sslmode=verify-full;connect_timeout=5")
+    loadmodule "auth.so"
+    loadmodule "auth_db.so"
+    loadmodule "usrloc.so"
+    loadmodule "registrar.so"
+    loadmodule "path.so"
+    loadmodule "nathelper.so"
+    modparam("auth_db", "db_url", REGISTRAR_DB_URL)
+    modparam("auth_db", "use_domain", 1)
+    modparam("auth_db", "calculate_ha1", 0)
+    modparam("auth_db", "password_column", "ha1")
+    modparam("auth_db", "load_credentials", "")
+    modparam("usrloc", "db_url", REGISTRAR_DB_URL)
+    modparam("usrloc", "db_mode", 3)
+    modparam("usrloc", "use_domain", 1)
+    modparam("registrar", "max_contacts", {{ .Values.kamailio.registrar.maxContacts }})
+    modparam("registrar", "min_expires", {{ .Values.kamailio.registrar.minExpires }})
+    modparam("registrar", "max_expires", {{ .Values.kamailio.registrar.maxExpires }})
+    modparam("registrar", "use_path", 1)
+    modparam("registrar", "path_mode", 1)
+    {{- end }}
     {{- end }}
 
     {{- if .Values.kamailio.topology.enabled }}
