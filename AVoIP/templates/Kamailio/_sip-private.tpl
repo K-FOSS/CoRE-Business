@@ -230,16 +230,10 @@
       $var(sipcore_dialog_routed) = 0;
       if (has_totag() && loose_route()) $var(sipcore_dialog_routed) = 1;
       if ($var(sipcore_dialog_routed) != 1) {
-        if (is_method("INVITE|OPTIONS")) {
-          $var(sipcore_target_allowed) = 0;
-          {{- range $.Values.asterisk.sipCore.extensions }}
-          if ($tU == "{{ .number }}") $var(sipcore_target_allowed) = 1;
-          {{- end }}
-          if ($var(sipcore_target_allowed) != 1) {
-            sl_send_reply("403", "SIP Core Target Not Allowed");
-            exit;
-          }
-        }
+        # This return listener is reachable only from the Asterisk workload.
+        # Asterisk's Request-URI is the random WebSocket Contact user, not the
+        # configured extension; require a live Kamailio alias instead of
+        # comparing that Contact user to the extension allowlist.
         handle_ruri_alias();
         if ($rc != 1) {
           sl_send_reply("404", "WebSocket Contact Not Found");

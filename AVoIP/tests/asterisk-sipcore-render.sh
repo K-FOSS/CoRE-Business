@@ -73,6 +73,9 @@ grep -Fq 'if ($proto == "tls" && $Rp == 5063)' "$tmp_dir/empty-matches.yaml" || 
 grep -Fq 'name: sipcore-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio private TLS return Service port is missing'
 grep -Fq 'route[FROM_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio Asterisk-to-WebSocket route is missing'
 grep -Fq 'handle_ruri_alias()' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio does not route calls through the registered WebSocket flow'
+if grep -Fq 'SIP Core Target Not Allowed' "$tmp_dir/empty-matches.yaml"; then
+  fail 'Kamailio incorrectly treats the random WebSocket Contact user as an extension number'
+fi
 grep -Fq 'RTPEngine SIP Core SDP update failed' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core requests fail on unnecessary msg_apply_changes'
 grep -Fq 'RTPEngine SIP Core outbound SDP update failed' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk-originated SIP Core requests fail on unnecessary msg_apply_changes'
 msg_apply_changes_count="$(grep -Fc 'msg_apply_changes()' "$tmp_dir/empty-matches.yaml" || true)"

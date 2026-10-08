@@ -99,7 +99,13 @@ behavior.
   release's Asterisk workload. The private peer listener on `5062` continues
   to require strict mutual TLS. Record-Route uses the internal Kamailio TLS
   return Service because Asterisk cannot route dialogs over browser WSS.
-  RTPEngine relays the reverse media offer and answer too.
+  RTPEngine relays the reverse media offer and answer too. Asterisk-originated
+  requests are accepted only when their Request-URI resolves through a current
+  Kamailio WebSocket Contact alias. These Contact URIs use random client values,
+  so Kamailio cannot compare their user part with the extension number; the
+  dedicated listener's Cilium workload policy is the trust boundary. Calls
+  initiated by a Home Assistant extension remain constrained by that
+  extension's Asterisk `allowCallsTo` dialplan context.
 - Reads each extension's random SIP password from an ExternalSecret sourced
   from the configured CoreVault-backed SecretStore. At startup, it writes a
   private, temporary PJSIP include; the password is never rendered into Git or
