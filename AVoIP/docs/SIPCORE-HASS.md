@@ -198,6 +198,15 @@ audio still fails, inspect negotiated ICE candidates on both legs and
 RTPEngine's available relay ports. Registration alone does not prove media
 works.
 
+## Verified pilot
+
+On 2026-10-08, extension `7101` registered successfully with Asterisk using
+SIP Digest authentication. A Home Assistant-originated call to the configured
+echo destination `9090` reached the Asterisk echo extension, as confirmed by
+the operator. This verifies the registration, signaling, and echo-destination
+path. Bidirectional audio through RTPEngine was not separately captured as
+part of this verification.
+
 ## Rollback and verification
 
 Rollback by setting `asterisk.sipCore.enabled: false`. This removes the WSS
