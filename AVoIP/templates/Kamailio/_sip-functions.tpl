@@ -258,11 +258,6 @@
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
         }
-        if (!msg_apply_changes()) {
-          xlog("L_ERR", "RTPEngine SIP Core SDP update failed callid=$ci method=$rm\n");
-          if (!is_method("ACK")) sl_send_reply("488", "Media Relay Unavailable");
-          exit;
-        }
       } else if (is_method("BYE")) {
         rtpengine_manage();
       }
@@ -325,11 +320,6 @@
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
         }
-        if (!msg_apply_changes()) {
-          xlog("L_ERR", "RTPEngine SIP Core outbound SDP update failed callid=$ci method=$rm\n");
-          if (!is_method("ACK")) sl_send_reply("488", "Media Relay Unavailable");
-          exit;
-        }
       } else if (is_method("BYE")) {
         rtpengine_manage();
       }
@@ -345,14 +335,16 @@
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
           drop;
         }
-        if (!msg_apply_changes()) {
-          xlog("L_ERR", "RTPEngine SIP Core outbound answer update failed callid=$ci status=$rs\n");
-          drop;
-        }
       }
     }
 
     onreply_route[SIPCORE_WS_REPLY] {
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("WebRTC replace-origin internal external")) {
+          xlog("L_ERR", "RTPEngine SIP Core WebSocket answer handling failed callid=$ci status=$rs\n");
+          drop;
+        }
+      }
       if (nat_uac_test(64) && is_present_hf("Contact")) {
         add_contact_alias();
       }
@@ -670,6 +662,7 @@
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
+{{- $sipCoreEnabled := and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     route[RELAY] {
       if (!t_relay()) {
         xlog(
@@ -710,6 +703,14 @@
       # were modifying the same dialog topology.
       #
 
+      {{- if $sipCoreEnabled }}
+      # SIP Core uses dedicated transaction reply routes. Its browser WebSocket
+      # and private Asterisk TLS sockets must bypass the carrier reply handler.
+      if (
+        $Rp != {{ $.Values.asterisk.sipCore.httpPort }} &&
+        $Rp != {{ $.Values.asterisk.sipCore.privateEgressPort }}
+      ) {
+      {{- end }}
       {{- if and .Values.kamailio.functions.media (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("replace-origin")) {
@@ -732,6 +733,9 @@
         $rs =~ "[3-6][0-9][0-9]"
       ) {
         rtpengine_manage();
+      }
+      {{- end }}
+      {{- if $sipCoreEnabled }}
       }
       {{- end }}
 
