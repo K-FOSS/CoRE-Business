@@ -237,6 +237,10 @@ authentication and authorization are implemented. The values reference includes
 a test-only second-instance example. No second instance is enabled at a live
 site.
 
+The [internal registrar integration contract](docs/INTERNAL-REGISTRAR.md)
+records the required identity and extension data, SIP Digest verifier design,
+and private pilot rollout sequence. No internal registrar is enabled.
+
 Run `tests/kamailio-instances.sh` and `tests/sip-security-render.sh` before
 publishing a change. Review the rendered carrier selector, public Contact,
 source ACL, and private target before scoped Argo CD reconciliation. For live
@@ -367,8 +371,9 @@ The chart is deployed. YVR G.711 fax reception is reported working, while
 the end-to-end voice and failover paths still need live verification:
 
 1. Confirm an inbound Flowroute INVITE receives an ACK at FreeSWITCH and stays
-   up for at least 60 seconds. Calls have ended after about 30–32 seconds with
-   `ACK Timeout`; see [SIP identity and call verification](docs/SIP-IDENTITY.md).
+   up for at least 60 seconds. The prior approximately 32-second `ACK Timeout`
+   is reported resolved; retain a Call-ID-correlated ACK and clean BYE/200
+   trace as acceptance evidence. See [SIP identity and call verification](docs/SIP-IDENTITY.md).
 2. Verify an ordinary voice call bridges to Asterisk. For YVR fax, capture
    the `rxfax` result, TIFF, G.711 mode, and ACK on both SIP hops. Test T.38
    separately before enabling it there. Verify YXL fax independently.
