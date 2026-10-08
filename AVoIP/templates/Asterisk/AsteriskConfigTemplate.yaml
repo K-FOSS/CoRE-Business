@@ -179,6 +179,6 @@ data:
 
     [freeswitch]
     type=aor
-    contact=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:5061;transport=tls
+    contact=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:{{ .Values.freeswitch.asterisk.tlsPort }};transport=tls
     {{- end }}
 {{- end }}

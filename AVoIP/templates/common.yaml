@@ -890,6 +890,9 @@ controllers:
           - name: tls-sips
             containerPort: 5061
             protocol: TCP
+          - name: tls-asterisk
+            containerPort: {{ .Values.freeswitch.asterisk.tlsPort }}
+            protocol: TCP
 {{- $asteriskRtpPorts := untilStep (.Values.asterisk.rtp.min | int) (.Values.asterisk.rtp.max | int) 1 -}}
 {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled -}}
 {{- $asteriskRtpPorts = untilStep (.Values.asterisk.rtp.min | int) (add (.Values.asterisk.rtp.max | int) 1 | int) 1 -}}
@@ -1679,6 +1682,10 @@ service:
       tls-sips:
         port: 5061
         targetPort: tls-sips
+        protocol: TCP
+      tls-asterisk:
+        port: {{ .Values.freeswitch.asterisk.tlsPort }}
+        targetPort: tls-asterisk
         protocol: TCP
 {{- if and .Values.freeswitch.publicExposure.enabled (or (not (include "avoip.rtpengine.enabled" . | trim)) (not (include "avoip.kamailio.carrier.enabled" . | trim))) }}
   freeswitch-rtp:

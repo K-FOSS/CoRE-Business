@@ -759,6 +759,9 @@ freeswitch:
   enabled: true
   sip:
     serviceHost: ''
+  asterisk:
+    # Dedicated TLS listener for Asterisk, separate from the Kamailio backend.
+    tlsPort: 5064
   publicExposure:
     enabled: false
     # Public FreeSWITCH RTP address; provider-specific Service allocation is

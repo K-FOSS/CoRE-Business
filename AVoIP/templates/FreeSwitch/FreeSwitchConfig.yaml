@@ -47,6 +47,7 @@ data:
       <X-PRE-PROCESS cmd="set" data="outbound_codec_prefs=OPUS,G722,PCMU,PCMA"/>
       <X-PRE-PROCESS cmd="set" data="internal_sip_port=5060"/>
       <X-PRE-PROCESS cmd="set" data="internal_tls_port=5061"/>
+      <X-PRE-PROCESS cmd="set" data="asterisk_tls_port={{ $.Values.freeswitch.asterisk.tlsPort }}"/>
       <X-PRE-PROCESS cmd="set" data="external_sip_port=5060"/>
       <X-PRE-PROCESS cmd="set" data="external_tls_port=5061"/>
       <X-PRE-PROCESS cmd="set" data="external_ssl_enable=true"/>
