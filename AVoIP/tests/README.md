@@ -6,6 +6,14 @@ then checks disabled and invalid instance arrays. It uses the pinned chart
 dependencies and no cluster connection. The site-specific security render
 guard below runs separately.
 
+`./sip-outbound-render.sh` exercises the opt-in [outbound service-peer pilot](../docs/OUTBOUND-PILOT.md)
+with non-routable test identities. It checks carrier/private PROXY behavior,
+the dedicated mTLS SNI, exact destination and caller ID, single media owner,
+shared quota script, Certificate SAN, and Cilium Gateway egress. It is CI-safe:
+it only renders manifests and never sends SIP or places a public call. The
+quota Lua was additionally exercised against an isolated Dragonfly v1.39.0
+container; the separate operator call procedure is in the pilot document.
+
 `udp-carrier-ack-bye.xml` exercises a UDP INVITE through one Kamailio replica,
 checks that the 200 Contact is public UDP/5060 with a TOPOS token, and directs
 the 2xx ACK and BYE to a second Kamailio pod. This verifies cross-replica

@@ -312,9 +312,27 @@ kamailio:
       # limits port 5062 to FreeSWITCH pods when using the default backend.
       podCIDR: '172.16.0.0/12'
     carrierOutbound:
-      # Remains off until peer authentication, caller policy and quotas are
-      # implemented; the private FreeSWITCH listener still handles dialogs.
+      # New calls remain denied. The existing carrier TLS listener needs
+      # Envoy's PROXY v2 header, so a future internal caller must use the
+      # existing Gateway with a separately authenticated SNI identity.
       enabled: false
+      gatewayServiceHost: ''
+      gatewayNamespace: 'kube-system'
+      sniHost: ''
+      peer:
+        cidr: ''
+        sanHostname: ''
+        serviceHost: ''
+        controller: ''
+      testRoute:
+        extension: ''
+        peerName: ''
+        destination: ''
+        callerId: ''
+      limits:
+        callsPerMinute: 1
+        concurrentCalls: 1
+        maxDurationSeconds: 600
     privateRouting:
       # peers: [{cidr: '10.0.0.10/32', sanHostname: 'pbx.example', controller: 'asterisk', name: 'pbx', allowedUsers: ['1000']}]
       # destinations: [{setId: 10, uri: 'sips:pbx.example:5061', controller: 'asterisk'}]

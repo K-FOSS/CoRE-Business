@@ -23,6 +23,10 @@ Kamailio as named instances; its active site lists are supplied by the
 Home1/YVR fax reception is reported working over G.711; the ApplicationSet
 selects [G.711-only reception](AVoIP/docs/PHONE-TREE.md) for that site's
 dedicated fax DID. T.38 remains unverified there.
+The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES.md)
+and [restricted outbound service-peer pilot](AVoIP/docs/OUTBOUND-PILOT.md)
+for authenticated service peers; the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+does not enable either at any site. Registrar, WSS and webphone work remains open.
 
 ```text
 CoRE-Backplane Apps/Business ApplicationSet

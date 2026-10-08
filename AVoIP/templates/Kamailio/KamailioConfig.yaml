@@ -83,6 +83,11 @@ data:
     loadmodule "textops.so"
     loadmodule "xlog.so"
     loadmodule "tls.so"
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
+    loadmodule "dialog.so"
+    modparam("dialog", "default_timeout", {{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }})
+    modparam("dialog", "send_bye", 1)
+    {{- end }}
     {{- if eq .Values.kamailio.role "private-sbc" }}
     loadmodule "dispatcher.so"
     modparam("dispatcher", "list_file", "/etc/kamailio/dispatcher.list")
@@ -227,6 +232,9 @@ data:
 {{ include "avoip.kamailio.sip.topologyAndBackend" . }}
 {{ include "avoip.kamailio.sip.dialogRouting" . }}
 {{ include "avoip.kamailio.sip.relayAndObservability" . }}
+{{ if .Values.kamailio.carrierOutbound.enabled }}
+{{ include "avoip.kamailio.sip.outbound" . | nindent 4 }}
+{{ end }}
 {{ end }}
 {{ if eq .Values.kamailio.role "private-sbc" }}
   dispatcher.list: |
@@ -245,12 +253,25 @@ data:
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
+    # A separate SNI profile requests and verifies the internal SBC cert;
+    # Flowroute continues to use the unchanged default server profile.
+    [server:any]
+    server_name = {{ .Values.kamailio.carrierOutbound.sniHost }}
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = yes
+    ca_list = /etc/kamailio/tls-ca/ca-certificates.crt
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
+    {{- end }}
+
     [client:default]
     method = TLSv1.2+
     verify_certificate = yes
     require_certificate = no
     ca_list = {{ if .Values.freeswitch.enabled }}/etc/kamailio/tls-ca/ca-certificates.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
-    {{- if eq .Values.kamailio.role "private-sbc" }}
+    {{- if or (eq .Values.kamailio.role "private-sbc") .Values.kamailio.carrierOutbound.enabled }}
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
     {{- end }}

@@ -240,15 +240,19 @@ to one replica until dialog affinity is tested. See the [Kamailio values](docs/K
 
 No private instance is enabled by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The carrier's existing private listener still uses its current CIDR guard for
-dialog traffic; new carrier-originated outbound calls now receive 403 while
-the authenticated outbound path remains under development. No registrar,
-WSS endpoint, OIDC webphone, or PSTN pilot is deployed by this change.
+dialog traffic; new calls from that listener receive 403. An
+[opt-in outbound service-peer pilot](docs/OUTBOUND-PILOT.md) now uses the
+existing Gateway and a dedicated SNI/mTLS profile, exact test extension and
+destination, fixed caller ID, carrier-owned RTPEngine path, and shared
+rate/concurrency quotas. It is disabled at both sites and has not passed a
+live carrier call. No registrar, WSS endpoint or OIDC webphone is deployed.
 
 The [internal registrar integration contract](docs/INTERNAL-REGISTRAR.md)
 records the required identity and extension data, SIP Digest verifier design,
 and private pilot rollout sequence. No internal registrar is enabled.
 
-Run `tests/kamailio-instances.sh` and `tests/sip-security-render.sh` before
+Run `tests/kamailio-instances.sh`, `tests/sip-outbound-render.sh`, and
+`tests/sip-security-render.sh` before
 publishing a change. Review the rendered carrier selector, public Contact,
 source ACL, and private target before scoped Argo CD reconciliation. For live
 acceptance, correlate one Call-ID across both Kamailio legs and FreeSWITCH:

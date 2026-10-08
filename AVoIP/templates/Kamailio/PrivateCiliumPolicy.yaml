@@ -26,6 +26,18 @@ spec:
     {{- end }}
     {{- end }}
   egress:
+    {{- if $instance.carrierOutbound.enabled }}
+    - toEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': '{{ $instance.carrierOutbound.gatewayNamespace }}'
+            app.kubernetes.io/name: 'envoy'
+            gateway.envoyproxy.io/owning-gateway-name: 'main-gw'
+            gateway.envoyproxy.io/owning-gateway-namespace: '{{ $root.Release.Namespace }}'
+      toPorts:
+        - ports:
+            - port: '5061'
+              protocol: 'TCP'
+    {{- end }}
     {{- range $destination := $instance.privateRouting.destinations }}
     - toEndpoints:
         - matchLabels:

@@ -43,8 +43,25 @@
   {{- if and (eq $role "carrier-sbc") (or (not $functions.media) (not $effective.publicExposure.enabled)) -}}
     {{- fail (printf "Kamailio %s carrier-sbc requires media and public exposure" $name) -}}
   {{- end -}}
-  {{- if and (eq $role "carrier-sbc") $effective.carrierOutbound.enabled -}}
-    {{- fail "carrierOutbound cannot be enabled before authenticated peer ingress, destination authorization and quotas are implemented" -}}
+  {{- if $effective.carrierOutbound.enabled -}}
+    {{- $outbound := $effective.carrierOutbound -}}
+    {{- if or (not $effective.topology.enabled) (and (eq $role "carrier-sbc") (not $functions.media)) (and (eq $role "private-sbc") $functions.media) (not $.Values.freeswitch.enabled) -}}
+      {{- fail (printf "Kamailio %s carrierOutbound requires TOPOS, carrier-only media anchoring and FreeSWITCH" $name) -}}
+    {{- end -}}
+    {{- if or (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.gatewayServiceHost))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.sniHost))) (not (regexMatch "^[0-9a-fA-F:.]+/[0-9]{1,3}$" (toString $outbound.peer.cidr))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.peer.sanHostname))) -}}
+      {{- fail (printf "Kamailio %s carrierOutbound requires a Gateway service host, SNI host, peer CIDR and peer certificate SAN" $name) -}}
+    {{- end -}}
+    {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $outbound.testRoute.extension))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.destination))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.callerId))) (hasPrefix "+1900" (toString $outbound.testRoute.destination)) (regexMatch "^\\+1[2-9][0-9]{2}976[0-9]{4}$" (toString $outbound.testRoute.destination)) -}}
+      {{- fail (printf "Kamailio %s carrierOutbound test route requires an extension, non-premium NANP destination and NANP caller ID" $name) -}}
+    {{- end -}}
+    {{- if or (lt (int $outbound.limits.callsPerMinute) 1) (lt (int $outbound.limits.concurrentCalls) 1) (lt (int $outbound.limits.maxDurationSeconds) 60) -}}
+      {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
+    {{- end -}}
+    {{- if eq $role "carrier-sbc" -}}
+      {{- if or (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.peer.serviceHost))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $outbound.peer.controller))) -}}
+        {{- fail (printf "Kamailio %s carrierOutbound requires a private peer service host and controller" $name) -}}
+      {{- end -}}
+    {{- end -}}
   {{- end -}}
   {{- if and (eq $role "private-sbc") $effective.publicExposure.enabled -}}
     {{- fail (printf "Kamailio %s private-sbc must not expose public SIP" $name) -}}
@@ -54,6 +71,8 @@
       {{- fail (printf "Kamailio %s private-sbc must start with one replica until dialog affinity is validated" $name) -}}
     {{- end -}}
     {{- $sets := dict -}}
+    {{- $routes := dict -}}
+    {{- $peers := dict -}}
     {{- range $destination := $effective.privateRouting.destinations -}}
       {{- if or (lt (int $destination.setId) 1) (not (regexMatch "^sips:[a-zA-Z0-9.-]+:[0-9]+$" (toString $destination.uri))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $destination.controller))) -}}
         {{- fail (printf "Kamailio %s privateRouting destination requires a positive setId, literal sips host:port and controller" $name) -}}
@@ -64,14 +83,35 @@
       {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $route.user))) (not (hasKey $sets (toString $route.setId))) -}}
         {{- fail (printf "Kamailio %s privateRouting route requires a numeric user and configured destination set" $name) -}}
       {{- end -}}
+      {{- if hasKey $routes (toString $route.user) -}}
+        {{- fail (printf "Kamailio %s privateRouting has duplicate route user %s" $name $route.user) -}}
+      {{- end -}}
+      {{- $_ := set $routes (toString $route.user) true -}}
     {{- end -}}
     {{- range $peer := $effective.privateRouting.peers -}}
       {{- if or (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $peer.name))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $peer.controller))) (not (regexMatch "^[0-9a-fA-F:.]+/[0-9]{1,3}$" (toString $peer.cidr))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $peer.sanHostname))) -}}
         {{- fail (printf "Kamailio %s privateRouting peer requires name, controller, literal CIDR and certificate sanHostname" $name) -}}
       {{- end -}}
+      {{- if hasKey $peers $peer.name -}}
+        {{- fail (printf "Kamailio %s privateRouting has duplicate peer %s" $name $peer.name) -}}
+      {{- end -}}
+      {{- $_ := set $peers $peer.name true -}}
       {{- range $user := $peer.allowedUsers -}}
         {{- if not (regexMatch "^[0-9]{2,8}$" (toString $user)) -}}
           {{- fail (printf "Kamailio %s privateRouting peer %s allowedUsers must contain only numeric extensions" $name $peer.name) -}}
+        {{- end -}}
+        {{- if not (hasKey $routes (toString $user)) -}}
+          {{- fail (printf "Kamailio %s privateRouting peer %s allowedUsers contains unconfigured extension %s" $name $peer.name $user) -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if $effective.carrierOutbound.enabled -}}
+      {{- if or (not (hasKey $peers $effective.carrierOutbound.testRoute.peerName)) (not (hasKey $peers "carrier")) (eq $effective.carrierOutbound.testRoute.peerName "carrier") -}}
+        {{- fail (printf "Kamailio %s carrierOutbound requires distinct test-origin and carrier mTLS peers" $name) -}}
+      {{- end -}}
+      {{- range $peer := $effective.privateRouting.peers -}}
+        {{- if and (eq $peer.name "carrier") $peer.allowedUsers -}}
+          {{- fail (printf "Kamailio %s carrier peer may not originate new extension calls" $name) -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}

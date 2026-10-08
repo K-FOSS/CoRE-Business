@@ -98,6 +98,19 @@
         exit;
       }
 
+      {{- if .Values.kamailio.carrierOutbound.enabled }}
+      # Internal outbound uses the existing Envoy SIPS entry, which supplies
+      # PROXY v2. The dedicated SNI profile requires a client certificate.
+      if ($proto == "tls" && $Rp == 5061 &&
+          src_ip == {{ .Values.kamailio.carrierOutbound.peer.cidr }} &&
+          $tls_peer_verified == 1 &&
+          $tls_peer_san_hostname == "{{ .Values.kamailio.carrierOutbound.peer.sanHostname }}") {
+        $var(side) = "internal-outbound";
+        route(FROM_OUTBOUND_PEER);
+        exit;
+      }
+      {{- end }}
+
       #
       # Carrier-facing trust boundary.
       #
@@ -120,6 +133,9 @@
           # must remain pinned by the L4 gateway to the pod holding that
           # transaction. A CANCEL arriving on another pod correctly misses.
           if (is_method("CANCEL")) {
+            {{- if $.Values.kamailio.carrierOutbound.enabled }}
+            route(OUTBOUND_RELEASE);
+            {{- end }}
             {{- if and $.Values.kamailio.functions.media (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
             rtpengine_manage();
             {{- end }}
@@ -147,6 +163,9 @@
       ) {
         $var(side) = "backend";
         if (is_method("CANCEL")) {
+          {{- if .Values.kamailio.carrierOutbound.enabled }}
+          route(OUTBOUND_RELEASE);
+          {{- end }}
           {{- if and .Values.kamailio.functions.media (include "avoip.rtpengine.enabled" . | trim) $.Values.freeswitch.enabled }}
           rtpengine_manage();
           {{- end }}
@@ -274,17 +293,9 @@
         exit;
       }
 
-      # The current private FreeSWITCH leg is required for inbound dialogs,
-      # but it must not create a new carrier call without a separate verified
-      # outbound identity and destination policy.
-      {{- if not .Values.kamailio.carrierOutbound.enabled }}
+      # The FreeSWITCH ingress remains inbound-dialog-only. New PSTN calls
+      # must use the separately authenticated Gateway/mTLS outbound route.
       sl_send_reply("403", "Outbound Calling Disabled");
-      exit;
-      {{- end }}
-
-      # Trusted application-originated requests leave only through the
-      # configured Flowroute TLS edge. FreeSWITCH does not choose a carrier.
-      route(INITIAL_CARRIER);
       exit;
     }
 
@@ -341,17 +352,6 @@
       exit;
     }
 
-    route[INITIAL_CARRIER] {
-      # Fixed provider next-hop is owned by Kamailio; retain the called user
-      # and do not teach FreeSWITCH carrier hostnames or transport topology.
-      $ru = "sips:" + $rU + "@{{ .Values.flowroute.outboundHost }}";
-      route(RR_BACKEND_TO_CARRIER);
-      $du = "sips:{{ .Values.flowroute.outboundHost }}:5061;transport=tls";
-      set_send_socket_name("public_tls");
-      route(RELAY);
-      exit;
-    }
-
 {{ end }}
 
 {{- define "avoip.kamailio.sip.dialogRouting" -}}
@@ -367,6 +367,9 @@
       if (!is_method("ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY")) {
         route(REJECT_DIALOG);
       }
+      {{- if .Values.kamailio.carrierOutbound.enabled }}
+      if (is_method("BYE")) route(OUTBOUND_RELEASE);
+      {{- end }}
 
       #
       # TOPOS restores the hidden route/contact topology before normal script
@@ -393,7 +396,15 @@
         # No Flowroute topology is forwarded to FreeSWITCH.
         # FreeSWITCH's only next hop is this private Kamailio service.
         #
+        {{- if .Values.kamailio.carrierOutbound.enabled }}
+        if ($(ru{uri.host}) == "{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}") {
+          route(TO_OUTBOUND_PEER);
+        } else {
+          route(TO_BACKEND);
+        }
+        {{- else }}
         route(TO_BACKEND);
+        {{- end }}
       } else {
         #
         # The carrier destination restored by TOPOS is retained in $du/$ru.
@@ -449,6 +460,14 @@
       $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
       set_send_socket_name("private_tls");
     }
+
+    {{- if .Values.kamailio.carrierOutbound.enabled }}
+    route[TO_OUTBOUND_PEER] {
+      $du = "sips:{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}:5062;transport=tls";
+      $xavp(tls=>server_name) = "{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}";
+      set_send_socket_name("private_tls");
+    }
+    {{- end }}
 
     route[TO_CARRIER] {
       #
@@ -537,6 +556,12 @@
         $rs =~ "[3-6][0-9][0-9]"
       ) {
         rtpengine_manage();
+      }
+      {{- end }}
+
+      {{- if .Values.kamailio.carrierOutbound.enabled }}
+      if ($rs >= 300 && $rs <= 699 && $rm == "INVITE") {
+        route(OUTBOUND_RELEASE);
       }
       {{- end }}
 

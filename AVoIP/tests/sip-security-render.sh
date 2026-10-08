@@ -35,7 +35,8 @@ render_and_assert() {
   ! grep -Fq 'src_ip == 0.0.0.0/0' "$output"
   grep -Fq 'sl_send_reply("403", "Source Not Authorized")' "$output"
   grep -Fq 'sl_send_reply("403", "Registration Disabled")' "$output"
-  grep -Fq 'route(INITIAL_CARRIER)' "$output"
+  grep -Fq 'sl_send_reply("403", "Outbound Calling Disabled")' "$output"
+  ! grep -Fq 'route(FROM_OUTBOUND_PEER)' "$output"
   grep -Fq 'route(INITIAL_BACKEND)' "$output"
 
   # Public calls may reach configured DIDs, but unmatched destinations cannot

@@ -53,6 +53,14 @@
           if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
           exit;
         }
+        {{- if .Values.kamailio.carrierOutbound.enabled }}
+        # TOPOS presents Carrier's public Contact to the originating peer.
+        # In-dialog traffic for that Contact still needs Envoy's PROXY v2.
+        if ($var(peer_name) != "carrier" &&
+            $(ru{uri.host}) == "{{ include "avoip.sip.siteHost" . }}") {
+          route(PRIVATE_TO_CARRIER_GATEWAY);
+        }
+        {{- end }}
         # The Route/Contact selected on the initial request remains the owner.
         route(PRIVATE_RELAY);
         exit;
@@ -66,6 +74,26 @@
         sl_send_reply("405", "Method Not Allowed");
         exit;
       }
+
+      {{- if .Values.kamailio.carrierOutbound.enabled }}
+      # The pilot is a single exact extension and destination. Registration
+      # alone never enters this branch; source mTLS and From caller ID are
+      # checked against the one authorized service peer.
+      if ($rU == "{{ .Values.kamailio.carrierOutbound.testRoute.extension }}") {
+        if ($var(peer_name) != "{{ .Values.kamailio.carrierOutbound.testRoute.peerName }}" ||
+            $fU != "{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}") {
+          sl_send_reply("403", "Outbound Identity Not Authorized");
+          exit;
+        }
+        $ru = "sips:{{ .Values.kamailio.carrierOutbound.testRoute.destination }}@{{ .Values.kamailio.carrierOutbound.sniHost }}";
+        remove_hf("P-Asserted-Identity");
+        append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}@{{ .Values.kamailio.carrierOutbound.sniHost }}>\r\n");
+        record_route();
+        route(PRIVATE_TO_CARRIER_GATEWAY);
+        route(PRIVATE_RELAY);
+        exit;
+      }
+      {{- end }}
 
       # Exact extension mapping is deliberately narrower than a dial prefix.
       # An authenticated peer cannot gain PSTN access through this role.
@@ -95,4 +123,12 @@
       }
       exit;
     }
+
+    {{- if .Values.kamailio.carrierOutbound.enabled }}
+    route[PRIVATE_TO_CARRIER_GATEWAY] {
+      $du = "sips:{{ .Values.kamailio.carrierOutbound.gatewayServiceHost }}:5061;transport=tls";
+      $xavp(tls=>server_name) = "{{ .Values.kamailio.carrierOutbound.sniHost }}";
+      set_send_socket_name("private_tls");
+    }
+    {{- end }}
 {{- end -}}

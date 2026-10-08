@@ -56,6 +56,16 @@
             - protocol: TCP
               port: 5062
       egress:
+        {{- if .Values.kamailio.carrierOutbound.enabled }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: '{{ .Values.kamailio.carrierOutbound.peer.controller }}'
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: 5062
+        {{- end }}
         - to:
             - podSelector:
                 matchLabels:
@@ -193,7 +203,7 @@
               app: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
 {{- end }}
     initContainers:
-{{- if or .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") }}
+{{- if or .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") .Values.kamailio.carrierOutbound.enabled }}
       tls-ca:
         image:
           repository: '{{ .Values.kamailio.image.repository }}'

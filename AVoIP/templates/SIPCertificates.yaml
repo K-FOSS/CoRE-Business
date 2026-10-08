@@ -16,6 +16,9 @@ spec:
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.directService.enabled }}
     - '{{ include "avoip.sip.kamailioPubHost" . }}'
     {{- end }}
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
+    - '{{ .Values.kamailio.carrierOutbound.sniHost }}'
+    {{- end }}
   issuerRef:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
