@@ -130,21 +130,13 @@ data:
           </condition>
         </extension>
       </context>
-      {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    </include>
+
+  asterisk.xml: |
+    <include>
       <context name="from-asterisk">
-        <extension name="asterisk-gg-audio">
-          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
-          <condition field="${sip_authorized}" expression="^true$"/>
-          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
-          <condition field="destination_number" expression="^{{ $.Values.asterisk.sipCore.ggAudioExtension }}$">
-            <action application="log" data="INFO AVoIP authenticated Asterisk GG audio request"/>
-            <action application="answer"/>
-            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
-            <action application="hangup"/>
-          </condition>
-        </extension>
+        <!-- Add site-specific destinations and transfer scripts here. -->
       </context>
-      {{- end }}
     </include>
 
   default.xml: |

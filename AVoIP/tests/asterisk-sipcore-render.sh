@@ -28,6 +28,7 @@ render_sipcore > "$tmp_dir/empty-matches.yaml"
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio-internal-config") | .data["tls.cfg"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/internal-tls.cfg"
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-misc-configs") | .data["asterisk-peer.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/asterisk-peer.xml"
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/public.xml"
+yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/asterisk.xml"
 if render_sipcore --set-string asterisk.sipCore.extensions[0].secret.remoteKey= >"$tmp_dir/missing-secret.yaml" 2>&1; then
   fail 'SIP Core rendered without an ExternalSecret password reference'
 fi
@@ -140,14 +141,14 @@ grep -Fq 'avoip-freeswitch-peer-password' "$tmp_dir/empty-matches.yaml" || fail 
 grep -Fq 'ASTERISK_PEER_PASSWORD' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH gateway does not receive peer credentials from a Secret'
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.spec.containers[] | select(.name == "freeswitch") | any(.env[]; .name == "ASTERISK_PEER_PASSWORD" and .valueFrom.secretKeyRef.name == "siptest-avoip-asterisk-freeswitch-peer" and .valueFrom.secretKeyRef.key == "password")' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'FreeSWITCH SIP process does not receive the Asterisk peer password from its Secret'
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.spec.initContainers[]? | any(.env[]?; .name == "ASTERISK_PEER_PASSWORD")' "$tmp_dir/empty-matches.yaml" >/dev/null && fail 'Asterisk peer password is exposed to an unrelated FreeSWITCH init container'
-grep -Fq '<user id="freeswitch">' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH has no directory identity for inbound Asterisk Digest auth'
-grep -Fq 'value="$${asterisk_peer_password}"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH inbound directory password is not sourced from the generated peer Secret'
-grep -Fq 'user_context" value="from-asterisk"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH Asterisk identity is not restricted to its dedicated dialplan context'
-grep -Fq '<context name="from-asterisk">' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH authenticated Asterisk context is missing'
-grep -Fq 'destination_number" expression="^66$"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH authenticated Asterisk context does not route GG extension 66'
-if sed -n '/<context name="public">/,/<\/context>/p' "$tmp_dir/public.xml" | grep -Fq 'asterisk-gg-audio'; then
-  fail 'FreeSWITCH GG route is exposed in the unauthenticated public context'
+grep -Fq '<user id="freeswitch">' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH has no static peer directory identity for the Secret-backed Asterisk Digest credential'
+grep -Fq 'value="$${asterisk_peer_password}"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH peer directory password is not sourced from the generated Secret'
+grep -Fq '<context name="from-asterisk">' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH dedicated Asterisk dialplan interface is missing'
+grep -Fq 'Add site-specific destinations and transfer scripts here' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH Asterisk dialplan customization point is undocumented'
+if grep -Eq 'ggAudioExtension|expression="\^66\$"|asterisk-gg-audio' "$tmp_dir/asterisk.xml"; then
+  fail 'FreeSWITCH Asterisk interface is hard-coded to GG extension 66'
 fi
+grep -Fq 'mountPath: /etc/freeswitch/dialplan/asterisk.xml' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH dedicated Asterisk dialplan file is not mounted'
 grep -Fq 'from-user" value="freeswitch' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH From identity does not select the named Asterisk endpoint'
 grep -Fq 'kind: Password' "$tmp_dir/empty-matches.yaml" || fail 'random peer password generator is missing'
 grep -Fq "encoding: 'hex'" "$tmp_dir/empty-matches.yaml" || fail 'peer password is not generated as hex'
@@ -158,12 +159,14 @@ grep -Fq 'pjsip set logger on' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk S
 grep -Fq '<param name="sip-trace" value="false"/>' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile SIP packet tracing is not disabled'
 asterisk_profile="$(sed -n '/<profile name="asterisk">/,/<\/profile>/p' "$tmp_dir/empty-matches.yaml")"
 grep -Fq '<param name="auth-calls" value="true"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not require SIP Digest authentication'
-grep -Fq '<param name="context" value="from-asterisk"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not use its restricted dialplan context'
+grep -Fq '<param name="context" value="from-asterisk"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not use its dedicated dialplan context'
 grep -Fq '<param name="apply-inbound-acl" value="asterisk"/>' <<<"$asterisk_profile" && fail 'FreeSWITCH Asterisk profile can bypass Digest through a broad private-network ACL'
 grep -Fq 'type=aor' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH AOR configuration was removed'
 grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH TLS transport was removed'
 grep -Fq 'application="rxfax"' "$tmp_dir/empty-matches.yaml" || fail 'existing FreeSWITCH fax receive configuration was removed'
 grep -Fq 'mountPath: /tmp/avoip-freeswitch-peer-password' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH peer Secret mount is missing'
+grep -Fq '<param name="auth-calls" value="true"/>' <<<"$asterisk_profile" || fail 'FreeSWITCH Asterisk profile does not validate the peer credentials'
+grep -Fq 'mountPath: /etc/freeswitch/directory/asterisk-peer.xml' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH static peer directory identity is not mounted'
 grep -Fq 'allowedOrigins: []' "$chart_dir/values.yaml" || fail 'configurable WSS allowedOrigins value was removed'
 grep -Fq "value: '/ws'" "$tmp_dir/empty-matches.yaml" || fail 'SIP Core route no longer matches /ws'
 grep -Fq 'port: 8088' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core route no longer targets port 8088'

@@ -102,7 +102,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 
 | Component | Current role | More detail |
 | --- | --- | --- |
-| Asterisk | Private voice PBX; authenticates to FreeSWITCH, records CDRs in site-local PostgreSQL, and serves the Home Assistant echo and GG audio extensions. | [Call path](docs/PHONE-TREE.md), [Home Assistant SIP Core and GG audio](docs/SIPCORE-HASS.md), [internal TLS check](#internal-asterisk-sip-identity) |
+| Asterisk | Private voice PBX; authenticates to FreeSWITCH over TLS with Secret-backed SIP Digest credentials, records CDRs in site-local PostgreSQL, and transfers configured destinations into FreeSWITCH's dedicated dialplan interface. | [Call path](docs/PHONE-TREE.md), [Home Assistant SIP Core and GG audio](docs/SIPCORE-HASS.md), [internal TLS check](#internal-asterisk-sip-identity) |
 | Kamailio | Public carrier SIP border and private TLS relay with TOPOS. | [Values](docs/KAMAILIO-VALUES.md), [SIP identity](docs/SIP-IDENTITY.md) |
 | FreeSWITCH | Private call control, voice DID, fax `rxfax`, and Secret-backed configuration. | [Call path](docs/PHONE-TREE.md), [fax verification](docs/SIP-IDENTITY.md) |
 | RTPEngine | Public media anchor with private NG control and Valkey recovery state. | [RTPEngine HA](docs/avoip/rtpengine-ha.md) |

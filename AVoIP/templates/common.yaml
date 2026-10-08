@@ -2009,6 +2009,8 @@ persistence:
             subPath: default.xml
           - path: /etc/freeswitch/dialplan/public.xml
             subPath: public.xml
+          - path: /etc/freeswitch/dialplan/asterisk.xml
+            subPath: asterisk.xml
   freeswitch-fax-spool:
 {{- if .Values.freeswitch.fax.persistence.enabled }}
     type: persistentVolumeClaim
