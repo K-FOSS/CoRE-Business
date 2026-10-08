@@ -23,6 +23,9 @@
   {{- end -}}
   {{- $roleDefaults := index $.Values.kamailio.roleDefaults $role | default dict -}}
   {{- $effective := mergeOverwrite (deepCopy $.Values.kamailio.defaults) (deepCopy $roleDefaults) (deepCopy $raw) -}}
+  {{- if or (lt (int $effective.shmSizeMb) 16) (gt (int $effective.shmSizeMb) 4096) -}}
+    {{- fail (printf "Kamailio %s shmSizeMb must be between 16 and 4096" $name) -}}
+  {{- end -}}
   {{- if not $effective.serviceAccountName -}}{{- fail (printf "Kamailio %s requires serviceAccountName" $name) -}}{{- end -}}
   {{- if and $effective.enabled (lt (int $effective.replicas) 1) -}}{{- fail (printf "Kamailio %s requires at least one replica" $name) -}}{{- end -}}
   {{- range $reserved := list "app" "avoip.mylogin.space/kamailio-instance" "app.kubernetes.io/controller" -}}

@@ -174,6 +174,10 @@ kamailio:
         sipTrace: true
     private-sbc:
       replicas: 1
+      # SIP Core's dedicated TLS/WebSocket proxy needs headroom for TLS
+      # handshakes and the topology module. The implicit Kamailio default is
+      # too small for this workload under load.
+      shmSizeMb: 128
       publicExposure:
         enabled: false
       sipLogging:
@@ -253,6 +257,9 @@ kamailio:
     # publicExposure.sip; the private TLS listener remains mandatory.
     listeners:
       bindAddress: '0.0.0.0'
+    # Kamailio's implicit shared memory default is 64 MiB. Private SBC role
+    # defaults raise this for SIP Core TLS handshakes and topology state.
+    shmSizeMb: 64
     tcpChildren: 4
     replicas: 3
     rollingUpdate:
