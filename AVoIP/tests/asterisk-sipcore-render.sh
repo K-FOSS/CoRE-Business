@@ -7,6 +7,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 render_sipcore() {
   helm template siptest "$chart_dir" --namespace core-prod \
+    --set-json 'kamailio.instances=[{"name":"carrier","enabled":true,"role":"carrier-sbc","replicas":3},{"name":"internal","enabled":true,"role":"private-sbc","topology":{"redis":{"database":52,"secretName":"avoip-kamailio-internal-topos"}}}]' \
     --set asterisk.sipCore.enabled=true \
     --set-string asterisk.sipCore.hostname=sipcore.example.net \
     --set-string asterisk.sipCore.allowedOrigins[0]=https://home.example.net \
@@ -59,16 +60,12 @@ grep -Fq 'webrtc=yes' "$tmp_dir/empty-matches.yaml" || fail 'WebRTC endpoint set
 grep -Fq 'direct_media=no' "$tmp_dir/empty-matches.yaml" || fail 'direct_media=no was not preserved'
 grep -Fq 'allow=ulaw,alaw' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core codecs were not preserved'
 grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS transport was not rendered'
-grep -Fq 'outbound_proxy=sip:siptest-avoip-kamailio.core-prod.svc.cluster.local:5063\\;transport=tls\\;lr' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core endpoint does not route outbound calls through Kamailio TLS'
+grep -Fq 'outbound_proxy=sip:siptest-avoip-kamailio-internal.core-prod.svc.cluster.local:5063\\;transport=tls\\;lr' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core endpoint does not route outbound calls through the internal Kamailio TLS listener'
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio WebSocket listener was not rendered'
-grep -Fq 'listen=tls:0.0.0.0:5063 advertise "siptest-avoip-kamailio.core-prod.svc.cluster.local":5063 name "sipcore_private_tls"' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk-only Kamailio TLS return listener is missing'
+grep -Fq 'listen=tls:0.0.0.0:5063 advertise "siptest-avoip-kamailio-internal.core-prod.svc.cluster.local":5063 name "sipcore_private_tls"' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk-only internal Kamailio TLS return listener is missing'
 grep -Fq 'name: sipcore-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio private TLS return Service port is missing'
 grep -Fq 'route[FROM_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio Asterisk-to-WebSocket route is missing'
 grep -Fq 'handle_ruri_alias()' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio does not route calls through the registered WebSocket flow'
-grep -Fq 'SIP Core uses dedicated transaction reply routes.' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core replies are not isolated from the carrier reply handler'
-grep -Fq '$Rp != 8088' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core WebSocket replies are not isolated from the carrier reply handler'
-grep -Fq '$Rp != 5063' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core private TLS replies are not isolated from the carrier reply handler'
-grep -Fq 'RTPEngine SIP Core WebSocket answer handling failed' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core WebSocket answers are not relayed through RTPEngine'
 grep -Fq 'RTPEngine SIP Core SDP update failed' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core requests fail on unnecessary msg_apply_changes'
 grep -Fq 'RTPEngine SIP Core outbound SDP update failed' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk-originated SIP Core requests fail on unnecessary msg_apply_changes'
 msg_apply_changes_count="$(grep -Fc 'msg_apply_changes()' "$tmp_dir/empty-matches.yaml" || true)"
@@ -79,9 +76,6 @@ grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio S
 grep -Fq 'fix_nated_register' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core route calls nathelper REGISTER helper without Kamailio registrar configuration'
 grep -Fq 'route[TO_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS route is missing'
 grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" || fail 'Home Assistant media is not relayed through RTPEngine'
-grep -Fq 'SIP RX RAW pod=' "$tmp_dir/empty-matches.yaml" && fail 'Kamailio raw SIP logging could expose Digest Authorization headers'
-grep -Fq 'SIP FLOWROUTE RX BEGIN' "$tmp_dir/empty-matches.yaml" && fail 'Kamailio raw carrier logging remains enabled with SIP Core'
-grep -Fq 'loadmodule "siptrace.so"' "$tmp_dir/empty-matches.yaml" && fail 'Kamailio SIP tracing could capture SIP Core Digest headers'
 rtpengine_sdp_line="$(grep -n 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 record_route_line="$(grep -n 'record_route_preset("sip:sipcore.example.net:443;transport=wss")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 if [[ -z "$rtpengine_sdp_line" || -z "$record_route_line" || "$rtpengine_sdp_line" -ge "$record_route_line" ]]; then
@@ -138,7 +132,29 @@ grep -Fq 'mountPath: /tmp/avoip-freeswitch-peer-password' "$tmp_dir/empty-matche
 grep -Fq 'allowedOrigins: []' "$chart_dir/values.yaml" || fail 'configurable WSS allowedOrigins value was removed'
 grep -Fq "value: '/ws'" "$tmp_dir/empty-matches.yaml" || fail 'SIP Core route no longer matches /ws'
 grep -Fq 'port: 8088' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core route no longer targets port 8088'
-grep -Fq "name: 'siptest-avoip-kamailio'" "$tmp_dir/empty-matches.yaml" || fail 'SIP Core HTTPRoute does not target Kamailio'
+grep -Fq "name: 'siptest-avoip-kamailio-internal'" "$tmp_dir/empty-matches.yaml" || fail 'SIP Core HTTPRoute does not target the internal Kamailio Service'
+
+yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio-config") | .data["kamailio.cfg"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/carrier-kamailio.cfg"
+yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/internal-kamailio.cfg"
+grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' "$tmp_dir/internal-kamailio.cfg" || fail 'internal Kamailio is missing its SIP Core WebSocket listener'
+grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/internal-kamailio.cfg" || fail 'internal Kamailio is missing the SIP Core routing path'
+grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/internal-kamailio.cfg" || fail 'internal Kamailio is missing SIP Core RTPEngine media handling'
+grep -Fq 'onreply_route[SIPCORE_WS_REPLY]' "$tmp_dir/internal-kamailio.cfg" || fail 'SIP Core WebSocket replies are not isolated from carrier reply handling'
+grep -Fq 'onreply_route[SIPCORE_ASTERISK_REPLY]' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk reverse-leg replies are not isolated from carrier reply handling'
+grep -Fq 'RTPEngine SIP Core outbound answer handling failed' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk-originated media answers are not relayed through RTPEngine'
+grep -Fq 'SIP RX RAW pod=' "$tmp_dir/internal-kamailio.cfg" && fail 'internal Kamailio raw SIP logging could expose Digest Authorization headers'
+grep -Fq 'SIP FLOWROUTE RX BEGIN' "$tmp_dir/internal-kamailio.cfg" && fail 'internal Kamailio has carrier packet logging enabled'
+grep -Fq 'loadmodule "siptrace.so"' "$tmp_dir/internal-kamailio.cfg" && fail 'internal Kamailio SIP tracing could capture Digest headers'
+grep -Fq 'SIP RX RAW pod=' "$tmp_dir/carrier-kamailio.cfg" && fail 'carrier raw SIP logging could expose Digest Authorization headers while SIP Core is enabled'
+grep -Fq 'SIP FLOWROUTE RX BEGIN' "$tmp_dir/carrier-kamailio.cfg" && fail 'carrier packet logging remains active while SIP Core is enabled'
+grep -Fq 'loadmodule "siptrace.so"' "$tmp_dir/carrier-kamailio.cfg" && fail 'carrier SIP tracing remains active while SIP Core is enabled'
+if grep -Eq 'sipcore_ws|FROM_SIPCORE|sipcore_private_tls' "$tmp_dir/carrier-kamailio.cfg"; then
+  fail 'carrier SBC still contains SIP Core WebSocket or Asterisk routing'
+fi
+grep -Fq 'route[FROM_CARRIER]' "$tmp_dir/carrier-kamailio.cfg" || fail 'carrier SBC lost its existing carrier ingress route'
+grep -Fq "application=\"rxfax\"" "$tmp_dir/empty-matches.yaml" || fail 'existing FreeSWITCH fax receive configuration was removed'
+grep -Fq "'k8s:io.kubernetes.pod.namespace': 'kube-system'" "$tmp_dir/empty-matches.yaml" || fail 'internal policy does not select the live Envoy Gateway namespace'
+grep -Fq "port: '5063'" "$tmp_dir/empty-matches.yaml" || fail 'internal policy does not expose the Asterisk return port'
 
 # The WebSocket TCP peer is Envoy (172.20.57.213). Endpoint selection is
 # username-first and does not consume HTTP upgrade headers. A spoofed XFF value

@@ -6,9 +6,10 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $sipCoreEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled -}}
-{{- $rawSipLogging := and (or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound)) (not $sipCoreEnabled) -}}
-{{- $carrierTrafficLogging := and (not $sipCoreEnabled) (default false .Values.kamailio.sipLogging.carrierTraffic) -}}
+{{- $sipCoreConfigured := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled -}}
+{{- $sipCoreEnabled := and $sipCoreConfigured (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) -}}
+{{- $rawSipLogging := and (or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound)) (not $sipCoreConfigured) -}}
+{{- $carrierTrafficLogging := and (not $sipCoreConfigured) (default false .Values.kamailio.sipLogging.carrierTraffic) -}}
 {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled (not .Values.kamailio.publicExposure.sip.directService.enabled) -}}
 {{- fail "public UDP SIP dialogs require kamailio.publicExposure.sip.directService.enabled so the advertised UDP Contact is reachable" -}}
 {{- end -}}
@@ -53,7 +54,7 @@ data:
     # Envoy TLS passthrough + PROXY v2 for the carrier role only.
     tcp_accept_haproxy={{ if eq .Values.kamailio.role "carrier-sbc" }}yes{{ else }}no{{ end }}
     enable_tls=1
-    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    {{- if $sipCoreEnabled }}
     tcp_accept_no_cl=yes
     listen=tcp:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.httpPort }} name "sipcore_ws"
     listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $kamailioHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
@@ -76,7 +77,7 @@ data:
     {{- if eq .Values.kamailio.role "carrier-sbc" }}
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
     alias="{{ $publicSipHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
-    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    {{- if $sipCoreEnabled }}
     alias="{{ $.Values.asterisk.sipCore.hostname }}:443"
     {{- end }}
     {{- if .Values.kamailio.publicExposure.sip.directService.enabled }}
@@ -87,7 +88,7 @@ data:
 
     loadmodule "tm.so"
     loadmodule "sl.so"
-    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    {{- if $sipCoreEnabled }}
     loadmodule "nathelper.so"
     loadmodule "outbound.so"
     loadmodule "xhttp.so"
@@ -148,16 +149,16 @@ data:
     loadmodule "topos_redis.so"
     {{- end }}
 
-    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreEnabled) }}
+    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreConfigured) }}
     loadmodule "siptrace.so"
     {{- end }}
 
-    {{- if and .Values.kamailio.functions.media (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
+    {{- if and (or .Values.kamailio.functions.media $sipCoreEnabled) (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
     loadmodule "rtpengine.so"
     loadmodule "textopsx.so"
     {{- end }}
 
-    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    {{- if $sipCoreEnabled }}
     event_route[xhttp:request] {
       set_reply_close();
       set_reply_no_connect();
@@ -273,7 +274,7 @@ data:
     }
     {{- end }}
 
-    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreEnabled) }}
+    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreConfigured) }}
     modparam("siptrace", "trace_on", 1)
     modparam("siptrace", "trace_mode", 1)
     modparam("siptrace", "trace_to_database", 0)

@@ -276,10 +276,11 @@ been provisioned.
 The chart also includes a disabled-by-default SIP Core WebRTC path for the
 [SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration).
 It provisions static PJSIP extensions from External Secrets, serves WSS through
-Envoy to the existing Kamailio carrier instance, and allows only exact
-configured internal destinations. Kamailio relays signaling to Asterisk over
-private TLS and controls the existing RTPEngine for the Home Assistant media
-leg. The enabled pilot is site-specific; inspect the owning ApplicationSet
+Envoy to the selected private Kamailio instance, and allows only exact
+configured internal destinations. Carrier and FreeSWITCH fax signaling stays
+on the separate carrier instance. The private instance relays signaling to
+Asterisk over TLS and controls the existing RTPEngine for the Home Assistant
+media leg. The enabled pilot is site-specific; inspect the owning ApplicationSet
 before changing its rollout values. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md).
 

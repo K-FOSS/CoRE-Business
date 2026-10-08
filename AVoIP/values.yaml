@@ -387,7 +387,7 @@ kamailio:
         # Match the Envoy Gateway data-plane pods, not carrier source CIDRs.
         # Override these labels if the installed GatewayClass uses different
         # data-plane labels.
-        namespace: 'envoy-gateway-system'
+        namespace: 'kube-system'
         podName: 'envoy'
     # Legacy override; leave empty to derive the site SIP identity.
     advertisedHost: ''
@@ -678,6 +678,9 @@ asterisk:
     # Enables the SIP Core browser client path through the existing HTTPS
     # Gateway. It does not enable PSTN dialing or create public RTP exposure.
     enabled: false
+    # Route SIP Core WebSocket signaling through this dedicated private SBC.
+    # The selected instance must be enabled with role private-sbc.
+    kamailioInstance: 'internal'
     hostname: ''
     gatewaySectionName: ''
     allowedOrigins: []

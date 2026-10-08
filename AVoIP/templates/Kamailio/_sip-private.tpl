@@ -7,6 +7,20 @@
         exit;
       }
 
+      {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) }}
+      # SIP Core WebSocket signaling has its own listener and handshake policy.
+      if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+        route(FROM_SIPCORE);
+        exit;
+      }
+      # Asterisk's reverse signaling leg is restricted by mTLS and Cilium to
+      # the Asterisk workload on this dedicated port.
+      if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.privateEgressPort }} && $tls_peer_verified == 1) {
+        route(FROM_SIPCORE_ASTERISK);
+        exit;
+      }
+      {{- end }}
+
       if ($proto != "tls" || $Rp != 5062 || $tls_peer_verified != 1) {
         if (!is_method("ACK")) sl_send_reply("403", "Peer Not Authorized");
         exit;
@@ -148,6 +162,130 @@
       record_route();
       route(PRIVATE_RELAY);
     }
+
+    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    route[FROM_SIPCORE] {
+      if (!is_method("REGISTER|INVITE|ACK|BYE|CANCEL|OPTIONS|UPDATE|INFO|PRACK|REFER|NOTIFY|MESSAGE")) {
+        sl_send_reply("405", "Method Not Allowed");
+        exit;
+      }
+
+      force_rport();
+      if (nat_uac_test(64)) {
+        if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
+          if (!add_contact_alias()) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
+        } else if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
+          if (!add_contact_alias()) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
+        }
+      }
+
+      t_on_reply("SIPCORE_WS_REPLY");
+      if (is_method("CANCEL")) {
+        rtpengine_manage();
+        $var(cancel_result) = t_relay_cancel();
+        if ($var(cancel_result) > 0) sl_send_reply("481", "Call Does Not Exist");
+        else if ($var(cancel_result) < 0) sl_reply_error();
+        exit;
+      }
+
+      if (has_totag() && !loose_route()) {
+        if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
+        exit;
+      }
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("WebRTC replace-origin external internal")) {
+          xlog("L_ERR", "RTPEngine SIP Core SDP handling failed callid=$ci method=$rm\n");
+          if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
+          exit;
+        }
+      } else if (is_method("BYE")) {
+        rtpengine_manage();
+      }
+      if (is_method("INVITE") && !has_totag()) {
+        record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
+      }
+      route(TO_SIPCORE_ASTERISK);
+      route(PRIVATE_RELAY);
+    }
+
+    route[FROM_SIPCORE_ASTERISK] {
+      if (!is_method("INVITE|ACK|BYE|CANCEL|OPTIONS|UPDATE|INFO|PRACK|REFER|NOTIFY")) {
+        sl_send_reply("405", "Method Not Allowed");
+        exit;
+      }
+      if (is_method("CANCEL")) {
+        $var(cancel_result) = t_relay_cancel();
+        if ($var(cancel_result) > 0) sl_send_reply("481", "Call Does Not Exist");
+        else if ($var(cancel_result) < 0) sl_reply_error();
+        exit;
+      }
+
+      $var(sipcore_dialog_routed) = 0;
+      if (has_totag() && loose_route()) $var(sipcore_dialog_routed) = 1;
+      if ($var(sipcore_dialog_routed) != 1) {
+        if (is_method("INVITE|OPTIONS")) {
+          $var(sipcore_target_allowed) = 0;
+          {{- range $.Values.asterisk.sipCore.extensions }}
+          if ($tU == "{{ .number }}") $var(sipcore_target_allowed) = 1;
+          {{- end }}
+          if ($var(sipcore_target_allowed) != 1) {
+            sl_send_reply("403", "SIP Core Target Not Allowed");
+            exit;
+          }
+        }
+        handle_ruri_alias();
+        if ($rc != 1) {
+          sl_send_reply("404", "WebSocket Contact Not Found");
+          exit;
+        }
+        if (is_method("INVITE") && !has_totag()) {
+          record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
+        }
+      }
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("WebRTC replace-origin internal external")) {
+          xlog("L_ERR", "RTPEngine SIP Core outbound SDP handling failed callid=$ci method=$rm\n");
+          if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
+          exit;
+        }
+      } else if (is_method("BYE")) {
+        rtpengine_manage();
+      }
+      t_on_reply("SIPCORE_ASTERISK_REPLY");
+      route(PRIVATE_RELAY);
+    }
+
+    route[TO_SIPCORE_ASTERISK] {
+      $du = "sip:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}:5061;transport=tls";
+      $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}";
+      set_send_socket_name("private_tls");
+    }
+
+    onreply_route[SIPCORE_ASTERISK_REPLY] {
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("WebRTC replace-origin external internal")) {
+          xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
+          drop;
+        }
+      }
+    }
+
+    onreply_route[SIPCORE_WS_REPLY] {
+      if (has_body("application/sdp")) {
+        if (!rtpengine_manage("WebRTC replace-origin internal external")) {
+          xlog("L_ERR", "RTPEngine SIP Core WebSocket answer handling failed callid=$ci status=$rs\n");
+          drop;
+        }
+      }
+      if (nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
+    }
+    {{- end }}
 
     route[PRIVATE_RELAY] {
       if (!t_relay()) {

@@ -2,7 +2,7 @@
 {{- $hostname := required "asterisk.sipCore.hostname is required when SIP Core is enabled" .Values.asterisk.sipCore.hostname -}}
 {{- $kamailioService := "" -}}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
-  {{- if and $instance.enabled (eq $instance.name "carrier") -}}
+  {{- if and $instance.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) (eq $instance.role "private-sbc") -}}
     {{- $kamailioService = include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance) -}}
   {{- end -}}
 {{- end -}}
@@ -32,6 +32,6 @@ spec:
       backendRefs:
         - group: ''
           kind: 'Service'
-          name: '{{ required "Asterisk SIP Core requires the enabled Kamailio carrier Service" $kamailioService }}'
+          name: '{{ required "Asterisk SIP Core requires the enabled private Kamailio Service" $kamailioService }}'
           port: {{ .Values.asterisk.sipCore.httpPort }}
 {{- end }}

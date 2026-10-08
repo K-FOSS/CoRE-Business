@@ -5,8 +5,14 @@
   {{- if not (include "avoip.rtpengine.enabled" . | trim) -}}
     {{- fail "Asterisk SIP Core requires the existing RTPEngine for WebRTC media" -}}
   {{- end -}}
-  {{- if not (include "avoip.kamailio.carrier.enabled" . | trim) -}}
-    {{- fail "Asterisk SIP Core requires the enabled Kamailio carrier instance for WebSocket ingress and RTPEngine control" -}}
+  {{- $sipCoreKamailioFound := false -}}
+  {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+    {{- if and $instance.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) (eq $instance.role "private-sbc") -}}
+      {{- $sipCoreKamailioFound = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $sipCoreKamailioFound -}}
+    {{- fail "Asterisk SIP Core requires a configured enabled private-sbc matching asterisk.sipCore.kamailioInstance" -}}
   {{- end -}}
   {{- if not .Values.freeswitch.enabled -}}
     {{- fail "Asterisk SIP Core requires the existing media-enabled AVoIP stack" -}}

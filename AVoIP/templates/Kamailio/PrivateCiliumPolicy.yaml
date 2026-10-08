@@ -12,8 +12,26 @@ spec:
       app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}'
       app.kubernetes.io/instance: '{{ $root.Release.Name }}'
   ingress:
-    {{- if not $instance.privateRouting.peers }} []
+    {{- if and (not $instance.privateRouting.peers) (not (and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance))) }} []
     {{- else }}
+    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    - fromEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': '{{ $instance.networkPolicy.envoy.namespace }}'
+            app.kubernetes.io/name: '{{ $instance.networkPolicy.envoy.podName }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.asterisk.sipCore.httpPort }}'
+              protocol: 'TCP'
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'asterisk'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.asterisk.sipCore.privateEgressPort }}'
+              protocol: 'TCP'
+    {{- end }}
     {{- range $peer := $instance.privateRouting.peers }}
     - fromEndpoints:
         - matchLabels:
@@ -45,6 +63,24 @@ spec:
         - ports:
             - port: '5061'
               protocol: 'TCP'
+    {{- end }}
+    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'asterisk'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '5061'
+              protocol: 'TCP'
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'rtpengine'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.rtpengine.controlPort }}'
+              protocol: 'UDP'
     {{- end }}
     {{- range $destination := $instance.privateRouting.destinations }}
     - toEndpoints:

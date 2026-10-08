@@ -47,10 +47,6 @@
           ports:
             - protocol: TCP
               port: 5061
-          {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
-            - protocol: TCP
-              port: {{ .Values.asterisk.sipCore.httpPort }}
-          {{- end }}
         - from:
             - podSelector:
                 matchLabels:
@@ -59,16 +55,6 @@
           ports:
             - protocol: TCP
               port: 5062
-        {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
-        - from:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/controller: asterisk
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
-          ports:
-            - protocol: TCP
-              port: {{ .Values.asterisk.sipCore.privateEgressPort }}
-        {{- end }}
       egress:
         {{- if .Values.kamailio.carrierOutbound.enabled }}
         - to:
@@ -88,16 +74,6 @@
           ports:
             - protocol: TCP
               port: 5061
-        {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
-        - to:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/controller: asterisk
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
-          ports:
-            - protocol: TCP
-              port: 5061
-        {{- end }}
 {{- if .Values.kamailio.functions.media }}
         - to:
             - podSelector:
@@ -397,7 +373,7 @@
           - name: tls-private
             containerPort: 5062
             protocol: TCP
-        {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+        {{- if and (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
           - name: sipcore-ws
             containerPort: {{ $.Values.asterisk.sipCore.httpPort }}
             protocol: TCP
@@ -459,7 +435,7 @@
         port: 5062
         targetPort: tls-private
         protocol: TCP
-    {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    {{- if and (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
       sipcore-ws:
         port: {{ $.Values.asterisk.sipCore.httpPort }}
         targetPort: sipcore-ws
@@ -809,7 +785,7 @@ controllers:
             {
               printf '[{{ .number }}]\ntype=auth\nauth_type=userpass\nusername={{ .number }}\npassword=%s\n\n' "$sip_password"
               printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\n\n'
-              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\noutbound_proxy=sip:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "kamailio") }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
+              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\noutbound_proxy=sip:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" (include "avoip.kamailio.component" (dict "name" $.Values.asterisk.sipCore.kamailioInstance))) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
               {{- if and $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.media.enabled }}
               printf 'media_address={{ $.Values.asterisk.sipCore.media.address }}\n'
               {{- end }}

@@ -11,12 +11,15 @@ and Asterisk's [WebRTC/PJSIP guide](https://docs.asterisk.org/Configuration/WebR
 ## Signaling identity and client address
 
 The browser connects to `wss://<configured-hostname>/ws`. Envoy Gateway
-terminates WSS and proxies the HTTP WebSocket upgrade to the existing
-Kamailio carrier instance on port 8088. Kamailio relays SIP to Asterisk over
-the existing private TLS transport on port 5061. Asterisk therefore sees
-Kamailio as the TCP peer, and endpoint selection uses the SIP username. The
-HTTP `X-Forwarded-For` header belongs to the upgrade request; it is not part of
-the SIP messages carried inside the WebSocket connection.
+terminates WSS and proxies the HTTP WebSocket upgrade to the dedicated
+internal Kamailio SBC on port 8088. That instance relays SIP to Asterisk over
+TLS on port 5061. Asterisk's reverse signaling leg returns to the same
+internal instance on its Asterisk-only TLS listener (default port 5063), which
+uses the registered WebSocket flow. The carrier SBC does not process this
+WebSocket or Asterisk signaling path; its FreeSWITCH, carrier, and fax routes
+remain on the carrier instance. The HTTP `X-Forwarded-For` header belongs to
+the upgrade request; it is not part of the SIP messages carried inside the
+WebSocket connection.
 
 PJSIP endpoint selection uses the SIP username before source-IP matching. For
 extension `7101`, the generated endpoint accepts the `username` and
@@ -79,29 +82,35 @@ behavior.
 
 `asterisk.sipCore.enabled` defaults to `false`. When enabled, the chart:
 
-- Adds a Kamailio WebSocket listener reached by the `/ws` HTTPRoute, a private
-  TLS PJSIP transport to Asterisk, and WebRTC endpoint/AOR/auth objects for
-  each configured extension. Envoy terminates WSS; Kamailio relays signaling
-  and controls the existing RTPEngine for the Home Assistant media leg.
+- Adds a WebSocket listener and SIP Core route only to the selected private
+  Kamailio instance. The carrier instance has no SIP Core listener or route.
+  The private instance relays SIP to Asterisk over TLS and controls the
+  existing RTPEngine for the Home Assistant media leg. WebRTC
+  endpoint/AOR/auth objects are generated for each configured extension.
 - Keeps the Asterisk endpoint on TLS to Kamailio. Asterisk must not send SIP
   directly to the browser's `transport=ws` Contact because Kamailio owns that
   WebSocket connection. The chart stores a Kamailio Contact alias on REGISTER,
   gives Asterisk a dedicated private TLS return port (default `5063`), and
   routes calls from Asterisk back over the existing WebSocket flow. A
-  pod-selected NetworkPolicy permits that port only from this release's
-  Asterisk workload. RTPEngine relays the reverse media offer and answer too.
+  Cilium policy permits that port only from this release's Asterisk workload.
+  RTPEngine relays the reverse media offer and answer too.
 - Reads each extension's random SIP password from an ExternalSecret sourced
   from the configured CoreVault-backed SecretStore. At startup, it writes a
   private, temporary PJSIP include; the password is never rendered into Git or
   a ConfigMap. Use at least 32 hexadecimal characters.
 - Adds a public HTTPRoute for only `/ws` on the existing Gateway HTTPS listener.
-  It forwards the WebSocket to the existing Kamailio carrier Service on port
-  8088. No public Asterisk SIP or AMI listener is added.
+  It forwards the WebSocket to the selected private Kamailio Service on port
+  8088. The private policy admits the Envoy data-plane on that port and the
+  Asterisk workload on the TLS return port. No public Asterisk SIP or AMI
+  listener is added.
 - Places every SIP Core extension in its own dialplan context. `allowCallsTo`
   lists exact local extension numbers and may include the configured echo
   extension for a loopback audio check. No wildcard or PSTN route is created.
 
-The chart does not enable this feature at a site. Set the hostname to a name
+The chart does not enable this feature at a site. Set
+`asterisk.sipCore.kamailioInstance` to the name of an enabled `private-sbc`
+instance (the current site uses `internal`). Keep that private instance's
+site-specific TOPOS settings isolated from the carrier's store. Set the hostname to a name
 covered by the selected Gateway HTTPS listener and configure ExternalDNS and
 the Gateway's certificate/DNS ownership through the site's established
 Backplane path. A hostname under an existing wildcard listener is usually the
@@ -180,10 +189,11 @@ works.
 ## Rollback and verification
 
 Rollback by setting `asterisk.sipCore.enabled: false`. This removes the WSS
-route, Kamailio listener/handshake policy, endpoint configuration, and ExternalSecret resources;
+route, internal Kamailio listener/handshake policy, endpoint configuration,
+and ExternalSecret resources;
 ExternalSecret targets use `deletionPolicy: Retain`, so explicitly audit the
-retained Kubernetes Secrets and Vault values before deleting them. Existing
-carrier SIP and fax routing are unchanged. After a rollout, verify the route is
+retained Kubernetes Secrets and Vault values before deleting them. The carrier
+SBC remains responsible for carrier and FreeSWITCH fax signaling. After a rollout, verify the route is
 Accepted, Kamailio loaded `websocket.so` and `rtpengine.so`, `pjsip show
 transports` lists `transport-tls`, `pjsip show contacts` lists the registered
 extension, and Asterisk reports the contact reachable through Kamailio. The
