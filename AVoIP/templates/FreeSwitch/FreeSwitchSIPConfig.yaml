@@ -15,9 +15,12 @@ data:
     <!-- Disable the image default IPv6 external profile. -->
   asterisk.xml: |
     <profile name="asterisk">
+        {{- if .Values.asterisk.enabled }}
         <gateways>
           <gateway name="asterisk">
             <param name="username" value="freeswitch"/>
+            <param name="from-user" value="freeswitch"/>
+            <param name="password" value="$${asterisk_peer_password}"/>
             <param name="realm" value="{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}"/>
             <param name="from-domain" value="{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}"/>
             <param name="proxy" value="{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}:5061;transport=tls"/>
@@ -27,6 +30,9 @@ data:
             <param name="rfc-5626" value="true"/>
           </gateway>
         </gateways>
+        {{- else }}
+        <!-- Asterisk peer is disabled for this site. -->
+        {{- end }}
         <settings>
             <param name="sip-port" value="5060"/>
             <param name="tls" value="true"/>
@@ -38,7 +44,7 @@ data:
             <param name="tls-verify-depth" value="3"/>
             <param name="apply-inbound-acl" value="asterisk"/>
             <param name="auth-calls" value="true"/>
-            <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
+            <param name="sip-trace" value="false"/>
             <param name="context" value="public"/>
             <param name="rtp-ip" value="$${local_ip_v4}"/>
             <param name="sip-ip" value="$${local_ip_v4}"/>

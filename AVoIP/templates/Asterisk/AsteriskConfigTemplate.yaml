@@ -64,6 +64,10 @@ data:
     ; AVoIP's active PJSIP peers.
     ; Flowroute is terminated by FreeSWITCH; Asterisk only peers with FreeSWITCH.
 
+    [global]
+    type=global
+    endpoint_identifier_order=username,auth_username,ip,anonymous
+
     ; The entrypoint writes this auth object from the mylogin.space User
     ; connection Secret at startup. Credentials never enter this ConfigMap.
     #include /tmp/avoip-pjsip-auth.conf
@@ -82,28 +86,30 @@ data:
     verify_server=yes
     ; Do not mark the FreeSWITCH pod subnet local on this transport: PJSIP
     ; otherwise skips external_signaling_address Contact rewriting for it.
-{{- with $.Values.asterisk.externalMediaAddress }}
+    {{- with $.Values.asterisk.externalMediaAddress }}
     external_media_address={{ . }}
-{{- end }}
-{{- if .Values.asterisk.sipCore.enabled }}
+    {{- end }}
+    {{- if .Values.asterisk.sipCore.enabled }}
 
-    # Envoy Gateway terminates WSS and upgrades to WebSocket on the cluster hop.
+    ; Envoy Gateway terminates WSS and upgrades to WebSocket on the cluster hop.
     [transport-ws]
     type=transport
     protocol=ws
     bind=0.0.0.0
 
-    # The WebRTC credentials and endpoints are materialized from mounted
-    # Secret files by the Asterisk startup wrapper.
+    ; The WebRTC credentials and endpoints are materialized from mounted
+    ; Secret files by the Asterisk startup wrapper.
     #include /tmp/avoip-sipcore-pjsip.conf
-{{- end }}
+    {{- end }}
 
+    {{- if .Values.freeswitch.enabled }}
     [freeswitch]
     type=endpoint
     transport=transport-tls
     outbound_auth=freeswitch-auth
-    trust_id_inbound=yes
+    auth=freeswitch-inbound-auth
     trust_id_outbound=yes
+    identify_by=username,auth_username
     aors=freeswitch
     context=from-external
     disallow=all
@@ -112,12 +118,7 @@ data:
     ice_support=yes
 
     [freeswitch]
-    type=identify
-    endpoint=freeswitch
-    match=10.0.0.0/8
-    match=172.16.0.0/12
-
-    [freeswitch]
     type=aor
     contact=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:5062;transport=tls
+    {{- end }}
 {{- end }}

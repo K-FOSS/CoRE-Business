@@ -127,6 +127,16 @@ keeps Flowroute inbound traffic on its separate source-ACL-protected external
 profile, so carrier ingress does not bypass application authentication. See
 [PHONE-TREE.md](docs/PHONE-TREE.md) for the call paths and verification checks.
 
+The Asterisk `freeswitch` endpoint is identified by its SIP username and
+authenticates inbound requests with SIP Digest. An External Secrets Password
+generator creates a random peer password in an immutable, retained Secret
+referenced by both Asterisk and FreeSWITCH; no internal pod IP or cluster CIDR
+is used as identity. Asterisk's existing outbound auth remains configured.
+Raw SIP packet traces are suppressed on the authenticated peer path so Digest
+Authorization headers are not written to logs. See
+[SIPCORE-HASS.md](docs/SIPCORE-HASS.md) for endpoint identification and the
+WebSocket transport boundary.
+
 ## SIP signaling and media
 
 The deployed FreeSWITCH image comes from the site-local
@@ -267,7 +277,7 @@ The chart also includes a disabled-by-default Asterisk WSS/WebRTC path for the
 [SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration).
 It provisions static PJSIP extensions from External Secrets, serves WSS through
 the existing Gateway, and allows only exact configured internal destinations.
-It is not enabled by the YVR ApplicationSet. Public UDP media exposure is a
+It is enabled by the Home1/YVR ApplicationSet. Public UDP media exposure is a
 separate opt-in because the Gateway carries only WebSocket signaling. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md).
 

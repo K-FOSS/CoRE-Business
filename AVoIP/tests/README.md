@@ -24,6 +24,14 @@ An isolated PostgreSQL 17 check executed the generated migration twice and
 verified the active-subscriber filter plus contact purge on disable and HA1
 rotation. It is not a live REGISTER or Authentik revocation test.
 
+`./asterisk-sipcore-render.sh` checks the Asterisk 20 PJSIP identifier order,
+username-based SIP Core and FreeSWITCH endpoint selection, the External
+Secrets generated peer Digest password, SIP Core password validation, HTTPRoute
+`/ws` forwarding, and retained FreeSWITCH fax configuration. Its spoofed
+`X-Forwarded-For` regression is a static configuration check: HTTP upgrade
+headers do not change the WebSocket socket peer or SIP identity. It does not
+perform a live SIP registration or call.
+
 `udp-carrier-ack-bye.xml` exercises a UDP INVITE through one Kamailio replica,
 checks that the 200 Contact is public UDP/5060 with a TOPOS token, and directs
 the 2xx ACK and BYE to a second Kamailio pod. This verifies cross-replica
@@ -122,10 +130,11 @@ hostname and chain through the supplied CA.
 then rejection of a deliberately wrong digest for both the test DID and
 unassigned number. Run these from a test pod whose source is permitted by the
 private profile's ACL so a source denial cannot masquerade as a credential
-check. The current Asterisk endpoint config has `outbound_auth` but no
-inbound `auth` setting, and its identify rule matches broad private ranges;
-**do not mark the private credential boundary accepted until this probe passes
-and the backend configuration is corrected if it fails.**
+check. The Asterisk-to-FreeSWITCH endpoint has separate `outbound_auth` and
+inbound `auth` references. The inbound path selects the endpoint using the
+FreeSWITCH SIP username and validates Digest credentials from the generated
+peer Secret. The render guard does not prove that External Secrets created the
+Secret or that a live FreeSWITCH request passes Digest authentication.
 
 No live authorization probe has been run by these repository checks. Passing
 render assertions alone does not prove unauthenticated callers cannot reach

@@ -657,7 +657,7 @@ controllers:
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}'
     initContainers:
 {{- if .Values.asterisk.cdr.enabled }}
       cdr-schema:
@@ -755,6 +755,10 @@ controllers:
             printf 'auth_type=userpass\n' >> /tmp/avoip-pjsip-auth.conf
             printf 'username=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-pjsip-auth.conf
             printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-pjsip-auth.conf
+            {{- if .Values.freeswitch.enabled }}
+            printf '\n[freeswitch-inbound-auth]\ntype=auth\nauth_type=userpass\nusername=freeswitch\npassword=%s\n' \
+              "$(cat /tmp/avoip-freeswitch-peer-password)" >> /tmp/avoip-pjsip-auth.conf
+            {{- end }}
             {{- if .Values.asterisk.sipCore.enabled }}
             : > /tmp/avoip-sipcore-pjsip.conf
             {{- range .Values.asterisk.sipCore.extensions }}
@@ -766,7 +770,7 @@ controllers:
             {
               printf '[{{ .number }}]\ntype=auth\nauth_type=userpass\nusername={{ .number }}\npassword=%s\n\n' "$sip_password"
               printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\n\n'
-              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-ws\naors={{ .number }}\nauth={{ .number }}\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
+              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-ws\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
               {{- if and $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.media.enabled }}
               printf 'media_address={{ $.Values.asterisk.sipCore.media.address }}\n'
               {{- end }}
@@ -1270,7 +1274,7 @@ controllers:
         # consistently instead of retaining a mixed in-memory configuration.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
 {{- if .Values.freeswitch.sms.enabled }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}'
 {{- else }}
         secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}'
 {{- end }}
@@ -1326,6 +1330,13 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
+{{- if .Values.asterisk.enabled }}
+          - name: ASTERISK_PEER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer'
+                key: password
+{{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1793,6 +1804,16 @@ persistence:
             subPath: username
           - path: /tmp/avoip-password
             subPath: password
+{{- if .Values.freeswitch.enabled }}
+  asterisk-freeswitch-peer-secret:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /tmp/avoip-freeswitch-peer-password
+            subPath: password
+{{- end }}
   asterisk-sip-tls:
     type: secret
     name: '{{ include "avoip.fullname" . }}-asterisk-sip-tls'

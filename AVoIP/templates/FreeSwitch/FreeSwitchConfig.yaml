@@ -34,6 +34,9 @@ data:
       <X-PRE-PROCESS cmd="env-set" data="default_password=${PASSWORD}"/>
       <X-PRE-PROCESS cmd="env-set" data="username=$USERNAME"/>
       <X-PRE-PROCESS cmd="env-set" data="password=$PASSWORD"/>
+      {{- if .Values.asterisk.enabled }}
+      <X-PRE-PROCESS cmd="env-set" data="asterisk_peer_password=$ASTERISK_PEER_PASSWORD"/>
+      {{- end }}
       <X-PRE-PROCESS cmd="set" data="domain={{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}"/>
       <X-PRE-PROCESS cmd="set" data="domain_name=$${domain}"/>
       <X-PRE-PROCESS cmd="set" data="use_profile=external"/>
