@@ -5,10 +5,6 @@
 {{- $freeswitchRtpEnd = sub (.Values.rtpengine.media.max | int) 1 -}}
 {{- end }}
 {{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host -}}
-{{- $ldapDirectoryFilter := "(&amp;(objectClass=user)(cn=%s)" -}}
-{{- if .Values.asterisk.enabled -}}
-{{- $ldapDirectoryFilter = printf "%s(!(cn=freeswitch))" $ldapDirectoryFilter -}}
-{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -16,11 +12,12 @@ metadata:
   name: {{ $fullName }}-freeswitch-misc-configs
 
 data:
+  {{- if .Values.freeswitch.ldap.enabled }}
   ldap.conf.xml: |
     <configuration name="xml_ldap.conf" description="LDAP directory gateway">
       <bindings>
         <binding name="directory">
-          <param name="filter" value="{{ $ldapDirectoryFilter }})" bindings="directory"/>
+          <param name="filter" value="(&amp;(objectClass=user)(cn=%s))" bindings="directory"/>
           <param name="basedn" value="ou=users,dc=ldap,dc=mylogin,dc=space"/>
           <param name="url" value="ldaps://ldap-{{ .Values.datacenter }}.mylogin.space"/>
           <param name="binddn" value="cn=$${username},ou=users,dc=ldap,dc=mylogin,dc=space"/>
@@ -31,6 +28,7 @@ data:
         </binding>
       </bindings>
     </configuration>
+  {{- end }}
 
   {{- if .Values.asterisk.enabled }}
   asterisk-peer.xml: |
@@ -72,7 +70,9 @@ data:
         <load module="mod_console"/>
         <load module="mod_logfile"/>
         <load module="mod_sofia"/>
+        {{- if $.Values.freeswitch.ldap.enabled }}
         <load module="mod_xml_ldap"/>
+        {{- end }}
         {{- if $.Values.freeswitch.sms.enabled }}
         <load module="mod_sms"/>
         <load module="mod_sms_flowroute"/>

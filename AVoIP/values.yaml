@@ -757,6 +757,11 @@ asterisk:
 
 freeswitch:
   enabled: true
+  ldap:
+    # Temporarily disable mod_xml_ldap while the Asterisk peer uses its static
+    # Secret-backed directory entry. Enable only after the LDAP callback is
+    # verified stable under SIP authentication lookups.
+    enabled: false
   sip:
     serviceHost: ''
   asterisk:
