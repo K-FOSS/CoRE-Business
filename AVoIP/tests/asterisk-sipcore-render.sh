@@ -53,6 +53,12 @@ fi
 if render_sipcore --set-string asterisk.sipCore.ggAudioDestination='bad destination' >"$tmp_dir/invalid-gg-destination.yaml" 2>&1; then
   fail 'invalid FreeSWITCH GG audio SIP destination rendered'
 fi
+if helm template siptest "$chart_dir" --set freeswitch.asterisk.tlsPort=5061 >"$tmp_dir/colliding-freeswitch-port.yaml" 2>&1; then
+  fail 'FreeSWITCH Asterisk TLS listener rendered on the public/Kamailio TLS port'
+fi
+if helm template siptest "$chart_dir" --set freeswitch.asterisk.tlsPort=5064 --set freeswitch.publicExposure.kamailio.backendPort=5064 >"$tmp_dir/colliding-kamailio-port.yaml" 2>&1; then
+  fail 'FreeSWITCH Asterisk TLS listener rendered on the configured Kamailio backend port'
+fi
 render_sipcore --set-string asterisk.sipCore.ggAudioDestination=custom-audio > "$tmp_dir/custom-gg-destination.yaml"
 render_sipcore --set asterisk.turn.enabled=false > "$tmp_dir/turn-disabled.yaml"
 render_sipcore --set asterisk.turn.enabled=true > "$tmp_dir/turn-enabled.yaml"
@@ -141,9 +147,17 @@ grep -Fq 'type=identify' "$tmp_dir/empty-matches.yaml" && fail 'FreeSWITCH endpo
 grep -Fq 'auth=freeswitch-inbound-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH inbound Digest auth is missing'
 grep -Fq 'identify_by=username,auth_username' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH endpoint is not selected by SIP identity'
 grep -Fq 'outbound_auth=freeswitch-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH outbound authentication was removed'
-grep -Fq 'contact=sip:siptest-avoip-freeswitch.core-prod.svc.cluster.local:5061;transport=tls' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk FreeSWITCH peer does not use the Service TLS port'
+grep -Fq 'contact=sip:siptest-avoip-freeswitch.core-prod.svc.cluster.local:5064;transport=tls' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk FreeSWITCH peer does not use its dedicated Service TLS port'
 grep -Fq 'internal_tls_port=5061' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH internal TLS port does not match its Service target'
-grep -Fq 'tls-sip-port" value="$${internal_tls_port}"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not listen on the configured internal TLS port'
+grep -Fq 'asterisk_tls_port=5064' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH dedicated Asterisk TLS port is missing'
+grep -Fq 'tls-sip-port" value="$${asterisk_tls_port}"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not listen on its dedicated TLS port'
+grep -Fq 'tls-verify-policy" value="subjects_all"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not validate incoming and outgoing TLS certificates'
+grep -Fq 'tls-verify-in-subjects" value="siptest-avoip-asterisk.core-prod.svc.cluster.local"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not restrict inbound mTLS to the Asterisk certificate identity'
+grep -Fq 'cert_file=/etc/asterisk/tls/tls.crt' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk PJSIP does not present its TLS client certificate'
+grep -Fq 'priv_key_file=/etc/asterisk/tls/tls.key' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk PJSIP TLS client certificate has no private key configured'
+yq -e 'select(.kind == "Service" and .metadata.name == "siptest-avoip-freeswitch") | any(.spec.ports[]; .name == "tls-asterisk" and .port == 5064 and .targetPort == "tls-asterisk")' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'FreeSWITCH dedicated Asterisk TLS Service port is missing'
+yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.spec.containers[] | select(.name == "freeswitch") | any(.ports[]; .name == "tls-asterisk" and .containerPort == 5064)' "$tmp_dir/empty-matches.yaml" >/dev/null || fail 'FreeSWITCH pod does not declare the target port for its dedicated Asterisk TLS listener'
+yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("asterisk"))) | .spec.template.spec.containers[] | select(.name == "asterisk") | any(.ports[]?; .name == "tls-asterisk")' "$tmp_dir/empty-matches.yaml" >/dev/null && fail 'dedicated FreeSWITCH TLS port was mistakenly declared on the Asterisk pod'
 grep -Fq 'freeswitch-inbound-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH inbound auth object generation is missing'
 grep -Fq 'username=freeswitch' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH SIP Digest username is missing'
 grep -Fq '$(cat /tmp/avoip-freeswitch-peer-password)" > /tmp/avoip-pjsip-auth.conf' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk outbound Digest auth is not sourced from the ExternalSecret password'

@@ -119,7 +119,11 @@ behavior.
   lists exact local extension numbers and may include the configured echo
   extension for a loopback audio check. The configured `ggAudioExtension`
   (default `66`) remains an Asterisk entry point that transfers the SIP user
-  `gg-audio` to the authenticated FreeSWITCH peer on TLS port `5061`. The
+  `gg-audio` to the authenticated FreeSWITCH peer on its dedicated TLS port
+  `5064`. This listener is separate from the Kamailio-facing FreeSWITCH TLS
+  listener on `5061`, which uses the public context. The Asterisk profile
+  requires both SIP Digest and Asterisk's TLS client certificate, restricted
+  by certificate subject. The
   destination is configurable with `asterisk.sipCore.ggAudioDestination`.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk

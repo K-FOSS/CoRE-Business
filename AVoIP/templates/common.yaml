@@ -890,9 +890,6 @@ controllers:
           - name: tls-sips
             containerPort: 5061
             protocol: TCP
-          - name: tls-asterisk
-            containerPort: {{ .Values.freeswitch.asterisk.tlsPort }}
-            protocol: TCP
 {{- $asteriskRtpPorts := untilStep (.Values.asterisk.rtp.min | int) (.Values.asterisk.rtp.max | int) 1 -}}
 {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled -}}
 {{- $asteriskRtpPorts = untilStep (.Values.asterisk.rtp.min | int) (add (.Values.asterisk.rtp.max | int) 1 | int) 1 -}}
@@ -1487,6 +1484,9 @@ controllers:
             protocol: TCP
           - name: tls-sips
             containerPort: 5061
+            protocol: TCP
+          - name: tls-asterisk
+            containerPort: {{ .Values.freeswitch.asterisk.tlsPort }}
             protocol: TCP
           - name: udp-sip-edge
             containerPort: 5090

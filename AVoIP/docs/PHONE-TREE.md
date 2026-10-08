@@ -102,6 +102,10 @@ The active SIP profiles are defined in
 - `asterisk` is a private TLS-only profile for the Asterisk peer. It requires
   SIP digest authentication and enters the dedicated `from-asterisk` dialplan
   context without a broad private-network ACL bypass. The
+  profile listens on its dedicated TLS port `5064` (the Kamailio-facing
+  FreeSWITCH profile uses `5061`) and requires Asterisk's client certificate
+  with the configured subject. Digest remains required after TLS verification.
+  The
   peer username/password come from a Kubernetes Secret mounted into the SIP
   processes, so neither credential is rendered into Git-managed configuration.
   The configured GG extension transfers to the exact `gg-audio` destination in
