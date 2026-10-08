@@ -34,4 +34,7 @@ spec:
           kind: 'Service'
           name: '{{ required "Asterisk SIP Core requires the enabled private Kamailio Service" $kamailioService }}'
           port: {{ .Values.asterisk.sipCore.httpPort }}
+      timeouts:
+        backendRequest: 30m
+        request: 1h
 {{- end }}
