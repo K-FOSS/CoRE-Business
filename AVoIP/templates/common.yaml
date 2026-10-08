@@ -1368,13 +1368,6 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
-{{- if .Values.asterisk.enabled }}
-          - name: ASTERISK_PEER_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer'
-                key: password
-{{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1433,6 +1426,13 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
+        {{- if .Values.asterisk.enabled }}
+          - name: ASTERISK_PEER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer'
+                key: password
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
