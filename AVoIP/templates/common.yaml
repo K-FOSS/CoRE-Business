@@ -59,6 +59,16 @@
           ports:
             - protocol: TCP
               port: 5062
+        {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: asterisk
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: TCP
+              port: {{ .Values.asterisk.sipCore.privateEgressPort }}
+        {{- end }}
       egress:
         {{- if .Values.kamailio.carrierOutbound.enabled }}
         - to:
@@ -391,6 +401,9 @@
           - name: sipcore-ws
             containerPort: {{ $.Values.asterisk.sipCore.httpPort }}
             protocol: TCP
+          - name: sipcore-private-tls
+            containerPort: {{ $.Values.asterisk.sipCore.privateEgressPort }}
+            protocol: TCP
         {{- end }}
 {{- if .Values.diagnostics.netshoot.enabled }}
       netshoot:
@@ -450,6 +463,10 @@
       sipcore-ws:
         port: {{ $.Values.asterisk.sipCore.httpPort }}
         targetPort: sipcore-ws
+        protocol: TCP
+      sipcore-private-tls:
+        port: {{ $.Values.asterisk.sipCore.privateEgressPort }}
+        targetPort: sipcore-private-tls
         protocol: TCP
     {{- end }}
 {{ if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}
@@ -792,7 +809,7 @@ controllers:
             {
               printf '[{{ .number }}]\ntype=auth\nauth_type=userpass\nusername={{ .number }}\npassword=%s\n\n' "$sip_password"
               printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\n\n'
-              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
+              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\noutbound_proxy=sip:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "kamailio") }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
               {{- if and $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.media.enabled }}
               printf 'media_address={{ $.Values.asterisk.sipCore.media.address }}\n'
               {{- end }}

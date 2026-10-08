@@ -83,6 +83,13 @@ behavior.
   TLS PJSIP transport to Asterisk, and WebRTC endpoint/AOR/auth objects for
   each configured extension. Envoy terminates WSS; Kamailio relays signaling
   and controls the existing RTPEngine for the Home Assistant media leg.
+- Keeps the Asterisk endpoint on TLS to Kamailio. Asterisk must not send SIP
+  directly to the browser's `transport=ws` Contact because Kamailio owns that
+  WebSocket connection. The chart stores a Kamailio Contact alias on REGISTER,
+  gives Asterisk a dedicated private TLS return port (default `5063`), and
+  routes calls from Asterisk back over the existing WebSocket flow. A
+  pod-selected NetworkPolicy permits that port only from this release's
+  Asterisk workload. RTPEngine relays the reverse media offer and answer too.
 - Reads each extension's random SIP password from an ExternalSecret sourced
   from the configured CoreVault-backed SecretStore. At startup, it writes a
   private, temporary PJSIP include; the password is never rendered into Git or
@@ -177,9 +184,12 @@ ExternalSecret targets use `deletionPolicy: Retain`, so explicitly audit the
 retained Kubernetes Secrets and Vault values before deleting them. Existing
 carrier SIP and fax routing are unchanged. After a rollout, verify the route is
 Accepted, Kamailio loaded `websocket.so` and `rtpengine.so`, `pjsip show
-transports` lists `transport-tls`, and `pjsip show contacts` lists the
-registered extension. Then test the echo target and confirm the selected ICE
-pair and bidirectional audio from an external browser network.
+transports` lists `transport-tls`, `pjsip show contacts` lists the registered
+extension, and Asterisk reports the contact reachable through Kamailio. The
+Kamailio service exposes the private return port only to the Asterisk-selected
+workload policy rule. Then test an Asterisk-originated call to the extension,
+the SIP Core echo target, and confirm the selected ICE pair and bidirectional
+audio from an external browser network.
 
 For TURN verification, confirm `ExternalSecret/matrix-turn-auth` is Ready
 without printing Secret contents, then inspect the Asterisk log for

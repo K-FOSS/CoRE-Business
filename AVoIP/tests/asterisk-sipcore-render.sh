@@ -39,6 +39,9 @@ fi
 if render_sipcore --set-string asterisk.turn.credentialLifetimeSeconds=31536001 >"$tmp_dir/invalid-turn-lifetime.yaml" 2>&1; then
   fail 'Asterisk TURN rendered with a credential lifetime over one year'
 fi
+if render_sipcore --set asterisk.sipCore.privateEgressPort=5061 >"$tmp_dir/invalid-private-egress-port.yaml" 2>&1; then
+  fail 'SIP Core private TLS egress port collided with the existing TLS listener'
+fi
 render_sipcore --set asterisk.turn.enabled=false > "$tmp_dir/turn-disabled.yaml"
 grep -Fq 'matrix-turn-auth' "$tmp_dir/sipcore-disabled.yaml" && fail 'Asterisk TURN depends on the Matrix Secret when SIP Core is disabled'
 grep -Fq 'endpoint_identifier_order=username,auth_username,ip,anonymous' "$tmp_dir/empty-matches.yaml" || fail 'PJSIP identifier order is incorrect'
@@ -55,7 +58,14 @@ grep -Fq 'webrtc=yes' "$tmp_dir/empty-matches.yaml" || fail 'WebRTC endpoint set
 grep -Fq 'direct_media=no' "$tmp_dir/empty-matches.yaml" || fail 'direct_media=no was not preserved'
 grep -Fq 'allow=ulaw,alaw' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core codecs were not preserved'
 grep -Fq 'transport=transport-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS transport was not rendered'
+grep -Fq 'outbound_proxy=sip:siptest-avoip-kamailio.core-prod.svc.cluster.local:5063\\;transport=tls\\;lr' "$tmp_dir/empty-matches.yaml" || fail 'SIP Core endpoint does not route outbound calls through Kamailio TLS'
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio WebSocket listener was not rendered'
+grep -Fq 'listen=tls:0.0.0.0:5063 advertise "siptest-avoip-kamailio.core-prod.svc.cluster.local":5063 name "sipcore_private_tls"' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk-only Kamailio TLS return listener is missing'
+grep -Fq 'name: sipcore-private-tls' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio private TLS return Service port is missing'
+grep -Fq 'route[FROM_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio Asterisk-to-WebSocket route is missing'
+grep -Fq 'handle_ruri_alias()' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio does not route calls through the registered WebSocket flow'
+grep -Fq 'if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*")' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio does not preserve a WebSocket route alias on registration'
+grep -Fq 'rtpengine_manage("WebRTC replace-origin internal external")' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk-originated Home Assistant media is not relayed through RTPEngine'
 grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio SIP Core route is missing'
 grep -Fq 'fix_nated_register' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core route calls nathelper REGISTER helper without Kamailio registrar configuration'
 grep -Fq 'route[TO_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS route is missing'

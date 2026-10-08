@@ -20,6 +20,12 @@
   {{- if not .Values.asterisk.sipCore.extensions -}}
     {{- fail "asterisk.sipCore.extensions must contain at least one extension when SIP Core is enabled" -}}
   {{- end -}}
+  {{- if or (lt (int .Values.asterisk.sipCore.privateEgressPort) 1024) (gt (int .Values.asterisk.sipCore.privateEgressPort) 65535) -}}
+    {{- fail "asterisk.sipCore.privateEgressPort must be a TCP port from 1024 through 65535" -}}
+  {{- end -}}
+  {{- if or (eq (int .Values.asterisk.sipCore.privateEgressPort) 5060) (eq (int .Values.asterisk.sipCore.privateEgressPort) 5061) (eq (int .Values.asterisk.sipCore.privateEgressPort) 5062) (eq (int .Values.asterisk.sipCore.privateEgressPort) (int .Values.asterisk.sipCore.httpPort)) -}}
+    {{- fail "asterisk.sipCore.privateEgressPort must not collide with the existing SIP or WebSocket ports" -}}
+  {{- end -}}
   {{- if not .Values.asterisk.sipCore.allowedOrigins -}}
     {{- fail "asterisk.sipCore.allowedOrigins must include the Home Assistant HTTPS origin when SIP Core is enabled" -}}
   {{- end -}}

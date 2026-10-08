@@ -56,6 +56,7 @@ data:
     {{- if and (eq .Values.kamailio.role "carrier-sbc") $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
     tcp_accept_no_cl=yes
     listen=tcp:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.httpPort }} name "sipcore_ws"
+    listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $kamailioHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
     {{- end }}
 
     # Public carrier-facing identity.
