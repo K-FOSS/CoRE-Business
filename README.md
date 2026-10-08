@@ -20,6 +20,9 @@ path in this repository and inject environment-specific values. Many use the
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+Home1/YVR fax reception is reported working over G.711; the ApplicationSet
+selects [G.711-only reception](AVoIP/docs/PHONE-TREE.md) for that site's
+dedicated fax DID. T.38 remains unverified there.
 
 ```text
 CoRE-Backplane Apps/Business ApplicationSet

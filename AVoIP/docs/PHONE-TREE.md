@@ -4,56 +4,55 @@ The AVoIP voice configuration is intentionally minimal. It no longer ships
 the upstream FreeSWITCH demonstration dialplan, sample extensions, conference
 codes, parking codes, fax tests, voicemail routes, or demo IVR.
 
-The chart defaults Asterisk and FreeSWITCH to disabled. Kamailio has its own
-enablement flag. The current [AVoIP
-ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml)
-enables both only on `core-dc1-talos-prod`.
+The chart defaults Asterisk and FreeSWITCH to disabled. The active
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+enables both at DC1/YXL and Home1/YVR and supplies a separate voice and fax
+DID at each site. The `dc1-k3s-node1` spoke does not enable either workload.
 
-Public SIP exposure is disabled by default with
-`kamailio.publicExposure.sip.enabled: false`. When enabled, Kamailio owns the
-public UDP SIP route on port 5060 and the TLS route on port 5061. `main-gw`
-terminates TLS using its `tls-sip` listener and forwards the decrypted SIP
-stream with PROXY protocol v2; Kamailio verifies the original Flowroute source
-address before forwarding SIP over the private cluster network to FreeSWITCH.
-FreeSWITCH has no direct public SIP routes;
-the optional LoadBalancer Service exposes RTP at the requested
-`freeswitch.publicExposure.address`.
-Chart users supply provider-specific Service settings through `serviceOptions.freeswitch-rtp`.
+Kamailio handles public carrier SIP. Direct site Services accept UDP/5060;
+the shared Gateway passes TLS/5061 through to Kamailio, with PROXY protocol v2
+for the original source address. Kamailio checks the configured Flowroute
+source CIDRs, then relays to the private FreeSWITCH TLS profile. RTPEngine
+anchors public media at the address and port range supplied by the owning
+ApplicationSet. See [SIP identity](SIP-IDENTITY.md) for the transport and
+dialog route details.
 
 ## Configured DID
 
-The configured DID is `freeswitch.did`, currently `18077893501` in
-[values.yaml](../values.yaml). The value is used by the public dialplan and is
-the single number accepted by the FreeSWITCH public context.
+The [chart defaults](../values.yaml) leave `avoip.did` and `fax.did` empty.
+The owning ApplicationSet supplies both from site-specific secret references.
+Keep them distinct: `avoip.did` goes to Asterisk for voice, and `fax.did` goes
+directly to FreeSWITCH fax reception. Do not put a DID or Secret value in this
+page.
 
 Inbound calls over either public SIP transport follow this path:
 
-1. The Gateway sends UDP SIP directly to Kamailio, or terminates TLS on the
-   `main-gw` `tls-sip` listener and sends the decrypted TCP stream with a
-   PROXY v2 header.
+1. The direct site Service sends UDP SIP to Kamailio, or the `main-gw` SIPS
+   listener passes TLS through to Kamailio with a PROXY v2 header.
 2. Kamailio validates the source against the configured Flowroute
    signaling CIDRs and rejects all other sources.
 3. Kamailio forwards accepted SIP to FreeSWITCH's private `kamailio` Sofia
-   profile and inserts a two-sided Record-Route set: private UDP toward
-   FreeSWITCH and `sip.resolvemy.host:5081;transport=tls` toward Flowroute for
-   the Gateway-terminated TLS leg. In-dialog requests are processed with
-   `loose_route()` before relay; the selected route destination is preserved.
-4. The public context matches only the configured DID.
-5. With fax handling enabled, FreeSWITCH answers the carrier leg, starts
-   SpanDSP fax-tone detection, and plays the optional pre-bridge audio. Voice
-   calls then bridge to Asterisk; when a fax tone is detected, the call is
-   diverted to SpanDSP `rxfax` with T.38 negotiation enabled instead. The
-   deployed FreeSWITCH image does not expose the optional `disable_ec`
-   dialplan application, so the chart does not invoke it.
-6. FreeSWITCH writes a received TIFF to its ephemeral fax spool and logs the
-   fax result, then hangs up. The same DID therefore accepts both voice and fax
-   calls, subject to the carrier's fax-tone timing.
+   profile over TLS. Its public Contact and route set follow the carrier's
+   ingress transport; the private leg uses TLS/5062 toward Kamailio and
+   TLS/5061 toward FreeSWITCH.
+4. FreeSWITCH matches `fax.did` first and transfers it to `fax-receive`.
+   That extension answers, plays a 2100 Hz called-station tone, and runs
+   [`mod_spandsp` `rxfax`](https://developer.signalwire.com/freeswitch/applications/fax/).
+   At Home1/YVR, the ApplicationSet selects G.711-only PCMU reception because
+   the reported working fax used G.711 and T.38 has not worked. DC1/YXL keeps
+   the chart's T.38-capable setting. The chart defaults disable V.17 and ECM;
+   the documented Flowroute path is validated only through 9600 bps.
+5. FreeSWITCH writes `${uuid}.tif` under `freeswitch.fax.spoolPath`, logs the
+   fax result and packet counts, then hangs up. The spool is a retained
+   Longhorn `ReadWriteOnce` claim by default. No automatic TIFF delivery or
+   TIFF retention cleanup is configured.
+6. A call to `avoip.did` rings and bridges to Asterisk. The voice DID has no
+   fax-tone detector and does not enter `rxfax`. Unmatched destinations are
+   rejected.
 
-FreeSWITCH emits INFO log markers when the DID call is received and when fax
-processing completes. The receive implementation uses
-[`mod_spandsp`](https://developer.signalwire.com/freeswitch/applications/fax/)
-and its `rxfax` application. Received TIFFs are lost when the pod is replaced;
-durable fax storage and delivery are not configured yet. Call-detail records are
+The reported YVR fax success confirms G.711 reception. The page count,
+resulting TIFF and SIP ACK still require a retained call-specific trace to
+document them as verified. Call-detail records are
 written to the service account's PostgreSQL database by
 [`mod_cdr_pg_csv`](https://developer.signalwire.com/freeswitch/module-reference/event-handlers/mod_cdr_pg_csv/);
 the chart creates its `cdr` table during pod initialization. Runtime logs remain
@@ -155,31 +154,20 @@ bridged to Asterisk without LDAP authentication.
 - Sofia raw SIP tracing is enabled by default on the Asterisk and external
   profiles through `freeswitch.sipLogging.enabled`. It is intended for call
   troubleshooting and includes signaling/SDP metadata in the pod logs.
-- Public FreeSWITCH TCP/UDP SIP Gateway API routes are removed. The UDP SIP and
-  TLS SIP routes attach to the configured `core-prod/main-gw` Gateway and target
-  Kamailio. The `tls-sip` Gateway listener must use `TLS` with `tls.mode:
-  Terminate`; its Envoy `BackendTrafficPolicy` enables PROXY protocol v2 for
-  the resulting plain TCP stream.
+- Public FreeSWITCH TCP/UDP SIP Gateway API routes are removed. The UDP SIP
+  path uses the site's direct Kamailio Service. The `core-prod/main-gw` SIPS
+  listener uses TLS passthrough to Kamailio and PROXY protocol v2.
 - Kamailio accepts public signaling only from the Flowroute PoP CIDRs in
   `flowroute.signalingCIDRs`; the private FreeSWITCH Kamailio
   profile only accepts traffic from the configured Kamailio pod CIDR.
-- TLS uses `sip.resolvemy.host` and the configured certificate Secret on the
-  `main-gw` listener. Kamailio receives plain TCP on its backend port 5061 and
-  does not consume the public certificate.
-- The certificate Secret is consumed at runtime by the Gateway and by
-  FreeSWITCH's private TLS material; no combined private-key file is stored in
-  Git.
-- When public RTP exposure is enabled, the chart renders a LoadBalancer Service
-  `freeswitch.publicExposure.address`.
-- RTP uses the configured FreeSWITCH range `11000–11049`.
-- The external FreeSWITCH profile advertises the configured RTP Service address
-  `66.165.222.101` when public RTP exposure is enabled. The outbound SIP
-  egress address is also `66.165.222.101`; the former `66.165.222.103` and
-  stale `66.165.222.126` addresses are no longer used.
+- Kamailio presents the certificate for public TLS, and FreeSWITCH uses its
+  private TLS material for the backend leg. No private key is stored in Git.
+- RTPEngine advertises the site-specific public media address from the owning
+  ApplicationSet. FreeSWITCH's own public RTP Service is omitted while
+  Kamailio and RTPEngine are enabled.
 
 See [common.yaml](../templates/common.yaml),
-[UDPRoute.yaml](../templates/Kamailio/UDPRoute.yaml),
-[TCPRoute.yaml](../templates/Kamailio/TCPRoute.yaml), and
+[Kamailio values](KAMAILIO-VALUES.md), and
 [FreeSwitchEgress.yaml](../templates/FreeSwitch/FreeSwitchEgress.yaml).
 
 ## Explicitly removed behavior
@@ -204,14 +192,16 @@ where Wyoming, GPUStack, and Speaches are deployed.
 
 Before enabling the hub:
 
-1. Confirm the DID identity exists in the current mylogin.space directory and
-   can register.
+1. Confirm the ApplicationSet supplies distinct `avoip.did` and `fax.did`
+   values for the site; do not print their secret-backed values in logs.
 2. Confirm the Asterisk `User` claim produces its connection Secret and that
    Asterisk starts with the generated PJSIP auth object (without printing the
    Secret values).
 3. Send a SIP MESSAGE to the DID and verify delivery through
    `mod_sms_flowroute`.
-4. Place an inbound call and verify the configured DID endpoint receives it.
+4. Place an inbound voice call and verify the Asterisk bridge. Call the fax
+   DID separately; confirm G.711 reception in YVR, a successful `rxfax` result,
+   a TIFF on the retained spool, and an ACK on both SIP hops.
 5. Place an outbound call through Asterisk and verify FreeSWITCH rejects an
    invalid credential or non-internal source.
    Run the [negative SIP probes](../tests/README.md#authorization-and-outbound-call-probes)

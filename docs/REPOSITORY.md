@@ -149,7 +149,10 @@ Home1/YVR, alongside Office. The [AVoIP ApplicationSet](https://github.com/K-FOS
 owns the signaling Gateway route and public TURN/media LoadBalancer. The
 same ApplicationSet supplies the complete
 [named Kamailio instance list](../AVoIP/README.md#named-kamailio-instances)
-for each AVoIP site. The
+for each AVoIP site. Home1/YVR uses G.711-only reception for its dedicated
+fax DID after a reported successful G.711 fax; T.38 has not worked there.
+The [AVoIP fax call path](../AVoIP/docs/PHONE-TREE.md) records the separate
+voice and fax routes and retained spool. The
 Nextcloud administrator still needs to register `https://talk.mylogin.space`
 with the generated signaling secret and configure the `talk-media.mylogin.space`
 TURN endpoint; see [AVoIP setup and verification](../AVoIP/README.md#nextcloud-talk-high-performance-backend).

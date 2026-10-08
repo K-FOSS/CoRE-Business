@@ -56,6 +56,14 @@ ApplicationSet's Lovely-injected values select each site's actual components,
 hostnames, media addresses, and DIDs. Inspect both layers before changing a
 site deployment.
 
+Home1/YVR fax reception has been reported working over G.711. The owning
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+sets `freeswitch.fax.g711Only.enabled: true` for that site, which disables
+T.38 negotiation on its dedicated `fax.did` route and selects PCMU. T.38 has
+not worked in YVR; DC1/YXL retains the chart's T.38-capable default. The
+reported result does not establish SIP ACK delivery, fax page count, or TIFF
+retention without a call-specific trace. See the [current fax call path](docs/PHONE-TREE.md).
+
 ## Components and security
 
 The complete current DID flow, SIP messaging path, registration behavior, and
@@ -353,14 +361,15 @@ recovery decisions about any remnants.
 
 ## Verification and activation
 
-The chart is deployed, but the end-to-end call and failover paths still need
-live verification:
+The chart is deployed. YVR G.711 fax reception is reported working, while
+the end-to-end voice and failover paths still need live verification:
 
 1. Confirm an inbound Flowroute INVITE receives an ACK at FreeSWITCH and stays
    up for at least 60 seconds. Calls have ended after about 30–32 seconds with
    `ACK Timeout`; see [SIP identity and call verification](docs/SIP-IDENTITY.md).
-2. Verify an ordinary voice call bridges to Asterisk and a fax call reaches
-   `rxfax`, writes a TIFF, and completes with the configured T.38/G.711 mode.
+2. Verify an ordinary voice call bridges to Asterisk. For YVR fax, capture
+   the `rxfax` result, TIFF, G.711 mode, and ACK on both SIP hops. Test T.38
+   separately before enabling it there. Verify YXL fax independently.
 3. Exercise site failover and the RTPEngine/Valkey recovery path before treating
    either as production verified.
 

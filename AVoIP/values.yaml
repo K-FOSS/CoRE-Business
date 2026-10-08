@@ -680,8 +680,9 @@ freeswitch:
       # The current Flowroute fax path is validated only through 9600 bps.
       disableV17: true
       useEcm: false
-    # Temporary test mode: force G.711 and disable T.38 for the next fax
-    # reception test. Restore false after the test.
+    # The owning ApplicationSet enables this for Home1/YVR, where G.711 fax
+    # reception works and T.38 has not been validated. Other sites retain the
+    # T.38-capable default until their own call results justify an override.
     g711Only:
       enabled: false
     persistence:
