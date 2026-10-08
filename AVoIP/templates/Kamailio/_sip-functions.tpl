@@ -214,9 +214,7 @@
 
       force_rport();
       if (nat_uac_test(64)) {
-        if (is_method("REGISTER")) {
-          fix_nated_register();
-        } else if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
+        if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
           if (!add_contact_alias()) {
             sl_send_reply("400", "Bad Contact");
             exit;
