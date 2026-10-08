@@ -36,6 +36,15 @@ certificate and a configured source CIDR plus certificate DNS SAN. It rejects
 `REGISTER` unless the registrar pilot is explicitly enabled with a dedicated
 PostgreSQL service identity and named mTLS access peer.
 
+The private role reserves `100m` CPU and `256Mi` memory for the Kamailio
+container and sends WebSocket keepalive pings every 15 seconds. The interval
+is configurable at `kamailio.defaults.websocket.keepaliveTimeoutSeconds` and
+can be overridden by a role or instance; valid values are 5–600 seconds.
+Private role replicas remain capped at one because SIP WebSocket TCP
+connections and transactions are pod-local. Increasing replicas needs a
+validated affinity and return-dialog design; shared TOPOS state alone does
+not move a live WebSocket connection.
+
 | Current site | Carrier instances and exposure |
 | --- | --- |
 | DC1 | One `carrier`, three replicas, public TLS/5061, UDP/5060, and TCP/5060; PureLB direct Service. |
@@ -54,6 +63,7 @@ role profile or an instance. Empty maps and lists below are the chart defaults.
 | --- | --- | --- |
 | `image.repository`, `image.tag`, `image.digest`, `image.pullPolicy` | `ghcr.io/kamailio/kamailio`, `6.1.4-bookworm`, `sha256:c54f770ab74ae64588cc174e206aa337108cc777b6162d738189d1cb0c32d116`, `IfNotPresent` | Main container and the FreeSWITCH TLS CA init container. Keep the digest pinned when changing the image. |
 | `resources` | `{}` | Container requests and limits; empty preserves the current carrier manifest. |
+| `websocket.keepaliveTimeoutSeconds` | `60` | Ping interval for WebSocket clients when SIP Core WebSocket handling is enabled; the private role uses `15`. Valid range is 5–600 seconds. |
 | `serviceAccountName` | `default` | Pod ServiceAccount reference. A blank value fails rendering. The chart does not create a new account for an instance. |
 | `securityContext.pod`, `securityContext.container` | `{}`, `{}` | Nonempty maps replace the built-in pod or container security context. The built-in pod runs as UID/GID 1000 with RuntimeDefault seccomp; the container drops capabilities and uses a read-only root filesystem. |
 | `scheduling.nodeSelector`, `scheduling.tolerations` | `{}`, `[]` | Pod placement. The tolerations list replaces the default list. |

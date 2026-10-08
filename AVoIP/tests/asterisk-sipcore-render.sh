@@ -214,10 +214,13 @@ yq -e 'select(.kind == "Certificate" and .metadata.name == "siptest-avoip-kamail
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio-config") | .data["kamailio.cfg"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/carrier-kamailio.cfg"
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/internal-kamailio.cfg"
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' "$tmp_dir/internal-kamailio.cfg" || fail 'internal Kamailio is missing its SIP Core WebSocket listener'
+grep -Fq 'modparam("websocket", "keepalive_timeout", 15)' "$tmp_dir/internal-kamailio.cfg" || fail 'private SIP Core WebSocket keepalive interval is not 15 seconds'
 grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/internal-kamailio.cfg" || fail 'internal Kamailio is missing the SIP Core routing path'
 grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/internal-kamailio.cfg" || fail 'internal Kamailio is missing SIP Core RTPEngine media handling'
 grep -Fq 'onreply_route[SIPCORE_WS_REPLY]' "$tmp_dir/internal-kamailio.cfg" || fail 'SIP Core WebSocket replies are not isolated from carrier reply handling'
 grep -Fq 'onreply_route[SIPCORE_ASTERISK_REPLY]' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk reverse-leg replies are not isolated from carrier reply handling'
+grep -Fq 'SIP Core BYE received from Asterisk for WebSocket relay' "$tmp_dir/internal-kamailio.cfg" || fail 'SIP Core BYE relay diagnostic marker is missing'
+grep -Fq 'SIP Core WebSocket BYE response status=$rs' "$tmp_dir/internal-kamailio.cfg" || fail 'SIP Core BYE response diagnostic marker is missing'
 grep -Fq 'RTPEngine SIP Core outbound answer handling failed' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk-originated media answers are not relayed through RTPEngine'
 grep -Fq 'SIP RX RAW pod=' "$tmp_dir/internal-kamailio.cfg" && fail 'internal Kamailio raw SIP logging could expose Digest Authorization headers'
 grep -Fq 'SIP FLOWROUTE RX BEGIN' "$tmp_dir/internal-kamailio.cfg" && fail 'internal Kamailio has carrier packet logging enabled'

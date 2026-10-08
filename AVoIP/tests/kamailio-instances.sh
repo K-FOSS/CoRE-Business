@@ -27,6 +27,7 @@ jq -e '
   ([.[] | select(.kind == "Service" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.ports | all(.port == 5062)) and
   ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.replicas == 1) and
   ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.template.spec.containers[] | select(.name == "kamailio-internal") | .resources.requests.cpu == "100m") and
+  ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.template.spec.containers[] | select(.name == "kamailio-internal") | .resources.requests.memory == "256Mi") and
   ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio-internal")))][0].spec.template.spec.containers[] | select(.name == "kamailio-internal") | (.args[0] | contains("kamailio -m 128 "))) and
   ([.[] | select(.kind == "Deployment" and (.metadata.name | endswith("-kamailio")))][0].spec.template.spec.containers[] | select(.name == "kamailio") | (.args[0] | contains("kamailio -m 64 "))) and
   ([.[] | select(.kind == "ExternalSecret" and .metadata.name == "avoip-kamailio-internal-topos")][0].spec.target.template.data.server | contains("db=52;")) and
@@ -67,6 +68,7 @@ expect_invalid 'requires function authorization' '[{"name":"carrier","role":"car
 expect_invalid 'carrierOutbound requires a Gateway service host' '[{"name":"carrier","role":"carrier-sbc","carrierOutbound":{"enabled":true}}]'
 expect_invalid 'private-sbc must not expose public SIP' '[{"name":"internal","role":"private-sbc","publicExposure":{"enabled":true}}]'
 expect_invalid 'private-sbc must start with one replica' '[{"name":"internal","role":"private-sbc","replicas":2}]'
+expect_invalid 'websocket.keepaliveTimeoutSeconds must be between 5 and 600' '[{"name":"internal","role":"private-sbc","websocket":{"keepaliveTimeoutSeconds":2}}]'
 expect_invalid 'shmSizeMb must be between 16 and 4096' '[{"name":"internal","role":"private-sbc","shmSizeMb":8}]'
 expect_invalid 'privateRouting route requires a numeric user and configured destination set' '[{"name":"internal","role":"private-sbc","privateRouting":{"routes":[{"user":"+12125550100","setId":10}]}}]'
 expect_invalid 'allowedUsers must contain only numeric extensions' '[{"name":"internal","role":"private-sbc","privateRouting":{"peers":[{"name":"pbx","controller":"asterisk","cidr":"10.0.0.10/32","sanHostname":"pbx.test.invalid","allowedUsers":["+12125550100"]}]}}]'
