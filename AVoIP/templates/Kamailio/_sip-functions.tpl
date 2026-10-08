@@ -264,7 +264,7 @@
       }
 
       if (is_method("INVITE") && !has_totag()) {
-        record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
+        record_route_preset("sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
       }
 
       route(TO_SIPCORE_ASTERISK);
@@ -311,7 +311,7 @@
         }
 
         if (is_method("INVITE") && !has_totag()) {
-          record_route_preset("sip:{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss");
+          record_route_preset("sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
         }
       }
 

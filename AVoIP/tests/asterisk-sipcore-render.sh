@@ -86,6 +86,9 @@ grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio S
 grep -Fq 'fix_nated_register' "$tmp_dir/empty-matches.yaml" && fail 'SIP Core route calls nathelper REGISTER helper without Kamailio registrar configuration'
 grep -Fq 'route[TO_SIPCORE_ASTERISK]' "$tmp_dir/empty-matches.yaml" || fail 'Kamailio-to-Asterisk TLS route is missing'
 grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" || fail 'Home Assistant media is not relayed through RTPEngine'
+if grep -Eq 'record_route_preset\("sip:[^"]+;transport=wss"\)' "$tmp_dir/empty-matches.yaml"; then
+  fail 'Kamailio passes an unsupported WSS Record-Route transport to Asterisk'
+fi
 rtpengine_sdp_line="$(grep -n 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 record_route_line="$(grep -n 'record_route_preset("sip:siptest-avoip-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063;transport=tls")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 if [[ -z "$rtpengine_sdp_line" || -z "$record_route_line" || "$rtpengine_sdp_line" -ge "$record_route_line" ]]; then
