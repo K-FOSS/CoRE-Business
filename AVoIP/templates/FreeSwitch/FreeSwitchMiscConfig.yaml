@@ -37,6 +37,28 @@ data:
       </bindings>
     </configuration>
 
+  {{- if .Values.asterisk.enabled }}
+  asterisk-peer.xml: |
+    <include>
+      <domain name="$${domain}">
+        <groups>
+          <group name="default">
+            <users>
+              <user id="freeswitch">
+                <params>
+                  <param name="password" value="$${asterisk_peer_password}"/>
+                </params>
+                <variables>
+                  <variable name="user_context" value="from-asterisk"/>
+                </variables>
+              </user>
+            </users>
+          </group>
+        </groups>
+      </domain>
+    </include>
+  {{- end }}
+
   opus.conf.xml: |
     <configuration name="opus.conf">
       <settings>

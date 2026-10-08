@@ -120,8 +120,11 @@ behavior.
   extension for a loopback audio check. The reserved `ggAudioExtension`
   (default `66`) is available to SIP Core callers as a local test destination.
   Asterisk sends only that destination over its existing TLS and Digest
-  authenticated FreeSWITCH peer; FreeSWITCH requires the authenticated
-  `freeswitch` SIP identity and plays the configured
+  authenticated FreeSWITCH peer on the Service's TLS port `5061`. FreeSWITCH
+  loads a `freeswitch` directory identity whose password comes from the same
+  generated Secret used by Asterisk's outbound Digest auth. That identity is
+  assigned to a dedicated `from-asterisk` dialplan context, which only accepts
+  the configured GG extension. FreeSWITCH plays the configured
   `freeswitch.preBridgeAudio.url` using the same `shout://` playback path used
   by its existing pre-bridge audio. This keeps the GG MP3 playback off the
   Asterisk image, which has `app_mp3` but no `mpg123` executable; Asterisk's
@@ -130,7 +133,8 @@ behavior.
   [mod_shout streaming support](https://developer.signalwire.com/freeswitch/media-and-codecs/audio-files/).
   The public carrier path does not satisfy the GG route's service identity
   check, and the GG route additionally requires a channel from the dedicated
-  Asterisk profile. No wildcard or PSTN route is created.
+  Asterisk profile. Unauthenticated requests remain in the public context and
+  cannot reach the GG route. No wildcard or PSTN route is created.
 
 The chart does not enable this feature at a site. Set
 `asterisk.sipCore.kamailioInstance` to the name of an enabled `private-sbc`

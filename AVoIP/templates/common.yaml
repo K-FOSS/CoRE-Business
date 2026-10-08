@@ -1953,6 +1953,10 @@ persistence:
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}
+          {{- if .Values.asterisk.enabled }}
+          - path: /etc/freeswitch/directory/asterisk-peer.xml
+            subPath: asterisk-peer.xml
+          {{- end }}
   freeswitch-tls-source:
     type: secret
     name: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'

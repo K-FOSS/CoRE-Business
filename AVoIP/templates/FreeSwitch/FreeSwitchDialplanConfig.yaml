@@ -47,19 +47,6 @@ data:
           </condition>
         </extension>
         {{- end }}
-        {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
-        <extension name="asterisk-gg-audio">
-          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
-          <condition field="${sip_authorized}" expression="^true$"/>
-          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
-          <condition field="destination_number" expression="^{{ $.Values.asterisk.sipCore.ggAudioExtension }}$">
-            <action application="log" data="INFO AVoIP authenticated Asterisk GG audio request"/>
-            <action application="answer"/>
-            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
-            <action application="hangup"/>
-          </condition>
-        </extension>
-        {{- end }}
         <extension name="flowroute-did">
           <condition field="destination_number" expression="^{{ $.Values.avoip.did }}$">
             <action application="set" data="outside_call=true"/>
@@ -143,6 +130,21 @@ data:
           </condition>
         </extension>
       </context>
+      {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+      <context name="from-asterisk">
+        <extension name="asterisk-gg-audio">
+          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
+          <condition field="${sip_authorized}" expression="^true$"/>
+          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
+          <condition field="destination_number" expression="^{{ $.Values.asterisk.sipCore.ggAudioExtension }}$">
+            <action application="log" data="INFO AVoIP authenticated Asterisk GG audio request"/>
+            <action application="answer"/>
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
+            <action application="hangup"/>
+          </condition>
+        </extension>
+      </context>
+      {{- end }}
     </include>
 
   default.xml: |

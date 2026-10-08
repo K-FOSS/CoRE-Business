@@ -26,6 +26,8 @@ fail() {
 
 render_sipcore > "$tmp_dir/empty-matches.yaml"
 yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-kamailio-internal-config") | .data["tls.cfg"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/internal-tls.cfg"
+yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-misc-configs") | .data["asterisk-peer.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/asterisk-peer.xml"
+yq -r 'select(.kind == "ConfigMap" and .metadata.name == "siptest-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$tmp_dir/empty-matches.yaml" > "$tmp_dir/public.xml"
 if render_sipcore --set-string asterisk.sipCore.extensions[0].secret.remoteKey= >"$tmp_dir/missing-secret.yaml" 2>&1; then
   fail 'SIP Core rendered without an ExternalSecret password reference'
 fi
@@ -128,11 +130,22 @@ grep -Fq 'type=identify' "$tmp_dir/empty-matches.yaml" && fail 'FreeSWITCH endpo
 grep -Fq 'auth=freeswitch-inbound-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH inbound Digest auth is missing'
 grep -Fq 'identify_by=username,auth_username' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH endpoint is not selected by SIP identity'
 grep -Fq 'outbound_auth=freeswitch-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH outbound authentication was removed'
+grep -Fq 'contact=sip:siptest-avoip-freeswitch.core-prod.svc.cluster.local:5061;transport=tls' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk FreeSWITCH peer does not use the Service TLS port'
+grep -Fq 'internal_tls_port=5061' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH internal TLS port does not match its Service target'
+grep -Fq 'tls-sip-port" value="$${internal_tls_port}"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH Asterisk profile does not listen on the configured internal TLS port'
 grep -Fq 'freeswitch-inbound-auth' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH inbound auth object generation is missing'
 grep -Fq 'username=freeswitch' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH SIP Digest username is missing'
 grep -Fq '$(cat /tmp/avoip-freeswitch-peer-password)" > /tmp/avoip-pjsip-auth.conf' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk outbound Digest auth is not sourced from the ExternalSecret password'
 grep -Fq 'avoip-freeswitch-peer-password' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH peer password is not Secret-backed'
 grep -Fq 'ASTERISK_PEER_PASSWORD' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH gateway does not receive peer credentials from a Secret'
+grep -Fq '<user id="freeswitch">' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH has no directory identity for inbound Asterisk Digest auth'
+grep -Fq 'value="$${asterisk_peer_password}"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH inbound directory password is not sourced from the generated peer Secret'
+grep -Fq 'user_context" value="from-asterisk"' "$tmp_dir/asterisk-peer.xml" || fail 'FreeSWITCH Asterisk identity is not restricted to its dedicated dialplan context'
+grep -Fq '<context name="from-asterisk">' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH authenticated Asterisk context is missing'
+grep -Fq 'destination_number" expression="^66$"' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH authenticated Asterisk context does not route GG extension 66'
+if sed -n '/<context name="public">/,/<\/context>/p' "$tmp_dir/public.xml" | grep -Fq 'asterisk-gg-audio'; then
+  fail 'FreeSWITCH GG route is exposed in the unauthenticated public context'
+fi
 grep -Fq 'from-user" value="freeswitch' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH From identity does not select the named Asterisk endpoint'
 grep -Fq 'kind: Password' "$tmp_dir/empty-matches.yaml" || fail 'random peer password generator is missing'
 grep -Fq "encoding: 'hex'" "$tmp_dir/empty-matches.yaml" || fail 'peer password is not generated as hex'
