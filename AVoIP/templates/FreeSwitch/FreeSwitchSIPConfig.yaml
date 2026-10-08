@@ -49,9 +49,8 @@ data:
             <param name="tls-sip-port" value="$${asterisk_tls_port}"/>
             <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
             <param name="tls-verify-date" value="true"/>
-            <param name="tls-verify-policy" value="subjects_all"/>
+            <param name="tls-verify-policy" value="out"/>
             <param name="tls-verify-depth" value="3"/>
-            <param name="tls-verify-in-subjects" value="{{ include "avoip.sip.serviceHost" (dict "root" . "component" "asterisk") }}"/>
             <param name="auth-calls" value="true"/>
             <param name="sip-trace" value="false"/>
             <param name="context" value="from-asterisk"/>
