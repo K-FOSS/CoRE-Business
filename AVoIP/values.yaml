@@ -31,6 +31,11 @@ serviceOptions:
     annotations: {}
     # Optional policy metadata; no wan-mode/lan-mode label is set by default.
     labels: {}
+  asterisk-rtp:
+    type: 'LoadBalancer'
+    annotations: {}
+    labels: {}
+    loadBalancerClass: ''
   kamailio:
     type: 'ClusterIP'
     annotations: {}
@@ -669,6 +674,39 @@ asterisk:
   # advertises the stable Asterisk service FQDN for SIP signaling; set an
   # external media address only when media must be advertised outside the pod.
   externalMediaAddress: ''
+  sipCore:
+    # Enables the SIP Core browser client path through the existing HTTPS
+    # Gateway. It does not enable PSTN dialing or create public RTP exposure.
+    enabled: false
+    hostname: ''
+    gatewaySectionName: ''
+    allowedOrigins: []
+    httpPort: 8088
+    echoExtension: '9090'
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    media:
+      # Browser RTP needs an externally reachable UDP path. Enable only with
+      # provider-specific settings under serviceOptions.asterisk-rtp.
+      enabled: false
+      address: ''
+    # Configure SIP passwords in CoreVault, one property per extension.
+    # The chart only creates ExternalSecrets and mounts their values at runtime.
+    extensions: []
+    # Example:
+    # extensions:
+    #   - number: '7101'
+    #     secret:
+    #       remoteKey: 'AVoIP/SIPCore/YVR/Home1/7101'
+    #       property: 'Password'
+    #     allowCallsTo: ['9090', '7102']
+    # `allowedOrigins` must list the HTTPS origin(s) hosting Home Assistant,
+    # not the SIP/WSS hostname (for example: ['https://ha.example.net']).
+    #
+    # Endpoint secrets must be random 32+ character hexadecimal passwords.
+    # `allowCallsTo` is an exact destination allowlist and must name another
+    # configured extension or `echoExtension`; it can never match a PSTN dial.
   # Stable locally administered Asterisk Entity ID; do not derive it from the
   # pod network interface because pod MAC addresses are not deployment state.
   entityID: '02:dc:1a:22:2a:01'

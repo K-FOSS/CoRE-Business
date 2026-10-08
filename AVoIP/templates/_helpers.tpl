@@ -23,6 +23,21 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 {{- end -}}
 
+{{- define "avoip.asterisk.sipCore.secretName" -}}
+{{- $prefix := include "avoip.fullname" .root | trunc 37 | trimSuffix "-" -}}
+{{- printf "%s-asterisk-sipcore-%s" $prefix (toString .number) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "avoip.resourceNameWithSuffix" -}}
+{{- $suffix := .suffix -}}
+{{- $maxPrefix := sub 63 (add 1 (len $suffix)) | int -}}
+{{- if lt $maxPrefix 1 -}}
+  {{- fail (printf "resource suffix %q is too long" $suffix) -}}
+{{- end -}}
+{{- $prefix := include "avoip.fullname" .root | trunc $maxPrefix | trimSuffix "-" -}}
+{{- printf "%s-%s" $prefix $suffix | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{/* Respect per-cluster RTPEngine enablement, including on spokes. */}}
 {{- define "avoip.rtpengine.enabled" -}}
 {{- if .Values.rtpengine.enabled -}}true{{- end -}}

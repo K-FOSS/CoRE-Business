@@ -18,6 +18,11 @@ data:
     [modules]
     autoload=yes
     require = chan_pjsip.so
+    {{- if .Values.asterisk.sipCore.enabled }}
+    require = res_http_websocket.so
+    require = res_pjsip_transport_websocket.so
+    require = res_crypto.so
+    {{- end }}
     require = res_http_media_cache.so
     noload => chan_iax2.so
     noload => chan_alsa.so
@@ -102,4 +107,35 @@ data:
       same => n,Playback(hello-world)
       same => n,Playback(hello-world)
       same => n,Hangup()
+    {{- if .Values.asterisk.sipCore.enabled }}
+
+    {{- range .Values.asterisk.sipCore.extensions }}
+    ; Each SIP Core account has its own context and exact destination allowlist.
+    [from-sipcore-{{ .number }}]
+    {{- range .allowCallsTo }}
+      {{- if ne (toString .) (toString $.Values.asterisk.sipCore.echoExtension) }}
+    exten => {{ . }},1,Dial(PJSIP/{{ . }},30)
+      same => n,Hangup()
+      {{- end }}
+    {{- end }}
+    {{- $echoAllowed := false -}}
+    {{- range .allowCallsTo }}{{- if eq (toString .) (toString $.Values.asterisk.sipCore.echoExtension) }}{{- $echoAllowed = true }}{{- end }}{{- end }}
+    {{- if $echoAllowed }}
+    exten => {{ $.Values.asterisk.sipCore.echoExtension }},1,Answer()
+      same => n,Echo()
+      same => n,Hangup()
+    {{- end }}
+    exten => _X!,1,Hangup(21)
+    {{- end }}
+    {{- end }}
+
+  {{- if .Values.asterisk.sipCore.enabled }}
+  http.conf: |
+    [general]
+    enabled=yes
+    bindaddr=0.0.0.0
+    bindport={{ .Values.asterisk.sipCore.httpPort }}
+    tlsenable=no
+    allowed_origins={{ join "," .Values.asterisk.sipCore.allowedOrigins }}
+  {{- end }}
 {{- end }}

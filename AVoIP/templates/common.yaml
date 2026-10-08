@@ -657,7 +657,7 @@ controllers:
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}'
     initContainers:
 {{- if .Values.asterisk.cdr.enabled }}
       cdr-schema:
@@ -755,7 +755,26 @@ controllers:
             printf 'auth_type=userpass\n' >> /tmp/avoip-pjsip-auth.conf
             printf 'username=%s\n' "$(cat /tmp/avoip-username)" >> /tmp/avoip-pjsip-auth.conf
             printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-pjsip-auth.conf
-{{- if .Values.asterisk.cdr.enabled }}
+            {{- if .Values.asterisk.sipCore.enabled }}
+            : > /tmp/avoip-sipcore-pjsip.conf
+            {{- range .Values.asterisk.sipCore.extensions }}
+            sip_password="$(cat /run/avoip/sipcore/{{ .number }}/password)"
+            case "$sip_password" in
+              ''|*[!0123456789abcdefABCDEF]*) echo 'SIP Core password must be hexadecimal' >&2; exit 1 ;;
+            esac
+            if [ "${#sip_password}" -lt 32 ]; then echo 'SIP Core password must be at least 32 characters' >&2; exit 1; fi
+            {
+              printf '[{{ .number }}]\ntype=auth\nauth_type=userpass\nusername={{ .number }}\npassword=%s\n\n' "$sip_password"
+              printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\n\n'
+              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-ws\naors={{ .number }}\nauth={{ .number }}\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
+              {{- if and $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.media.enabled }}
+              printf 'media_address={{ $.Values.asterisk.sipCore.media.address }}\n'
+              {{- end }}
+            } >> /tmp/avoip-sipcore-pjsip.conf
+            unset sip_password
+            {{- end }}
+            {{- end }}
+            {{- if .Values.asterisk.cdr.enabled }}
             printf '[global]\n' > /tmp/avoip-cdr_pgsql.conf
             printf 'hostname={{ $asteriskCdrHost }}\n' >> /tmp/avoip-cdr_pgsql.conf
             printf 'port={{ .Values.asterisk.cdr.port }}\n' >> /tmp/avoip-cdr_pgsql.conf
@@ -764,7 +783,7 @@ controllers:
             printf 'password=%s\n' "$(cat /tmp/avoip-password)" >> /tmp/avoip-cdr_pgsql.conf
             printf 'encoding=UTF-8\n' >> /tmp/avoip-cdr_pgsql.conf
             printf 'table={{ .Values.asterisk.cdr.table }}\n' >> /tmp/avoip-cdr_pgsql.conf
-{{- end }}
+            {{- end }}
             exec /usr/sbin/asterisk -f -C /etc/asterisk/asterisk.conf
         image:
           repository: '{{ .Values.asterisk.image.repository }}'
@@ -824,7 +843,16 @@ controllers:
           - name: tls-sips
             containerPort: 5061
             protocol: TCP
-{{- range untilStep (.Values.asterisk.rtp.min | int) (.Values.asterisk.rtp.max | int) 1 }}
+{{- if .Values.asterisk.sipCore.enabled }}
+          - name: http-ws
+            containerPort: {{ .Values.asterisk.sipCore.httpPort }}
+            protocol: TCP
+{{- end }}
+{{- $asteriskRtpPorts := untilStep (.Values.asterisk.rtp.min | int) (.Values.asterisk.rtp.max | int) 1 -}}
+{{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled -}}
+{{- $asteriskRtpPorts = untilStep (.Values.asterisk.rtp.min | int) (add (.Values.asterisk.rtp.max | int) 1 | int) 1 -}}
+{{- end -}}
+{{- range $asteriskRtpPorts }}
           - name: 'udp-{{ . }}'
             containerPort: {{ . }}
             protocol: UDP
@@ -1556,6 +1584,28 @@ service:
         port: 5061
         targetPort: tls-sips
         protocol: TCP
+{{- if .Values.asterisk.sipCore.enabled }}
+      http-ws:
+        port: {{ .Values.asterisk.sipCore.httpPort }}
+        targetPort: http-ws
+        protocol: TCP
+{{- end }}
+{{- end }}
+{{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled }}
+  asterisk-rtp:
+    forceRename: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "asterisk-rtp") }}'
+    controller: asterisk
+    externalTrafficPolicy: 'Cluster'
+{{- include "avoip.service.options" (dict "root" $ "name" "asterisk-rtp" "type" "LoadBalancer") | nindent 4 }}
+    extraSelectorLabels:
+      app: '{{ include "avoip.fullname" . }}-asterisk'
+    ports:
+{{- range untilStep (.Values.asterisk.rtp.min | int) (add (.Values.asterisk.rtp.max | int) 1 | int) 1 }}
+      'udp-{{ . }}':
+        port: {{ . }}
+        targetPort: 'udp-{{ . }}'
+        protocol: 'UDP'
+{{- end }}
 {{- end }}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
 {{- if $instance.enabled -}}
@@ -1721,6 +1771,10 @@ persistence:
             subPath: modules.conf
           - path: /etc/asterisk/asterisk.conf
             subPath: asterisk.conf
+{{- if .Values.asterisk.sipCore.enabled }}
+          - path: /etc/asterisk/http.conf
+            subPath: http.conf
+{{- end }}
   asterisk-pjsip-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-asterisk-config-tpl'
@@ -1746,6 +1800,18 @@ persistence:
       asterisk:
         asterisk:
           - path: /etc/asterisk/tls
+{{- if .Values.asterisk.sipCore.enabled }}
+{{- range .Values.asterisk.sipCore.extensions }}
+  asterisk-sipcore-{{ .number }}:
+    type: secret
+    name: '{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /run/avoip/sipcore/{{ .number }}
+            readOnly: true
+{{- end }}
+{{- end }}
   asterisk-tmp:
     type: emptyDir
     advancedMounts:

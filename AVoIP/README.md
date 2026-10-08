@@ -263,6 +263,14 @@ disabled in the YVR configuration. Enabling the private SBC does not enable
 registration, create SIP subscribers, or prove that its database claim has
 been provisioned.
 
+The chart also includes a disabled-by-default Asterisk WSS/WebRTC path for the
+[SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration).
+It provisions static PJSIP extensions from External Secrets, serves WSS through
+the existing Gateway, and allows only exact configured internal destinations.
+It is not enabled by the YVR ApplicationSet. Public UDP media exposure is a
+separate opt-in because the Gateway carries only WebSocket signaling. See
+[SIPCORE-HASS.md](docs/SIPCORE-HASS.md).
+
 Run `tests/kamailio-instances.sh`, `tests/sip-registrar-render.sh`, `tests/sip-outbound-render.sh`, and
 `tests/sip-security-render.sh` before
 publishing a change. Review the rendered carrier selector, public Contact,
