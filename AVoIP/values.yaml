@@ -727,10 +727,12 @@ asterisk:
     min: 10000
     max: 10100
   turn:
+    # CoTURN is deployed by NATPuncher; reuse its REST shared secret source.
     enabled: true
     hostname: 'nat.mylogin.space'
     port: 3478
     username: 'asterisk'
+    # Asterisk loads fixed TURN credentials at startup; restart before expiry.
     credentialLifetimeSeconds: '31536000'
     secret:
       name: 'avoip-asterisk-turn-auth'

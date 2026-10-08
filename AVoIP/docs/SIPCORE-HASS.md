@@ -185,7 +185,8 @@ For TURN verification, confirm `ExternalSecret/avoip-asterisk-turn-auth` is
 Ready without printing Secret contents, then inspect the Asterisk log for
 successful ICE/TURN candidate creation with PJSIP packet tracing disabled.
 Never copy the generated TURN password or SIP Authorization data into logs or
-support output.
+support output. The Secret is retained if the AVoIP ExternalSecret is removed;
+review it through the approved secret workflow before deleting or rotating it.
 
 This static extension pilot is separate from the planned dynamic SIP registrar,
 Authentik credential broker, and first-party webphone. It does not satisfy the

@@ -305,8 +305,10 @@ verification, and recovery](docs/LIVEKIT.md).
 ## Asterisk WebRTC media relay candidates
 
 The [Asterisk RTP/ICE configuration](https://docs.asterisk.org/Configuration/Miscellaneous/Interactive-Connectivity-Establishment-ICE-in-Asterisk/)
-uses the existing CoTURN service at `nat.mylogin.space:3478` for STUN
-discovery and TURN relay candidates. Its REST shared secret is sourced from
+uses the existing [CoTURN](https://github.com/coturn/coturn) service at
+`nat.mylogin.space:3478` for STUN discovery and TURN relay candidates. Its
+[REST shared secret](https://github.com/coturn/coturn/blob/master/README.turnserver)
+is sourced from
 the same Vault property as Social/Matrix through a separate AVoIP
 ExternalSecret. Asterisk derives a time-limited TURN username/password at
 startup and stores the generated include only in its runtime `/tmp`; no
