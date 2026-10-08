@@ -37,7 +37,7 @@ data:
             <param name="sip-port" value="5060"/>
             <param name="tls" value="true"/>
             <param name="tls-only" value="true"/>
-            <param name="tls-sip-port" value="5062"/>
+            <param name="tls-sip-port" value="$${internal_tls_port}"/>
             <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
             <param name="tls-verify-date" value="true"/>
             <param name="tls-verify-policy" value="subjects_out"/>
@@ -50,7 +50,7 @@ data:
             <param name="sip-ip" value="$${local_ip_v4}"/>
             <param name="sip-domain" value="$${private_sip_host}"/>
             <param name="ext-sip-ip" value="host:$${private_sip_host}"/>
-            <param name="ext-sip-port" value="5062"/>
+            <param name="ext-sip-port" value="$${internal_tls_port}"/>
         </settings>
     </profile>
   external.xml: |
