@@ -2,16 +2,21 @@
 
 ## Current state
 
-Backplane references below were inspected at commit
-`df212a6f87c83b330380de2073b3ce3b2c287347` on 2026-10-07. Verify the
-active cluster state before enabling an instance.
+Backplane references below were inspected at revision
+[`a39ecb3`](https://github.com/K-FOSS/CoRE-Backplane/commit/a39ecb3) on
+2026-10-07. Verify the active cluster state before enabling an instance.
 
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-injects only the `carrier` Kamailio instance at DC1, Home1, and the legacy
-DC1 cluster. Its public listener rejects `REGISTER` with 403. The chart's
+retains the `carrier` Kamailio instance at DC1, Home1, and the legacy DC1
+cluster, and enables one `internal` `private-sbc` instance in Home1/YVR. The
+operator reports the first pieces live there; Argo health and live SIP behavior
+have not been independently observed in this workspace. The registrar remains
+disabled on that instance. The carrier public listener rejects `REGISTER`
+with 403. The chart's
 `private-sbc` role now contains a disabled-by-default registrar pilot with
 mutual-TLS ingress, Digest checks, exact allowed AoRs, database-only contact
-storage and a dedicated Cilium policy. No internal registrar is deployed.
+storage and a dedicated Cilium policy. No live internal registration has been
+verified.
 
 The [Backplane `User` XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
 has an `AVoIP` field, but its

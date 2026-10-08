@@ -224,9 +224,10 @@ The [Kamailio values reference](docs/KAMAILIO-VALUES.md) lists every supported
 option, default, role constraint, and site override. The active
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 provides a complete `kamailio.instances` array at each site. The three
-sites currently enable only the named `carrier` instance with three replicas.
-An instance receives `defaults`, then its role defaults, then its own
-overrides. Site Helm values replace the entire instances array.
+sites retain the named `carrier` instance with three replicas. YVR also enables
+one `internal` instance with the `private-sbc` role; DC1 configurations remain
+carrier-only. An instance receives `defaults`, then its role defaults, then its
+own overrides. Site Helm values replace the entire instances array.
 
 The `carrier-sbc` role preserves the existing public SIP border and private
 TLS backend. An opt-in `private-sbc` instance now has its own TLS/5062 Service,
@@ -238,9 +239,12 @@ RTPEngine or forward to Flowroute. Unlike the carrier role, direct private
 connections do not require an Envoy PROXY header. The private role is limited
 to one replica until dialog affinity is tested. See the [Kamailio values](docs/KAMAILIO-VALUES.md).
 
-No private instance is enabled by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-The carrier's existing private listener still uses its current CIDR guard for
-dialog traffic; new calls from that listener receive 403. An
+The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+now enables one `private-sbc` instance in YVR beside the existing carrier
+instance; the operator reports that the first pieces are live. Its rollout and
+SIP behavior have not yet been independently verified here. The carrier's
+existing private listener still uses its current CIDR guard for dialog
+traffic; new calls from that listener receive 403. An
 [opt-in outbound service-peer pilot](docs/OUTBOUND-PILOT.md) now uses the
 existing Gateway and a dedicated SNI/mTLS profile, exact test extension and
 destination, fixed caller ID, carrier-owned RTPEngine path, and shared
@@ -252,10 +256,12 @@ records an opt-in private registrar implementation: a dedicated PostgreSQL
 `User` claim and migration Job, Digest-checked REGISTER and initial INVITE,
 and exact pilot AoR policy. The database filters expired/disabled verifiers
 and purges contacts on revocation or HA1 rotation. It has passed render,
-isolated database and Kamailio syntax checks, not live registration. Credential issuance and Authentik-driven revocation,
-NAT/WSS connection ownership and the browser phone are still pending. The
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-does not enable it at any site.
+isolated database and Kamailio syntax checks, not live registration.
+Credential issuance and Authentik-driven revocation, NAT/WSS connection
+ownership, and the browser phone are still pending. The registrar remains
+disabled in the YVR configuration. Enabling the private SBC does not enable
+registration, create SIP subscribers, or prove that its database claim has
+been provisioned.
 
 Run `tests/kamailio-instances.sh`, `tests/sip-registrar-render.sh`, `tests/sip-outbound-render.sh`, and
 `tests/sip-security-render.sh` before
