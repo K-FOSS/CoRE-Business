@@ -787,7 +787,7 @@ freeswitch:
     # Do not interrupt the answered bridge while fetching/playing a remote
     # sound asset. Enable explicitly only when a post-answer prompt is wanted.
     enabled: false
-    url: 'http://66.165.222.102/black_alert.mp3'
+    url: 'http://10.1.1.84/Sounds/gg-sound-effect.mp3'
   sms:
     enabled: true
   sipLogging:
