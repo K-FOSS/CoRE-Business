@@ -177,6 +177,7 @@ grep -Fq '<extension name="gg-audio">' "$tmp_dir/asterisk.xml" || fail 'FreeSWIT
 grep -Fq 'destination_number" expression="^gg-audio$"' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH does not match the gg-audio destination'
 grep -Fq 'sip_auth_username}" expression="^freeswitch$"' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH GG audio route is not restricted to the authenticated Asterisk peer'
 grep -Fq 'data="shout://' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH GG audio route does not play the configured audio'
+grep -Fq 'data="shout://66.165.222.102/black_alert.mp3"' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH GG audio route does not use the configured black alert audio'
 grep -Fq 'Add other site-specific destinations and transfer scripts here' "$tmp_dir/asterisk.xml" || fail 'FreeSWITCH Asterisk dialplan customization point is undocumented'
 grep -Fq 'mountPath: /etc/freeswitch/dialplan/asterisk.xml' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH dedicated Asterisk dialplan file is not mounted'
 grep -Fq 'from-user" value="freeswitch' "$tmp_dir/empty-matches.yaml" || fail 'FreeSWITCH From identity does not select the named Asterisk endpoint'
