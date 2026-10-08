@@ -69,6 +69,9 @@
   {{- if and (eq $role "private-sbc") $effective.publicExposure.enabled -}}
     {{- fail (printf "Kamailio %s private-sbc must not expose public SIP" $name) -}}
   {{- end -}}
+  {{- if or (lt (int $effective.websocket.keepaliveTimeoutSeconds) 5) (gt (int $effective.websocket.keepaliveTimeoutSeconds) 600) -}}
+    {{- fail (printf "Kamailio %s websocket.keepaliveTimeoutSeconds must be between 5 and 600" $name) -}}
+  {{- end -}}
   {{- if $effective.registrar.enabled -}}
     {{- if or $effective.sipLogging.rawInbound $effective.sipLogging.postToposResponses $effective.sipLogging.carrierTraffic $effective.sipLogging.diagnostics.enabled $effective.sipLogging.diagnostics.sdp -}}
       {{- fail (printf "Kamailio %s registrar forbids raw SIP and diagnostic logging of Digest credentials" $name) -}}
