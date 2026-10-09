@@ -10,6 +10,21 @@ The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/
 injects each site's cluster identity, SIP hostname, media address and range,
 and DID values through Lovely. No DID belongs in this repository.
 
+## Current public SIP topology
+
+The current public SIP border is the `carrier` Kamailio instance. The
+ApplicationSet configures three carrier replicas at each deployed site, and
+Home1 currently reports three desired and three ready carrier pods. Public SIP
+TLS and the site's enabled UDP/TCP listeners attach to this carrier service.
+Home1's private `internal` Kamailio instance is a separate one-replica service
+for private application signaling; it is not the public SIP entry point.
+
+The three carrier replicas provide same-site availability for new SIP
+requests. A failed pod's in-flight transaction or established TCP/TLS
+connection does not move to a peer, and the replica count does not provide
+cross-site active-call migration. The public and private roles have separate
+Services, listeners, and routing policies.
+
 ## Decide which failure to survive
 
 | Goal | What can handle it | Remaining dependency |

@@ -245,10 +245,21 @@ The [Kamailio values reference](docs/KAMAILIO-VALUES.md) lists every supported
 option, default, role constraint, and site override. The active
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 provides a complete `kamailio.instances` array at each site. The three
-sites retain the named `carrier` instance with three replicas. YVR also enables
-one `internal` instance with the `private-sbc` role; DC1 configurations remain
-carrier-only. An instance receives `defaults`, then its role defaults, then its
-own overrides. Site Helm values replace the entire instances array.
+sites retain the named `carrier` instance with three replicas. This is the
+current public SIP service and provides same-site Kamailio pod redundancy;
+Home1's carrier Deployment currently reports three desired and three ready
+replicas. Public SIP traffic attaches to this carrier instance. YVR also
+enables one `internal` instance with the `private-sbc` role; DC1 configurations
+remain carrier-only. The internal instance handles private application
+signaling such as Asterisk/SIP Core and is separate from public carrier SIP.
+An instance receives `defaults`, then its role defaults, then its own
+overrides. Site Helm values replace the entire instances array.
+
+Three carrier replicas provide same-site availability for new SIP requests
+when a pod fails. They do not move an active WebSocket/TLS connection or
+in-flight transaction to another pod, and they do not establish cross-site
+active-call failover. See [SIP availability options](docs/SIP-HA-OPTIONS.md)
+for the tested and unverified failure boundaries.
 
 The `carrier-sbc` role preserves the existing public SIP border and private
 TLS backend. An opt-in `private-sbc` instance now has its own TLS/5062 Service,
