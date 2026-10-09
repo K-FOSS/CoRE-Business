@@ -190,10 +190,16 @@ behavior.
   `asterisk.sipCore.ggCallbackCallerIdName` (default `Important Message`).
   Kamailio aliases the WebSocket Contact in the callback response so Asterisk's
   later ACK and BYE reuse the active WebSocket flow.
-  The callback uses Asterisk's `PJSIP_DIAL_CONTACTS()` to ring all currently
-  registered contacts for that extension in parallel. Asterisk starts the
-  callback independently of the ended source channel, then enters the GG route
-  and dials FreeSWITCH only after a contact answers. If no contacts answer
+  The callback dials the extension's PJSIP endpoint so Asterisk selects its
+  current AOR contact and applies that contact's stored Path. In YVR, the
+  `PJSIP_DIAL_CONTACTS()` expansion produced explicit WebSocket Contact URIs
+  that failed with 503 before the WSS edge logged an INVITE, while a direct
+  `PJSIP/7101` test reached the owner and returned 180 Ringing. Asterisk's
+  endpoint dial form selects one contact, so this workaround rings one
+  registered client at a time; it does not provide ring-all across multiple
+  clients. Asterisk starts the callback independently of the ended source
+  channel, then enters the GG route and dials FreeSWITCH only after a contact
+  answers. If no contact answers
   within the configured `asterisk.sipCore.ggCallbackRingTimeoutSeconds`
   (default 30 seconds), it ends without starting the GG call. The callback
   starts one minute after the hello-world call ends by default, controlled by

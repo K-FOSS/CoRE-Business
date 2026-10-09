@@ -140,18 +140,18 @@ data:
     [sipcore-callback-{{ .number }}]
     ; Run the callback independently of the already-hung-up source channel,
     ; after the configured delay following the hello-world call.
-    ; Originate enters the GG destination only after the Local ring-all channel
+    ; Originate enters the GG destination only after the Local callback channel
     ; answers, which happens after a registered SIP Core contact answers.
-    exten => s,1,Originate(Local/s@sipcore-callback-ringall-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int $.Values.asterisk.sipCore.ggCallbackDelaySeconds) (int $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds) 10 }},a)
+    exten => s,1,Originate(Local/s@sipcore-callback-contact-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int $.Values.asterisk.sipCore.ggCallbackDelaySeconds) (int $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds) 10 }},a)
       same => n,Return()
-    ; Expand the AOR's current registrations so every active device rings.
-    [sipcore-callback-ringall-{{ .number }}]
+    ; Dial the AOR through its PJSIP endpoint so Asterisk applies the Path
+    ; stored for the selected contact. Explicit contact URIs from
+    ; PJSIP_DIAL_CONTACTS failed before reaching the WSS edge in YVR.
+    [sipcore-callback-contact-{{ .number }}]
     exten => s,1,Wait({{ $.Values.asterisk.sipCore.ggCallbackDelaySeconds }})
-      same => n,Set(SIPCORE_CALLBACK_CONTACTS=${PJSIP_DIAL_CONTACTS({{ .number }})})
-      same => n,GotoIf($["${SIPCORE_CALLBACK_CONTACTS}"=""]?no-contacts)
       same => n,Set(CALLERID(name)={{ $.Values.asterisk.sipCore.ggCallbackCallerIdName }})
-      same => n,Dial(${SIPCORE_CALLBACK_CONTACTS},{{ $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds }})
-      same => n(no-contacts),Hangup()
+      same => n,Dial(PJSIP/{{ .number }},{{ $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds }})
+      same => n,Hangup()
     {{- end }}
     {{- end }}
 

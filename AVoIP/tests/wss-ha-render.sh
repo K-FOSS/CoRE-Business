@@ -75,6 +75,9 @@ grep -Fq 'context=from-sipcore-7101' "$rendered"
 grep -Fq 'exten => 9090,1,Answer()' "$rendered"
 grep -Fq 'exten => 66,1,Dial(PJSIP/gg-audio@freeswitch,30,g)' "$rendered"
 grep -Fq 'exten => 1234,1,Answer()' "$rendered"
+grep -Fq 'Dial(PJSIP/7101,30)' "$rendered"
+! grep -Fq 'PJSIP_DIAL_CONTACTS(7101)' "$rendered"
+echo 'PASS: callback dials the Path-aware AOR endpoint rather than explicit WebSocket Contact URIs'
 
 # Home1 keeps the legacy private instance selected for return traffic while
 # new WSS registrations enter through a separate HA edge. The contact Path
