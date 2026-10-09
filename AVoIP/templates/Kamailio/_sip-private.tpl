@@ -223,7 +223,7 @@
         rtpengine_manage();
       }
       if (is_method("INVITE") && !has_totag()) {
-        record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
+        record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
       }
       route(TO_SIPCORE_ASTERISK);
       {{- if .Values.kamailio.sipLogging.sipCore }}
@@ -267,7 +267,7 @@
           while ($du != $null &&
                  $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
                  $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}" &&
-                 $var(sipcore_local_route_hops) < 8) {
+                 $var(sipcore_local_route_hops) < 4) {
             $du = $null;
             $var(sipcore_local_route_hops) = $var(sipcore_local_route_hops) + 1;
             loose_route();
@@ -319,7 +319,7 @@
           exit;
         }
         if (is_method("INVITE") && !has_totag()) {
-          record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls");
+          record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
         }
       }
       if (has_body("application/sdp")) {
