@@ -3,10 +3,12 @@
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the
 [SIP HA integration baseline](docs/SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-08).
-The chart now has an opt-in three-replica WSS edge mode with a staged pilot
-path. Home1's active ApplicationSet still explicitly keeps the current internal
-instance at one replica; see the [HA rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode)
-before changing that site value.
+The chart supports a separate `internal-wss` Kamailio instance for the opt-in
+three-replica WSS edge. The ordinary `internal` private-SBC remains its own
+one-replica Deployment. Home1's active ApplicationSet still explicitly keeps
+`internal` at one replica and does not yet define `internal-wss`; see the
+[HA rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode) before
+adding the WSS instance and changing the route backend.
 
 This chart is the site-specific desired state for the AVoIP stack in `core-prod`.
 The [SIP, identity, and RTC architecture plan](docs/SIP-STATEFUL-HA.md) and its
@@ -65,13 +67,14 @@ ApplicationSet's Lovely-injected values select each site's actual components,
 hostnames, media addresses, and DIDs. Inspect both layers before changing a
 site deployment.
 
-The private SBC is currently limited to one replica by chart validation.
-Multiple Kamailio pods do not share live WebSocket connections or SIP
-transaction state, and Asterisk's SIP return traffic must reach the pod that
-owns each registered WebSocket flow. Kubernetes client-IP affinity alone does
-not establish that ownership because Envoy and Asterisk are different clients.
-See the [private-SBC scale gate](docs/SIP-STATEFUL-HA.md#private-sbc-replica-gate)
-for the routing work and evidence required before enabling a second replica.
+The ordinary `internal` private-SBC remains limited to one replica. The separate
+`internal-wss` instance can opt into three StatefulSet replicas with owner Path
+routing, while Asterisk retains registration and authentication authority.
+Kamailio processes do not share live WebSocket connections or transaction
+state. Kubernetes client-IP affinity cannot identify the owner because Envoy
+and Asterisk are different clients. See the
+[WSS edge rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode)
+before enabling the additional instance.
 
 Home1/YVR fax reception has been reported working over G.711. The owning
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
@@ -276,20 +279,25 @@ requires a verified client certificate and an explicitly listed peer address
 and certificate DNS SAN. Exact extension rules select probed dispatcher
 destinations; unmatched requests and, by default, `REGISTER` fail closed. It does not load
 RTPEngine or forward to Flowroute. Unlike the carrier role, direct private
-connections do not require an Envoy PROXY header. The private role is limited
-to one replica until dialog affinity is tested. See the [Kamailio values](docs/KAMAILIO-VALUES.md).
+connections do not require an Envoy PROXY header. The ordinary `internal`
+private-SBC remains one replica; SIP Core HA uses the distinct `internal-wss`
+instance and Path-based ownership described in the [Kamailio values](docs/KAMAILIO-VALUES.md).
 
 The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 now enables one `private-sbc` instance in YVR beside the existing carrier
 instance; the operator reports that the first pieces are live. Its rollout and
 SIP behavior have not yet been independently verified here. The carrier's
 existing private listener still uses its current CIDR guard for dialog
-traffic; new calls from that listener receive 403. An
+traffic; new calls from that listener receive 403. The existing Home Assistant
+SIP Core route uses `internal`; HA adds a separate `internal-wss` instance for
+staged route and Asterisk Path cutover. An
 [opt-in outbound service-peer pilot](docs/OUTBOUND-PILOT.md) now uses the
 existing Gateway and a dedicated SNI/mTLS profile, exact test extension and
 destination, fixed caller ID, carrier-owned RTPEngine path, and shared
 rate/concurrency quotas. It is disabled at both sites and has not passed a
-live carrier call. No registrar, WSS endpoint or OIDC webphone is deployed.
+live carrier call. The chart does not enable the Kamailio registrar pilot or
+an OIDC webphone; its current SIP Core path uses Asterisk's PJSIP registrar
+and the existing Envoy WSS route.
 
 The [internal registrar integration contract](docs/INTERNAL-REGISTRAR.md)
 records an opt-in private registrar implementation: a dedicated PostgreSQL
@@ -306,20 +314,21 @@ been provisioned.
 The chart also includes a disabled-by-default SIP Core WebRTC path for the
 [SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration).
 It provisions static PJSIP extensions from External Secrets, serves WSS through
-Envoy to the selected private Kamailio instance, and allows only exact
+Envoy to a separate named Kamailio WSS instance, and allows only exact
 configured internal destinations. Carrier and FreeSWITCH fax signaling stays
-on the separate carrier instance. The private instance relays signaling to
+on the separate carrier instance. The WSS instance relays signaling to
 Asterisk over TLS and controls the existing RTPEngine for the Home Assistant
-media leg. The enabled pilot is site-specific; inspect the owning ApplicationSet
+media leg, separately from the ordinary `internal` private-SBC instance. The
+enabled pilot is site-specific; inspect the owning ApplicationSet
 before changing its rollout values. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md) and the
 [three-replica WSS edge guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
 
 The HA mode keeps Asterisk as registrar and Digest authority. SIP Path targets
 the exact StatefulSet replica with the registered WebSocket, and a separate
-headless owner Service provides private TLS addressing. The Envoy-facing
-Service retains its current resource name, selector and port 8088. This is
-signaling availability only: an unexpected owner loss interrupts that
+headless owner Service provides private TLS addressing. The WSS Service selects
+only the edge instance on port 8088; the generated HTTPRoute switches from the
+old `internal` Service during cutover. This is signaling availability only: an unexpected owner loss interrupts that
 connection's dialogs and media until Home Assistant reconnects and registers.
 The CoRE-Backplane Gateway policy still imposes a one-hour maximum connection
 duration and needs a separate future policy change for longer sessions.

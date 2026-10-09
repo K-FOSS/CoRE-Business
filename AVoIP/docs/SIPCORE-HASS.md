@@ -7,9 +7,11 @@ The generated HTTPRoute is owned by this chart and currently targets the
 internal Kamailio Service on port 8088. Increasing replicas alone is unsafe:
 the shared Envoy Service balances new connections but cannot route later SIP
 requests to the Kamailio process that owns a registered WebSocket.
-The chart's opt-in `websocketHA` mode supplies stable StatefulSet owner DNS,
-Path routing and Asterisk return routing; the Home1 ApplicationSet remains
-at one replica until its separately reviewed staged cutover. See
+The chart's opt-in `websocketHA` mode runs in a separate named
+`internal-wss` Kamailio instance, apart from the ordinary `internal`
+private-SBC. It supplies stable StatefulSet owner DNS, Path routing and
+Asterisk return routing; the Home1 ApplicationSet remains unchanged until its
+separately reviewed staged cutover. See
 [SIP Stateful HA](SIP-STATEFUL-HA.md#implemented-wss-edge-mode) for the
 observed Envoy resources, exact future values and operator acceptance steps.
 
@@ -25,8 +27,9 @@ and Asterisk's [WebRTC/PJSIP guide](https://docs.asterisk.org/Configuration/WebR
 
 The browser connects to `wss://<configured-hostname>/ws`. Envoy Gateway
 terminates WSS and proxies the HTTP WebSocket upgrade to the dedicated
-internal Kamailio SBC on port 8088. That instance relays SIP to Asterisk over
-TLS on port 5061. Asterisk's reverse signaling leg returns to the registered
+separate WSS Kamailio instance on port 8088. That edge relays SIP to Asterisk
+over TLS on port 5061. The ordinary `internal` private-SBC remains separate.
+Asterisk's reverse signaling leg returns to the registered
 owner's TLS listener (default port 5063) when HA Path is enabled, or to the
 single shared return Service in legacy mode. The carrier SBC does not process this
 WebSocket or Asterisk signaling path; its FreeSWITCH, carrier, and fax routes
@@ -100,8 +103,9 @@ behavior.
 `asterisk.sipCore.enabled` defaults to `false`. When enabled, the chart:
 
 - Adds a WebSocket listener and SIP Core route only to the selected private
-  Kamailio instance. The carrier instance has no SIP Core listener or route.
-  The private instance relays SIP to Asterisk over TLS and controls the
+  Kamailio instance. In the separated HA configuration this is `internal-wss`;
+  `internal` remains the ordinary private-SBC, and the carrier has no SIP Core
+  listener or route. The WSS edge relays SIP to Asterisk over TLS and controls the
   existing RTPEngine for the Home Assistant media leg. WebRTC
   endpoint/AOR/auth objects are generated for each configured extension.
 - Keeps the Asterisk endpoint on TLS to Kamailio. Asterisk must not send SIP
@@ -123,10 +127,11 @@ behavior.
   dedicated listener's Cilium workload policy is the trust boundary. Calls
   initiated by a Home Assistant extension remain constrained by that
   extension's Asterisk `allowCallsTo` dialplan context.
-- When the selected private instance opts into `websocketHA.enabled`, the
-  chart changes only that instance to a StatefulSet, adds a headless
-  owner-address Service, and keeps the existing Envoy-facing Service name and
-  port. A per-owner Path is generated for REGISTER and stored by Asterisk
+- When `websocketHA.enabled` is set on the separate `internal-wss` instance,
+  the chart renders that edge as a StatefulSet and adds its own headless
+  owner-address Service. At cutover the generated HTTPRoute backend changes
+  from the old `internal` Service to the WSS Service on port 8088. A per-owner
+  Path is generated for REGISTER and stored by Asterisk
   `support_path=yes`; the browser's socket and Kamailio transaction remain
   process-local. Asterisk remains the registrar, contact database and Digest
   authority. Missing/dead Path owners fail safely and require client
@@ -195,9 +200,10 @@ behavior.
   `gg-audio` route is included by default.
 
 The chart does not enable this feature at a site. Set
-`asterisk.sipCore.kamailioInstance` to the name of an enabled `private-sbc`
-instance (the current site uses `internal`). Keep that private instance's
-site-specific TOPOS settings isolated from the carrier's store. Set the hostname to a name
+`asterisk.sipCore.kamailioInstance` to the name of the dedicated WSS
+`private-sbc` instance (planned name `internal-wss`). Keep both private
+instances' site-specific TOPOS settings isolated from one another and from
+the carrier store. Set the hostname to a name
 covered by the selected Gateway HTTPS listener and configure ExternalDNS and
 the Gateway's certificate/DNS ownership through the site's established
 Backplane path. A hostname under an existing wildcard listener is usually the

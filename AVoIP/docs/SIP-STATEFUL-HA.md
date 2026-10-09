@@ -6,25 +6,25 @@ This is a proposed, gated upgrade to the [current SIP routing architecture](SIP-
 
 The Home1 deployment is owned by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml). Its `core-home1-talos-prod` entry enables `asterisk.sipCore`, sets `hostname: sipcore.mylogin.space`, `httpPort: 8088`, the `https-myloginspace` Gateway section, and the allowed Origin `https://home.mylogin.space`. It defines extension `7101` with two contacts and retains the `9090`, `66`, and `1234` destinations. The same entry sets the `internal` Kamailio instance to `role: private-sbc`, `replicas: 1`, and TOPOS Redis database 52. This explicit replica value means chart defaults cannot activate HA.
 
-The HTTPS listener is `Gateway/core-prod/main-gw`, section `https-myloginspace`, port 443, TLS mode `Terminate`, using Secrets `core-prod/myloginspace-default-certificates` and `core-prod/myloginspace-int-default-certificates`. Its `allowedRoutes` accepts routes from all namespaces. The SIP Core `HTTPRoute` is rendered by CoRE-Business as `core-home1-talos-prod-business-avoip-prod-avoip-sipcore-wss` in `core-prod`. It matches the exact hostname `sipcore.mylogin.space` and exact path `/ws`; it targets Service `core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal` on port 8088. The separate return Service is `core-home1-talos-prod-business-kamailio-internal-sipcore-return`. Envoy therefore terminates public TLS and sends HTTP/1.1 WebSocket traffic to the cleartext websocket listener; this is not TLS passthrough. The chart validates Host and Origin in Kamailio. The Backplane route does not rewrite those headers.
+The HTTPS listener is `Gateway/core-prod/main-gw`, section `https-myloginspace`, port 443, TLS mode `Terminate`, using Secrets `core-prod/myloginspace-default-certificates` and `core-prod/myloginspace-int-default-certificates`. Its `allowedRoutes` accepts routes from all namespaces. The SIP Core `HTTPRoute` is rendered by CoRE-Business as `core-home1-talos-prod-business-avoip-prod-avoip-sipcore-wss` in `core-prod`. It matches the exact hostname `sipcore.mylogin.space` and exact path `/ws`; it currently targets Service `core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal` on port 8088. The separate return Service is `core-home1-talos-prod-business-kamailio-internal-sipcore-return`. With separated HA values, the CoRE-Business route backend changes to the `internal-wss` Service on port 8088. Envoy still terminates public TLS and sends HTTP/1.1 WebSocket traffic to the cleartext websocket listener; this is not TLS passthrough. The chart validates Host and Origin in Kamailio. The Backplane Gateway does not rewrite those headers.
 
 Timeouts are layered. The route sets `request: 1h` and `backendRequest: 30m`; the CoRE-Business route-targeted BackendTrafficPolicy sets `streamIdleTimeout: 1h`. Backplane's Gateway-targeted policy `BackendTrafficPolicy/core-prod/main-gw` sets HTTP `connectionIdleTimeout: 120s` and `maxConnectionDuration: 3600s`. Its Gateway ClientTrafficPolicy `ClientTrafficPolicy/core-prod/maingw-traffic` sets HTTP idle timeout 1800s. The one-hour route/global maximum durations impose a one-hour upper bound on the relevant connection/stream despite the 15-second Kamailio WebSocket keepalive and longer idle settings. WebSocket keepalives address idle timeouts; they do not defeat an absolute maximum connection duration.
 
 `EnvoyProxy/core-prod/envoy-core.mylogin.space` configures three Envoy pods behind a LoadBalancer. Its generated Envoy Service uses `externalTrafficPolicy: Local` and ClientIP session affinity for six hours. That affinity concerns client connections to Envoy; it does not select or persist a SIP contact owner in the backend. The internal Kamailio Service currently selects the single private-SBC replica. There is no observed SIP Core-specific Envoy Backend resource changing that selection. CoRE-Business's private-SBC Cilium policy defaults its gateway source selector to namespace `kube-system`, label `app.kubernetes.io/name: envoy`; Home1 does not inject an override for those values. The Home1 live cluster could not be queried from this workspace: no `core-home1-talos-prod` kubectl context is configured, and the current in-cluster API address is network-blocked. Thus the exact generated Envoy pod namespace and live labels remain to be confirmed before reconciliation. Run `kubectl get pods -A -l app.kubernetes.io/name=envoy --show-labels` and compare with the rendered Cilium selector; keep the authorization narrow and set its explicit namespace/labels if they differ, never broaden to a namespace or CIDR allowlist.
 
-The gateway ApplicationSet and shared Gateway resources are owned by [Backplane's Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml) and [`Network/Ingress`](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Network/Ingress). CoRE-Business owns the SIP Core HTTPRoute, its route BackendTrafficPolicy, Kamailio Services, TLS and pod policy. No Backplane edits are part of this task. The implemented HA mode preserves the existing HTTPRoute backend Service name and port, so the eventual same-Service cutover needs no HTTPRoute backend change. The Backplane gateway-targeted timeout policy still sets `maxConnectionDuration: 3600s`; remove that cap or raise it in a separately reviewed Backplane change to meet the long-running connection objective. The Home1 ApplicationSet also explicitly supplies `internal.replicas: 1`, so chart defaults do not activate HA.
+The gateway ApplicationSet and shared Gateway resources are owned by [Backplane's Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml) and [`Network/Ingress`](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Network/Ingress). CoRE-Business owns the SIP Core HTTPRoute, its route BackendTrafficPolicy, Kamailio Services, TLS and pod policy. No Backplane edits are part of this task. At cutover the CoRE-Business HTTPRoute backend changes from the `internal` Service to the separate `internal-wss` Service; no Backplane-owned HTTPRoute change is needed. The Backplane gateway-targeted timeout policy still sets `maxConnectionDuration: 3600s`; remove that cap or raise it in a separately reviewed Backplane change to meet the long-running connection objective. The Home1 ApplicationSet explicitly supplies `internal.replicas: 1`, so final values must add and select a separate `internal-wss` instance.
 
-These are repository observations, not proof of live controller status. The current chart now renders opt-in StatefulSet HA with a per-pod owner DNS address, shared ingress Service, Path routing, strict extension Digest authority in Asterisk, and a staged `internal-ha` pilot alongside the old `internal` Deployment. The dedicated `AVoIP/tests/wss-ha-render.sh` confirms the render contract only; it does not prove packet routing, Asterisk runtime behavior in the custom image, live gateway endpoints, or successful WebRTC calls. Do not cut over until the live acceptance plan below is complete.
+These are repository observations, not proof of live controller status. The WSS edge is now a separate named Kamailio instance, `internal-wss`, alongside the ordinary `internal` private-SBC instance. Both reuse the `private-sbc` chart role, while their pods, Services, selectors and configuration remain separate. `internal` stays a one-replica Deployment; `internal-wss` is an opt-in StatefulSet with per-pod owner DNS, SIP Path routing and Asterisk-held Digest registrations. The dedicated render test confirms this resource separation, not live packet routing or successful calls. Do not cut over until the live acceptance plan below is complete.
 
 ## Implemented WSS edge mode
 
-The `private-sbc` named instance accepts `websocketHA.enabled: true` with 2–10 replicas. It renders as a BJW-S StatefulSet using an additional headless `*-owner` Service. The regular instance Service keeps its existing name, selector and port 8088, so the current HTTPRoute backend remains valid and new WSS connections balance across ready pods. The headless Service gives each pod a stable DNS name on TLS/5063; a narrowly scoped Kamailio preprocessor substitution reads only `POD_NAME` for the advertised owner address. A wildcard SAN covers the headless Service pod DNS names, and the same cert/key is mounted into the replicas. Internal TLS verification remains enabled on Asterisk's configured transport; the 5062 strict mTLS peer listener is unchanged. The owner TLS SNI profile is limited by Cilium to the Asterisk and matching Kamailio workload identities.
+The separate `internal-wss` named instance accepts `websocketHA.enabled: true` with 2–10 replicas. It renders as a BJW-S StatefulSet using its own headless `*-owner` Service. The ordinary `internal` private-SBC remains a one-replica Deployment. In HA values it does not receive the WSS listener. The WSS instance's regular Service preserves the HTTPRoute backend name/port contract and selects only its own ready pods. The headless Service gives each WSS pod a stable DNS name on TLS/5063; a narrowly scoped Kamailio preprocessor substitution reads only `POD_NAME` for the advertised owner address. A wildcard SAN covers the WSS headless Service pod DNS names, and the same cert/key is mounted into its replicas. Internal TLS verification remains enabled on Asterisk's configured transport; the 5062 strict mTLS peer listener is unchanged. The owner TLS SNI profile is limited by Cilium to the Asterisk and matching Kamailio workload identities.
 
 For a WebSocket REGISTER, the owning edge preserves the existing Contact alias, removes client-supplied Path, and calls Kamailio [`add_path_received()`](https://www.kamailio.org/docs/modules/6.1.x/modules/path.html#path.f.add_path_received) after selecting its own TLS socket. Kamailio's [WebSocket module](https://www.kamailio.org/docs/modules/6.1.x/modules/websocket.html) and [6.1 core preprocessor](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/) provide the handshake disable RPC and the single-token environment substitution used for pod identity. The `path`, `outbound`, `websocket`, `xhttp`, `nathelper`, `tm`, `rr` and existing media/TOPOS modules remain in the path. Asterisk PJSIP AORs render `support_path=yes`, while its normal HA endpoint has no shared outbound proxy; Asterisk 20's [`res_pjsip_path`](https://github.com/asterisk/asterisk/blob/20/res/res_pjsip_path.c) prepends the contact-specific Path as the outbound Route and stores that Path with the contact. Asterisk remains the sole Digest authenticator, registrar and contact/expiry database. Successful REGISTER replies use the original SIP transaction and original WebSocket-owning process.
 
 Initial Asterisk requests must carry the stored Path Route. The edge consumes that owner Route, removes a remaining legacy shared-return Route only during the explicitly configured migration window, resolves the registered Contact alias on the owner process, then applies the existing RTPEngine SDP handling and Record-Route behavior. Dialog requests return using that owner Record-Route; `tm` transactions (including CANCEL and negative ACK) remain on the process that received the original request. No socket ID is copied to Dragonfly, and there is no cross-process transaction reconstruction. Missing Path, missing owner or dead owner returns a bounded failure; the client must reconnect and REGISTER again. An unexpected owner loss can interrupt active dialogs and RTP; neither WebSocket nor RTPEngine sessions migrate.
 
-Three-replica values example (retain the site's carrier entry and existing TOPOS values):
+Three-replica values example: the existing `internal` private-SBC remains independent at one replica, and `internal-wss` is the HA WebSocket tier. Retain the site's carrier entry and allocate a distinct TOPOS database/Secret for the WSS instance:
 
 ```yaml
 kamailio:
@@ -36,13 +36,24 @@ kamailio:
     - name: internal
       enabled: true
       role: private-sbc
+      replicas: 1
+      topology:
+        redis:
+          database: 52
+          secretName: avoip-kamailio-internal-topos
+    - name: internal-wss
+      enabled: true
+      role: private-sbc
       replicas: 3
       websocketHA:
         enabled: true
       topology:
         redis:
-          database: 52
-          secretName: avoip-kamailio-internal-topos
+          database: 53
+          secretName: avoip-kamailio-internal-wss-topos
+asterisk:
+  sipCore:
+    kamailioInstance: internal-wss
 ```
 
 The direct Home1 ApplicationSet override to activate HA after an approved migration is specifically this complete Kamailio `instances` list (the list replaces the chart array):
@@ -63,19 +74,30 @@ kamailio:
     - name: 'internal'
       enabled: true
       role: 'private-sbc'
+      replicas: 1
+      topology:
+        redis:
+          database: 52
+          secretName: 'avoip-kamailio-internal-topos'
+    - name: 'internal-wss'
+      enabled: true
+      role: 'private-sbc'
       replicas: 3
       websocketHA:
         enabled: true
       topology:
         redis:
-          database: 52
-          secretName: 'avoip-kamailio-internal-topos'
+          database: 53
+          secretName: 'avoip-kamailio-internal-wss-topos'
+asterisk:
+  sipCore:
+    kamailioInstance: 'internal-wss'
 ```
 
-This direct value is not the recommended initial migration because `internal` changes controller type in place. For staged migration, retain the same `carrier` and `internal` items and append this additional item while `internal` remains selected:
+The direct values show the final separated topology. For staged migration, retain the existing `carrier` and `internal` items and append `internal-wss` while `internal` remains selected:
 
 ```yaml
-    - name: 'internal-ha'
+    - name: 'internal-wss'
       enabled: true
       role: 'private-sbc'
       replicas: 1
@@ -87,7 +109,7 @@ This direct value is not the recommended initial migration because `internal` ch
       topology:
         redis:
           database: 53
-          secretName: 'avoip-kamailio-internal-ha-topos'
+          secretName: 'avoip-kamailio-internal-wss-topos'
 ```
 
 The `database: 53` above is illustrative only and must not be used unless it is allocated in the shared Dragonfly registry. For the pilot, either allocate an unused database and update the registry in the same coordinated change, or set the instance's TOPOS feature off for the signaling-only test. Do not duplicate the live TOPOS allocation by default. At the controlled route cutover, update the Asterisk value and add the legacy-owner options:
@@ -95,13 +117,13 @@ The `database: 53` above is illustrative only and must not be used unless it is 
 ```yaml
 asterisk:
   sipCore:
-    kamailioInstance: 'internal-ha'
+    kamailioInstance: 'internal-wss'
 kamailio:
   instances:
     - name: 'internal'
       websocketHA:
         legacyOwner: true
-    - name: 'internal-ha'
+    - name: 'internal-wss'
       websocketHA:
         enabled: true
         legacyReturnServiceName: 'core-home1-talos-prod-business-kamailio-internal-sipcore-return.core-prod.svc.cluster.local'
@@ -109,17 +131,17 @@ kamailio:
 
 The second snippet shows only fields to merge into the complete array; do not replace the array with those two partial items. Preserve the site's existing carrier public Service options, Asterisk extension/secret references, and `internal` database 52 settings. When retiring the old owner after contacts and dialogs drain, clear `legacyReturnServiceName` and then remove `internal` from the array in a later reviewed sync.
 
-StatefulSet `RollingUpdate` has no Deployment-style surge capacity; it updates ordinals in sequence and waits for readiness. Keep `rolloutPartition: 0` for the initial rollout only after all three replicas are ready, then use a higher partition to hold older ordinals during future controlled image/config changes. The PDB protects voluntary evictions, not forced deletion, node loss, or a broken update. For rollback after Path registrations exist, keep `asterisk.sipCore.kamailioInstance: internal-ha` so Asterisk continues to honor saved contact Path, but set `asterisk.sipCore.ingressKamailioInstance: internal` to send new WSS connections to the legacy Service. Retain the HA StatefulSet, owner Services, TLS Secret and legacy return Service while clients reconnect and replace their contacts on `internal`; only after Asterisk shows no Path referencing `internal-ha` may the SIP path selection be changed or HA removed. Never roll back by deleting the HA owner before those saved routes expire or move.
+StatefulSet `RollingUpdate` has no Deployment-style surge capacity; it updates ordinals in sequence and waits for readiness. Keep `rolloutPartition: 0` for the initial rollout only after all three replicas are ready, then use a higher partition to hold older ordinals during future controlled image/config changes. The PDB protects voluntary evictions, not forced deletion, node loss, or a broken update. For rollback after Path registrations exist, keep `asterisk.sipCore.kamailioInstance: internal-wss` so Asterisk continues to honor saved contact Path, but set `asterisk.sipCore.ingressKamailioInstance: internal` to send new WSS connections to the legacy Service. Retain the HA StatefulSet, owner Services, TLS Secret and legacy return Service while clients reconnect and replace their contacts on `internal`; only after Asterisk shows no Path referencing `internal-wss` may the SIP path selection be changed or HA removed. Never roll back by deleting the HA owner before those saved routes expire or move.
 
-In the Home1 ApplicationSet, eventual direct activation changes only the existing internal item's `replicas` from 1 to 3 and adds `websocketHA.enabled: true`; keep the exact existing `name`, `role`, topology secret and database, Asterisk values, `sipcore.mylogin.space`, `/ws`, and Gateway section. The CoRE-Business route continues to target Service `core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal:8088`. Do not apply this direct activation as a migration: replacing a Deployment with a StatefulSet does not preserve existing TCP sockets.
+In the Home1 ApplicationSet, keep `internal` as the one-replica private-SBC instance and add the separate three-replica `internal-wss` instance shown above. Set `asterisk.sipCore.kamailioInstance: internal-wss` and let the generated CoRE-Business HTTPRoute switch its backend to `core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal-wss:8088`. The hostname, `/ws`, Gateway section and TLS termination do not change. This preserves the old Deployment and established connections during migration.
 
-For a safe staged migration, first add an additional `internal-ha` instance with `replicas: 1`, `websocketHA.enabled: true`, and `websocketHA.pilot: true`; leave `internal` as the existing one-replica Deployment and keep `asterisk.sipCore.kamailioInstance: internal`. A one-replica HA pilot is render-valid only while `pilot` is true and must not be treated as available. Keep the complete `kamailio.instances` array (carrier, internal, internal-ha) in the Home1 ApplicationSet values because lists replace rather than append. The pilot's owner Service and TLS listener are privately addressable, and its Pods do not overlap the old instance selector. Keep the public HTTPRoute and old Asterisk proxy unchanged while validating pod identity/certificates. Keep TOPOS isolated between instances unless exact key namespace and dialog compatibility are verified.
+For a safe staged migration, add `internal-wss` with `replicas: 1`, `websocketHA.enabled: true`, and `websocketHA.pilot: true`; leave the existing one-replica `internal` Deployment selected by Asterisk. Keep the complete `kamailio.instances` array (carrier, internal, internal-wss) in the Home1 ApplicationSet values because lists replace rather than append. The pilot's Services, selectors and TLS listener are independent of `internal`. For a pilot route test, select `ingressKamailioInstance: internal-wss` while `kamailioInstance` remains `internal`; Path records the WSS pod owner and Asterisk can return signaling to it. Keep TOPOS databases isolated between the two instances unless key namespace and dialog compatibility are proved.
 
-For end-to-end test against the pilot, first enable `websocketHA.legacyOwner: true` on `internal` while it is still selected. This activates `ctl`/`ws.disable`, readiness draining and a return Service that keeps not-ready legacy owners addressable. It triggers one planned replacement of the legacy Deployment because its current Pod template lacks the shutdown hook; schedule this after the HA pilot is ready and expect existing WebSockets to reconnect to the still-current legacy route. Then select `internal-ha` and remove its `pilot` flag, while retaining `internal.websocketHA.legacyOwner: true` and setting its `legacyReturnServiceName` to the old return Service FQDN. The old WSS Service and Pod config remain present; existing Envoy-upstream connections can complete while new WebSockets use HA. Asterisk keeps the old shared proxy as a secondary route during this window. New Path contacts route owner-first; old contacts keep using the old return Service. Run the acceptance checks, scale the HA StatefulSet from one to three replicas with PDB minAvailable 2, then wait for three ready replicas. After old contacts and dialogs are gone and clients are re-registered through HA, remove `legacyReturnServiceName`, allow Asterisk to reload, confirm each active contact has Path, and remove the old instance. Its preStop disables new handshakes, readiness removes it from new ingress Service selection, and its separate return Service keeps owner DNS addressable during the drain interval.
+For the pilot, `internal-wss` runs alongside the existing `internal` private-SBC. Optionally point `ingressKamailioInstance` at `internal-wss` while Asterisk's `kamailioInstance` remains `internal` to validate a new pilot registration end to end; then restore the route to `internal` until cutover. Before switching production traffic, enable `websocketHA.legacyOwner: true` on `internal`. This activates `ctl`/`ws.disable`, readiness draining and a return Service that keeps legacy owners addressable while draining. It causes one planned replacement of the old Deployment because its current Pod template lacks these shutdown hooks; expect its existing WebSockets to reconnect through the still-current route. Next select `internal-wss`, remove its `pilot` flag, retain `internal.websocketHA.legacyOwner: true`, and set `internal-wss.websocketHA.legacyReturnServiceName` to the old return Service FQDN. Existing upstream connections keep their old owner while new WSS sessions use the new Service. Run acceptance checks, scale WSS from one to three replicas with PDB minAvailable 2, and wait for three ready replicas. Once old contacts and dialogs have moved or expired, remove `legacyReturnServiceName`, reload Asterisk's generated PJSIP configuration, verify active contacts have Path, and only then retire `internal`.
 
-For route cutover, set `asterisk.sipCore.kamailioInstance: internal-ha`, remove `websocketHA.pilot`, and set `websocketHA.legacyReturnServiceName` on `internal-ha` to the old return Service FQDN `core-home1-talos-prod-business-kamailio-internal-sipcore-return.core-prod.svc.cluster.local`. The HTTPRoute defaults to the selected instance, but `asterisk.sipCore.ingressKamailioInstance` can select a different ingress backend independently for rollback. This retains Asterisk's old shared proxy as a second Route for old contacts. New contacts have a Path Route inserted first; HA edge consumes it and removes the residual legacy Route. Keep the old `internal` Deployment and its return Service available until old contacts expire or re-register on the HA edge, then remove `legacyReturnServiceName`, wait for Asterisk to reload its generated PJSIP configuration, verify all active contacts have Path, and only then retire the old instance. If a client cannot refresh, retain the old owner path or plan a deliberate maintenance interruption; do not route its legacy contact through a random HA pod.
+For route cutover, set `asterisk.sipCore.kamailioInstance: internal-wss`, remove `websocketHA.pilot`, and set `websocketHA.legacyReturnServiceName` on `internal-wss` to the old return Service FQDN `core-home1-talos-prod-business-kamailio-internal-sipcore-return.core-prod.svc.cluster.local`. The HTTPRoute defaults to the selected instance, but `asterisk.sipCore.ingressKamailioInstance` can select a different ingress backend independently for rollback. This retains Asterisk's old shared proxy as a second Route for old contacts. New contacts have a Path Route inserted first; HA edge consumes it and removes the residual legacy Route. Keep the old `internal` Deployment and its return Service available until old contacts expire or re-register on the HA edge, then remove `legacyReturnServiceName`, wait for Asterisk to reload its generated PJSIP configuration, verify all active contacts have Path, and only then retire the old instance. If a client cannot refresh, retain the old owner path or plan a deliberate maintenance interruption; do not route its legacy contact through a random HA pod.
 
-The HA route sets HTTPRoute request and backendRequest timeouts to `0s` (disabled) and the CoRE-Business BackendTrafficPolicy keeps a configurable one-hour stream idle timeout. The initial keepalive remains 15 seconds. Backplane's Gateway-level `maxConnectionDuration: 3600s` still closes long-lived connections at one hour; the CoRE-Business chart cannot change that Gateway-owned resource. Future Backplane work: in `Network/Ingress/templates/MainGWBackend.yaml`, remove `spec.timeout.http.maxConnectionDuration` from `BackendTrafficPolicy/core-prod/main-gw` (or set an explicitly accepted longer value), then verify the installed Envoy Gateway CRD and observed route behavior. No change to Gateway, hostname, `/ws`, backend Service, backend port, TLS termination, Host or Origin validation is currently required.
+The HA route sets HTTPRoute request and backendRequest timeouts to `0s` (disabled) and the CoRE-Business BackendTrafficPolicy keeps a configurable one-hour stream idle timeout. The initial keepalive remains 15 seconds. Backplane's Gateway-level `maxConnectionDuration: 3600s` still closes long-lived connections at one hour; the CoRE-Business chart cannot change that Gateway-owned resource. Future Backplane work: in `Network/Ingress/templates/MainGWBackend.yaml`, remove `spec.timeout.http.maxConnectionDuration` from `BackendTrafficPolicy/core-prod/main-gw` (or set an explicitly accepted longer value), then verify the installed Envoy Gateway CRD and observed route behavior. No change to Gateway, hostname, `/ws`, TLS termination, Host or Origin validation is required. The generated CoRE-Business HTTPRoute backend changes to the new WSS Service at cutover.
 
 The shared owner TLS certificate has one wildcard SAN for the headless Service's pod DNS records and the same private key is mounted into each replica. This preserves TLS name verification when Asterisk connects to the per-pod name; it means compromise of any edge pod exposes the shared key. Confirm the configured issuer can issue the actual cluster-domain SAN before rollout. Do not change `verify_server` or disable TLS validation to work around an issuer or trust error. The SNI owner listener does not request client certificates; Cilium workload identity and the dedicated 5063 listener are its authorization boundary. Port 5062 remains strict mTLS.
 
@@ -139,10 +161,10 @@ The shared owner TLS certificate has one wildcard SAN for the headless Service's
 Useful cluster commands (replace the instance name if using the staged pilot):
 
 ```sh
-kubectl -n core-prod get statefulset,deploy,pods,svc,endpointslice -l avoip.mylogin.space/kamailio-instance=internal-ha -o wide
-kubectl -n core-prod get pdb core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal-ha -o yaml
-kubectl -n core-prod exec statefulset/core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal-ha -- kamcmd -s unix:/tmp/kamailio_ctl ws.dump
-kubectl -n core-prod exec core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal-ha-0 -- sh -c 'test -e /tmp/kamailio-draining && echo draining || echo accepting'
+kubectl -n core-prod get statefulset,deploy,pods,svc,endpointslice -l avoip.mylogin.space/kamailio-instance=internal-wss -o wide
+kubectl -n core-prod get pdb core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal-wss -o yaml
+kubectl -n core-prod exec statefulset/core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal-wss -- kamcmd -s unix:/tmp/kamailio_ctl ws.dump
+kubectl -n core-prod exec core-home1-talos-prod-business-avoip-prod-avo-kamailio-internal-wss-0 -- sh -c 'test -e /tmp/kamailio-draining && echo draining || echo accepting'
 kubectl -n core-prod exec deploy/asterisk -- asterisk -rx 'pjsip show contacts'
 kubectl -n core-prod exec deploy/asterisk -- asterisk -rx 'pjsip show aor 7101'
 kubectl -n core-prod get gateway main-gw -o yaml
@@ -255,17 +277,16 @@ At initial call setup, assign an immutable owning site, a winning FreeSWITCH end
 | FreeSWITCH application/channel sessions | Local to one FreeSWITCH process | Pin the live call to that endpoint; evaluate service-specific recovery in Phase 5 | Voice, IVR and fax sessions do not migrate with SIP state. |
 | RTPEngine media sessions, ports and public address | Local packet processing with configured Valkey persistence; one control Service and one site public media Service | Pin NG commands and RTP delivery to an individually addressable media owner. Evaluate restoration/takeover separately | Shared keys alone do not transfer socket/port ownership or peer RTP destination. |
 
-## Private-SBC replica gate
+## Per-instance SIP ownership
 
-The private SBC serving SIP Core WebSockets remains limited to one replica by
-`templates/Kamailio/_instances.tpl`. Home1's live private Service currently
-has `sessionAffinity: None` and selects one ready pod. SIP Core's WebSocket
-transport and its connection aliases are owned by the Kamailio process that
-accepted the Envoy upgrade. Asterisk-originated INVITEs, OPTIONS, and in-dialog
-requests enter through a separate TLS Service. If that request reaches another
-pod, shared TOPOS data cannot give that pod the live WebSocket socket or the
-originating pod's transaction state. TOPOS carries dialog topology; it is not
-a transport or transaction replication mechanism.
+The ordinary `internal` private-SBC remains a single replica. SIP Core WSS is
+assigned to the separate `internal-wss` instance, where stable StatefulSet
+identities and Path make Asterisk's return leg reach the process that owns the
+WebSocket. Each connection and transaction still belongs to one Kamailio
+process. Shared TOPOS data does not give another process the live WebSocket
+socket or transaction state; it carries topology only. The chart keeps WSS HA
+disabled by default and the Home1 ApplicationSet remains unchanged until the
+separate instance is added and accepted through the rollout plan above.
 
 Adding Kubernetes client-IP affinity is insufficient on its own: WebSocket
 upstream connections arrive from Envoy, while Asterisk's SIP return traffic

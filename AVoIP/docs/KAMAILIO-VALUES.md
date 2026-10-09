@@ -4,9 +4,11 @@ For the observed Home1 SIP Core Gateway contract and the currently explicit
 `internal.replicas: 1` ApplicationSet setting, see the
 [SIP HA gateway baseline](SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-08).
 That baseline documents the existing backend Service/port and the separately
-owned Gateway timeout layer. Private-SBC instances remain single-replica by
-default. Opt-in multi-replica WSS edge behavior and its limits are documented
-in [SIP Stateful HA](SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
+owned Gateway timeout layer. The ordinary `internal` private-SBC remains one
+replica; the HA configuration adds a separate named `internal-wss` instance
+using the same `private-sbc` role. The role default keeps WSS HA disabled.
+Opt-in WSS edge behavior and its limits are documented in
+[SIP Stateful HA](SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
 
 This is the value reference for the Kamailio part of the [AVoIP chart](../README.md).
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
@@ -33,8 +35,8 @@ than append.
 | --- | --- | --- |
 | `name` | `carrier` | Stable identifier; DNS label, lowercase, at most 24 characters. Resource names derive from it, never array position. `carrier` retains the existing `kamailio` resource names and selectors. |
 | `enabled` | `true` | Disabled entries render no Kamailio resources. Keep the entry in the complete site array if it may be enabled later. |
-| `role` | `carrier-sbc` | Supported roles are `carrier-sbc` for the instance named `carrier` and `private-sbc` for other names. An endpoint registrar role is not implemented. |
-| `replicas` | `3` | Deployment replicas normally; opted-in HA private-SBC instances render as a StatefulSet with 2–10 replicas. |
+| `role` | `carrier-sbc` | Supported roles are `carrier-sbc` for the instance named `carrier` and `private-sbc` for other names. The separate `internal` and `internal-wss` instances both use `private-sbc`, with independent configuration and selectors. An endpoint registrar role is not implemented. |
+| `replicas` | `3` | Deployment replicas normally; the dedicated WSS instance opts into a StatefulSet with 2–10 replicas. |
 
 The `carrier-sbc` role enables media integration and public exposure. The
 `private-sbc` role has a separate routing script, defaults public exposure and
@@ -48,11 +50,12 @@ The private role reserves `100m` CPU and `256Mi` memory for the Kamailio
 container and sends WebSocket keepalive pings every 15 seconds. The interval
 is configurable at `kamailio.defaults.websocket.keepaliveTimeoutSeconds` and
 can be overridden by a role or instance; valid values are 5–600 seconds.
-Private-SBC instances remain one replica unless `websocketHA.enabled` is
-explicitly enabled on an Asterisk SIP Core instance. A one-replica enabled
-instance is allowed only with `websocketHA.pilot: true`; use it for staged
-Path and runtime validation, then scale to at least two (normally three) before
-production activation. HA uses stable StatefulSet
+The regular private-SBC stays one replica. Add a separate named private-SBC
+instance (recommended `internal-wss`) and explicitly set
+`websocketHA.enabled: true` there. A one-replica enabled instance is allowed
+only with `websocketHA.pilot: true`; use it for staged Path and runtime
+validation, then scale to at least two (normally three) before production
+activation. HA uses stable StatefulSet
 pod DNS names and Asterisk-stored Path; shared TOPOS does not transfer a live
 WebSocket or a Kamailio transaction. See the staged pilot and cutover steps in
 the [HA runbook](SIP-STATEFUL-HA.md#implemented-wss-edge-mode).

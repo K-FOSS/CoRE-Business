@@ -175,9 +175,9 @@ kamailio:
     private-sbc:
       replicas: 1
       websocketHA:
-        # Opt in only on the private SBC selected by Asterisk SIP Core.
-        # StatefulSet identities and Path routing are activated together.
-        enabled: true
+        # Opt in on a separate named private-sbc instance dedicated to WSS.
+        # The ordinary internal SBC remains a one-replica Deployment.
+        enabled: false
         # Keep the old single-replica owner rendering the SIP Core listeners
         # and return Service after Asterisk selects a parallel HA instance.
         legacyOwner: false
