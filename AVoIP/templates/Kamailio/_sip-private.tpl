@@ -250,6 +250,8 @@
       $var(sipcore_dialog_routed) = 0;
       $var(sipcore_flow_token_result) = -1;
       $var(sipcore_loose_route_result) = 0;
+      $var(sipcore_local_route_hops) = 0;
+      $var(sipcore_alias_result) = 0;
       if (has_totag()) {
         $var(sipcore_flow_token_result) = check_flow_token();
         $var(sipcore_loose_route_result) = loose_route();
@@ -300,6 +302,13 @@
         # comparing that Contact user to the extension allowlist.
         handle_ruri_alias();
         if ($rc != 1) {
+          $var(sipcore_alias_result) = $rc;
+          {{- if .Values.kamailio.sipLogging.sipCore }}
+          xlog(
+            "L_ERR",
+            "SIPCORE FLOW stage=asterisk-contact-route-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) alias_result=$var(sipcore_alias_result) ruri_host=$rd ruri_port=$rp\n"
+          );
+          {{- end }}
           sl_send_reply("404", "WebSocket Contact Not Found");
           exit;
         }
