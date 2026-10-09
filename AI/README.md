@@ -4,14 +4,19 @@ This chart deploys CoRE's AI service layer: OpenWebUI-facing resources, speech
 backends, MCP integrations, optional LocalAI/llama workloads, gateway routes,
 identity resources and external-secret integration.
 
+See the [AI platform architecture and roadmap](PLAN.md) and
+[AI engineering backlog](TODO.md) for planned inference, wake-word, training,
+workspace and AVoIP integrations. These plans distinguish repository
+implementation from deployment configuration and verified operation.
+
 ## Active deployment
 
 Two non-legacy Backplane ApplicationSets render this same chart into
 `core-ai-prod`:
 
-- [AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml) selects YVR bare-metal infrastructure clusters,
+- [AI ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/AI.yaml) selects YVR bare-metal infrastructure clusters,
   enables MCP, creates the AI namespace and supplies gateway tenant metadata.
-- [AINode2 ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AINode2.yaml) selects bare-metal infrastructure clusters
+- [AINode2 ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/AINode2.yaml) selects bare-metal infrastructure clusters
   across sites and enables `localai` plus its llama workload.
 
 Both inject `env`, cluster name/domain, datacentre and region through Lovely.
@@ -46,9 +51,9 @@ The Authentik application itself is provisioned declaratively, while Paperclip
 stores the enabled SSO configuration in its PostgreSQL instance settings.
 
 The site-local database, Longhorn backup configuration, and shared Dragonfly
-instance are owned respectively by Backplane's [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
-[storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml),
-and [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
+instance are owned respectively by Backplane's [PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml),
+[storage ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml),
+and [Dragonfly ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Dragonfly/CoRE.yaml).
 
 Paperclip does not currently document or expose a Redis/Dragonfly connection
 setting. It is not assigned a Dragonfly logical database; the shared Dragonfly

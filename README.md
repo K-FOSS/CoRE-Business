@@ -13,13 +13,13 @@ complete review.
 ## Deployment model
 
 This repository supplies application implementations; fleet deployment is
-owned by [CoRE Backplane](https://github.com/K-FOSS/CoRE-Backplane). Argo CD
+owned by [CoRE Backplane](https://slop.writemy.codes/CoRE/CoRE-Backplane). Argo CD
 ApplicationSets under Backplane's `Apps/Business/` select clusters, choose a
 path in this repository and inject environment-specific values. Many use the
 `argocd-lovely-plugin` to combine Helm and Kustomize inputs.
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
 Home1/YVR fax reception is reported working over G.711; the ApplicationSet
 selects [G.711-only reception](AVoIP/docs/PHONE-TREE.md) for that site's
 dedicated fax DID. T.38 remains unverified there.
@@ -28,7 +28,7 @@ and [restricted outbound service-peer pilot](AVoIP/docs/OUTBOUND-PILOT.md)
 for authenticated service peers. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
 now renders a site-local PostgreSQL service identity and schema migration, but
 credential issuance and live registration are still open. The
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 does not enable these pilots at any site; WSS and webphone work remains open.
 
 ```text
@@ -67,25 +67,25 @@ notes:
 
 | Chart | Backplane owner | Deployment scope |
 | --- | --- | --- |
-| [AI](AI/README.md) | [AI](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml), [AINode2](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AINode2.yaml) | AI hub/MCP services, GPUStack with Authentik OIDC, a replicated CPU Speaches backend, and per-cluster LocalAI workers. |
-| [Automation](Automation/README.md) | [Automation](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Automation.yaml) | n8n with external database, Redis and S3 credentials. |
-| [Ambient](Ambient/README.md) | [Ambient](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Ambient.yaml) | Moodist ambient-sound service on selected infrastructure clusters. |
-| [Browsers](Browsers/README.md) | [Browsers](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Browsers.yaml) | Selenium Grid browser automation. |
-| [Landing](Landing/README.md) | [Landing](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Landing.yaml) | Forecastle application launchpad at `mylogin.space`, discovering exposed applications from selected namespaces. |
-| [Desktop](Desktop/README.md) | [Desktops](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Desktops.yaml) | GPU-backed LinuxServer Selkies desktops, including 120 FPS OrcaSlicer and separate NVIDIA/Intel Steam streams; NVIDIA Steam starts in Big Picture with H.264 locked, and all routes use Authentik proxy authentication. |
-| [Office](Office/README.md) | [NextCloud](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml) | Nextcloud and Collabora; the AVoIP chart provides its Talk high-performance backend. |
-| [Mail](Mail/README.md) | [Mail](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml) | Multi-site Postfix, Dovecot, Rspamd and Maddy mail stack with DKIM/DNS and optional SimpleLogin. |
-| [Projects](Projects/README.md) | [Projects](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Projects.yaml) | OpenProject with site-local PostgreSQL, generated temporary S3 credentials and persistent attachments. |
-| [Vaultwarden](Passwords/VaultWarden/README.md) | [VaultWarden](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml) | Password vault, database identity and secret synchronization. |
-| [Terminal](Terminal/README.md) | [Terminal](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Terminal.yaml) | Browser-accessible terminal workload. |
-| [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
-| [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
-| [openGym](Personal/Fitness/README.md) | [Fitness](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Fitness.yaml) | Personal workout tracker at `gym.mylogin.space`, with retained Longhorn data and exercise-media storage. |
-| [SnapOtter conversions](Tools/Conversions/README.md) | [Conversions](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Conversions.yaml) | Private Authentik-secured conversion service at `conotter.mylogin.space`, with PostgreSQL, Dragonfly and retained Longhorn data. |
-| [Fediverse social](Social/Fediverse/README.md) | [Fediverse](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml) | Live federated-social stack currently serving Mastodon at `mastodon.mylogin.space`, with Bluesky support and room for PeerTube/Lemmy. |
+| [AI](AI/README.md) | [AI](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/AI.yaml), [AINode2](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/AINode2.yaml) | AI hub/MCP services, GPUStack with Authentik OIDC, a replicated CPU Speaches backend, and per-cluster LocalAI workers. |
+| [Automation](Automation/) | [Automation](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Automation.yaml) | n8n with external database, Redis and S3 credentials. |
+| [Ambient](Ambient/README.md) | [Ambient](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Ambient.yaml) | Moodist ambient-sound service on selected infrastructure clusters. |
+| [Browsers](Browsers/) | [Browsers](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Browsers.yaml) | Selenium Grid browser automation. |
+| [Landing](Landing/README.md) | [Landing](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Landing.yaml) | Forecastle application launchpad at `mylogin.space`, discovering exposed applications from selected namespaces. |
+| [Desktop](Desktop/README.md) | [Desktops](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Desktops.yaml) | GPU-backed LinuxServer Selkies desktops, including 120 FPS OrcaSlicer and separate NVIDIA/Intel Steam streams; NVIDIA Steam starts in Big Picture with H.264 locked, and all routes use Authentik proxy authentication. |
+| [Office](Office/README.md) | [Office](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Office.yaml) | Nextcloud and Collabora; the AVoIP chart provides its Talk high-performance backend. |
+| [Mail](Mail/README.md) | [Mail](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Mail.yaml) | Multi-site Postfix, Dovecot, Rspamd and Maddy mail stack with DKIM/DNS and optional SimpleLogin. |
+| [Projects](Projects/README.md) | [Projects](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Projects.yaml) | OpenProject with site-local PostgreSQL, generated temporary S3 credentials and persistent attachments. |
+| [Vaultwarden](Passwords/VaultWarden/README.md) | [VaultWarden](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/VaultWarden.yaml) | Password vault, database identity and secret synchronization. |
+| [Terminal](Terminal/README.md) | [Terminal](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Terminal.yaml) | Browser-accessible terminal workload. |
+| [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
+| [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
+| [openGym](Personal/Fitness/README.md) | [Fitness](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Fitness.yaml) | Personal workout tracker at `gym.mylogin.space`, with retained Longhorn data and exercise-media storage. |
+| [SnapOtter conversions](Tools/Conversions/README.md) | [Conversions](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Conversions.yaml) | Private Authentik-secured conversion service at `conotter.mylogin.space`, with PostgreSQL, Dragonfly and retained Longhorn data. |
+| [Fediverse social](Social/Fediverse/README.md) | [Fediverse](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Social/Fediverse.yaml) | Live federated-social stack currently serving Mastodon at `mastodon.mylogin.space`, with Bluesky support and room for PeerTube/Lemmy. |
 
 The Fediverse social stack is live at `mastodon.mylogin.space` under the
-[Fediverse ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml),
+[Fediverse ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Social/Fediverse.yaml),
 which targets `core-home1-talos-prod` in `core-prod` and renders through Lovely.
 Mastodon is the current production service; the chart also contains optional
 Bluesky PDS support, while PeerTube, Lemmy and related federated services are
@@ -102,7 +102,7 @@ active Backplane owner yet and requires a future single-cluster owner to inject
 site identity, hostname, notification address and TLS listener values.
 
 [Dawarich](Personal/History/README.md) is deployed from `Personal/History` by
-the [Personal History ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/History.yaml),
+the [Personal History ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/History.yaml),
 using BJW-S Common, a pinned upstream image, retained Longhorn import/storage
 PVCs, site-local Dragonfly, automatically derived site-local PostgreSQL and
 Authentik OIDC. The ApplicationSet supplies the site identity, production
@@ -130,7 +130,7 @@ rendered manifests for literal passwords, tokens or deployable defaults.
 ## Agent and commit workflow
 
 [Agent guidance](AGENTS.md) combines this repository's rules with the current
-[CoRE Backplane guidance](https://github.com/K-FOSS/CoRE-Backplane/blob/main/AGENTS.md).
+[CoRE Backplane guidance](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/AGENTS.md).
 Requested implementation work includes validation, narrowly scoped commits and
 normal pushes to the confirmed intended branch unless the user requests review
 only, uncommitted changes or a PR. Deployment requests also include scoped Argo
@@ -188,10 +188,12 @@ complete result. Do not apply the temporary render directly to a cluster.
 
 ## Documentation
 
+- [CoRE-Business architecture and long-term plan](PLAN.md)
+- [CoRE-Business implementation backlog](TODO.md)
 - [Repository and deployment guide](docs/REPOSITORY.md)
 - [AI stack](AI/README.md)
-- [CoRE Backplane architecture](https://github.com/K-FOSS/CoRE-Backplane/blob/main/docs/ARCHITECTURE.md)
-- [CoRE Backplane operations](https://github.com/K-FOSS/CoRE-Backplane/blob/main/docs/OPERATIONS.md)
+- [CoRE Backplane architecture](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/docs/ARCHITECTURE.md)
+- [CoRE Backplane operations](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/docs/OPERATIONS.md)
 
 Where documentation and manifests differ, the manifests, owning Backplane
 ApplicationSet and observed controller state are authoritative.
