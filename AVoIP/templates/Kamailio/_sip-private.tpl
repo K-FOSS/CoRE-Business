@@ -254,35 +254,46 @@
       }
 
       $var(sipcore_dialog_routed) = 0;
-      if (has_totag() && loose_route()) {
+      $var(sipcore_flow_token_result) = -1;
+      $var(sipcore_loose_route_result) = 0;
+      if (has_totag()) {
+        $var(sipcore_flow_token_result) = check_flow_token();
+        $var(sipcore_loose_route_result) = loose_route();
+      }
+      if ($var(sipcore_loose_route_result) > 0) {
         $var(sipcore_dialog_routed) = 1;
         $var(sipcore_local_route_hops) = 0;
 
-        # Asterisk has an outbound_proxy and the dialog has a Kamailio
-        # Record-Route. Both can leave the private return service in the
-        # Route set, so consume any repeated local hops before resolving the
-        # WebSocket Contact alias.
-        while ($du != $null &&
-               $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
-               $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}" &&
-               $var(sipcore_local_route_hops) < 4) {
-          $du = $null;
-          $var(sipcore_local_route_hops) = $var(sipcore_local_route_hops) + 1;
-          loose_route();
-        }
-        if ($du != $null &&
-            $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
-            $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
-          sl_send_reply("482", "Too Many Local Route Hops");
-          exit;
+        # A valid RFC 5626 flow token identifies the existing WebSocket
+        # connection. Preserve it for t_relay instead of replacing it with a
+        # Contact alias or another local Service hop.
+        if ($var(sipcore_flow_token_result) != 1) {
+          while ($du != $null &&
+                 $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
+                 $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}" &&
+                 $var(sipcore_local_route_hops) < 4) {
+            $du = $null;
+            $var(sipcore_local_route_hops) = $var(sipcore_local_route_hops) + 1;
+            loose_route();
+          }
+          if ($du != $null &&
+              $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
+              $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
+            sl_send_reply("482", "Too Many Local Route Hops");
+            exit;
+          }
         }
 
-        # The WebSocket contact's alias carries the live transport address.
-        # Only use it after all local Route hops were consumed; preserve any
-        # non-local route selected by the dialog route set.
+        # A dialog without a valid flow token may use the nathelper Contact
+        # alias. Resolve it only after local return-service routes are gone.
         if ($du == $null) {
           handle_ruri_alias();
           if ($rc != 1) {
+            $var(sipcore_alias_result) = $rc;
+            xlog(
+              "L_ERR",
+              "SIPCORE FLOW stage=asterisk-contact-route-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) alias_result=$var(sipcore_alias_result) ruri_host=$rd ruri_port=$rp\n"
+            );
             sl_send_reply("404", "WebSocket Contact Not Found");
             exit;
           }
@@ -322,7 +333,7 @@
       if (is_method("INVITE|BYE|CANCEL")) {
         xlog(
           "L_WARN",
-          "SIPCORE FLOW stage=forward-to-websocket pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du target=$rU cseq=$hdr(CSeq)\n"
+          "SIPCORE FLOW stage=forward-to-websocket pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination_host=$dd destination_port=$dp destination_transport=$dP flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) target=$rU cseq=$hdr(CSeq)\n"
         );
       }
       {{- end }}
@@ -377,7 +388,7 @@
         if ($var(side) == "sipcore") {
           xlog(
             "L_ERR",
-            "SIPCORE FLOW stage=relay-failure pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du socket=$fsn cseq=$hdr(CSeq)\n"
+            "SIPCORE FLOW stage=relay-failure pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination_host=$dd destination_port=$dp destination_transport=$dP socket=$fsn cseq=$hdr(CSeq)\n"
           );
         }
         {{- end }}
