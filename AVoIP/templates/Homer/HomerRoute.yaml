@@ -65,21 +65,14 @@ spec:
           name: '{{ include "avoip.fullname" . }}-rec'
           port: {{ .Values.homer.recordings.port }}
     {{- end }}
-    - matches:
-        - path:
-            type: 'PathPrefix'
-            value: '/outpost.goauthentik.io'
-      backendRefs:
-        - group: ''
-          kind: 'Service'
-          name: '{{ .Values.homer.authentikOutpost.name }}'
-          namespace: '{{ .Values.homer.authentikOutpost.namespace }}'
-          port: {{ .Values.homer.authentikOutpost.port }}
     - backendRefs:
         - group: ''
           kind: 'Service'
           name: '{{ include "avoip.fullname" . }}-homer-web'
           port: 80
+      timeouts:
+        backendRequest: 30m
+        request: 30s
 ---
 # Homer must receive its OAuth callback without the outer Forward Auth check.
 # Otherwise Authentik challenges the callback before Homer can exchange the
