@@ -54,22 +54,13 @@ jobs:
           registry = server.netloc.lower()
           repository = os.environ['FORGEJO_REPOSITORY'].lower()
           tag = f"6.1.4-lf-heartbeat-{os.environ['FORGEJO_SHA']}"
-          image = f"{registry}/{repository}/kamailio-lf-heartbeat:{tag}"
+          image = f"{registry}/{repository}/kamailio-lf-heartbeat"
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write(f'registry={registry}\nref={image}\ntag={tag}\n')
+              output.write(f'registry={registry}\n')
+              output.write(f'ref={image}:{tag}\n')
+              output.write(f'test_ref={image}:{tag}-test\n')
+              output.write(f'cache_ref={image}:buildcache\n')
           PY
-      - name: Build amd64 test image
-        uses: https://github.com/docker/build-push-action@v6
-        with:
-          context: AVoIP/image/kamailio-lf-heartbeat
-          file: AVoIP/image/kamailio-lf-heartbeat/Containerfile
-          target: test
-          platforms: linux/amd64
-          load: true
-          tags: local/kamailio-lf-heartbeat:test
-      - name: Run WebSocket regression against the built image
-        shell: bash
-        run: AVoIP/image/kamailio-lf-heartbeat/run-integration.sh local/kamailio-lf-heartbeat:test docker
       - name: Log in to Forgejo registry
         if: ${{ forgejo.ref == 'refs/heads/main' }}
         uses: https://github.com/docker/login-action@v3
@@ -77,6 +68,21 @@ jobs:
           registry: ${{ steps.image.outputs.registry }}
           username: ${{ secrets.FORGEJO_REGISTRY_USERNAME || forgejo.repository_owner }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Build amd64 test image
+        uses: https://github.com/docker/build-push-action@v6
+        with:
+          context: AVoIP/image/kamailio-lf-heartbeat
+          file: AVoIP/image/kamailio-lf-heartbeat/Containerfile
+          target: test
+          platforms: linux/amd64
+          push: ${{ forgejo.ref == 'refs/heads/main' }}
+          load: ${{ forgejo.ref != 'refs/heads/main' }}
+          tags: ${{ steps.image.outputs.test_ref }}
+          cache-from: ${{ forgejo.ref == 'refs/heads/main' && format('type=registry,ref={0}', steps.image.outputs.cache_ref) || '' }}
+          cache-to: ${{ forgejo.ref == 'refs/heads/main' && format('type=registry,ref={0},mode=max', steps.image.outputs.cache_ref) || '' }}
+      - name: Run WebSocket regression against the built image
+        shell: bash
+        run: AVoIP/image/kamailio-lf-heartbeat/run-integration.sh '${{ steps.image.outputs.test_ref }}' docker
       - name: Build and publish immutable amd64 image
         id: publish
         uses: https://github.com/docker/build-push-action@v6
@@ -87,7 +93,8 @@ jobs:
           platforms: linux/amd64
           push: ${{ forgejo.ref == 'refs/heads/main' }}
           tags: ${{ steps.image.outputs.ref }}
-          cache-to: type=inline
+          cache-from: ${{ forgejo.ref == 'refs/heads/main' && format('type=registry,ref={0}', steps.image.outputs.cache_ref) || '' }}
+          cache-to: ${{ forgejo.ref == 'refs/heads/main' && format('type=registry,ref={0},mode=max', steps.image.outputs.cache_ref) || '' }}
       - name: Record published image digest
         if: ${{ forgejo.ref == 'refs/heads/main' }}
         env:
