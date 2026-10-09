@@ -131,7 +131,13 @@
 {{- $drainableSipCore := or $websocketHA.enabled $websocketHA.legacyOwner -}}
 {{ if .Values.kamailio.enabled }}
   {{ $component }}:
+    {{- if $websocketHA.enabled }}
+    # StatefulSet pod names append an ordinal, so keep the controller name
+    # short enough that <name>-<ordinal> remains below Kubernetes' 63-char limit.
+    forceRename: '{{ printf "core-kamailio-%s" .Values.kamailio.name }}'
+    {{- else }}
     forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+    {{- end }}
     {{- if $websocketHA.enabled }}
     type: statefulset
     statefulset:
