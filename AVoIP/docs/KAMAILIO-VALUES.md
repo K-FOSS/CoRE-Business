@@ -121,11 +121,23 @@ values and rollout partitions fail Helm rendering.
 | `websocketHA.endpointRemovalDelaySeconds` | `10` | Wait after readiness removal for EndpointSlice and gateway backend updates. |
 | `websocketHA.drainSeconds` | `120` | Time for existing connections/dialogs before container exit. |
 | `websocketHA.terminationGracePeriodSeconds` | `150` | Must exceed drain plus endpoint-removal delay by at least five seconds. |
+| `websocketHA.compatibility.lfOnlyHeartbeat.enabled` | `false` | Enables exact `0A 0A` compatibility only on the SIP WSS edge. It is not a general malformed-SIP filter. |
+| `websocketHA.compatibility.lfOnlyHeartbeat.image.repository`, `.tag`, `.digest` | empty | Required when enabled. Pin the locally built Kamailio 6.1.4 image by repository, immutable tag and sha256 digest. The same image is used by every WSS replica. |
 
 When HA or `legacyOwner` draining is enabled, the default pod security context
 sets `fsGroup: 1000` so the non-root Kamailio UID/GID can write the existing
 `/tmp` emptyDir marker and local ctl socket. A custom pod security context must
 also set `fsGroup: 1000`; Helm rejects a value that would make draining fail.
+
+The Home Assistant LF/LF heartbeat option is an image-level compatibility
+switch. The selected image must contain the matching `websocket.so` built
+together with Kamailio core from the pinned source. The chart emits
+`modparam("websocket", "lf_keepalive_compat", 1)` only when the option is
+enabled and replaces the main Kamailio image only for that instance. The TLS
+init container and all other Kamailio instances retain the normal pinned
+image. Enabling the setting with a stock image fails Kamailio startup because
+that module parameter is unknown. See the patch and regression test in
+`../image/kamailio-lf-heartbeat/`.
 
 ## Listeners, Services, and SIP identities
 

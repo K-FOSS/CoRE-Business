@@ -80,6 +80,15 @@
   {{- if and $effectiveWebsocketHA.enabled (ne (int $effectiveWebsocketHA.keepaliveMechanism) 2) -}}
     {{- fail (printf "Kamailio %s websocketHA requires websocketHA.keepaliveMechanism=2 to avoid closing flows when Ping/Pong frames are not returned" $name) -}}
   {{- end -}}
+  {{- $lfHeartbeat := (($effectiveWebsocketHA.compatibility | default dict).lfOnlyHeartbeat | default dict) -}}
+  {{- if $lfHeartbeat.enabled -}}
+    {{- if or (ne $role "private-sbc") (not $effectiveWebsocketHA.enabled) -}}
+      {{- fail (printf "Kamailio %s websocketHA.compatibility.lfOnlyHeartbeat requires websocketHA.enabled on a private-sbc instance" $name) -}}
+    {{- end -}}
+    {{- if or (not (regexMatch "^[a-zA-Z0-9./:_-]+$" (toString $lfHeartbeat.image.repository))) (not (regexMatch "^[A-Za-z0-9][A-Za-z0-9._-]*$" (toString $lfHeartbeat.image.tag))) (not (regexMatch "^sha256:[a-f0-9]{64}$" (toString $lfHeartbeat.image.digest))) -}}
+      {{- fail (printf "Kamailio %s LF-only heartbeat compatibility requires an image repository, immutable tag and sha256 digest" $name) -}}
+    {{- end -}}
+  {{- end -}}
   {{- if $effective.registrar.enabled -}}
     {{- if or $effective.sipLogging.rawInbound $effective.sipLogging.postToposResponses $effective.sipLogging.carrierTraffic $effective.sipLogging.diagnostics.enabled $effective.sipLogging.diagnostics.sdp -}}
       {{- fail (printf "Kamailio %s registrar forbids raw SIP and diagnostic logging of Digest credentials" $name) -}}

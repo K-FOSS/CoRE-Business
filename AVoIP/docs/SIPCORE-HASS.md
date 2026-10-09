@@ -61,6 +61,58 @@ HTTPRoute, 1h stream idle at the route policy, 300s Gateway backend idle,
 frames every 15s. These values do not explain a repeatable 30s disconnect.
 Check the close event and client-side reconnect logs before changing a timeout.
 
+### Home Assistant LF-only heartbeat compatibility
+
+The deployed SIP Core client sends the two-byte WebSocket text payload `0A 0A`
+(`\n\n`) every 30 seconds after registration. Kamailio 6.1.4 normally passes
+that payload to its SIP parser, which rejects it and can close the connection.
+The compatibility patch handles this exact payload inside the WebSocket
+module after frame decoding and fragment reassembly, only when the negotiated
+subprotocol is `sip`. It consumes the message locally and replies on the same
+connection with the standard single-CRLF application-data keepalive. It does
+not relax SIP parsing or change REGISTER, Digest authentication, Asterisk
+contact ownership, SIP Path, dialog routing, or media handling. Standard
+CRLF keepalives and WebSocket Ping/Pong remain handled by Kamailio's normal
+code.
+
+The chart option defaults off. Enabling it requires the immutable, patched
+Kamailio image built from the exact 6.1.4 source and matching module
+parameter; do not enable the parameter with the stock image. The source patch,
+Containerfile, minimal SIP test configuration and black-box regression client
+are under `AVoIP/image/kamailio-lf-heartbeat/`. The root
+[Forgejo workflow](../../.forgejo/workflows/kamailio-lf-heartbeat.yaml) follows
+the tested Buildx and registry pattern from
+[Core-Docker's image workflow](https://github.com/K-FOSS/Core-Docker/blob/main/.forgejo/workflows/Daily.yaml):
+it tests the local amd64 image, then publishes an immutable multi-platform
+image on `main` and records its digest. The live Home1 override remains
+pending until that workflow succeeds and the digest is pinned in the owning
+CoRE-Backplane ApplicationSet. Apply the same option and image to every
+`internal-wss` replica. The `internal` private-SBC and carrier instances must
+stay on their existing image.
+
+After the image exists, merge this into the existing `internal-wss` entry in
+the Home1 ApplicationSet's complete `kamailio.instances` list (the list
+replaces rather than appends):
+
+```yaml
+websocketHA:
+  compatibility:
+    lfOnlyHeartbeat:
+      enabled: true
+      image:
+        repository: <published-registry>/kamailio-lf-heartbeat
+        tag: <immutable-build-tag>
+        digest: sha256:<published-image-digest>
+```
+
+Do not apply this example with placeholder values. First build and run the
+integration test, then substitute the published image coordinates and render
+the complete owning ApplicationSet values.
+
+The current YVR logs also report TOPOS storage errors and OPTIONS relay
+failures. Those are independent problems and are not addressed by this
+heartbeat compatibility change.
+
 Stock Asterisk's PJSIP WebSocket transport does not retain the HTTP upgrade's
 forwarded headers as SIP metadata. This design does not pass XFF to Kamailio or
 Asterisk as an identity signal and does not replace either socket peer address.

@@ -25,3 +25,30 @@ Before activation, validate the generated configuration with the pinned
 Kamailio image and validate generated PJSIP with the deployed Asterisk image.
 Then execute every live acceptance step in
 [SIP Stateful HA](../docs/SIP-STATEFUL-HA.md#operational-inspection-and-live-acceptance).
+
+## Home Assistant LF-only heartbeat regression
+
+The [Forgejo workflow](../../.forgejo/workflows/kamailio-lf-heartbeat.yaml)
+builds its separate test target, runs the regression against that image, then
+builds and publishes the production `runtime` target to the Forgejo registry
+on `main`. Test-only SIP configs stay out of the runtime image. Use the digest
+reported in the successful run before enabling the chart option; do not guess
+an image digest.
+
+Run the self-contained integration runner against the published image with a
+local Docker-compatible engine:
+
+```sh
+AVoIP/image/kamailio-lf-heartbeat/run-integration.sh \
+  registry.example/kamailio-lf-heartbeat:6.1.4-buildtag podman
+```
+
+The runner starts the same image once with compatibility enabled and once
+with the module parameter disabled. The enabled run exercises repeated exact
+LF/LF, fragmented LF/LF, valid OPTIONS, standard CRLF keepalive, Ping/Pong,
+and a different malformed payload. It must run against the locally built
+image, not stock Kamailio. Render the site's actual `internal-wss` Helm values
+and run
+`kamailio -c` from the same image before publishing the digest. Live YVR
+stability, registration refresh, OPTIONS, calls, and media checks require the
+operator procedure in the HA runbook and are not replaced by this local test.

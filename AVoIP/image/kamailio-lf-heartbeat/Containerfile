@@ -1,0 +1,48 @@
+ARG KAMAILIO_BASE=ghcr.io/kamailio/kamailio:6.1.4-bookworm@sha256:c54f770ab74ae64588cc174e206aa337108cc777b6162d738189d1cb0c32d116
+
+FROM ${KAMAILIO_BASE} AS builder
+USER root
+ARG KAMAILIO_SOURCE_SHA256=290624b6624edc230af0fc458fb7e481e64b893be7cb5084398e587942992e0a
+ARG KAMAILIO_SOURCE_URL=https://www.kamailio.org/pub/kamailio/6.1.4/src/kamailio-6.1.4_src.tar.gz
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      bison build-essential ca-certificates curl flex libevent-dev \
+      libhiredis-dev libjson-c-dev libpq-dev libssl-dev libunistring-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src
+RUN curl --fail --location --silent --show-error "$KAMAILIO_SOURCE_URL" -o kamailio.tar.gz \
+    && echo "$KAMAILIO_SOURCE_SHA256  kamailio.tar.gz" | sha256sum --check --status \
+    && tar -xzf kamailio.tar.gz
+
+COPY patches/0001-websocket-ignore-lf-only-sip-heartbeat.patch /tmp/lf-heartbeat.patch
+COPY test-kamailio.cfg /tmp/test-kamailio.cfg
+RUN cd /usr/src/kamailio-6.1.4 \
+    && patch --batch --fuzz=0 -p1 < /tmp/lf-heartbeat.patch \
+    && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
+         modules_dir=/usr/lib/x86_64-linux-gnu/kamailio/modules \
+         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+    && make -j2 all prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
+         modules_dir=/usr/lib/x86_64-linux-gnu/kamailio/modules \
+         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+    && make install prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
+         modules_dir=/usr/lib/x86_64-linux-gnu/kamailio/modules \
+    && /usr/sbin/kamailio -c -f /tmp/test-kamailio.cfg \
+    && mkdir -p /out/usr/lib/x86_64-linux-gnu/kamailio/modules \
+    && cp /usr/sbin/kamailio /out/usr/sbin-kamailio \
+    && for module in auth auth_db ctl corex db_postgres dialog dispatcher maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
+         cp "/usr/lib/x86_64-linux-gnu/kamailio/modules/${module}.so" /out/usr/lib/x86_64-linux-gnu/kamailio/modules/; \
+       done
+
+FROM ${KAMAILIO_BASE} AS runtime
+USER root
+COPY --from=builder /out/usr/sbin-kamailio /usr/sbin/kamailio
+COPY --from=builder /out/usr/lib/x86_64-linux-gnu/kamailio/modules/ /usr/lib/x86_64-linux-gnu/kamailio/modules/
+USER 1000:1000
+
+FROM runtime AS test
+USER root
+COPY test-kamailio.cfg /opt/kamailio-lf-heartbeat/test-kamailio.cfg
+COPY test-kamailio-disabled.cfg /opt/kamailio-lf-heartbeat/test-kamailio-disabled.cfg
+USER 1000:1000

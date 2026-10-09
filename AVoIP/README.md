@@ -23,6 +23,15 @@ or FreeSWITCH. Speech recognition and synthesis are provided by the existing
 workloads duplicated in this chart. Homer has an Authentik-protected web route
 where enabled.
 
+The dedicated WSS edge has an opt-in, exact LF/LF heartbeat compatibility
+patch for Home Assistant SIP Core. It is disabled by default and requires a
+separately built and digest-pinned Kamailio 6.1.4 image. The
+[Forgejo workflow](../.forgejo/workflows/kamailio-lf-heartbeat.yaml) tests an
+amd64 build and publishes a multi-platform image on `main`; its successful run
+reports the immutable digest. See the [SIP Core
+compatibility notes](docs/SIPCORE-HASS.md#home-assistant-lf-only-heartbeat-compatibility)
+and [test instructions](tests/README.md#home-assistant-lf-only-heartbeat-regression).
+
 ## Deployment ownership
 
 Optional interface profiles for every enabled workload and the named YAML

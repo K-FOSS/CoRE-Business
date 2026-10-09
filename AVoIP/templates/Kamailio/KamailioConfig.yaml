@@ -117,6 +117,10 @@ data:
     modparam("websocket", "cors_mode", 0)
     modparam("websocket", "keepalive_mechanism", {{ $websocketHA.keepaliveMechanism | default .Values.kamailio.websocket.keepaliveMechanism }})
     modparam("websocket", "keepalive_timeout", {{ .Values.kamailio.websocket.keepaliveTimeoutSeconds }})
+    {{- if (($websocketHA.compatibility | default dict).lfOnlyHeartbeat | default dict).enabled }}
+    # Exact 0A 0A text-frame compatibility for Home Assistant SIP Core.
+    modparam("websocket", "lf_keepalive_compat", 1)
+    {{- end }}
     {{- end }}
     loadmodule "corex.so"
     loadmodule "maxfwd.so"

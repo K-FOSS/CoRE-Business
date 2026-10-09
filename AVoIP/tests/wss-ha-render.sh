@@ -6,9 +6,11 @@ rendered="$(mktemp)"
 pilot="$(mktemp)"
 cutover="$(mktemp)"
 split="$(mktemp)"
+legacy="$(mktemp)"
 invalid="$(mktemp)"
+compat="$(mktemp)"
 asterisk_file="$(mktemp)"
-trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$invalid" "$asterisk_file"' EXIT
+trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$legacy" "$invalid" "$compat" "$asterisk_file"' EXIT
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
@@ -47,6 +49,7 @@ grep -Fq '#!substdef "/SIPCORE_OWNER_POD/$env(POD_NAME)/"' <<<"$config"
 grep -Fq 'loadmodule "path.so"' <<<"$config"
 grep -Fq 'modparam("path", "use_received", 0)' <<<"$config"
 grep -Fq 'modparam("websocket", "keepalive_mechanism", 2)' <<<"$config"
+! grep -Fq 'modparam("websocket", "lf_keepalive_compat", 1)' <<<"$config"
 grep -Fq 'loadmodule "outbound.so"' <<<"$config"
 grep -Fq 'if (!add_path_received())' <<<"$config"
 grep -Fq 'SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-owner.core-prod.svc.cluster.local' <<<"$config"
@@ -79,6 +82,39 @@ grep -Fq 'Dial(PJSIP/7101,30)' "$rendered"
 ! grep -Fq 'PJSIP_DIAL_CONTACTS(7101)' "$rendered"
 echo 'PASS: callback dials the Path-aware AOR endpoint rather than explicit WebSocket Contact URIs'
 
+helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set kamailio.instances[2].websocketHA.compatibility.lfOnlyHeartbeat.enabled=true \
+  --set-string kamailio.instances[2].websocketHA.compatibility.lfOnlyHeartbeat.image.repository=forge.example.invalid/core/kamailio-lf-heartbeat \
+  --set-string kamailio.instances[2].websocketHA.compatibility.lfOnlyHeartbeat.image.tag=6.1.4-lf-heartbeat-test \
+  --set-string kamailio.instances[2].websocketHA.compatibility.lfOnlyHeartbeat.image.digest=sha256:0000000000000000000000000000000000000000000000000000000000000000 > "$compat"
+compat_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["kamailio.cfg"]' "$compat")"
+grep -Fq 'modparam("websocket", "lf_keepalive_compat", 1)' <<<"$compat_config"
+assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .image | contains("forge.example.invalid/core/kamailio-lf-heartbeat:6.1.4-lf-heartbeat-test@sha256:0000000000000000000000000000000000000000000000000000000000000000")' 'the opt-in WSS compatibility uses the explicitly pinned patched image' "$compat"
+echo 'PASS: LF-only heartbeat compatibility is opt-in and selects its pinned image only on the WSS instance'
+
+if helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set kamailio.instances[2].websocketHA.enabled=false \
+  --set kamailio.instances[2].websocketHA.compatibility.lfOnlyHeartbeat.enabled=true > "$invalid" 2>&1; then
+  echo 'FAIL: LF-only heartbeat compatibility rendered without websocketHA' >&2
+  exit 1
+fi
+grep -Fq 'websocketHA.compatibility.lfOnlyHeartbeat requires websocketHA.enabled' "$invalid"
+echo 'PASS: LF-only heartbeat compatibility fails clearly when WSS HA is disabled'
+
+if helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set kamailio.instances[2].websocketHA.compatibility.lfOnlyHeartbeat.enabled=true > "$invalid" 2>&1; then
+  echo 'FAIL: LF-only heartbeat compatibility rendered without a pinned patched image' >&2
+  exit 1
+fi
+grep -Fq 'LF-only heartbeat compatibility requires an image repository, immutable tag and sha256 digest' "$invalid"
+echo 'PASS: LF-only heartbeat compatibility requires a complete immutable image reference'
+
 # Home1 keeps the legacy private instance selected for return traffic while
 # new WSS registrations enter through a separate HA edge. The contact Path
 # must take precedence over the old shared return Service in that topology.
@@ -93,6 +129,15 @@ grep -Fq 'support_path=yes' "$split"
 echo 'PASS: HA WSS contacts use their Asterisk-stored Path without an overriding endpoint proxy'
 split_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["kamailio.cfg"]' "$split")"
 grep -Fq 'stage=asterisk-return-in' <<<"$split_config"
+
+helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set asterisk.sipCore.kamailioInstance=internal \
+  --set asterisk.sipCore.ingressKamailioInstance=internal \
+  --set kamailio.instances[2].websocketHA.pilot=true > "$legacy"
+grep -Fq 'outbound_proxy=sip:core-home1-talos-prod-avoip-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063' "$legacy"
+echo 'PASS: legacy single-replica SIP Core retains its existing return proxy'
 
 asterisk_init="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("asterisk"))) | .spec.template.spec.containers[] | select(.name == "asterisk") | .args[0]' "$rendered")"
 printf '%s\n' "$asterisk_init" > "$asterisk_file"

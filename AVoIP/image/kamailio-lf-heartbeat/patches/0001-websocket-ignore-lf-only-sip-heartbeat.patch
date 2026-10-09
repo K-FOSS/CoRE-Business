@@ -1,0 +1,75 @@
+diff --git a/src/modules/websocket/ws_frame.h b/src/modules/websocket/ws_frame.h
+--- a/src/modules/websocket/ws_frame.h
++++ b/src/modules/websocket/ws_frame.h
+@@ -48,5 +48,6 @@
+ extern int ws_keepalive_mechanism;
+ #define DEFAULT_KEEPALIVE_TIMEOUT 180 /* seconds */
+ extern str ws_ping_application_data;
++extern int ws_lf_keepalive_compat;
+ #define DEFAULT_PING_APPLICATION_DATA SRVAPP_SIGNATURE
+ #define DEFAULT_PING_APPLICATION_DATA_LEN SRVAPP_SIGNATURE_LEN
+
+diff --git a/src/modules/websocket/ws_frame.c b/src/modules/websocket/ws_frame.c
+--- a/src/modules/websocket/ws_frame.c
++++ b/src/modules/websocket/ws_frame.c
+@@ -108,2 +108,3 @@
+ int ws_keepalive_mechanism = DEFAULT_KEEPALIVE_MECHANISM;
+ str ws_ping_application_data = STR_NULL;
++int ws_lf_keepalive_compat = 0;
+@@ -137,3 +138,17 @@
+ static int ws_send_crlf(ws_connection_t *wsc, int opcode);
++/* Consume only Home Assistant's exact two-byte LF-only SIP heartbeat after
++ * frame decoding/reassembly. Use the existing application-data CRLF response.
++ */
++static int ws_handle_lf_keepalive(ws_frame_t *frame, char *payload, unsigned int len)
++{
++	if(ws_lf_keepalive_compat != 1
++			|| frame->wsc->sub_protocol != SUB_PROTOCOL_SIP || len != 2
++			|| payload[0] != '\n' || payload[1] != '\n')
++		return 0;
++
++	ws_send_crlf(frame->wsc, OPCODE_TEXT_FRAME);
++	return 1;
++}
++
+ static int encode_and_send_ws_frame(ws_frame_t *frame, conn_close_t conn_close)
+ {
+@@ -642,9 +657,17 @@
+                     }
+                     if(frame.fin) {
++                        if(ws_handle_lf_keepalive(&frame,
++                                   frame.wsc->frag_buf.s,
++                                   frame.wsc->frag_buf.len)) {
++                            frame.wsc->frag_buf.len = 0;
++                            frame.wsc->frag_progress = 0;
++                            wsconn_put(frame.wsc);
++                            return 0;
++                        }
+                         ret = receive_msg(frame.wsc->frag_buf.s,
+                                 frame.wsc->frag_buf.len, tcpinfo->rcv);
+                         frame.wsc->frag_buf.len = 0;
+                         frame.wsc->frag_progress = 0;
+                         wsconn_put(frame.wsc);
+                         return ret;
+                     }
+@@ -655,4 +677,10 @@
+                         wsconn_put(frame.wsc);
+                         return 0;
+                 }
++                if(frame.fin
++                        && ws_handle_lf_keepalive(&frame, frame.payload_data,
++                                   frame.payload_len)) {
++                    wsconn_put(frame.wsc);
++                    return 0;
++                }
+                 if(frame.fin) {
+
+diff --git a/src/modules/websocket/websocket.c b/src/modules/websocket/websocket.c
+--- a/src/modules/websocket/websocket.c
++++ b/src/modules/websocket/websocket.c
+@@ -98,4 +98,5 @@
+     {"timer_interval", PARAM_INT, &ws_timer_interval},
+     {"rm_delay_interval", PARAM_INT, &ws_rm_delay_interval},
++    {"lf_keepalive_compat", PARAM_INT, &ws_lf_keepalive_compat},
+     {0, 0, 0}
+ };
