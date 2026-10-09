@@ -20,11 +20,10 @@ spec:
     {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).enabled (.Values.kamailio.websocketHA | default dict).legacyOwner) }}
     - '{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}'
     {{- if (.Values.kamailio.websocketHA | default dict).enabled }}
-    - '*.{{ $ownerHostSuffix }}'
     {{ range $ordinal := until (int .Values.kamailio.replicas) }}
-    # Include exact pod identities as well as the wildcard. Some strict SIP
-    # TLS clients validate the dialog Route target independently of DNS
-    # wildcard rules, so every stable StatefulSet owner must be explicit.
+    # ACME rejects a DNS name covered by a wildcard SAN in the same request.
+    # Issue exact per-pod identities so strict SIP TLS clients can validate
+    # the Path target without an ambiguous wildcard match.
     - '{{ printf "%s-%d.%s" $ownerStatefulSet $ordinal $ownerHostSuffix }}'
     {{ end }}
     {{- end }}
