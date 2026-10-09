@@ -9,9 +9,6 @@ on:
       - AVoIP/image/kamailio-lf-heartbeat/**
       - .forgejo/workflows/kamailio-lf-heartbeat.yaml
 
-permissions:
-  contents: read
-
 concurrency:
   group: kamailio-lf-heartbeat-${{ forgejo.ref }}
   cancel-in-progress: true
