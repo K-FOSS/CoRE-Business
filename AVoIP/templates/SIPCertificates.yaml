@@ -1,5 +1,13 @@
 {{- define "avoip.kamailio.certificate" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- $ownerService := "" -}}
+{{- $ownerHostSuffix := "" -}}
+{{- $ownerStatefulSet := "" -}}
+{{- if (.Values.kamailio.websocketHA | default dict).enabled -}}
+  {{- $ownerService = include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") -}}
+  {{- $ownerHostSuffix = printf "%s.%s.svc.%s" $ownerService .Release.Namespace (required "cluster.domain is required for SIP owner TLS SANs" .Values.cluster.domain) -}}
+  {{- $ownerStatefulSet = printf "core-kamailio-%s" .Values.kamailio.name -}}
+{{- end -}}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -12,7 +20,13 @@ spec:
     {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).enabled (.Values.kamailio.websocketHA | default dict).legacyOwner) }}
     - '{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}'
     {{- if (.Values.kamailio.websocketHA | default dict).enabled }}
-    - '*.{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") }}.{{ .Release.Namespace }}.svc.{{ required "cluster.domain is required for SIP owner TLS SANs" .Values.cluster.domain }}'
+    - '*.{{ $ownerHostSuffix }}'
+    {{ range $ordinal := until (int .Values.kamailio.replicas) }}
+    # Include exact pod identities as well as the wildcard. Some strict SIP
+    # TLS clients validate the dialog Route target independently of DNS
+    # wildcard rules, so every stable StatefulSet owner must be explicit.
+    - '{{ printf "%s-%d.%s" $ownerStatefulSet $ordinal $ownerHostSuffix }}'
+    {{ end }}
     {{- end }}
     {{- end }}
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
