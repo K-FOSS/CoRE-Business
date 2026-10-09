@@ -375,6 +375,26 @@
         "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
       );
       {{- end }}
+      # The callback INVITE is sent from Asterisk to a WebSocket contact. Alias
+      # the WebSocket Contact in its reply so Asterisk's later ACK/BYE can use
+      # the same live connection instead of routing to the browser's Contact.
+      if (nat_uac_test(64) && is_present_hf("Contact")) {
+        if (add_contact_alias()) {
+          {{- if .Values.kamailio.sipLogging.sipCore }}
+          xlog(
+            "L_INFO",
+            "SIPCORE FLOW stage=asterisk-websocket-contact-aliased pod=$env(POD_NAME) callid=$ci method=$rm status=$rs cseq=$hdr(CSeq)\n"
+          );
+          {{- end }}
+        } else {
+          {{- if .Values.kamailio.sipLogging.sipCore }}
+          xlog(
+            "L_ERR",
+            "SIPCORE FLOW stage=asterisk-websocket-contact-alias-failure pod=$env(POD_NAME) callid=$ci method=$rm status=$rs cseq=$hdr(CSeq)\n"
+          );
+          {{- end }}
+        }
+      }
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
