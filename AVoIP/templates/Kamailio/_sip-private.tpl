@@ -267,7 +267,7 @@
           while ($du != $null &&
                  $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
                  $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}" &&
-                 $var(sipcore_local_route_hops) < 4) {
+                 $var(sipcore_local_route_hops) < 8) {
             $du = $null;
             $var(sipcore_local_route_hops) = $var(sipcore_local_route_hops) + 1;
             loose_route();
@@ -275,6 +275,12 @@
           if ($du != $null &&
               $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
               $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
+            {{- if .Values.kamailio.sipLogging.sipCore }}
+            xlog(
+              "L_ERR",
+              "SIPCORE FLOW stage=asterisk-local-route-loop-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) destination_host=$(du{uri.host}) destination_port=$(du{uri.port})\n"
+            );
+            {{- end }}
             sl_send_reply("482", "Too Many Local Route Hops");
             exit;
           }
