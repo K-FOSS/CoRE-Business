@@ -13,12 +13,10 @@
       if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
         $var(side) = "sipcore";
         {{- if .Values.kamailio.sipLogging.sipCore }}
-        if (is_method("INVITE|BYE|CANCEL")) {
-          xlog(
-            "L_WARN",
-            "SIPCORE FLOW stage=websocket-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto user=$fU target=$rU cseq=$hdr(CSeq)\n"
-          );
-        }
+        xlog(
+          "L_WARN",
+          "SIPCORE FLOW stage=websocket-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+        );
         {{- end }}
         route(FROM_SIPCORE);
         exit;
@@ -28,12 +26,10 @@
       if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.privateEgressPort }}) {
         $var(side) = "sipcore";
         {{- if .Values.kamailio.sipLogging.sipCore }}
-        if (is_method("INVITE|BYE|CANCEL")) {
-          xlog(
-            "L_WARN",
-            "SIPCORE FLOW stage=asterisk-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto user=$fU target=$rU cseq=$hdr(CSeq)\n"
-          );
-        }
+        xlog(
+          "L_WARN",
+          "SIPCORE FLOW stage=asterisk-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+        );
         {{- end }}
         route(FROM_SIPCORE_ASTERISK);
         exit;
@@ -231,12 +227,10 @@
       }
       route(TO_SIPCORE_ASTERISK);
       {{- if .Values.kamailio.sipLogging.sipCore }}
-      if (is_method("INVITE|BYE|CANCEL")) {
-        xlog(
-          "L_WARN",
-          "SIPCORE FLOW stage=forward-to-asterisk pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination=$du target=$rU cseq=$hdr(CSeq)\n"
-        );
-      }
+      xlog(
+        "L_WARN",
+        "SIPCORE FLOW stage=forward-to-asterisk pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp cseq=$hdr(CSeq)\n"
+      );
       {{- end }}
       route(PRIVATE_RELAY);
     }
@@ -330,12 +324,10 @@
       }
       t_on_reply("SIPCORE_ASTERISK_REPLY");
       {{- if .Values.kamailio.sipLogging.sipCore }}
-      if (is_method("INVITE|BYE|CANCEL")) {
-        xlog(
-          "L_WARN",
-          "SIPCORE FLOW stage=forward-to-websocket pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination_host=$dd destination_port=$dp destination_transport=$dP flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) target=$rU cseq=$hdr(CSeq)\n"
-        );
-      }
+      xlog(
+        "L_WARN",
+        "SIPCORE FLOW stage=forward-to-websocket pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination_host=$dd destination_port=$dp destination_transport=$dP flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) cseq=$hdr(CSeq)\n"
+      );
       {{- end }}
       route(PRIVATE_RELAY);
     }
@@ -348,12 +340,10 @@
 
     onreply_route[SIPCORE_ASTERISK_REPLY] {
       {{- if .Values.kamailio.sipLogging.sipCore }}
-      if ($rm == "INVITE" || $rm == "BYE") {
-        xlog(
-          "L_WARN",
-          "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
-        );
-      }
+      xlog(
+        "L_WARN",
+        "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+      );
       {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal")) {
@@ -365,12 +355,10 @@
 
     onreply_route[SIPCORE_WS_REPLY] {
       {{- if .Values.kamailio.sipLogging.sipCore }}
-      if ($rm == "INVITE" || $rm == "BYE") {
-        xlog(
-          "L_WARN",
-          "SIPCORE FLOW stage=websocket-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
-        );
-      }
+      xlog(
+        "L_WARN",
+        "SIPCORE FLOW stage=websocket-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+      );
       {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin internal external")) {
