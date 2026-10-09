@@ -89,7 +89,7 @@ grep -Fq 'Dial(PJSIP/1234,30)' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk c
 grep -Fq 'Playback(hello-world)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback service does not play the greeting'
 grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-callback-7101,s,1)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback is not scheduled by a hangup handler'
 grep -Fq '[sipcore-callback-7101]' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback context is not scoped to SIP Core extension 7101'
-grep -Fq 'Originate(Local/s@sipcore-callback-ringall-7101/n,exten,from-sipcore-7101,66,1,30)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback must wait for a registered SIP Core contact to answer before entering the GG route'
+grep -Fq 'Originate(Local/s@sipcore-callback-ringall-7101/n,exten,from-sipcore-7101,66,1,30,a)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback must run independently and enter the GG route only after the ring-all channel answers'
 grep -Fq 'Dial(${SIPCORE_CALLBACK_CONTACTS},30)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback must ring all active contacts before entering the GG route'
 grep -Fq 'Dial(PJSIP/gg-audio@freeswitch,30,g)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk must start the FreeSWITCH GG leg only after the callback answer'
 grep -Fq 'Set(CALLERID(name)=Important Message)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk GG callback caller ID is not Important Message'

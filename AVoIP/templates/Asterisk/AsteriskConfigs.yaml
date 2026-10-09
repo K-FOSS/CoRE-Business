@@ -138,9 +138,10 @@ data:
       same => n,Hangup()
     exten => _X!,1,Hangup(21)
     [sipcore-callback-{{ .number }}]
-    ; Keep Originate synchronous: the destination extension runs only after a
-    ; registered SIP Core contact answers. That extension then dials FreeSWITCH.
-    exten => s,1,Originate(Local/s@sipcore-callback-ringall-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,30)
+    ; Run the callback independently of the already-hung-up source channel.
+    ; Originate enters the GG destination only after the Local ring-all channel
+    ; answers, which happens after a registered SIP Core contact answers.
+    exten => s,1,Originate(Local/s@sipcore-callback-ringall-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,30,a)
       same => n,Return()
     ; Expand the AOR's current registrations so every active device rings.
     [sipcore-callback-ringall-{{ .number }}]
