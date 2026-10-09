@@ -328,6 +328,24 @@ data:
     }
     {{- end }}
 
+    {{- if $sipCoreEnabled }}
+    # Keep parse diagnostics useful without recording the malformed buffer,
+    # which could contain credentials or other SIP payload data.
+    event_route[core:receive-parse-error] {
+      xlog(
+        "L_INFO",
+        "SIPCORE PARSE-ERROR pod=$env(POD_NAME) proto=$proto source=$si:$sp recv=$Ri:$Rp bytes=$ml\n"
+      );
+    }
+
+    event_route[websocket:closed] {
+      xlog(
+        "L_WARN",
+        "SIPCORE WS-CLOSED pod=$env(POD_NAME) source=$si:$sp connection_id=$ws_conid\n"
+      );
+    }
+    {{- end }}
+
 {{ if eq .Values.kamailio.role "private-sbc" }}
 {{ include "avoip.kamailio.sip.private" . | nindent 4 }}
 {{ else }}

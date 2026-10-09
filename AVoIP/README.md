@@ -319,19 +319,25 @@ configured internal destinations. Carrier and FreeSWITCH fax signaling stays
 on the separate carrier instance. The WSS instance relays signaling to
 Asterisk over TLS and controls the existing RTPEngine for the Home Assistant
 media leg, separately from the ordinary `internal` private-SBC instance. The
-enabled pilot is site-specific; inspect the owning ApplicationSet
-before changing its rollout values. See
+YVR deployment currently runs three `internal-websocket` replicas behind its
+WSS Service while retaining the one-replica `internal` return instance. Inspect
+the owning ApplicationSet before changing its rollout values. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md) and the
 [three-replica WSS edge guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
 
 The HA mode keeps Asterisk as registrar and Digest authority. SIP Path targets
 the exact StatefulSet replica with the registered WebSocket, and a separate
 headless owner Service provides private TLS addressing. The WSS Service selects
-only the edge instance on port 8088; the generated HTTPRoute switches from the
-old `internal` Service during cutover. This is signaling availability only: an unexpected owner loss interrupts that
+only the edge instance on port 8088; YVR's live HTTPRoute targets that Service.
+When ingress and legacy return instances differ, Asterisk must route by each
+contact's stored Path and must not retain the shared legacy proxy for OPTIONS.
+This is signaling availability only: an unexpected owner loss interrupts that
 connection's dialogs and media until Home Assistant reconnects and registers.
 The CoRE-Backplane Gateway policy still imposes a one-hour maximum connection
 duration and needs a separate future policy change for longer sessions.
+Current YVR route idle/duration policies do not explain a reported 30-second
+disconnect; SIP Core flow and WebSocket-close markers help correlate the next
+disconnect without logging SIP bodies or Digest credentials.
 
 Run `helm lint AVoIP` and `AVoIP/tests/wss-ha-render.sh` for the WSS edge
 rendering checks. The working tree does not include the older Kamailio,

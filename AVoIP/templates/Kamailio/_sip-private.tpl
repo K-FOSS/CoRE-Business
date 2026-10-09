@@ -259,6 +259,12 @@
         sl_send_reply("405", "Method Not Allowed");
         exit;
       }
+      {{- if .Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_INFO",
+        "SIPCORE FLOW stage=asterisk-return-in pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp ruri_host=$rd transport=$proto cseq=$hdr(CSeq)\n"
+      );
+      {{- end }}
       if (is_method("CANCEL")) {
         $var(cancel_result) = t_relay_cancel();
         if ($var(cancel_result) > 0) sl_send_reply("481", "Call Does Not Exist");

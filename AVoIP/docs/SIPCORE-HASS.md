@@ -53,6 +53,13 @@ markers for WebSocket requests, Asterisk return requests, and SIP responses.
 These include Call-ID, method/status, socket peer, extension user/target, and
 CSeq, without SIP bodies or authorization headers. SDP diagnostics remain a
 separate setting and can include endpoint addresses and codec details.
+The WSS instance also logs parse-error metadata and `SIPCORE WS-CLOSED`
+records (peer address and local connection ID), without recording the bad
+buffer or close payload. The current YVR route/policy limits are 0s at the
+HTTPRoute, 1h stream idle at the route policy, 300s Gateway backend idle,
+1800s client idle, and 3600s maximum duration; Kamailio sends WebSocket Ping
+frames every 15s. These values do not explain a repeatable 30s disconnect.
+Check the close event and client-side reconnect logs before changing a timeout.
 
 Stock Asterisk's PJSIP WebSocket transport does not retain the HTTP upgrade's
 forwarded headers as SIP metadata. This design does not pass XFF to Kamailio or

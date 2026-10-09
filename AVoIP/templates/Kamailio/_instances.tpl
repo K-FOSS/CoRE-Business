@@ -69,6 +69,7 @@
   {{- if and (eq $role "private-sbc") $effective.publicExposure.enabled -}}
     {{- fail (printf "Kamailio %s private-sbc must not expose public SIP" $name) -}}
   {{- end -}}
+  {{- $sipCoreIngressInstance := default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance -}}
   {{- if or (lt (int $effective.websocket.keepaliveTimeoutSeconds) 5) (gt (int $effective.websocket.keepaliveTimeoutSeconds) 600) -}}
     {{- fail (printf "Kamailio %s websocket.keepaliveTimeoutSeconds must be between 5 and 600" $name) -}}
   {{- end -}}
@@ -115,8 +116,8 @@
       {{- if and (eq (int $effective.replicas) 1) (not $wssHA.pilot) -}}
         {{- fail (printf "Kamailio %s websocketHA with one replica is permitted only while websocketHA.pilot is true" $name) -}}
       {{- end -}}
-      {{- if or (not $.Values.asterisk.enabled) (not $.Values.asterisk.sipCore.enabled) (and (ne $name $.Values.asterisk.sipCore.kamailioInstance) (not $wssHA.pilot)) -}}
-        {{- fail (printf "Kamailio %s websocketHA requires Asterisk SIP Core enabled and either this instance selected or websocketHA.pilot enabled" $name) -}}
+      {{- if or (not $.Values.asterisk.enabled) (not $.Values.asterisk.sipCore.enabled) (and (ne $name $.Values.asterisk.sipCore.kamailioInstance) (ne $name $sipCoreIngressInstance) (not $wssHA.pilot)) -}}
+        {{- fail (printf "Kamailio %s websocketHA requires Asterisk SIP Core enabled and selection as the return instance or WSS ingress, unless websocketHA.pilot is enabled" $name) -}}
       {{- end -}}
       {{- if or $effective.registrar.enabled (not $effective.enabled) -}}
         {{- fail (printf "Kamailio %s websocketHA requires an enabled private-sbc with the Kamailio registrar pilot disabled" $name) -}}

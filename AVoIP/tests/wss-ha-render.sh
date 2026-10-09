@@ -5,9 +5,10 @@ chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 rendered="$(mktemp)"
 pilot="$(mktemp)"
 cutover="$(mktemp)"
+split="$(mktemp)"
 invalid="$(mktemp)"
 asterisk_file="$(mktemp)"
-trap 'rm -f "$rendered" "$pilot" "$cutover" "$invalid" "$asterisk_file"' EXIT
+trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$invalid" "$asterisk_file"' EXIT
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
@@ -52,6 +53,9 @@ grep -Fq 'sipcore.mylogin.space' <<<"$config"
 grep -Fq 'https://home.mylogin.space' <<<"$config"
 grep -Fq 'Host Not Allowed' <<<"$config"
 grep -Fq 'Origin Not Allowed' <<<"$config"
+grep -Fq 'SIPCORE PARSE-ERROR pod=$env(POD_NAME) proto=$proto source=$si:$sp recv=$Ri:$Rp bytes=$ml' <<<"$config"
+grep -Fq 'SIPCORE WS-CLOSED pod=$env(POD_NAME) source=$si:$sp connection_id=$ws_conid' <<<"$config"
+! grep -Fq 'SIP BAD BEGIN' <<<"$config"
 grep -Fq 'record_route_preset("SIPCORE_OWNER_POD.' <<<"$config"
 grep -Fq 'listen=tls:0.0.0.0:5062' <<<"$config"
 ! grep -Eq 'listen=(udp|tcp|tls):[^[:space:]]+:5061' <<<"$config"
@@ -70,6 +74,21 @@ grep -Fq 'context=from-sipcore-7101' "$rendered"
 grep -Fq 'exten => 9090,1,Answer()' "$rendered"
 grep -Fq 'exten => 66,1,Dial(PJSIP/gg-audio@freeswitch,30,g)' "$rendered"
 grep -Fq 'exten => 1234,1,Answer()' "$rendered"
+
+# Home1 keeps the legacy private instance selected for return traffic while
+# new WSS registrations enter through a separate HA edge. The contact Path
+# must take precedence over the old shared return Service in that topology.
+helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set asterisk.sipCore.kamailioInstance=internal \
+  --set asterisk.sipCore.ingressKamailioInstance=internal-wss > "$split"
+grep -Fq 'support_path=yes' "$split"
+grep -Fq 'outbound_proxy=sip:127.0.0.1:1' "$split"
+! grep -Fq 'outbound_proxy=sip:core-home1-talos-prod-business-kamailio-internal-sipcore-return' "$split"
+echo 'PASS: split legacy return and HA WSS ingress uses Asterisk Path routing without the shared return proxy'
+split_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["kamailio.cfg"]' "$split")"
+grep -Fq 'stage=asterisk-return-in' <<<"$split_config"
 
 asterisk_init="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("asterisk"))) | .spec.template.spec.containers[] | select(.name == "asterisk") | .args[0]' "$rendered")"
 printf '%s\n' "$asterisk_init" > "$asterisk_file"
