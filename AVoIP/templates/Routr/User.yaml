@@ -1,0 +1,91 @@
+{{- if .Values.routr.enabled -}}
+{{- $fullName := include "avoip.fullname" . -}}
+{{- $database := .Values.routr.database -}}
+{{- $provider := default (printf "psql-%s-%s" .Values.datacenter .Values.region) $database.terraformProvider -}}
+{{- $crossplane := default (printf "psql-%s-%s" .Values.datacenter .Values.region) $database.crossplaneProvider -}}
+{{- $connectionSecret := default (printf "%s-routr" $fullName) $database.connectionSecret -}}
+{{- $redisHost := default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.routr.redis.host -}}
+{{- $redisSecretKey := default (printf "Storage/DragonFly/CoRE/%s/%s/%s/Creds" .Values.region .Values.datacenter .Values.cluster.name) .Values.routr.redis.secretKey -}}
+{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" $database.username) -}}
+  {{- fail "routr.database.username must be a DNS-compatible identifier" -}}
+{{- end -}}
+{{- if or (ne (int .Values.routr.redis.locationDatabase) 155) (ne (int .Values.routr.redis.registryDatabase) 156) -}}
+  {{- fail "Routr Dragonfly databases are allocated as location=155 and registry=156; update the shared allocation registry before changing them" -}}
+{{- end -}}
+{{- if or (empty .Values.routr.imageDigests.location) (empty .Values.routr.imageDigests.registry) -}}
+  {{- fail "routr.enabled requires immutable imageDigests.location and imageDigests.registry from the Routr DB-selection image workflow" -}}
+{{- end -}}
+{{- if or .Values.routr.edgeport.udp.enabled .Values.routr.edgeport.tcp.enabled .Values.routr.edgeport.tls.enabled .Values.routr.edgeport.ws.enabled .Values.routr.edgeport.wss.enabled -}}
+  {{- fail "Routr EdgePort SIP listeners are not ready to enable: certificate generation and gateway/network ingress authorization must be integrated first" -}}
+{{- end -}}
+---
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: '{{ $fullName }}-routr'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+spec:
+  name: 'AVoIP Routr Connect'
+  username: '{{ $database.username }}'
+  serviceAccount: true
+  groups:
+    - 'LDAPService'
+  psql:
+    enabled: true
+    createUserDatabase: true
+    hostname: '{{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) $database.host }}'
+    uri: 'postgres://'
+    crossplane:
+      terraformProvider: '{{ $provider }}'
+      crossplaneProvider: '{{ $crossplane }}'
+  writeConnectionSecretToRef:
+    name: '{{ $connectionSecret }}'
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ $fullName }}-routr-redis-config'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: '{{ .Values.routr.redis.secretStore }}'
+  target:
+    name: '{{ $fullName }}-routr-redis-config'
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      type: Opaque
+      data:
+        location.yaml: |
+          kind: Location
+          apiVersion: v2beta1
+          metadata:
+            region: {{ .Values.region }}
+          spec:
+            bindAddr: 0.0.0.0:51902
+            cache:
+              provider: redis
+              parameters: host={{ $redisHost }},port={{ .Values.routr.redis.port }},username=default,password={{ `{{ .password }}` }},secure=true,dbNumber={{ .Values.routr.redis.locationDatabase }}
+        registry.yaml: |
+          kind: Registry
+          apiVersion: v2beta1
+          spec:
+            requesterAddr: {{ $fullName }}-routr-requester.{{ .Release.Namespace }}:51909
+            apiAddr: {{ $fullName }}-routr-apiserver.{{ .Release.Namespace }}:51907
+            registerInterval: 30s
+            cache:
+              provider: redis
+              parameters: host={{ $redisHost }},port={{ .Values.routr.redis.port }},username=default,password={{ `{{ .password }}` }},secure=true,dbNumber={{ .Values.routr.redis.registryDatabase }}
+            methods: [REGISTER, SUBSCRIBE, NOTIFY]
+            edgePorts:
+              - address: {{ $fullName }}-routr-edgeport.{{ .Release.Namespace }}:5060
+  data:
+    - secretKey: password
+      remoteRef:
+        key: '{{ $redisSecretKey }}'
+        property: Password
+{{- end -}}

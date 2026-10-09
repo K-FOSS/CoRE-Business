@@ -4,6 +4,42 @@ global:
 
 env: 'prod'
 
+routr:
+  enabled: false
+  imageVersion: '2.13.6'
+  database:
+    username: routr
+    connectionSecret: ''
+    host: ''
+    terraformProvider: ''
+    crossplaneProvider: ''
+  redis:
+    host: ''
+    port: 6379
+    secretStore: corevault-rootsecrets
+    secretKey: ''
+    locationDatabase: 155
+    registryDatabase: 156
+  imageDigests:
+    location: ''
+    registry: ''
+  edgeport:
+    udp:
+      enabled: false
+      port: 5060
+    tcp:
+      enabled: false
+      port: 5060
+    tls:
+      enabled: false
+      port: 5061
+    ws:
+      enabled: false
+      port: 5062
+    wss:
+      enabled: false
+      port: 5063
+
 # The BJW-S loader reads this map during chart initialization; the local
 # common template populates it with the enabled Asterisk/FreeSWITCH controllers.
 controllers: {}

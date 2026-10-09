@@ -1,5 +1,18 @@
 # AVoIP render checks
 
+The optional Routr Connect integration has a separate rendering check:
+
+```sh
+AVoIP/tests/routr-connect-render.sh
+```
+
+Routr is disabled by default and uses the shared PostgreSQL claim and shared
+Dragonfly endpoint when opted in. Its Location and Registry images require the
+published, digest-pinned DB selection patch. The test confirms rendering and
+fail-closed values only; it does not test external database connectivity,
+Prisma migration, or SIP signaling. See the [Routr pilot notes](../docs/ROUTR.md)
+before adding a site values override.
+
 Run the WSS edge rendering checks from the repository root:
 
 ```sh

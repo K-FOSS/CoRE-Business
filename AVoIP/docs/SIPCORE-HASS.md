@@ -83,8 +83,8 @@ are under `AVoIP/image/kamailio-lf-heartbeat/`. The root
 [Forgejo workflow](../../.forgejo/workflows/kamailio-lf-heartbeat.yaml) follows
 the tested Buildx and registry pattern from
 [Core-Docker's image workflow](https://github.com/K-FOSS/Core-Docker/blob/main/.forgejo/workflows/Daily.yaml):
-it tests the local amd64 image, then publishes an immutable multi-platform
-image on `main` and records its digest. The live Home1 override remains
+it tests and publishes an immutable amd64 image on `main` and records its
+digest. The live Home1 override remains
 pending until that workflow succeeds and the digest is pinned in the owning
 CoRE-Backplane ApplicationSet. Apply the same option and image to every
 `internal-wss` replica. The `internal` private-SBC and carrier instances must

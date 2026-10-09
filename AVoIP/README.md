@@ -27,7 +27,7 @@ The dedicated WSS edge has an opt-in, exact LF/LF heartbeat compatibility
 patch for Home Assistant SIP Core. It is disabled by default and requires a
 separately built and digest-pinned Kamailio 6.1.4 image. The
 [Forgejo workflow](../.forgejo/workflows/kamailio-lf-heartbeat.yaml) tests an
-amd64 build and publishes a multi-platform image on `main`; its successful run
+amd64 build and publishes an amd64 image on `main`; its successful run
 reports the immutable digest. See the [SIP Core
 compatibility notes](docs/SIPCORE-HASS.md#home-assistant-lf-only-heartbeat-compatibility)
 and [test instructions](tests/README.md#home-assistant-lf-only-heartbeat-regression).
@@ -84,6 +84,15 @@ state. Kubernetes client-IP affinity cannot identify the owner because Envoy
 and Asterisk are different clients. See the
 [WSS edge rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode)
 before enabling the additional instance.
+
+Routr Connect 2.13.6 is integrated as optional workloads in this chart's
+BJW-S common-library render, based on the [upstream Connect chart](https://github.com/fonoster/routr/tree/v2.13.6/ops/charts/connect)
+and [Routr documentation](https://routr.io/docs/2.11.5/connect/concepts/). It is
+disabled by default; Asterisk remains the active registrar and authentication
+authority. Routr uses the shared site PostgreSQL service and Dragonfly logical
+databases 155 (Location) and 156 (Registry). Location and Registry require
+patched images built from the pinned Routr source to select those databases.
+See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
 Home1/YVR fax reception has been reported working over G.711. The owning
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)

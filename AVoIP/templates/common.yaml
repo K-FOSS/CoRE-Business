@@ -643,6 +643,8 @@ defaultPodOptions:
     logs: loki-myloginspace
 
 configMaps:
+{{- $routrResources := include "avoip.routr.common.values" . | fromYaml -}}
+{{- with $routrResources.configMaps }}{{ toYaml . | nindent 2 }}{{- end }}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
 {{- if $instance.enabled -}}
 {{- $values := deepCopy $.Values -}}
@@ -724,6 +726,7 @@ networkpolicies:
 {{ end }}
 
 controllers:
+{{- with $routrResources.controllers }}{{ toYaml . | nindent 2 }}{{- end }}
 {{- if .Values.asterisk.enabled }}
   asterisk:
     forceRename: '{{ include "avoip.fullname" . }}-asterisk'
@@ -1692,6 +1695,7 @@ controllers:
 {{- end }}
 
 service:
+{{- with $routrResources.services }}{{ toYaml . | nindent 2 }}{{- end }}
 {{- if .Values.asterisk.enabled }}
   asterisk:
     forceRename: '{{ include "avoip.fullname" . }}-asterisk'
@@ -1864,6 +1868,7 @@ service:
 {{- end }}
 
 persistence:
+{{ include "avoip.routr.common.persistence" . }}
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
   rtpengine-valkey-proxy-config:
     type: configMap

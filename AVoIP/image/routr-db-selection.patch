@@ -1,0 +1,165 @@
+diff --git a/mods/location/src/redis_store.ts b/mods/location/src/redis_store.ts
+index 209c38f..4380397 100644
+--- a/mods/location/src/redis_store.ts
++++ b/mods/location/src/redis_store.ts
+@@ -24,6 +24,13 @@ import { getLogger } from "@fonoster/logger"
+ 
+ const logger = getLogger({ service: "location", filePath: __filename })
+ 
++export const getRedisUrl = (
++  config: Redis.RedisStoreConfig & { dbNumber?: number }
++): string => {
++  const dbNumber = (config as Redis.RedisStoreConfig & { dbNumber?: number }).dbNumber
++  return `${Redis.getRedisUrlFromConfig(config)}${dbNumber === undefined ? "" : `/${dbNumber}`}`
++}
++
+ /**
+  * Redis store for the locator service.
+  */
+@@ -37,9 +44,8 @@ export default class RedisStore implements ILocatorStore {
+    * @param {Redis.RedisStoreConfig} config - Optional store config
+    */
+   constructor(config?: Redis.RedisStoreConfig) {
+-    this.client = config
+-      ? createClient({ url: Redis.getRedisUrlFromConfig(config) })
+-      : createClient()
++    const redisUrl = config ? getRedisUrl(config) : undefined
++    this.client = redisUrl ? createClient({ url: redisUrl }) : createClient()
+     this.client.connect()
+     this.client.on("error", (err: unknown) =>
+       logger.error("redis client error: ", err)
+diff --git a/mods/location/src/service.ts b/mods/location/src/service.ts
+index 878fc15..22d0687 100644
+--- a/mods/location/src/service.ts
++++ b/mods/location/src/service.ts
+@@ -26,7 +26,7 @@ import RedisStore from "./redis_store"
+ 
+ const logger = getLogger({ service: "location", filePath: __filename })
+ 
+-const allowedParameters = ["host", "port", "username", "password", "secure"]
++const allowedParameters = ["host", "port", "username", "password", "secure", "dbNumber"]
+ 
+ /**
+  * Creates a new locator service.
+diff --git a/mods/location/src/types.ts b/mods/location/src/types.ts
+index 288ce3c..6f56f59 100644
+--- a/mods/location/src/types.ts
++++ b/mods/location/src/types.ts
+@@ -79,4 +79,5 @@ export interface RedisStoreConfig {
+   host: string
+   port: number
+   secure?: boolean
++  dbNumber?: number
+ }
+diff --git a/mods/registry/src/redis_store.ts b/mods/registry/src/redis_store.ts
+index 71afec6..99685be 100644
+--- a/mods/registry/src/redis_store.ts
++++ b/mods/registry/src/redis_store.ts
+@@ -24,6 +24,13 @@ import { getLogger } from "@fonoster/logger"
+ const KEY_PREFIX = "registry"
+ const logger = getLogger({ service: "registry", filePath: __filename })
+ 
++export const getRedisUrl = (
++  config: Redis.RedisStoreConfig & { dbNumber?: number }
++): string => {
++  const dbNumber = (config as Redis.RedisStoreConfig & { dbNumber?: number }).dbNumber
++  return `${Redis.getRedisUrlFromConfig(config)}${dbNumber === undefined ? "" : `/${dbNumber}`}`
++}
++
+ /**
+  * Redis store for the registry service.
+  */
+@@ -37,9 +44,8 @@ export default class RedisStore implements IRegistryStore {
+    * @param {Redis.RedisStoreConfig} config - Optional store config
+    */
+   constructor(config?: Redis.RedisStoreConfig) {
+-    this.client = config
+-      ? createClient({ url: Redis.getRedisUrlFromConfig(config) })
+-      : createClient()
++    const redisUrl = config ? getRedisUrl(config) : undefined
++    this.client = redisUrl ? createClient({ url: redisUrl }) : createClient()
+     this.client.connect()
+     this.client.on("error", (err: unknown) =>
+       logger.error("redis client error: ", err)
+diff --git a/mods/registry/src/types.ts b/mods/registry/src/types.ts
+index d0bcabf..bbfe62b 100644
+--- a/mods/registry/src/types.ts
++++ b/mods/registry/src/types.ts
+@@ -68,7 +68,7 @@ export interface RedisStoreConfig {
+   password?: string
+   host: string
+   port: number
+-  // dbNumber?: number
++  dbNumber?: number
+   secure?: boolean
+ }
+ 
+diff --git a/mods/registry/src/utils.ts b/mods/registry/src/utils.ts
+index 79caf7a..967da84 100644
+--- a/mods/registry/src/utils.ts
++++ b/mods/registry/src/utils.ts
+@@ -76,7 +76,7 @@ export const configFromString = (
+ 
+ export const buildStore = (config: RegistryConfig) => {
+   if (config.cache.provider === CacheProvider.REDIS) {
+-    const allowedParameters = ["host", "port", "username", "password", "secure"]
++    const allowedParameters = ["host", "port", "username", "password", "secure", "dbNumber"]
+     return new RedisStore(
+       configFromString(
+         config.cache.parameters,
+diff --git a/mods/location/test/redis_db_number.unit.test.ts b/mods/location/test/redis_db_number.unit.test.ts
+new file mode 100644
+index 0000000..f41c083
+--- /dev/null
++++ b/mods/location/test/redis_db_number.unit.test.ts
+@@ -0,0 +1,22 @@
++import { expect } from "chai"
++import { getRedisUrl } from "../src/redis_store"
++
++describe("Redis logical database selection", () => {
++  it("adds the configured Dragonfly logical database to the Redis URL", () => {
++    const url = getRedisUrl({
++      host: "dragonfly.example.test",
++      port: 6379,
++      username: "default",
++      password: "secret",
++      secure: true,
++      dbNumber: 155
++    })
++
++    expect(url).to.equal("rediss://default:secret@dragonfly.example.test:6379/155")
++  })
++
++  it("preserves Redis database zero when no database is configured", () => {
++    const url = getRedisUrl({ host: "dragonfly.example.test", port: 6379 })
++    expect(url).to.equal("redis://dragonfly.example.test:6379")
++  })
++})
+diff --git a/mods/registry/test/redis_db_number.unit.test.ts b/mods/registry/test/redis_db_number.unit.test.ts
+new file mode 100644
+index 0000000..6687c18
+--- /dev/null
++++ b/mods/registry/test/redis_db_number.unit.test.ts
+@@ -0,0 +1,22 @@
++import { expect } from "chai"
++import { getRedisUrl } from "../src/redis_store"
++
++describe("Redis logical database selection", () => {
++  it("adds the configured Dragonfly logical database to the Redis URL", () => {
++    const url = getRedisUrl({
++      host: "dragonfly.example.test",
++      port: 6379,
++      username: "default",
++      password: "secret",
++      secure: true,
++      dbNumber: 156
++    })
++
++    expect(url).to.equal("rediss://default:secret@dragonfly.example.test:6379/156")
++  })
++
++  it("preserves Redis database zero when no database is configured", () => {
++    const url = getRedisUrl({ host: "dragonfly.example.test", port: 6379 })
++    expect(url).to.equal("redis://dragonfly.example.test:6379")
++  })
++})

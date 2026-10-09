@@ -1,0 +1,103 @@
+{{- if .Values.routr.enabled -}}
+{{- $name := include "avoip.fullname" . -}}
+{{- $psqlHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.routr.database.host -}}
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: '{{ $name }}-routr'
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/controller
+        operator: In
+        values:
+          - routr-apiserver
+          - routr-connect
+          - routr-dispatcher
+          - routr-location
+          - routr-registry
+          - routr-requester
+          - routr-edgeport
+          - routr-migrations
+    matchLabels:
+      app.kubernetes.io/instance: '{{ .Release.Name }}'
+  ingress:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app.kubernetes.io/controller
+              operator: In
+              values:
+                - routr-apiserver
+                - routr-connect
+                - routr-dispatcher
+                - routr-location
+                - routr-registry
+                - routr-requester
+                - routr-edgeport
+      toPorts:
+        - ports:
+            - port: '51901'
+              protocol: TCP
+            - port: '51902'
+              protocol: TCP
+            - port: '51904'
+              protocol: TCP
+            - port: '51907'
+              protocol: TCP
+            - port: '51909'
+              protocol: TCP
+            - port: '8080'
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchExpressions:
+            - key: app.kubernetes.io/controller
+              operator: In
+              values:
+                - routr-apiserver
+                - routr-connect
+                - routr-dispatcher
+                - routr-location
+                - routr-registry
+                - routr-requester
+                - routr-edgeport
+      toPorts:
+        - ports:
+            - port: '51901'
+              protocol: TCP
+            - port: '51902'
+              protocol: TCP
+            - port: '51904'
+              protocol: TCP
+            - port: '51907'
+              protocol: TCP
+            - port: '51909'
+              protocol: TCP
+            - port: '8080'
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: 'dragonfly'
+            app.kubernetes.io/instance: 'dragonfly-core'
+      toPorts:
+        - ports:
+            - port: '6379'
+              protocol: TCP
+    - toFQDNs:
+        - matchName: '{{ $psqlHost }}'
+      toPorts:
+        - ports:
+            - port: '5432'
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': 'kube-system'
+            k8s-app: 'kube-dns'
+      toPorts:
+        - ports:
+            - port: '53'
+              protocol: UDP
+            - port: '53'
+              protocol: TCP
+{{- end -}}
