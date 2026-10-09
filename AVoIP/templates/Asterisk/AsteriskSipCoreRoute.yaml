@@ -1,8 +1,14 @@
 {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
 {{- $hostname := required "asterisk.sipCore.hostname is required when SIP Core is enabled" .Values.asterisk.sipCore.hostname -}}
+{{- range $name, $duration := .Values.asterisk.sipCore.routeTimeouts -}}
+  {{- if not (regexMatch "^(0s|[1-9][0-9]*(s|m|h))$" (toString $duration)) -}}
+    {{- fail (printf "asterisk.sipCore.routeTimeouts.%s must be 0s or a positive duration in seconds, minutes, or hours" $name) -}}
+  {{- end -}}
+{{- end -}}
 {{- $kamailioService := "" -}}
+{{- $routeInstanceName := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
-  {{- if and $instance.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) (eq $instance.role "private-sbc") -}}
+  {{- if and $instance.enabled (eq $instance.name $routeInstanceName) (eq $instance.role "private-sbc") -}}
     {{- $kamailioService = include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance) -}}
   {{- end -}}
 {{- end -}}
@@ -35,6 +41,6 @@ spec:
           name: '{{ required "Asterisk SIP Core requires the enabled private Kamailio Service" $kamailioService }}'
           port: {{ .Values.asterisk.sipCore.httpPort }}
       timeouts:
-        backendRequest: 30m
-        request: 1h
+        backendRequest: '{{ .Values.asterisk.sipCore.routeTimeouts.backendRequest }}'
+        request: '{{ .Values.asterisk.sipCore.routeTimeouts.request }}'
 {{- end }}

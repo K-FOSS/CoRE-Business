@@ -98,8 +98,58 @@
     {{- end -}}
   {{- end -}}
   {{- if eq $role "private-sbc" -}}
-    {{- if gt (int $effective.replicas) 1 -}}
-      {{- fail (printf "Kamailio %s private-sbc cannot use multiple replicas until SIP Core WSS connection-owner routing is implemented and validated; TOPOS does not share live WebSocket sockets or SIP transaction state" $name) -}}
+    {{- $wssHA := $effective.websocketHA | default dict -}}
+    {{- if and $wssHA.legacyOwner (or $wssHA.enabled (gt (int $effective.replicas) 1) (not $.Values.asterisk.sipCore.enabled)) -}}
+      {{- fail (printf "Kamailio %s websocketHA.legacyOwner requires a single-replica legacy private-sbc and enabled Asterisk SIP Core" $name) -}}
+    {{- end -}}
+    {{- if and (or $wssHA.enabled $wssHA.legacyOwner) $effective.securityContext.pod (or (not (hasKey $effective.securityContext.pod "fsGroup")) (ne (int $effective.securityContext.pod.fsGroup) 1000)) -}}
+      {{- fail (printf "Kamailio %s websocketHA draining requires securityContext.pod.fsGroup=1000 so the non-root process can write the local drain marker and RPC socket" $name) -}}
+    {{- end -}}
+    {{- if and (gt (int $effective.replicas) 1) (not $wssHA.enabled) -}}
+      {{- fail (printf "Kamailio %s private-sbc cannot use multiple replicas unless websocketHA.enabled is true; each WSS socket remains process-local" $name) -}}
+    {{- end -}}
+    {{- if $wssHA.enabled -}}
+      {{- if or (lt (int $effective.replicas) 1) (gt (int $effective.replicas) 10) -}}
+        {{- fail (printf "Kamailio %s websocketHA requires 1-10 replicas" $name) -}}
+      {{- end -}}
+      {{- if and (eq (int $effective.replicas) 1) (not $wssHA.pilot) -}}
+        {{- fail (printf "Kamailio %s websocketHA with one replica is permitted only while websocketHA.pilot is true" $name) -}}
+      {{- end -}}
+      {{- if or (not $.Values.asterisk.enabled) (not $.Values.asterisk.sipCore.enabled) (and (ne $name $.Values.asterisk.sipCore.kamailioInstance) (not $wssHA.pilot)) -}}
+        {{- fail (printf "Kamailio %s websocketHA requires Asterisk SIP Core enabled and either this instance selected or websocketHA.pilot enabled" $name) -}}
+      {{- end -}}
+      {{- if or $effective.registrar.enabled (not $effective.enabled) -}}
+        {{- fail (printf "Kamailio %s websocketHA requires an enabled private-sbc with the Kamailio registrar pilot disabled" $name) -}}
+      {{- end -}}
+      {{- $ownerServiceName := include "avoip.kamailio.resourceName" (dict "root" $ "instance" $effective "suffix" "owner") -}}
+      {{- $ingressServiceName := include "avoip.kamailio.resourceName" (dict "root" $ "instance" $effective) -}}
+      {{- if eq $ownerServiceName $ingressServiceName -}}
+        {{- fail (printf "Kamailio %s websocketHA.ownerServiceName must differ from the Envoy-facing Service name %s" $name $ingressServiceName) -}}
+      {{- end -}}
+      {{- if ne (int $.Values.asterisk.sipCore.httpPort) 8088 -}}
+        {{- fail (printf "Kamailio %s websocketHA requires asterisk.sipCore.httpPort=8088 to preserve the current Envoy backend contract" $name) -}}
+      {{- end -}}
+      {{- if and $wssHA.legacyReturnServiceName (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $wssHA.legacyReturnServiceName)) -}}
+        {{- fail (printf "Kamailio %s websocketHA.legacyReturnServiceName must be a DNS name" $name) -}}
+      {{- end -}}
+      {{- if or (lt (int $wssHA.drainSeconds) 10) (gt (int $wssHA.drainSeconds) 3600) -}}
+        {{- fail (printf "Kamailio %s websocketHA.drainSeconds must be between 10 and 3600" $name) -}}
+      {{- end -}}
+      {{- if or (lt (int $wssHA.endpointRemovalDelaySeconds) 5) (gt (int $wssHA.endpointRemovalDelaySeconds) 60) -}}
+        {{- fail (printf "Kamailio %s websocketHA.endpointRemovalDelaySeconds must be between 5 and 60" $name) -}}
+      {{- end -}}
+      {{- if lt (int $wssHA.terminationGracePeriodSeconds) (add (int $wssHA.drainSeconds) (add (int $wssHA.endpointRemovalDelaySeconds) 5)) -}}
+        {{- fail (printf "Kamailio %s websocketHA.terminationGracePeriodSeconds must exceed drainSeconds plus endpointRemovalDelaySeconds by at least 5 seconds" $name) -}}
+      {{- end -}}
+      {{- if lt (int $wssHA.podDisruptionBudget.minAvailable) 1 -}}
+        {{- fail (printf "Kamailio %s websocketHA.podDisruptionBudget.minAvailable must be at least 1" $name) -}}
+      {{- end -}}
+      {{- if gt (int $wssHA.podDisruptionBudget.minAvailable) (int $effective.replicas) -}}
+        {{- fail (printf "Kamailio %s websocketHA.podDisruptionBudget.minAvailable cannot exceed replicas" $name) -}}
+      {{- end -}}
+      {{- if or (lt (int $wssHA.rolloutPartition) 0) (gt (int $wssHA.rolloutPartition) (int $effective.replicas)) -}}
+        {{- fail (printf "Kamailio %s websocketHA.rolloutPartition must be between zero and replicas" $name) -}}
+      {{- end -}}
     {{- end -}}
     {{- $sets := dict -}}
     {{- $routes := dict -}}
@@ -171,6 +221,18 @@
     {{- $_ := set $redisDatabases $db $name -}}
   {{- end -}}
   {{- $out = append $out $effective -}}
+{{- end -}}
+{{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.ingressKamailioInstance -}}
+  {{- $ingressName := $.Values.asterisk.sipCore.ingressKamailioInstance -}}
+  {{- $ingressInstanceFound := false -}}
+  {{- range $instance := $out -}}
+    {{- if and $instance.enabled (eq $instance.name $ingressName) (eq $instance.role "private-sbc") -}}
+      {{- $ingressInstanceFound = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $ingressInstanceFound -}}
+    {{- fail (printf "asterisk.sipCore.ingressKamailioInstance %s must name an enabled private-sbc instance" $ingressName) -}}
+  {{- end -}}
 {{- end -}}
 {{- toYaml $out -}}
 {{- end -}}

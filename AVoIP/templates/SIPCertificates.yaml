@@ -9,8 +9,11 @@ spec:
   secretName: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}'
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) }}'
-    {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) }}
+    {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).enabled (.Values.kamailio.websocketHA | default dict).legacyOwner) }}
     - '{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}'
+    {{- if (.Values.kamailio.websocketHA | default dict).enabled }}
+    - '*.{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") }}.{{ .Release.Namespace }}.svc.{{ required "cluster.domain is required for SIP owner TLS SANs" .Values.cluster.domain }}'
+    {{- end }}
     {{- end }}
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.enabled }}
     - '{{ include "avoip.sip.siteHost" . }}'

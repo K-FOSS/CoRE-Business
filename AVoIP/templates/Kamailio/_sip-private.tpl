@@ -178,7 +178,7 @@
       route(PRIVATE_RELAY);
     }
 
-    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) }}
     route[FROM_SIPCORE] {
       if (!is_method("REGISTER|INVITE|ACK|BYE|CANCEL|OPTIONS|UPDATE|INFO|PRACK|REFER|NOTIFY|MESSAGE")) {
         sl_send_reply("405", "Method Not Allowed");
@@ -222,10 +222,29 @@
       } else if (is_method("BYE")) {
         rtpengine_manage();
       }
-      if (is_method("INVITE") && !has_totag()) {
-        record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
-      }
+      {{- if .Values.kamailio.websocketHA.enabled }}
       route(TO_SIPCORE_ASTERISK);
+      if (is_method("REGISTER")) {
+        # Asterisk stores this Path with the contact. The URI is generated
+        # from the receiving StatefulSet pod's advertised TLS socket.
+        remove_hf("Path");
+        set_send_socket_name("sipcore_owner_tls");
+        if (!add_path_received()) {
+          sl_send_reply("503", "SIP Owner Path Unavailable");
+          exit;
+        }
+      }
+      {{- end }}
+      if (is_method("INVITE") && !has_totag()) {
+        {{- if .Values.kamailio.websocketHA.enabled }}
+        record_route_preset("SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+        {{- else }}
+        record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+        {{- end }}
+      }
+      {{- if not .Values.kamailio.websocketHA.enabled }}
+      route(TO_SIPCORE_ASTERISK);
+      {{- end }}
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
@@ -246,6 +265,22 @@
         else if ($var(cancel_result) < 0) sl_reply_error();
         exit;
       }
+
+      {{- if .Values.kamailio.websocketHA.enabled }}
+      # Asterisk must have retained the Path from the registered contact.
+      # Missing owner Routes fail closed; never fall back to the shared Service.
+      if (!has_totag() && (!is_present_hf("Route") || !loose_route())) {
+        if (!is_method("ACK")) sl_send_reply("404", "SIP Contact Owner Path Missing");
+        exit;
+      }
+      if (!has_totag()) {
+        # During the migration window Asterisk may append its legacy shared
+        # return proxy after the contact-specific Path. Path is first and
+        # authoritative; discard only the residual Route set on initial
+        # requests before resolving the live local Contact alias.
+        remove_hf("Route");
+      }
+      {{- end }}
 
       $var(sipcore_dialog_routed) = 0;
       $var(sipcore_flow_token_result) = -1;
@@ -334,7 +369,11 @@
           exit;
         }
         if (is_method("INVITE") && !has_totag()) {
+          {{- if .Values.kamailio.websocketHA.enabled }}
+          record_route_preset("SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+          {{- else }}
           record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+          {{- end }}
         }
       }
       if (has_body("application/sdp")) {

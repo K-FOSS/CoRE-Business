@@ -1,5 +1,13 @@
 # Kamailio Helm values
 
+For the observed Home1 SIP Core Gateway contract and the currently explicit
+`internal.replicas: 1` ApplicationSet setting, see the
+[SIP HA gateway baseline](SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-08).
+That baseline documents the existing backend Service/port and the separately
+owned Gateway timeout layer. Private-SBC instances remain single-replica by
+default. Opt-in multi-replica WSS edge behavior and its limits are documented
+in [SIP Stateful HA](SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
+
 This is the value reference for the Kamailio part of the [AVoIP chart](../README.md).
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 injects one `carrier` instance for DC1, Home1, and `dc1-k3s-node1` into
@@ -26,7 +34,7 @@ than append.
 | `name` | `carrier` | Stable identifier; DNS label, lowercase, at most 24 characters. Resource names derive from it, never array position. `carrier` retains the existing `kamailio` resource names and selectors. |
 | `enabled` | `true` | Disabled entries render no Kamailio resources. Keep the entry in the complete site array if it may be enabled later. |
 | `role` | `carrier-sbc` | Supported roles are `carrier-sbc` for the instance named `carrier` and `private-sbc` for other names. An endpoint registrar role is not implemented. |
-| `replicas` | `3` | Independent Deployment replica count; an enabled instance needs at least one. |
+| `replicas` | `3` | Deployment replicas normally; opted-in HA private-SBC instances render as a StatefulSet with 2–10 replicas. |
 
 The `carrier-sbc` role enables media integration and public exposure. The
 `private-sbc` role has a separate routing script, defaults public exposure and
@@ -40,10 +48,14 @@ The private role reserves `100m` CPU and `256Mi` memory for the Kamailio
 container and sends WebSocket keepalive pings every 15 seconds. The interval
 is configurable at `kamailio.defaults.websocket.keepaliveTimeoutSeconds` and
 can be overridden by a role or instance; valid values are 5–600 seconds.
-Private role replicas remain capped at one because SIP WebSocket TCP
-connections and transactions are pod-local. Increasing replicas needs a
-validated affinity and return-dialog design; shared TOPOS state alone does
-not move a live WebSocket connection.
+Private-SBC instances remain one replica unless `websocketHA.enabled` is
+explicitly enabled on an Asterisk SIP Core instance. A one-replica enabled
+instance is allowed only with `websocketHA.pilot: true`; use it for staged
+Path and runtime validation, then scale to at least two (normally three) before
+production activation. HA uses stable StatefulSet
+pod DNS names and Asterisk-stored Path; shared TOPOS does not transfer a live
+WebSocket or a Kamailio transaction. See the staged pilot and cutover steps in
+the [HA runbook](SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
 
 | Current site | Carrier instances and exposure |
 | --- | --- |
@@ -79,6 +91,32 @@ disruption budget. Public resources render only for a publicly exposed
 instance. The carrier's existing selector remains stable; other instances use
 their own controller and instance selector labels. The generated configuration
 checksum and Reloader references cause a rollout when configuration changes.
+
+### WSS edge HA options
+
+Only the selected Asterisk SIP Core private instance may enable HA directly.
+A separate unselected pilot may set `websocketHA.pilot: true` while leaving
+the selected legacy instance running. Invalid replica counts, missing Asterisk
+SIP Core selection, enabled Kamailio registrar, invalid drain timings, PDB
+values and rollout partitions fail Helm rendering.
+
+| Path | Default | Rendered behavior |
+| --- | --- | --- |
+| `websocketHA.enabled` | `false` | Enables StatefulSet identities, Path routing and the owner TLS Service; does not alter the carrier instance. |
+| `websocketHA.pilot` | `false` | Allows an unselected HA private-SBC instance to coexist with the selected legacy service; also permits a selected one-replica test instance. |
+| `websocketHA.legacyOwner` | `false` | Keeps the previous single-replica SIP Core listener and return Service present after another instance becomes selected. Enables local `ctl` and shutdown drain behavior; setting it on an already running legacy instance causes one controlled pod replacement so later drains can use `ws.disable`. |
+| `websocketHA.ownerServiceName` | generated `*-owner` | Headless Service identity used for pod DNS and wildcard certificate SANs. |
+| `websocketHA.legacyReturnServiceName` | `''` | During migration, keeps the previous shared return proxy as a secondary Route for old contacts. Clear only after contacts have Path and the previous instance can be retired. |
+| `websocketHA.podDisruptionBudget.minAvailable` | `2` | Protects at least two replicas during voluntary disruption. |
+| `websocketHA.rolloutPartition` | `0` | StatefulSet rolling update partition for controlled ordinal updates. |
+| `websocketHA.endpointRemovalDelaySeconds` | `10` | Wait after readiness removal for EndpointSlice and gateway backend updates. |
+| `websocketHA.drainSeconds` | `120` | Time for existing connections/dialogs before container exit. |
+| `websocketHA.terminationGracePeriodSeconds` | `150` | Must exceed drain plus endpoint-removal delay by at least five seconds. |
+
+When HA or `legacyOwner` draining is enabled, the default pod security context
+sets `fsGroup: 1000` so the non-root Kamailio UID/GID can write the existing
+`/tmp` emptyDir marker and local ctl socket. A custom pod security context must
+also set `fsGroup: 1000`; Helm rejects a value that would make draining fail.
 
 ## Listeners, Services, and SIP identities
 

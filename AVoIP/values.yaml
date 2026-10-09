@@ -174,6 +174,23 @@ kamailio:
         sipTrace: true
     private-sbc:
       replicas: 1
+      websocketHA:
+        # Opt in only on the private SBC selected by Asterisk SIP Core.
+        # StatefulSet identities and Path routing are activated together.
+        enabled: false
+        # Keep the old single-replica owner rendering the SIP Core listeners
+        # and return Service after Asterisk selects a parallel HA instance.
+        legacyOwner: false
+        # Permit a separate HA instance to render beside the currently selected
+        # private SBC during a staged migration.
+        pilot: false
+        legacyReturnServiceName: ''
+        drainSeconds: 120
+        endpointRemovalDelaySeconds: 10
+        terminationGracePeriodSeconds: 150
+        podDisruptionBudget:
+          minAvailable: 2
+        rolloutPartition: 0
       websocket:
         # Send WebSocket pings before the observed ~30 second idle reconnect.
         keepaliveTimeoutSeconds: 15
@@ -700,6 +717,9 @@ asterisk:
     # Route SIP Core WebSocket signaling through this dedicated private SBC.
     # The selected instance must be enabled with role private-sbc.
     kamailioInstance: 'internal'
+    # Optional Envoy backend selector for staged cutover/rollback. Empty follows
+    # kamailioInstance; the selected instance above remains Asterisk's SIP path owner.
+    ingressKamailioInstance: ''
     hostname: ''
     gatewaySectionName: ''
     allowedOrigins: []
@@ -708,6 +728,10 @@ asterisk:
       # Keep a quiet but connected WebSocket stream open; Kamailio sends
       # client keepalive pings every 15 seconds on the private role.
       streamIdleTimeout: '1h'
+    routeTimeouts:
+      # Zero disables the request-duration cap for long-lived WebSocket streams.
+      request: '0s'
+      backendRequest: '0s'
     # Private TLS ingress used only for Asterisk-originated calls to registered
     # SIP Core WebSocket contacts. The normal Kamailio/FreeSWITCH listener stays
     # on 5062; this port is restricted to the Asterisk workload.

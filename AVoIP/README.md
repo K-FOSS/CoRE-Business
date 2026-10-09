@@ -1,5 +1,13 @@
 # AVoIP
 
+The current Home1 SIP Core Gateway contract and its one-hour connection
+duration constraint are documented in the
+[SIP HA integration baseline](docs/SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-08).
+The chart now has an opt-in three-replica WSS edge mode with a staged pilot
+path. Home1's active ApplicationSet still explicitly keeps the current internal
+instance at one replica; see the [HA rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode)
+before changing that site value.
+
 This chart is the site-specific desired state for the AVoIP stack in `core-prod`.
 The [SIP, identity, and RTC architecture plan](docs/SIP-STATEFUL-HA.md) and its
 [phased TODO tracker](TODO.md) describe proposed stateful routing, web phone,
@@ -304,13 +312,24 @@ on the separate carrier instance. The private instance relays signaling to
 Asterisk over TLS and controls the existing RTPEngine for the Home Assistant
 media leg. The enabled pilot is site-specific; inspect the owning ApplicationSet
 before changing its rollout values. See
-[SIPCORE-HASS.md](docs/SIPCORE-HASS.md).
+[SIPCORE-HASS.md](docs/SIPCORE-HASS.md) and the
+[three-replica WSS edge guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
 
-Run `tests/kamailio-instances.sh`, `tests/sip-registrar-render.sh`, `tests/sip-outbound-render.sh`, and
-`tests/sip-security-render.sh` before
-publishing a change. Review the rendered carrier selector, public Contact,
-source ACL, and private target before scoped Argo CD reconciliation. For live
-acceptance, correlate one Call-ID across both Kamailio legs and FreeSWITCH:
+The HA mode keeps Asterisk as registrar and Digest authority. SIP Path targets
+the exact StatefulSet replica with the registered WebSocket, and a separate
+headless owner Service provides private TLS addressing. The Envoy-facing
+Service retains its current resource name, selector and port 8088. This is
+signaling availability only: an unexpected owner loss interrupts that
+connection's dialogs and media until Home Assistant reconnects and registers.
+The CoRE-Backplane Gateway policy still imposes a one-hour maximum connection
+duration and needs a separate future policy change for longer sessions.
+
+Run `helm lint AVoIP` and `AVoIP/tests/wss-ha-render.sh` for the WSS edge
+rendering checks. The working tree does not include the older Kamailio,
+registrar, outbound or SIP-security shell tests referenced by earlier docs;
+see [test notes](tests/README.md). Review the rendered carrier selector,
+public Contact, source ACL, and private target before scoped Argo CD
+reconciliation. For live acceptance, correlate one Call-ID across both Kamailio legs and FreeSWITCH:
 require the 2xx ACK at FreeSWITCH, a call lasting beyond 60 seconds, and
 BYE/200 completion. Check fax completion separately. Roll back both the chart
 and owning ApplicationSet values if a site instance change must be reverted.

@@ -12,9 +12,9 @@ spec:
       app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}'
       app.kubernetes.io/instance: '{{ $root.Release.Name }}'
   ingress:
-    {{- if and (not $instance.privateRouting.peers) (not (and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance))) }} []
+    {{- if and (not $instance.privateRouting.peers) (not (and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) $instance.websocketHA.enabled $instance.websocketHA.legacyOwner))) }} []
     {{- else }}
-    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) $instance.websocketHA.enabled $instance.websocketHA.legacyOwner) }}
     - fromEndpoints:
         - matchLabels:
             'k8s:io.kubernetes.pod.namespace': '{{ $instance.networkPolicy.envoy.namespace }}'
@@ -64,7 +64,7 @@ spec:
             - port: '5061'
               protocol: 'TCP'
     {{- end }}
-    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) $instance.websocketHA.enabled $instance.websocketHA.legacyOwner) }}
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/controller: 'asterisk'

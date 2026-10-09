@@ -7,7 +7,10 @@
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
 {{- $sipCoreConfigured := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled -}}
-{{- $sipCoreEnabled := and $sipCoreConfigured (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) -}}
+{{- $websocketHA := .Values.kamailio.websocketHA | default dict -}}
+{{- $sipCoreEnabled := and $sipCoreConfigured (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) $websocketHA.enabled $websocketHA.legacyOwner) -}}
+{{- $ownerService := include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") -}}
+{{- $ownerHost := printf "%s.%s.svc.%s" $ownerService .Release.Namespace (required "cluster.domain is required for Kamailio owner addressing" .Values.cluster.domain) -}}
 {{- $rawSipLogging := and (or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound)) (not $sipCoreConfigured) -}}
 {{- $carrierTrafficLogging := and (not $sipCoreConfigured) (default false .Values.kamailio.sipLogging.carrierTraffic) -}}
 {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled (not .Values.kamailio.publicExposure.sip.directService.enabled) -}}
@@ -57,7 +60,15 @@ data:
     {{- if $sipCoreEnabled }}
     tcp_accept_no_cl=yes
     listen=tcp:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.httpPort }} name "sipcore_ws"
+    {{- if $websocketHA.enabled }}
+    # This one token is substituted by Kamailio's preprocessor from POD_NAME.
+    # The rest of the SIP script remains untouched by generic envsubst.
+    #!substdef "/SIPCORE_OWNER_POD/$env(POD_NAME)/"
+    listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "SIPCORE_OWNER_POD.{{ $ownerHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_owner_tls"
+    alias="SIPCORE_OWNER_POD.{{ $ownerHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}"
+    {{- else }}
     listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $kamailioHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
+    {{- end }}
     {{- end }}
 
     # Public carrier-facing identity.
@@ -90,18 +101,26 @@ data:
     loadmodule "sl.so"
     {{- if $sipCoreEnabled }}
     loadmodule "nathelper.so"
+    {{- if $websocketHA.enabled }}
     loadmodule "outbound.so"
+    loadmodule "path.so"
+    modparam("path", "use_received", 0)
+    {{- end }}
+    {{- if or $websocketHA.enabled $websocketHA.legacyOwner }}
+    loadmodule "ctl.so"
+    modparam("ctl", "binrpc", "unix:/tmp/kamailio_ctl")
+    {{- end }}
     loadmodule "xhttp.so"
     loadmodule "websocket.so"
     modparam("websocket", "cors_mode", 0)
     modparam("websocket", "keepalive_mechanism", 1)
     modparam("websocket", "keepalive_timeout", {{ .Values.kamailio.websocket.keepaliveTimeoutSeconds }})
     {{- end }}
-    loadmodule "rr.so"
     loadmodule "corex.so"
     loadmodule "maxfwd.so"
     loadmodule "sanity.so"
     loadmodule "pv.so"
+    loadmodule "rr.so"
     loadmodule "siputils.so"
     loadmodule "textops.so"
     loadmodule "xlog.so"
@@ -123,7 +142,6 @@ data:
     loadmodule "auth_db.so"
     loadmodule "usrloc.so"
     loadmodule "registrar.so"
-    loadmodule "path.so"
     loadmodule "nathelper.so"
     modparam("auth_db", "db_url", REGISTRAR_DB_URL)
     modparam("auth_db", "use_domain", 1)
@@ -337,7 +355,7 @@ data:
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 
-    {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) }}
+    {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) $websocketHA.enabled $websocketHA.legacyOwner) }}
     # Asterisk's ACME certificate is a server certificate, not a client
     # identity. Its dedicated return listener relies on Cilium's workload
     # identity policy; the other private TLS listener keeps strict mTLS.
@@ -348,6 +366,19 @@ data:
     require_certificate = no
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
+    {{- if $websocketHA.enabled }}
+    # Pod SNI names share a cert-manager wildcard SAN for the owner Service.
+    # This exception is source-restricted to Asterisk/edge Cilium identities;
+    # the strict default mTLS profile remains active on 5062.
+    [server:any]
+    server_name = {{ $ownerHost }}
+    server_name_mode = 2
+    method = TLSv1.2+
+    verify_certificate = no
+    require_certificate = no
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
+    {{- end }}
     {{- end }}
 
     {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}

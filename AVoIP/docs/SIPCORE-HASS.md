@@ -1,5 +1,18 @@
 # Home Assistant SIP Core with static Asterisk extensions
 
+The current Home1 Envoy Gateway resources, TLS termination, Host/Origin
+contract, timeout layers, and ApplicationSet's explicit one-replica override
+are recorded in the [SIP HA gateway baseline](SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-08).
+The generated HTTPRoute is owned by this chart and currently targets the
+internal Kamailio Service on port 8088. Increasing replicas alone is unsafe:
+the shared Envoy Service balances new connections but cannot route later SIP
+requests to the Kamailio process that owns a registered WebSocket.
+The chart's opt-in `websocketHA` mode supplies stable StatefulSet owner DNS,
+Path routing and Asterisk return routing; the Home1 ApplicationSet remains
+at one replica until its separately reviewed staged cutover. See
+[SIP Stateful HA](SIP-STATEFUL-HA.md#implemented-wss-edge-mode) for the
+observed Envoy resources, exact future values and operator acceptance steps.
+
 The [SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration)
 is a browser WebRTC SIP client. It connects to Asterisk over WSS and registers
 one or more configured SIP users. Its separate optional Asterisk integration
@@ -13,9 +26,9 @@ and Asterisk's [WebRTC/PJSIP guide](https://docs.asterisk.org/Configuration/WebR
 The browser connects to `wss://<configured-hostname>/ws`. Envoy Gateway
 terminates WSS and proxies the HTTP WebSocket upgrade to the dedicated
 internal Kamailio SBC on port 8088. That instance relays SIP to Asterisk over
-TLS on port 5061. Asterisk's reverse signaling leg returns to the same
-internal instance on its Asterisk-only TLS listener (default port 5063), which
-uses the registered WebSocket flow. The carrier SBC does not process this
+TLS on port 5061. Asterisk's reverse signaling leg returns to the registered
+owner's TLS listener (default port 5063) when HA Path is enabled, or to the
+single shared return Service in legacy mode. The carrier SBC does not process this
 WebSocket or Asterisk signaling path; its FreeSWITCH, carrier, and fax routes
 remain on the carrier instance. The HTTP `X-Forwarded-For` header belongs to
 the upgrade request; it is not part of the SIP messages carried inside the
@@ -110,11 +123,23 @@ behavior.
   dedicated listener's Cilium workload policy is the trust boundary. Calls
   initiated by a Home Assistant extension remain constrained by that
   extension's Asterisk `allowCallsTo` dialplan context.
+- When the selected private instance opts into `websocketHA.enabled`, the
+  chart changes only that instance to a StatefulSet, adds a headless
+  owner-address Service, and keeps the existing Envoy-facing Service name and
+  port. A per-owner Path is generated for REGISTER and stored by Asterisk
+  `support_path=yes`; the browser's socket and Kamailio transaction remain
+  process-local. Asterisk remains the registrar, contact database and Digest
+  authority. Missing/dead Path owners fail safely and require client
+  reconnection plus authenticated re-registration.
 - Reads each extension's random SIP password from an ExternalSecret sourced
   from the configured CoreVault-backed SecretStore. At startup, it writes a
   private, temporary PJSIP include; the password is never rendered into Git or
   a ConfigMap. Use at least 32 hexadecimal characters.
 - Adds a public HTTPRoute for only `/ws` on the existing Gateway HTTPS listener.
+- Disables the route request and backend request-duration caps for WSS while
+  retaining a configurable one-hour default stream-idle limit. The separately
+  owned Backplane Gateway policy still has a one-hour maximum connection
+  duration; it must be reviewed separately for longer-lived WebSockets.
   It forwards the WebSocket to the selected private Kamailio Service on port
   8088. A route-scoped Envoy Gateway
   [BackendTrafficPolicy](https://gateway.envoyproxy.io/docs/concepts/gateway_api_extensions/backend-traffic-policy/)

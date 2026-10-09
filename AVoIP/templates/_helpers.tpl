@@ -98,7 +98,12 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 
 {{- define "avoip.sip.sipCoreReturnHost" -}}
 {{- $root := .root -}}
-{{- $instance := dict "name" $root.Values.asterisk.sipCore.kamailioInstance -}}
+{{- $instanceName := $root.Values.asterisk.sipCore.kamailioInstance -}}
+{{- $currentHA := $root.Values.kamailio.websocketHA | default dict -}}
+{{- if and $currentHA.legacyOwner $root.Values.kamailio.name -}}
+  {{- $instanceName = $root.Values.kamailio.name -}}
+{{- end -}}
+{{- $instance := dict "name" $instanceName -}}
 {{- $serviceName := include "avoip.kamailio.resourceName" (dict "root" $root "instance" $instance "suffix" "sipcore-return") -}}
 {{- printf "%s.%s.svc.%s" $serviceName $root.Release.Namespace (required "cluster.domain is required for SIP Core return service" $root.Values.cluster.domain) -}}
 {{- end -}}

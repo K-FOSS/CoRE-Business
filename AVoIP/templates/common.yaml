@@ -127,20 +127,33 @@
 
 {{- define "avoip.kamailio.common.controllers" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- $websocketHA := .Values.kamailio.websocketHA | default dict -}}
+{{- $drainableSipCore := or $websocketHA.enabled $websocketHA.legacyOwner -}}
 {{ if .Values.kamailio.enabled }}
   {{ $component }}:
     forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
+    {{- if $websocketHA.enabled }}
+    type: statefulset
+    statefulset:
+      serviceName:
+        identifier: '{{ $component }}-owner'
+    {{- end }}
     {{- if .Values.kamailio.registrar.enabled }}
     annotations:
       argocd.argoproj.io/sync-wave: '1'
     {{- end }}
     strategy: RollingUpdate
+    {{- if $websocketHA.enabled }}
+    rollingUpdate:
+      partition: {{ int $websocketHA.rolloutPartition }}
+    {{- else }}
     rollingUpdate:
       surge: '{{ .Values.kamailio.rollingUpdate.surge }}'
       unavailable: '{{ .Values.kamailio.rollingUpdate.unavailable }}'
+    {{- end }}
     replicas: {{ .Values.kamailio.replicas }}
     podDisruptionBudget:
-      minAvailable: {{ .Values.kamailio.podDisruptionBudget.minAvailable }}
+      minAvailable: {{ if $websocketHA.enabled }}{{ int $websocketHA.podDisruptionBudget.minAvailable }}{{ else }}{{ .Values.kamailio.podDisruptionBudget.minAvailable }}{{ end }}
     revisionHistoryLimit: 3
     serviceAccount:
       name: '{{ .Values.kamailio.serviceAccountName }}'
@@ -153,6 +166,9 @@
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
+{{- if $drainableSipCore }}
+        fsGroup: 1000
+{{- end }}
         seccompProfile:
           type: RuntimeDefault
       {{- end }}
@@ -173,7 +189,7 @@
 {{- with .Values.kamailio.podAnnotations }}
 {{ toYaml . | nindent 8 }}
 {{- end }}
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: {{ if $drainableSipCore }}{{ int $websocketHA.terminationGracePeriodSeconds }}{{ else }}60{{ end }}
 {{- with .Values.kamailio.scheduling.nodeSelector }}
       nodeSelector:
 {{ toYaml . | nindent 8 }}
@@ -315,6 +331,18 @@
             drop:
               - ALL
 {{- end }}
+        {{- if $drainableSipCore }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - >-
+                  touch /tmp/kamailio-draining;
+                  kamcmd -s unix:/tmp/kamailio_ctl ws.disable || true;
+                  sleep {{ add (int $websocketHA.endpointRemovalDelaySeconds) (int $websocketHA.drainSeconds) }}
+        {{- end }}
 {{- with .Values.kamailio.resources }}
         resources:
 {{ toYaml . | nindent 10 }}
@@ -328,7 +356,7 @@
                 command:
                   - /bin/sh
                   - -c
-                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
+                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1{{ if $drainableSipCore }} && test ! -e /tmp/kamailio-draining{{ end }}
               periodSeconds: 5
               timeoutSeconds: 3
               failureThreshold: 18
@@ -340,7 +368,7 @@
                 command:
                   - /bin/sh
                   - -c
-                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1
+                  - test -r /etc/kamailio/kamailio.cfg && test -s /tmp/kamailio.pid && kill -0 1{{ if $drainableSipCore }} && test ! -e /tmp/kamailio-draining{{ end }}
               periodSeconds: 10
               timeoutSeconds: 3
               failureThreshold: 3
@@ -373,7 +401,7 @@
           - name: tls-private
             containerPort: 5062
             protocol: TCP
-        {{- if and (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+        {{- if and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).enabled (.Values.kamailio.websocketHA | default dict).legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
           - name: sipcore-ws
             containerPort: {{ $.Values.asterisk.sipCore.httpPort }}
             protocol: TCP
@@ -435,7 +463,7 @@
         port: 5062
         targetPort: tls-private
         protocol: TCP
-    {{- if and (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+    {{- if and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).enabled (.Values.kamailio.websocketHA | default dict).legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
       sipcore-ws:
         port: {{ $.Values.asterisk.sipCore.httpPort }}
         targetPort: sipcore-ws
@@ -446,14 +474,33 @@
         targetPort: sipcore-tls
         protocol: TCP
     {{- end }}
-{{- if and (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
+{{- if and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
   {{ $component }}-sipcore-return:
     forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-return") }}'
     controller: {{ $component }}
     extraSelectorLabels:
       avoip.mylogin.space/kamailio-instance: '{{ .Values.kamailio.name }}'
+    {{- if (.Values.kamailio.websocketHA | default dict).legacyOwner }}
+    publishNotReadyAddresses: true
+    {{- end }}
     ports:
       sipcore-return:
+        port: {{ $.Values.asterisk.sipCore.privateEgressPort }}
+        targetPort: sipcore-tls
+        protocol: TCP
+{{- end }}
+{{- if and (.Values.kamailio.websocketHA | default dict).enabled (eq .Values.kamailio.role "private-sbc") }}
+  {{ $component }}-owner:
+    forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") }}'
+    controller: {{ $component }}
+    extraSelectorLabels:
+      avoip.mylogin.space/kamailio-instance: '{{ .Values.kamailio.name }}'
+    clusterIP: 'None'
+    # Keep stable owner DNS usable during readiness-based drain until the
+    # process exits. The Envoy-facing Service still excludes draining pods.
+    publishNotReadyAddresses: true
+    ports:
+      sipcore-owner:
         port: {{ $.Values.asterisk.sipCore.privateEgressPort }}
         targetPort: sipcore-tls
         protocol: TCP
@@ -562,6 +609,14 @@
 
 {{- define "avoip.common.values" -}}
 {{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
+{{- $sipCoreWebsocketHA := false -}}
+{{- $sipCoreLegacyReturnService := "" -}}
+{{- range (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+  {{- if and (eq .name $.Values.asterisk.sipCore.kamailioInstance) (eq .role "private-sbc") -}}
+    {{- $sipCoreWebsocketHA = .websocketHA.enabled -}}
+    {{- $sipCoreLegacyReturnService = .websocketHA.legacyReturnServiceName -}}
+  {{- end -}}
+{{- end -}}
 {{- if or (lt (int .Values.freeswitch.sipLogging.sofiaDebug) 0) (gt (int .Values.freeswitch.sipLogging.sofiaDebug) 9) }}{{- fail "freeswitch.sipLogging.sofiaDebug must be between 0 and 9" }}{{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
 {{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
@@ -797,8 +852,21 @@ controllers:
             if [ "${#sip_password}" -lt 32 ]; then echo 'SIP Core password must be at least 32 characters' >&2; exit 1; fi
             {
               printf '[{{ .number }}]\ntype=auth\nauth_type=userpass\nusername={{ .number }}\npassword=%s\n\n' "$sip_password"
-              printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\n\n'
-              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\noutbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\naors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
+              printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\nsupport_path=yes\n\n'
+              printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\n'
+              {{- if $sipCoreWebsocketHA }}
+                {{- if $sipCoreLegacyReturnService }}
+              printf 'outbound_proxy=sip:{{ $sipCoreLegacyReturnService }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\n'
+                {{- else }}
+              # Path is prepended ahead of this local sink by Asterisk 20's
+              # res_pjsip_path. A missing Path fails locally instead of sending
+              # SIP directly to the browser or a random edge replica.
+              printf 'outbound_proxy=sip:127.0.0.1:1\\;transport=tls\\;lr\n'
+                {{- end }}
+              {{- else }}
+              printf 'outbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\n'
+              {{- end }}
+              printf 'aors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow=ulaw,alaw\n'
               {{- if and $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.media.enabled }}
               printf 'media_address={{ $.Values.asterisk.sipCore.media.address }}\n'
               {{- end }}
