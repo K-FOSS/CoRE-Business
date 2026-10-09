@@ -198,6 +198,14 @@ behavior.
   (default 30 seconds), it ends without starting the GG call. The callback
   starts one minute after the hello-world call ends by default, controlled by
   `asterisk.sipCore.ggCallbackDelaySeconds`.
+  With the HA WSS instance selected, Asterisk must use the Path stored with
+  each PJSIP contact. The endpoint therefore has no `outbound_proxy`: a fixed
+  endpoint proxy overrides the per-contact owner Path. Asterisk logs from the
+  YVR investigation showed the previous loopback sink proxy caused callback
+  INVITEs to fail locally with 503 before reaching Kamailio. The chart now
+  leaves this proxy unset for HA while Kamailio rejects REGISTER without a
+  valid owner Path. Existing contacts created by the legacy path should
+  re-register through the HA endpoint before calls or callbacks can reach them.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk
   profile requires SIP Digest and selects `from-asterisk`; the private-network

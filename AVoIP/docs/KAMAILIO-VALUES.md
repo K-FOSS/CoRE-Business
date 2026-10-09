@@ -116,7 +116,6 @@ values and rollout partitions fail Helm rendering.
 | `websocketHA.pilot` | `false` | Allows an unselected HA private-SBC instance to coexist with the selected legacy service; also permits a selected one-replica test instance. |
 | `websocketHA.legacyOwner` | `false` | Keeps the previous single-replica SIP Core listener and return Service present after another instance becomes selected. Enables local `ctl` and shutdown drain behavior; setting it on an already running legacy instance causes one controlled pod replacement so later drains can use `ws.disable`. |
 | `websocketHA.ownerServiceName` | generated `*-owner` | Headless Service identity used for pod DNS and wildcard certificate SANs. |
-| `websocketHA.legacyReturnServiceName` | `''` | During migration, keeps the previous shared return proxy as a secondary Route for old contacts. Clear only after contacts have Path and the previous instance can be retired. |
 | `websocketHA.podDisruptionBudget.minAvailable` | `2` | Protects at least two replicas during voluntary disruption. |
 | `websocketHA.rolloutPartition` | `0` | StatefulSet rolling update partition for controlled ordinal updates. |
 | `websocketHA.endpointRemovalDelaySeconds` | `10` | Wait after readiness removal for EndpointSlice and gateway backend updates. |
