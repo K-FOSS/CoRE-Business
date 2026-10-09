@@ -71,8 +71,8 @@ spec:
           name: '{{ include "avoip.fullname" . }}-homer-web'
           port: 80
       timeouts:
-        backendRequest: 30m
-        request: 30s
+        backendRequest: 0s
+        request: 0s
 ---
 # Homer must receive its OAuth callback without the outer Forward Auth check.
 # Otherwise Authentik challenges the callback before Homer can exchange the
