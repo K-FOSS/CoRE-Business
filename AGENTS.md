@@ -266,6 +266,13 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   identity, secrets, storage and site failures.
 - Validate every parser boundary touched by a change: Helm, Kustomize, YAML,
   embedded Terraform, shell/config fragments and Kubernetes custom resources.
+- For CI or image-build workflows triggered by a push, locate the run for the
+  pushed commit and confirm its commit SHA. Poll the run until it reaches a
+  terminal state; a running job or a successful early step is not completion.
+  On failure, inspect the failed step's log for that attempt, fix the diagnosed
+  cause, and follow the new run through completion. Do not blindly rerun a
+  failed build before understanding its cause; keep log excerpts focused and
+  never disclose credentials that may appear in logs.
 - For Helm/Lovely changes, resolve dependencies locally, run `helm lint`,
   render with representative defaults plus Backplane-injected values and
   inspect the complete output. A default-values render alone is not proof of a
