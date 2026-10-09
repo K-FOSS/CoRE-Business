@@ -149,6 +149,8 @@ behavior.
   extension's dedicated dialplan context, not caller-supplied Caller ID. The
   callback rings with the configured display name
   `asterisk.sipCore.ggCallbackCallerIdName` (default `Important Message`).
+  Kamailio aliases the WebSocket Contact in the callback response so Asterisk's
+  later ACK and BYE reuse the active WebSocket flow.
   The callback uses Asterisk's `PJSIP_DIAL_CONTACTS()` to ring all currently
   registered contacts for that extension in parallel. Asterisk starts the
   callback independently of the ended source channel, then enters the GG route

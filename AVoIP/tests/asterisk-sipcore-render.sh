@@ -135,7 +135,7 @@ if grep -Fq 'record_route_preset("sip:' "$tmp_dir/empty-matches.yaml"; then
   fail 'Kamailio record_route_preset incorrectly includes a scheme that the function adds itself'
 fi
 rtpengine_sdp_line="$(grep -n 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
-record_route_line="$(grep -n 'record_route_preset("siptest-avoip-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063;transport=tls")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
+record_route_line="$(grep -n 'record_route_preset("siptest-avoip-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063;transport=tls;lr")' "$tmp_dir/empty-matches.yaml" | head -n 1 | cut -d: -f1)"
 if [[ -z "$rtpengine_sdp_line" || -z "$record_route_line" || "$rtpengine_sdp_line" -ge "$record_route_line" ]]; then
   fail 'RTPEngine SDP updates must happen before adding Record-Route'
 fi
@@ -242,8 +242,16 @@ grep -Fq 'route[FROM_SIPCORE]' "$tmp_dir/internal-kamailio.cfg" || fail 'interna
 grep -Fq 'rtpengine_manage("WebRTC replace-origin external internal")' "$tmp_dir/internal-kamailio.cfg" || fail 'internal Kamailio is missing SIP Core RTPEngine media handling'
 grep -Fq 'onreply_route[SIPCORE_WS_REPLY]' "$tmp_dir/internal-kamailio.cfg" || fail 'SIP Core WebSocket replies are not isolated from carrier reply handling'
 grep -Fq 'onreply_route[SIPCORE_ASTERISK_REPLY]' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk reverse-leg replies are not isolated from carrier reply handling'
-grep -Fq 'SIP Core BYE received from Asterisk for WebSocket relay' "$tmp_dir/internal-kamailio.cfg" || fail 'SIP Core BYE relay diagnostic marker is missing'
-grep -Fq 'SIP Core WebSocket BYE response status=$rs' "$tmp_dir/internal-kamailio.cfg" || fail 'SIP Core BYE response diagnostic marker is missing'
+awk '
+  /onreply_route\[SIPCORE_ASTERISK_REPLY\]/ { active = 1 }
+  active && /onreply_route\[SIPCORE_WS_REPLY\]/ { exit }
+  active && /nat_uac_test\(64\) && is_present_hf\("Contact"\)/ { detects_websocket = 1 }
+  active && /add_contact_alias\(\)/ { aliases_contact = 1 }
+  END { exit !(detects_websocket && aliases_contact) }
+' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk callback replies do not preserve WebSocket Contact aliases for in-dialog requests'
+grep -Fq 'stage=asterisk-local-route-loop-failure' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk dialog loop failure diagnostic is missing'
+grep -Fq 'stage=asterisk-local-route-collapsed' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk dialog route collapse diagnostic is missing'
+grep -Fq 'stage=websocket-response' "$tmp_dir/internal-kamailio.cfg" || fail 'WebSocket reply diagnostic marker is missing'
 grep -Fq 'RTPEngine SIP Core outbound answer handling failed' "$tmp_dir/internal-kamailio.cfg" || fail 'Asterisk-originated media answers are not relayed through RTPEngine'
 grep -Fq 'SIP RX RAW pod=' "$tmp_dir/internal-kamailio.cfg" && fail 'internal Kamailio raw SIP logging could expose Digest Authorization headers'
 grep -Fq 'SIP FLOWROUTE RX BEGIN' "$tmp_dir/internal-kamailio.cfg" && fail 'internal Kamailio has carrier packet logging enabled'
