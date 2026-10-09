@@ -89,6 +89,8 @@ assert_yq 'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "core-hom
 legacy_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$pilot")"
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' <<<"$legacy_config"
 ! grep -Fq 'loadmodule "path.so"' <<<"$legacy_config"
+grep -Fq 'loadmodule "outbound.so"' <<<"$legacy_config"
+grep -Fq 'check_flow_token()' <<<"$legacy_config"
 rm -f "$pilot"
 
 helm template core-home1-talos-prod "$chart_dir" \

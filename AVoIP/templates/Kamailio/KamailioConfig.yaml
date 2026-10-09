@@ -101,8 +101,10 @@ data:
     loadmodule "sl.so"
     {{- if $sipCoreEnabled }}
     loadmodule "nathelper.so"
-    {{- if $websocketHA.enabled }}
+    # SIP Core return routing calls check_flow_token() even on the legacy
+    # single-replica owner while a separate WSS edge is being piloted.
     loadmodule "outbound.so"
+    {{- if $websocketHA.enabled }}
     loadmodule "path.so"
     modparam("path", "use_received", 0)
     {{- end }}
