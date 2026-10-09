@@ -62,7 +62,17 @@ def connect(url, origin, host_header):
     parsed = urllib.parse.urlparse(url)
     secure = parsed.scheme == "wss"
     port = parsed.port or (443 if secure else 80)
-    sock = socket.create_connection((parsed.hostname, port), timeout=5)
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            sock = socket.create_connection(
+                (parsed.hostname, port), timeout=max(0.1, deadline - time.monotonic())
+            )
+            break
+        except ConnectionRefusedError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.1)
     if secure:
         sock = ssl.create_default_context().wrap_socket(sock, server_hostname=parsed.hostname)
     sock.settimeout(5)
