@@ -275,14 +275,29 @@
           if ($du != $null &&
               $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
               $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
+            # Asterisk's outbound proxy and the dialog route set can repeat
+            # this same internal return service. Once bounded cleanup reaches
+            # that loop, use the saved Contact alias from the live
+            # WebSocket connection and remove the stale local Route headers.
+            handle_ruri_alias();
+            $var(sipcore_alias_result) = $rc;
+            if ($var(sipcore_alias_result) != 1) {
+              {{- if .Values.kamailio.sipLogging.sipCore }}
+              xlog(
+                "L_ERR",
+                "SIPCORE FLOW stage=asterisk-local-route-loop-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) alias_result=$var(sipcore_alias_result) ruri_host=$rd ruri_port=$rp\n"
+              );
+              {{- end }}
+              sl_send_reply("404", "WebSocket Contact Not Found");
+              exit;
+            }
+            remove_hf("Route");
             {{- if .Values.kamailio.sipLogging.sipCore }}
             xlog(
-              "L_ERR",
-              "SIPCORE FLOW stage=asterisk-local-route-loop-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) destination_host=$(du{uri.host}) destination_port=$(du{uri.port})\n"
+              "L_WARN",
+              "SIPCORE FLOW stage=asterisk-local-route-collapsed pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) local_route_hops=$var(sipcore_local_route_hops) destination_host=$dd destination_port=$dp destination_transport=$dP\n"
             );
             {{- end }}
-            sl_send_reply("482", "Too Many Local Route Hops");
-            exit;
           }
         }
 
