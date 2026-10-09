@@ -61,6 +61,18 @@
   {{- if not (regexMatch "^[A-Za-z0-9 ._-]{1,40}$" (toString .Values.asterisk.sipCore.ggCallbackCallerIdName)) -}}
     {{- fail "asterisk.sipCore.ggCallbackCallerIdName must be 1-40 letters, numbers, spaces, periods, underscores, or hyphens" -}}
   {{- end -}}
+  {{- if not (regexMatch "^[0-9]{1,4}$" (toString .Values.asterisk.sipCore.ggCallbackDelaySeconds)) -}}
+    {{- fail "asterisk.sipCore.ggCallbackDelaySeconds must be an integer between 0 and 3600" -}}
+  {{- end -}}
+  {{- if or (lt (int .Values.asterisk.sipCore.ggCallbackDelaySeconds) 0) (gt (int .Values.asterisk.sipCore.ggCallbackDelaySeconds) 3600) -}}
+    {{- fail "asterisk.sipCore.ggCallbackDelaySeconds must be between 0 and 3600" -}}
+  {{- end -}}
+  {{- if not (regexMatch "^[0-9]{1,3}$" (toString .Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds)) -}}
+    {{- fail "asterisk.sipCore.ggCallbackRingTimeoutSeconds must be an integer between 1 and 300" -}}
+  {{- end -}}
+  {{- if or (lt (int .Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds) 1) (gt (int .Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds) 300) -}}
+    {{- fail "asterisk.sipCore.ggCallbackRingTimeoutSeconds must be between 1 and 300" -}}
+  {{- end -}}
   {{- if eq (toString .Values.asterisk.sipCore.ggAudioExtension) (toString .Values.asterisk.sipCore.echoExtension) -}}
     {{- fail "asterisk.sipCore.ggAudioExtension must differ from echoExtension" -}}
   {{- end -}}

@@ -60,6 +60,12 @@ fi
 if render_sipcore --set-string asterisk.sipCore.helloCallbackExtension=9090 >"$tmp_dir/colliding-callback-extension.yaml" 2>&1; then
   fail 'SIP Core hello callback extension collided with the echo extension'
 fi
+if render_sipcore --set asterisk.sipCore.ggCallbackDelaySeconds=3601 >"$tmp_dir/invalid-callback-delay.yaml" 2>&1; then
+  fail 'Asterisk GG callback rendered with a delay over one hour'
+fi
+if render_sipcore --set asterisk.sipCore.ggCallbackRingTimeoutSeconds=0 >"$tmp_dir/invalid-callback-ring-timeout.yaml" 2>&1; then
+  fail 'Asterisk GG callback rendered with a non-positive ring timeout'
+fi
 if render_sipcore --set-string asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout=0 >"$tmp_dir/invalid-wss-timeout.yaml" 2>&1; then
   fail 'invalid SIP Core WebSocket stream idle timeout rendered'
 fi
@@ -70,6 +76,7 @@ if helm template siptest "$chart_dir" --set freeswitch.asterisk.tlsPort=5064 --s
   fail 'FreeSWITCH Asterisk TLS listener rendered on the configured Kamailio backend port'
 fi
 render_sipcore --set-string asterisk.sipCore.ggAudioDestination=custom-audio > "$tmp_dir/custom-gg-destination.yaml"
+render_sipcore --set asterisk.sipCore.ggCallbackDelaySeconds=120 --set asterisk.sipCore.ggCallbackRingTimeoutSeconds=45 > "$tmp_dir/custom-callback-timing.yaml"
 render_sipcore --set asterisk.turn.enabled=false > "$tmp_dir/turn-disabled.yaml"
 render_sipcore --set asterisk.turn.enabled=true > "$tmp_dir/turn-enabled.yaml"
 render_sipcore --set freeswitch.ldap.enabled=true > "$tmp_dir/ldap-enabled.yaml"
@@ -89,8 +96,12 @@ grep -Fq 'Dial(PJSIP/1234,30)' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk c
 grep -Fq 'Playback(hello-world)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback service does not play the greeting'
 grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-callback-7101,s,1)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback is not scheduled by a hangup handler'
 grep -Fq '[sipcore-callback-7101]' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback context is not scoped to SIP Core extension 7101'
-grep -Fq 'Originate(Local/s@sipcore-callback-ringall-7101/n,exten,from-sipcore-7101,66,1,30,a)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback must run independently and enter the GG route only after the ring-all channel answers'
+grep -Fq 'Originate(Local/s@sipcore-callback-ringall-7101/n,exten,from-sipcore-7101,66,1,100,a)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback timeout must cover the one-minute delay and ring timeout before entering the GG route'
 grep -Fq 'Dial(${SIPCORE_CALLBACK_CONTACTS},30)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback must ring all active contacts before entering the GG route'
+grep -Fq 'Wait(60)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback must wait one minute after hello-world before dialing Home Assistant'
+grep -Fq 'Originate(Local/s@sipcore-callback-ringall-7101/n,exten,from-sipcore-7101,66,1,175,a)' "$tmp_dir/custom-callback-timing.yaml" || fail 'Asterisk callback originate timeout does not account for configured delay and ring time'
+grep -Fq 'Wait(120)' "$tmp_dir/custom-callback-timing.yaml" || fail 'Asterisk callback delay is not configurable'
+grep -Fq 'Dial(${SIPCORE_CALLBACK_CONTACTS},45)' "$tmp_dir/custom-callback-timing.yaml" || fail 'Asterisk callback ring timeout is not configurable'
 grep -Fq 'Dial(PJSIP/gg-audio@freeswitch,30,g)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk must start the FreeSWITCH GG leg only after the callback answer'
 grep -Fq 'Set(CALLERID(name)=Important Message)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk GG callback caller ID is not Important Message'
 grep -Fq 'Dial(PJSIP/custom-audio@freeswitch,30,g)' "$tmp_dir/custom-gg-destination.yaml" || fail 'Asterisk GG destination is not configurable or does not hang up after playback'

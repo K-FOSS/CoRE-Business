@@ -155,7 +155,10 @@ behavior.
   registered contacts for that extension in parallel. Asterisk starts the
   callback independently of the ended source channel, then enters the GG route
   and dials FreeSWITCH only after a contact answers. If no contacts answer
-  within 30 seconds, it ends without starting the GG call.
+  within the configured `asterisk.sipCore.ggCallbackRingTimeoutSeconds`
+  (default 30 seconds), it ends without starting the GG call. The callback
+  starts one minute after the hello-world call ends by default, controlled by
+  `asterisk.sipCore.ggCallbackDelaySeconds`.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk
   profile requires SIP Digest and selects `from-asterisk`; the private-network
