@@ -273,6 +273,23 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   cause, and follow the new run through completion. Do not blindly rerun a
   failed build before understanding its cause; keep log excerpts focused and
   never disclose credentials that may appear in logs.
+- To inspect a Forgejo Actions run, start from its UI URL, for example
+  `https://forge.example/OWNER/REPO/actions/runs/RUN_ID/jobs/JOB_ID/attempt/ATTEMPT`.
+  The run page is `/OWNER/REPO/actions/runs/RUN_ID`; its job page adds
+  `/jobs/JOB_ID/attempt/ATTEMPT`, and the job log view adds `/logs`. Preserve
+  the attempt number when opening logs so a rerun is not confused with an older
+  attempt. Derive owner, repository, run ID, job ID and attempt from the URL and
+  page links/data; do not guess numeric IDs. Check the run's displayed commit
+  SHA before treating it as the build for the current change.
+- For programmatic inspection, the Forgejo API base is the instance origin plus
+  `/api/v1` (Forgejo exposes this as `FORGEJO_API_URL` in workflow jobs). Check
+  that instance's API/OpenAPI documentation for the installed version and
+  available Actions endpoints before constructing a request; API support can
+  differ by version. Use an authorized token via a protected environment
+  variable or credential helper, never put it in a URL, command history,
+  committed script or printed output. If the API does not expose the required
+  run/job/log data, use the UI routes above and inspect the page's links or
+  network requests to determine the instance-specific path.
 - For Helm/Lovely changes, resolve dependencies locally, run `helm lint`,
   render with representative defaults plus Backplane-injected values and
   inspect the complete output. A default-values render alone is not proof of a
