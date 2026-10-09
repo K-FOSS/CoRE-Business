@@ -177,7 +177,7 @@ kamailio:
       websocketHA:
         # Opt in only on the private SBC selected by Asterisk SIP Core.
         # StatefulSet identities and Path routing are activated together.
-        enabled: false
+        enabled: true
         # Keep the old single-replica owner rendering the SIP Core listeners
         # and return Service after Asterisk selects a parallel HA instance.
         legacyOwner: false
