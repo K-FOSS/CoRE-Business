@@ -68,7 +68,7 @@ grep -Fq 'support_path=yes' "$rendered"
 grep -Fq 'max_contacts=2' "$rendered"
 grep -Fq 'auth_type=userpass' "$rendered"
 grep -Fq 'username=7101' "$rendered"
-grep -Fq 'outbound_proxy=sip:127.0.0.1:1' "$rendered"
+! grep -Fq 'outbound_proxy=sip:127.0.0.1:1' "$rendered"
 ! grep -Fq 'outbound_proxy=sip:core-home1-talos-prod-avoip-kamailio-internal-wss-sipcore-return' "$rendered"
 grep -Fq 'type=auth' "$rendered"
 grep -Fq 'context=from-sipcore-7101' "$rendered"
@@ -85,9 +85,9 @@ helm template core-home1-talos-prod "$chart_dir" \
   --set asterisk.sipCore.kamailioInstance=internal \
   --set asterisk.sipCore.ingressKamailioInstance=internal-wss > "$split"
 grep -Fq 'support_path=yes' "$split"
-grep -Fq 'outbound_proxy=sip:127.0.0.1:1' "$split"
+! grep -Fq 'outbound_proxy=sip:127.0.0.1:1' "$split"
 ! grep -Fq 'outbound_proxy=sip:core-home1-talos-prod-business-kamailio-internal-sipcore-return' "$split"
-echo 'PASS: split legacy return and HA WSS ingress uses Asterisk Path routing without the shared return proxy'
+echo 'PASS: HA WSS contacts use their Asterisk-stored Path without an overriding endpoint proxy'
 split_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["kamailio.cfg"]' "$split")"
 grep -Fq 'stage=asterisk-return-in' <<<"$split_config"
 
@@ -132,11 +132,10 @@ helm template core-home1-talos-prod "$chart_dir" \
   --set kamailio.instances[1].websocketHA.legacyOwner=true \
   --set kamailio.instances[2].replicas=3 \
   --set kamailio.instances[2].websocketHA.pilot=false \
-  --set kamailio.instances[2].websocketHA.podDisruptionBudget.minAvailable=2 \
-  --set-string kamailio.instances[2].websocketHA.legacyReturnServiceName=core-home1-talos-prod-business-kamailio-internal-sipcore-return.core-prod.svc.cluster.local > "$cutover"
+  --set kamailio.instances[2].websocketHA.podDisruptionBudget.minAvailable=2 > "$cutover"
 assert_yq 'select(.kind == "HTTPRoute" and .metadata.name == "core-home1-talos-prod-avoip-sipcore-wss") | .spec.rules[0].backendRefs[0].name | test("internal-wss$")' 'the controlled cutover points the existing route at the separate HA WSS Service' "$cutover"
-assert_yq 'select(.kind == "Service" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-sipcore-return") | .spec.publishNotReadyAddresses == true and .spec.ports[].port == 5063' 'the legacy migration return address remains available to saved contacts while its pod drains' "$cutover"
-grep -Fq 'outbound_proxy=sip:core-home1-talos-prod-business-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063' "$cutover"
+assert_yq 'select(.kind == "Service" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-sipcore-return") | .spec.publishNotReadyAddresses == true and .spec.ports[].port == 5063' 'the legacy migration return address remains available while its pod drains' "$cutover"
+! grep -Fq 'outbound_proxy=sip:core-home1-talos-prod-business-kamailio-internal-sipcore-return.core-prod.svc.cluster.local:5063' "$cutover"
 legacy_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$cutover")"
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' <<<"$legacy_config"
 grep -Fq 'loadmodule "ctl.so"' <<<"$legacy_config"
@@ -153,8 +152,7 @@ helm template core-home1-talos-prod "$chart_dir" \
   --set kamailio.instances[1].websocketHA.legacyOwner=true \
   --set kamailio.instances[2].replicas=3 \
   --set kamailio.instances[2].websocketHA.pilot=false \
-  --set kamailio.instances[2].websocketHA.podDisruptionBudget.minAvailable=2 \
-  --set-string kamailio.instances[2].websocketHA.legacyReturnServiceName=core-home1-talos-prod-business-kamailio-internal-sipcore-return.core-prod.svc.cluster.local > "$cutover"
+  --set kamailio.instances[2].websocketHA.podDisruptionBudget.minAvailable=2 > "$cutover"
 assert_yq 'select(.kind == "HTTPRoute" and .metadata.name == "core-home1-talos-prod-avoip-sipcore-wss") | .spec.rules[0].backendRefs[0].name == "core-home1-talos-prod-avoip-kamailio-internal"' 'rollback can move new WSS connections to legacy while keeping Asterisk Path authority active' "$cutover"
 grep -Fq 'support_path=yes' "$cutover"
 rm -f "$cutover"

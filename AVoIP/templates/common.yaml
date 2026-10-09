@@ -616,14 +616,12 @@
 {{- define "avoip.common.values" -}}
 {{- $asteriskCdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
 {{- $sipCoreWebsocketHA := false -}}
-{{- $sipCoreLegacyReturnService := "" -}}
 {{- /* Asterisk's contact Path belongs to the ingress instance, which may be
       separate from the legacy return instance during the WSS migration. */ -}}
 {{- $sipCoreIngressInstance := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
 {{- range (include "avoip.kamailio.instances" . | fromYamlArray) -}}
   {{- if and (eq .name $sipCoreIngressInstance) (eq .role "private-sbc") -}}
     {{- $sipCoreWebsocketHA = .websocketHA.enabled -}}
-    {{- $sipCoreLegacyReturnService = .websocketHA.legacyReturnServiceName -}}
   {{- end -}}
 {{- end -}}
 {{- if or (lt (int .Values.freeswitch.sipLogging.sofiaDebug) 0) (gt (int .Values.freeswitch.sipLogging.sofiaDebug) 9) }}{{- fail "freeswitch.sipLogging.sofiaDebug must be between 0 and 9" }}{{- end }}
@@ -864,14 +862,10 @@ controllers:
               printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\nsupport_path=yes\n\n'
               printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\n'
               {{- if $sipCoreWebsocketHA }}
-                {{- if $sipCoreLegacyReturnService }}
-              printf 'outbound_proxy=sip:{{ $sipCoreLegacyReturnService }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\n'
-                {{- else }}
-              # Path is prepended ahead of this local sink by Asterisk 20's
-              # res_pjsip_path. A missing Path fails locally instead of sending
-              # SIP directly to the browser or a random edge replica.
-              printf 'outbound_proxy=sip:127.0.0.1:1\\;transport=tls\\;lr\n'
-                {{- end }}
+              # In HA mode PJSIP must route each contact through its saved
+              # Path. An endpoint outbound_proxy overrides that per-contact
+              # route (including a local sink), so leave it unset. Kamailio
+              # rejects HA registrations without an owner Path.
               {{- else }}
               printf 'outbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\n'
               {{- end }}

@@ -137,9 +137,6 @@
       {{- if ne (int $.Values.asterisk.sipCore.httpPort) 8088 -}}
         {{- fail (printf "Kamailio %s websocketHA requires asterisk.sipCore.httpPort=8088 to preserve the current Envoy backend contract" $name) -}}
       {{- end -}}
-      {{- if and $wssHA.legacyReturnServiceName (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $wssHA.legacyReturnServiceName)) -}}
-        {{- fail (printf "Kamailio %s websocketHA.legacyReturnServiceName must be a DNS name" $name) -}}
-      {{- end -}}
       {{- if or (lt (int $wssHA.drainSeconds) 10) (gt (int $wssHA.drainSeconds) 3600) -}}
         {{- fail (printf "Kamailio %s websocketHA.drainSeconds must be between 10 and 3600" $name) -}}
       {{- end -}}

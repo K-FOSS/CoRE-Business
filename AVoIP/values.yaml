@@ -184,7 +184,6 @@ kamailio:
         # Permit a separate HA instance to render beside the currently selected
         # private SBC during a staged migration.
         pilot: false
-        legacyReturnServiceName: ''
         drainSeconds: 120
         endpointRemovalDelaySeconds: 10
         terminationGracePeriodSeconds: 150
