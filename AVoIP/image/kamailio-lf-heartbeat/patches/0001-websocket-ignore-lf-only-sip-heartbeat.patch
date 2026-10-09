@@ -39,21 +39,20 @@
  
  static int encode_and_send_ws_frame(ws_frame_t *frame, conn_close_t conn_close)
  {
-@@ -615,6 +630,13 @@
+@@ -615,6 +630,12 @@
  				frame.wsc->frag_buf.s[frame.wsc->frag_buf.len] = '\0';
  
  				if(frame.fin) {
 +					if(ws_handle_lf_keepalive(&frame, frame.wsc->frag_buf.s,
 +							frame.wsc->frag_buf.len)) {
 +						frame.wsc->frag_buf.len = 0;
-+						frame.wsc->frag_progress = 0;
 +						wsconn_put(frame.wsc);
 +						return 0;
 +					}
  					ret = receive_msg(frame.wsc->frag_buf.s,
  							frame.wsc->frag_buf.len, tcpinfo->rcv);
  					wsconn_put(frame.wsc);
-@@ -641,6 +663,12 @@
+@@ -641,6 +662,12 @@
  										   CRLFCRLF_LEN)
  										   == 0)) {
  					ws_send_crlf(frame.wsc, opcode);
