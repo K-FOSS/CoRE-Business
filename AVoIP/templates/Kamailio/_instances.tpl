@@ -210,8 +210,16 @@
       {{- fail (printf "Kamailio %s private-sbc requires a dedicated TOPOS database and Secret" $name) -}}
     {{- end -}}
     {{- if not $effective.topology.redis.secretName -}}{{- fail (printf "Kamailio %s requires topology.redis.secretName" $name) -}}{{- end -}}
-    {{- if hasKey $redisSecrets $effective.topology.redis.secretName -}}{{- fail (printf "Kamailio %s shares TOPOS Secret %s with %s; assign a unique Secret name and a separately allocated TOPOS database" $name $effective.topology.redis.secretName (index $redisSecrets $effective.topology.redis.secretName)) -}}{{- end -}}
-    {{- $_ := set $redisSecrets $effective.topology.redis.secretName $name -}}
+    {{- $redisSecretName := $effective.topology.redis.secretName -}}
+    {{- if hasKey $redisSecrets $redisSecretName -}}
+      {{- $suggestedSecretName := printf "avoip-kamailio-%s-topos" $name -}}
+      {{- if hasKey $redisSecrets $suggestedSecretName -}}
+        {{- fail (printf "Kamailio %s TOPOS Secret %s is already used by %s and its instance-specific Secret %s is already used by %s" $name $redisSecretName (index $redisSecrets $redisSecretName) $suggestedSecretName (index $redisSecrets $suggestedSecretName)) -}}
+      {{- end -}}
+      {{- $redisSecretName = $suggestedSecretName -}}
+      {{- $_ := set $effective.topology.redis "secretName" $redisSecretName -}}
+    {{- end -}}
+    {{- $_ := set $redisSecrets $redisSecretName $name -}}
     {{- if not $effective.topology.redis.serverKey -}}{{- fail (printf "Kamailio %s requires topology.redis.serverKey" $name) -}}{{- end -}}
     {{- if lt (int $effective.topology.redis.database) 1 -}}{{- fail (printf "Kamailio %s requires a non-zero TOPOS database" $name) -}}{{- end -}}
     {{- $db := toString $effective.topology.redis.database -}}

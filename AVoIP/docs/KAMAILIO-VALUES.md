@@ -195,7 +195,7 @@ review of DNS and TLS certificate identity.
 | `registrar.maxContacts`, `minExpires`, `maxExpires` | `2`, `120`, `600` | Registrar contact and refresh limits. The separate `subscriber.enabled`/`expires_at` view controls verifier validity; database triggers purge contacts on disable, expiry change or HA1 rotation. No credential issuer is deployed. |
 | `networkPolicy.envoy.namespace`, `networkPolicy.envoy.podName` | `envoy-gateway-system`, `envoy` | Labels used to permit Gateway data-plane ingress to public TLS/5061. Match the installed Gateway pods. |
 | `topology.enabled` | `true` | Enables Redis-backed TOPOS and its local TLS bridge. Both supported roles require this; disabling it fails role validation. |
-| `topology.redis.secretName`, `topology.redis.serverKey` | `avoip-kamailio-topos`, `server` | Secret containing the Redis server string consumed by Kamailio. Enabled instances need different Secret names. |
+| `topology.redis.secretName`, `topology.redis.serverKey` | `avoip-kamailio-topos`, `server` | Secret containing the Redis server string consumed by Kamailio. Duplicate names are made instance-specific for later instances. |
 | `topology.redis.database` | `51` | Site-local logical database. Enabled instances need different nonzero databases; allocate one before adding an instance. |
 | `topology.redis.host`, `port`, `proxyPort`, `tlsServerName` | derived Dragonfly host, `6379`, `16379`, derived Dragonfly host | The local HAProxy bridge listens on loopback and verifies TLS to the site Dragonfly endpoint. |
 | `topology.redis.secretStoreRef.kind`, `name` | `ClusterSecretStore`, `corevault-rootsecrets` | External Secrets store reference. |
@@ -214,12 +214,12 @@ Dragonfly. Separate instance databases and Secrets prevent shared TOPOS token
 namespaces. The current media function operates only when the instance switch,
 `rtpengine.enabled`, and `freeswitch.enabled` are all true.
 
-When adding another private Kamailio instance, set both
-`topology.redis.secretName` and `topology.redis.database` explicitly. The
-Secret name must be unique because each generated ExternalSecret embeds its
-database number in the TOPOS server string. The database must be allocated in
-the shared Dragonfly registry before reconciliation; do not resolve a duplicate
-Secret error by weakening the chart guard or reusing an existing database.
+When adding another private Kamailio instance, set
+`topology.redis.database` explicitly to an allocation in the shared Dragonfly
+registry. If two instances inherit or specify the same `secretName`, the chart
+derives an instance-specific Secret name for each later instance because each
+generated ExternalSecret embeds its database number in the TOPOS server string.
+The chart still rejects duplicate database allocations.
 
 ## SIP function switches and validation
 

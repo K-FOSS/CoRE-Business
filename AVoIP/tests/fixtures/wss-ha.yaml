@@ -1,0 +1,48 @@
+cluster:
+  name: core-home1-talos-prod
+  domain: cluster.local
+datacenter: home1
+region: yvr
+sip:
+  tls:
+    issuerName: kjdev-cluster
+asterisk:
+  sipCore:
+    enabled: true
+    kamailioInstance: internal-wss
+    hostname: sipcore.mylogin.space
+    allowedOrigins:
+      - https://home.mylogin.space
+    extensions:
+      - number: '7101'
+        secret:
+          remoteKey: AVoIP/SIPCore/YVR/Home1/7101
+          property: Password
+        allowCallsTo:
+          - '9090'
+          - '66'
+          - '1234'
+kamailio:
+  instances:
+    - name: carrier
+      enabled: true
+      role: carrier-sbc
+      replicas: 3
+    - name: internal
+      enabled: true
+      role: private-sbc
+      replicas: 1
+      topology:
+        redis:
+          database: 52
+          secretName: avoip-kamailio-internal-topos
+    - name: internal-wss
+      enabled: true
+      role: private-sbc
+      replicas: 3
+      websocketHA:
+        enabled: true
+      topology:
+        redis:
+          database: 53
+          secretName: avoip-kamailio-internal-wss-topos
