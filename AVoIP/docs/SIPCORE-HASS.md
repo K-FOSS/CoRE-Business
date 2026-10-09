@@ -157,7 +157,9 @@ behavior.
   [BackendTrafficPolicy](https://gateway.envoyproxy.io/docs/concepts/gateway_api_extensions/backend-traffic-policy/)
   sets the WebSocket stream idle timeout from
   `asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout` (default `1h`);
-  Kamailio keepalive pings are configured separately. The
+  HA Kamailio uses 15-second server Pong keepalives; this avoids treating a
+  missing client Pong as a dead connection. The ordinary private-SBC
+  compatibility path retains Ping keepalives. The
   private policy admits the Envoy data-plane on that port and the
   Asterisk workload on the TLS return port. No public Asterisk SIP or AMI
   listener is added.

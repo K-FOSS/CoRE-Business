@@ -47,9 +47,14 @@ certificate and a configured source CIDR plus certificate DNS SAN. It rejects
 PostgreSQL service identity and named mTLS access peer.
 
 The private role reserves `100m` CPU and `256Mi` memory for the Kamailio
-container and sends WebSocket keepalive pings every 15 seconds. The interval
-is configurable at `kamailio.defaults.websocket.keepaliveTimeoutSeconds` and
-can be overridden by a role or instance; valid values are 5–600 seconds.
+container and sends WebSocket keepalives every 15 seconds. The HA WSS edge
+uses unsolicited Pong frames (`websocketHA.keepaliveMechanism: 2`) because
+live Kamailio logs showed that missing Pong responses caused the Ping mode to
+forcibly close quiet connections. The legacy private SBC preserves Ping mode
+(`websocket.keepaliveMechanism: 1`). Asterisk OPTIONS checks SIP flow
+reachability. The interval is configurable at
+`kamailio.defaults.websocket.keepaliveTimeoutSeconds` and can be overridden
+by role or instance; valid values are 5–600 seconds.
 The regular private-SBC stays one replica. Add a separate named private-SBC
 instance (recommended `internal-wss`) and explicitly set
 `websocketHA.enabled: true` there. A one-replica enabled instance is allowed
@@ -79,6 +84,8 @@ role profile or an instance. Empty maps and lists below are the chart defaults.
 | `image.repository`, `image.tag`, `image.digest`, `image.pullPolicy` | `ghcr.io/kamailio/kamailio`, `6.1.4-bookworm`, `sha256:c54f770ab74ae64588cc174e206aa337108cc777b6162d738189d1cb0c32d116`, `IfNotPresent` | Main container and the FreeSWITCH TLS CA init container. Keep the digest pinned when changing the image. |
 | `resources` | `{}` | Container requests and limits; empty preserves the current carrier manifest. |
 | `websocket.keepaliveTimeoutSeconds` | `60` | Ping interval for WebSocket clients when SIP Core WebSocket handling is enabled; the private role uses `15`. Valid range is 5–600 seconds. |
+| `websocket.keepaliveMechanism` | `1` | Kamailio WebSocket keepalive mode: `0` disabled, `1` Ping and require client Pong, or `2` server Pong heartbeat. HA mode requires `2`; legacy private instances retain `1`. |
+| `websocketHA.keepaliveMechanism` | `2` | HA WSS keepalive mode. Render-time validation rejects values other than `2` because missed client Pong frames previously closed live connections. |
 | `serviceAccountName` | `default` | Pod ServiceAccount reference. A blank value fails rendering. The chart does not create a new account for an instance. |
 | `securityContext.pod`, `securityContext.container` | `{}`, `{}` | Nonempty maps replace the built-in pod or container security context. The built-in pod runs as UID/GID 1000 with RuntimeDefault seccomp; the container drops capabilities and uses a read-only root filesystem. |
 | `scheduling.nodeSelector`, `scheduling.tolerations` | `{}`, `[]` | Pod placement. The tolerations list replaces the default list. |

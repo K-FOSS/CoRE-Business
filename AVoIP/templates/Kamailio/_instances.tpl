@@ -73,6 +73,13 @@
   {{- if or (lt (int $effective.websocket.keepaliveTimeoutSeconds) 5) (gt (int $effective.websocket.keepaliveTimeoutSeconds) 600) -}}
     {{- fail (printf "Kamailio %s websocket.keepaliveTimeoutSeconds must be between 5 and 600" $name) -}}
   {{- end -}}
+  {{- if not (has (int $effective.websocket.keepaliveMechanism) (list 0 1 2)) -}}
+    {{- fail (printf "Kamailio %s websocket.keepaliveMechanism must be 0, 1 or 2" $name) -}}
+  {{- end -}}
+  {{- $effectiveWebsocketHA := $effective.websocketHA | default dict -}}
+  {{- if and $effectiveWebsocketHA.enabled (ne (int $effectiveWebsocketHA.keepaliveMechanism) 2) -}}
+    {{- fail (printf "Kamailio %s websocketHA requires websocketHA.keepaliveMechanism=2 to avoid closing flows when Ping/Pong frames are not returned" $name) -}}
+  {{- end -}}
   {{- if $effective.registrar.enabled -}}
     {{- if or $effective.sipLogging.rawInbound $effective.sipLogging.postToposResponses $effective.sipLogging.carrierTraffic $effective.sipLogging.diagnostics.enabled $effective.sipLogging.diagnostics.sdp -}}
       {{- fail (printf "Kamailio %s registrar forbids raw SIP and diagnostic logging of Digest credentials" $name) -}}

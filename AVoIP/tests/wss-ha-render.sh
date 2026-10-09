@@ -46,6 +46,7 @@ private_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core
 grep -Fq '#!substdef "/SIPCORE_OWNER_POD/$env(POD_NAME)/"' <<<"$config"
 grep -Fq 'loadmodule "path.so"' <<<"$config"
 grep -Fq 'modparam("path", "use_received", 0)' <<<"$config"
+grep -Fq 'modparam("websocket", "keepalive_mechanism", 2)' <<<"$config"
 grep -Fq 'loadmodule "outbound.so"' <<<"$config"
 grep -Fq 'if (!add_path_received())' <<<"$config"
 grep -Fq 'SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-owner.core-prod.svc.cluster.local' <<<"$config"
@@ -201,5 +202,13 @@ if helm template invalid-envoy-port "$chart_dir" --namespace core-prod \
   exit 1
 fi
 grep -Fq 'requires asterisk.sipCore.httpPort=8088' "$invalid"
+
+if helm template invalid-wss-keepalive "$chart_dir" --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set kamailio.instances[2].websocketHA.keepaliveMechanism=1 >"$invalid" 2>&1; then
+  echo 'FAIL: HA WSS allowed a Ping keepalive that depends on client Pong responses' >&2
+  exit 1
+fi
+grep -Fq 'websocketHA.keepaliveMechanism=2' "$invalid"
 
 echo 'WSS HA render checks passed'

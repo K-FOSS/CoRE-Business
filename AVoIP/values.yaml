@@ -191,9 +191,14 @@ kamailio:
         podDisruptionBudget:
           minAvailable: 2
         rolloutPartition: 0
+        # Send unsolicited Pong frames to keep the upgraded stream active
+        # without evicting clients that do not return Ping frames through an
+        # intermediary. Asterisk OPTIONS remains the SIP flow health check.
+        keepaliveMechanism: 2
       websocket:
-        # Send WebSocket pings before the observed ~30 second idle reconnect.
+        # Backward-compatible Ping/Pong probe for the legacy private SBC.
         keepaliveTimeoutSeconds: 15
+        keepaliveMechanism: 1
       resources:
         requests:
           cpu: '100m'
@@ -263,6 +268,7 @@ kamailio:
     resources: {}
     websocket:
       keepaliveTimeoutSeconds: 60
+      keepaliveMechanism: 1
     securityContext:
       pod: {}
       container: {}

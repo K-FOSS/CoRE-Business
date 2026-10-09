@@ -115,7 +115,7 @@ data:
     loadmodule "xhttp.so"
     loadmodule "websocket.so"
     modparam("websocket", "cors_mode", 0)
-    modparam("websocket", "keepalive_mechanism", 1)
+    modparam("websocket", "keepalive_mechanism", {{ $websocketHA.keepaliveMechanism | default .Values.kamailio.websocket.keepaliveMechanism }})
     modparam("websocket", "keepalive_timeout", {{ .Values.kamailio.websocket.keepaliveTimeoutSeconds }})
     {{- end }}
     loadmodule "corex.so"
