@@ -54,6 +54,9 @@ fi
 if render_sipcore --set-string asterisk.sipCore.ggAudioDestination='bad destination' >"$tmp_dir/invalid-gg-destination.yaml" 2>&1; then
   fail 'invalid FreeSWITCH GG audio SIP destination rendered'
 fi
+if render_sipcore --set-string asterisk.sipCore.ggCallbackCallerIdName='Important Message)' >"$tmp_dir/invalid-callback-callerid.yaml" 2>&1; then
+  fail 'invalid Asterisk GG callback caller ID rendered'
+fi
 if render_sipcore --set-string asterisk.sipCore.helloCallbackExtension=9090 >"$tmp_dir/colliding-callback-extension.yaml" 2>&1; then
   fail 'SIP Core hello callback extension collided with the echo extension'
 fi
@@ -86,7 +89,8 @@ grep -Fq 'Dial(PJSIP/1234,30)' "$tmp_dir/empty-matches.yaml" && fail 'Asterisk c
 grep -Fq 'Playback(hello-world)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback service does not play the greeting'
 grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-callback-7101,s,1)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk hello callback is not scheduled by a hangup handler'
 grep -Fq '[sipcore-callback-7101]' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback context is not scoped to SIP Core extension 7101'
-grep -Fq 'Originate(PJSIP/7101,exten,from-sipcore-7101,66,1,30,a)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback does not call the authenticated source extension into GG audio'
+grep -Fq 'Originate(Local/s@sipcore-callback-ringall-7101/n,exten,from-sipcore-7101,66,1,30,a)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk callback does not call every currently registered contact into GG audio'
+grep -Fq 'Set(CALLERID(name)=Important Message)' "$tmp_dir/empty-matches.yaml" || fail 'Asterisk GG callback caller ID is not Important Message'
 grep -Fq 'Dial(PJSIP/custom-audio@freeswitch,30,g)' "$tmp_dir/custom-gg-destination.yaml" || fail 'Asterisk GG destination is not configurable or does not hang up after playback'
 grep -Fq 'destination_number" expression="^custom-audio$"' "$tmp_dir/custom-gg-destination.yaml" || fail 'FreeSWITCH does not use the configured GG SIP destination'
 grep -Fq 'max_contacts=2' "$tmp_dir/empty-matches.yaml" || fail 'existing AOR contact limit was not rendered'

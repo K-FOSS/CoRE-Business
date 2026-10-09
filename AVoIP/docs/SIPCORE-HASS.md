@@ -146,7 +146,9 @@ behavior.
   call into the existing `ggAudioExtension` route (default `66`) so
   FreeSWITCH plays the GG audio. This service extension is not a SIP account
   and has no password; the callback target comes from the authenticated
-  extension's dedicated dialplan context, not caller-supplied Caller ID.
+  extension's dedicated dialplan context, not caller-supplied Caller ID. The
+  callback rings with the configured display name
+  `asterisk.sipCore.ggCallbackCallerIdName` (default `Important Message`).
   The callback uses Asterisk's `PJSIP_DIAL_CONTACTS()` to ring all currently
   registered contacts for that extension in parallel. If no contacts are
   registered, it ends without attempting a call. The answered device is then

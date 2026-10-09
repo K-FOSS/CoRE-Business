@@ -144,6 +144,7 @@ data:
     [sipcore-callback-ringall-{{ .number }}]
     exten => s,1,Set(SIPCORE_CALLBACK_CONTACTS=${PJSIP_DIAL_CONTACTS({{ .number }})})
       same => n,GotoIf($["${SIPCORE_CALLBACK_CONTACTS}"=""]?no-contacts)
+      same => n,Set(CALLERID(name)={{ $.Values.asterisk.sipCore.ggCallbackCallerIdName }})
       same => n,Dial(${SIPCORE_CALLBACK_CONTACTS},30)
       same => n(no-contacts),Hangup()
     {{- end }}

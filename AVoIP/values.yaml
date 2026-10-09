@@ -716,6 +716,7 @@ asterisk:
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
     helloCallbackExtension: '1234'
+    ggCallbackCallerIdName: 'Important Message'
     secretStoreRef:
       kind: 'ClusterSecretStore'
       name: 'corevault-rootsecrets'

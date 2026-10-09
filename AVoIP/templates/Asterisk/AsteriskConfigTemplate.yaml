@@ -58,6 +58,9 @@
   {{- if not (regexMatch "^[a-zA-Z0-9_.-]+$" (toString .Values.asterisk.sipCore.ggAudioDestination)) -}}
     {{- fail "asterisk.sipCore.ggAudioDestination must be a valid SIP user when SIP Core is enabled" -}}
   {{- end -}}
+  {{- if not (regexMatch "^[A-Za-z0-9 ._-]{1,40}$" (toString .Values.asterisk.sipCore.ggCallbackCallerIdName)) -}}
+    {{- fail "asterisk.sipCore.ggCallbackCallerIdName must be 1-40 letters, numbers, spaces, periods, underscores, or hyphens" -}}
+  {{- end -}}
   {{- if eq (toString .Values.asterisk.sipCore.ggAudioExtension) (toString .Values.asterisk.sipCore.echoExtension) -}}
     {{- fail "asterisk.sipCore.ggAudioExtension must differ from echoExtension" -}}
   {{- end -}}
