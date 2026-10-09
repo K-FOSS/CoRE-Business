@@ -131,14 +131,16 @@ data:
     exten => {{ $.Values.asterisk.sipCore.ggAudioExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30,g)
       same => n,Hangup()
     ; Reserved callback service: greet the authenticated source extension, end
-    ; that leg, then originate its PJSIP AOR into the existing GG audio route.
+    ; that leg, then wait for its PJSIP AOR to answer before starting GG audio.
     exten => {{ $.Values.asterisk.sipCore.helloCallbackExtension }},1,Answer()
       same => n,Playback(hello-world)
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-callback-{{ .number }},s,1)
       same => n,Hangup()
     exten => _X!,1,Hangup(21)
     [sipcore-callback-{{ .number }}]
-    exten => s,1,Originate(Local/s@sipcore-callback-ringall-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,30,a)
+    ; Keep Originate synchronous: the destination extension runs only after a
+    ; registered SIP Core contact answers. That extension then dials FreeSWITCH.
+    exten => s,1,Originate(Local/s@sipcore-callback-ringall-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,30)
       same => n,Return()
     ; Expand the AOR's current registrations so every active device rings.
     [sipcore-callback-ringall-{{ .number }}]

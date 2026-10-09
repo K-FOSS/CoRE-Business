@@ -150,9 +150,9 @@ behavior.
   callback rings with the configured display name
   `asterisk.sipCore.ggCallbackCallerIdName` (default `Important Message`).
   The callback uses Asterisk's `PJSIP_DIAL_CONTACTS()` to ring all currently
-  registered contacts for that extension in parallel. If no contacts are
-  registered, it ends without attempting a call. The answered device is then
-  sent through the same extension context to the GG audio route.
+  registered contacts for that extension in parallel. Asterisk waits for a
+  contact to answer before entering the GG route and dialing FreeSWITCH. If no
+  contacts answer within 30 seconds, it ends without starting the GG call.
   FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
   plays the configured GG audio. Its dedicated Asterisk
   profile requires SIP Digest and selects `from-asterisk`; the private-network
