@@ -86,6 +86,15 @@ assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-in
 assert_yq 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal") | .spec.replicas == 1' 'the legacy connection owner remains a single Deployment' "$pilot"
 assert_yq 'select(.kind == "HTTPRoute" and .metadata.name == "core-home1-talos-prod-avoip-sipcore-wss") | .spec.rules[0].backendRefs[0].name == "core-home1-talos-prod-avoip-kamailio-internal-wss"' 'pilot can receive new WSS connections through its independent Service while Asterisk keeps the legacy return instance selected' "$pilot"
 assert_yq 'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-sip-policy") | .spec.ingress[0].fromEndpoints[0].matchLabels["k8s:io.kubernetes.pod.namespace"] == "kube-system" and .spec.ingress[1].fromEndpoints[0].matchLabels["app.kubernetes.io/controller"] == "asterisk"' 'the WSS pilot accepts only the configured Envoy and Asterisk workload identities' "$pilot"
+wss_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["kamailio.cfg"]' "$pilot")"
+grep -Fq 'if ($proto == "ws" && $Rp == 8088)' <<<"$wss_config"
+grep -Fq 'route(FROM_SIPCORE);' <<<"$wss_config"
+ws_route_line="$(grep -nF 'if ($proto == "ws" && $Rp == 8088)' <<<"$wss_config" | head -1 | cut -d: -f1)"
+peer_guard_line="$(grep -nF 'Peer Not Authorized' <<<"$wss_config" | head -1 | cut -d: -f1)"
+if [[ -z "$ws_route_line" || -z "$peer_guard_line" || "$ws_route_line" -ge "$peer_guard_line" ]]; then
+  echo 'FAIL: dedicated WSS edge must route SIP Core WebSocket traffic before the generic private peer guard' >&2
+  exit 1
+fi
 legacy_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$pilot")"
 grep -Fq 'listen=tcp:0.0.0.0:8088 name "sipcore_ws"' <<<"$legacy_config"
 ! grep -Fq 'loadmodule "path.so"' <<<"$legacy_config"
