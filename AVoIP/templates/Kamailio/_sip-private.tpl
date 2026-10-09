@@ -254,7 +254,40 @@
       }
 
       $var(sipcore_dialog_routed) = 0;
-      if (has_totag() && loose_route()) $var(sipcore_dialog_routed) = 1;
+      if (has_totag() && loose_route()) {
+        $var(sipcore_dialog_routed) = 1;
+        $var(sipcore_local_route_hops) = 0;
+
+        # Asterisk has an outbound_proxy and the dialog has a Kamailio
+        # Record-Route. Both can leave the private return service in the
+        # Route set, so consume any repeated local hops before resolving the
+        # WebSocket Contact alias.
+        while ($du != $null &&
+               $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
+               $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}" &&
+               $var(sipcore_local_route_hops) < 4) {
+          $du = $null;
+          $var(sipcore_local_route_hops) = $var(sipcore_local_route_hops) + 1;
+          loose_route();
+        }
+        if ($du != $null &&
+            $(du{uri.host}) == "{{ $sipCoreReturnHost }}" &&
+            $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
+          sl_send_reply("482", "Too Many Local Route Hops");
+          exit;
+        }
+
+        # The WebSocket contact's alias carries the live transport address.
+        # Only use it after all local Route hops were consumed; preserve any
+        # non-local route selected by the dialog route set.
+        if ($du == $null) {
+          handle_ruri_alias();
+          if ($rc != 1) {
+            sl_send_reply("404", "WebSocket Contact Not Found");
+            exit;
+          }
+        }
+      }
       if ($var(sipcore_dialog_routed) != 1) {
         # This return listener is reachable only from the Asterisk workload.
         # Asterisk's Request-URI is the random WebSocket Contact user, not the
