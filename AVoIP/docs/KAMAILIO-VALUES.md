@@ -214,6 +214,13 @@ Dragonfly. Separate instance databases and Secrets prevent shared TOPOS token
 namespaces. The current media function operates only when the instance switch,
 `rtpengine.enabled`, and `freeswitch.enabled` are all true.
 
+When adding another private Kamailio instance, set both
+`topology.redis.secretName` and `topology.redis.database` explicitly. The
+Secret name must be unique because each generated ExternalSecret embeds its
+database number in the TOPOS server string. The database must be allocated in
+the shared Dragonfly registry before reconciliation; do not resolve a duplicate
+Secret error by weakening the chart guard or reusing an existing database.
+
 ## SIP function switches and validation
 
 | `functions.*` | Carrier role | Private role | Behavior |
