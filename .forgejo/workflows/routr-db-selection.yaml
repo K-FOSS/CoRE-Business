@@ -1,0 +1,125 @@
+name: Routr Dragonfly database selection images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - AVoIP/image/routr-db-selection.patch
+      - .forgejo/workflows/routr-db-selection.yaml
+
+concurrency:
+  group: routr-db-selection-${{ forgejo.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-publish:
+    runs-on: docker
+    container: {image: ubuntu:24.04}
+    timeout-minutes: 180
+    env:
+      DOCKER_HOST: tcp://127.0.0.1:2376
+      DOCKER_TLS_VERIFY: '1'
+      DOCKER_CERT_PATH: /certs/client
+    steps:
+      - name: Install build tools
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates docker.io git openjdk-17-jdk
+      - name: Check out CoRE-Business
+        uses: https://github.com/actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: https://github.com/actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch pinned Routr source and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init /tmp/routr
+          git -C /tmp/routr remote add origin https://github.com/fonoster/routr.git
+          git -C /tmp/routr fetch --depth 1 origin 978336c7e0625fa5cb36a4db57acbf45b977c900
+          git -C /tmp/routr checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/routr rev-parse HEAD)" = '978336c7e0625fa5cb36a4db57acbf45b977c900'
+          git -C /tmp/routr apply "$GITHUB_WORKSPACE/AVoIP/image/routr-db-selection.patch"
+      - name: Build Routr Location and Registry and run focused tests
+        working-directory: /tmp/routr
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          npx lerna run build --scope @routr/location --scope @routr/registry --include-dependencies
+          npx mocha -r ts-node/register \
+            mods/location/test/redis_db_number.unit.test.ts \
+            mods/registry/test/redis_db_number.unit.test.ts --exit
+      - name: Set up Docker Buildx
+        uses: https://github.com/docker/setup-buildx-action@v3
+      - name: Build amd64 patched images
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx build --platform linux/amd64 --load \
+            --tag local/routr-location-dbselection:test \
+            --file /tmp/routr/mods/location/Dockerfile /tmp/routr/mods/location
+          docker buildx build --platform linux/amd64 --load \
+            --tag local/routr-registry-dbselection:test \
+            --file /tmp/routr/mods/registry/Dockerfile /tmp/routr/mods/registry
+      - name: Confirm both runtime images exist
+        shell: bash
+        run: |
+          docker image inspect local/routr-location-dbselection:test >/dev/null
+          docker image inspect local/routr-registry-dbselection:test >/dev/null
+      - name: Configure immutable Forgejo image references
+        id: image
+        shell: bash
+        env:
+          FORGEJO_SERVER_URL: ${{ forgejo.server_url }}
+          FORGEJO_REPOSITORY: ${{ forgejo.repository }}
+          FORGEJO_SHA: ${{ forgejo.sha }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          server = urlsplit(os.environ['FORGEJO_SERVER_URL'])
+          if server.scheme != 'https' or not server.hostname or server.username or server.password:
+              raise SystemExit('Expected an HTTPS Forgejo server URL without credentials')
+          registry = server.netloc.lower()
+          repository = os.environ['FORGEJO_REPOSITORY'].lower()
+          tag = f"2.13.6-dbselect-{os.environ['FORGEJO_SHA']}"
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'registry={registry}\n')
+              output.write(f'location={registry}/{repository}/routr-location:{tag}\n')
+              output.write(f'registry_image={registry}/{repository}/routr-registry:{tag}\n')
+          PY
+      - name: Log in to Forgejo registry
+        if: ${{ forgejo.ref == 'refs/heads/main' }}
+        uses: https://github.com/docker/login-action@v3
+        with:
+          registry: ${{ steps.image.outputs.registry }}
+          username: ${{ secrets.FORGEJO_REGISTRY_USERNAME || forgejo.repository_owner }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Publish tested amd64 images by immutable tag
+        if: ${{ forgejo.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker tag local/routr-location-dbselection:test '${{ steps.image.outputs.location }}'
+          docker tag local/routr-registry-dbselection:test '${{ steps.image.outputs.registry_image }}'
+          docker push '${{ steps.image.outputs.location }}'
+          docker push '${{ steps.image.outputs.registry_image }}'
+      - name: Record image digests
+        if: ${{ forgejo.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          location_digest=$(docker buildx imagetools inspect '${{ steps.image.outputs.location }}' --format '{{json .Manifest.Digest}}' | tr -d '"')
+          registry_digest=$(docker buildx imagetools inspect '${{ steps.image.outputs.registry_image }}' --format '{{json .Manifest.Digest}}' | tr -d '"')
+          printf 'Routr image pins for the AVoIP values layer:\n\n' >> "$GITHUB_STEP_SUMMARY"
+          printf '```yaml\nroutr:\n  imageDigests:\n    location: "%s"\n    registry: "%s"\n```\n' "$location_digest" "$registry_digest" >> "$GITHUB_STEP_SUMMARY"
