@@ -55,6 +55,8 @@ data:
             <param name="sip-trace" value="false"/>
             <param name="context" value="from-asterisk"/>
             <param name="rtp-ip" value="$${local_ip_v4}"/>
+            <param name="rtp-timer-name" value="soft"/>
+            <param name="rtp-notimer-during-bridge" value="false"/>
             <param name="sip-ip" value="$${local_ip_v4}"/>
             <param name="sip-domain" value="$${private_sip_host}"/>
             <param name="ext-sip-ip" value="host:$${private_sip_host}"/>
@@ -97,6 +99,8 @@ data:
         <param name="auth-calls" value="false"/>
         <param name="inbound-late-negotiation" value="true"/>
         <param name="rtp-ip" value="$${local_ip_v4}"/>
+        <param name="rtp-timer-name" value="soft"/>
+        <param name="rtp-notimer-during-bridge" value="false"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
         <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
         <param name="ext-sip-ip" value="host:$${external_sip_ip}"/>
@@ -140,6 +144,8 @@ data:
         <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
         <param name="rtp-ip" value="$${local_ip_v4}"/>
+        <param name="rtp-timer-name" value="soft"/>
+        <param name="rtp-notimer-during-bridge" value="false"/>
         <param name="sip-domain" value="$${external_sip_ip}"/>
         <param name="ext-sip-ip" value="host:$${external_sip_ip}"/>
         <param name="ext-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
