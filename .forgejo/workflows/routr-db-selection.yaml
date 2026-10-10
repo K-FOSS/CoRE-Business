@@ -16,7 +16,10 @@ concurrency:
 jobs:
   build-test-publish:
     runs-on: docker
-    container: {image: ubuntu:24.04}
+    # Checkout is a JavaScript action and runs before setup-node, so the job
+    # container itself must already provide a Node runtime.
+    container:
+      image: 'node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8'
     timeout-minutes: 180
     env:
       DOCKER_HOST: tcp://127.0.0.1:2376
