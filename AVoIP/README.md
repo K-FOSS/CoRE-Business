@@ -107,13 +107,15 @@ databases 155 (Location) and 156 (Registry). Location and Registry require
 patched images built from the pinned Routr source to select those databases.
 See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
-Home1/YVR fax reception has been reported working over G.711. The owning
+Home1/YVR fax reception is reported working over G.711. The owning
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-sets `freeswitch.fax.g711Only.enabled: true` for that site, which disables
-T.38 negotiation on its dedicated `fax.did` route and selects PCMU. T.38 has
-not worked in YVR; DC1/YXL retains the chart's T.38-capable default. The
-reported result does not establish SIP ACK delivery, fax page count, or TIFF
-retention without a call-specific trace. See the [current fax call path](docs/PHONE-TREE.md).
+sets `freeswitch.fax.g711Only.enabled: true` for that site, disabling T.38
+negotiation on its dedicated `fax.did` route and selecting PCMU. DC1/YXL keeps
+the chart's T.38-capable settings, and T.38 fax reception is reported working
+there. Automatic fax detection on the voice number is also reported working;
+FreeSWITCH monitors CNG after the voice call is answered and transfers detected
+fax calls to `rxfax`. Call-specific SIP ACK, page-count and TIFF evidence has
+not been recorded here. See the [current fax call path](docs/PHONE-TREE.md).
 
 ## Components and security
 
@@ -520,17 +522,22 @@ recovery decisions about any remnants.
 
 ## Verification and activation
 
-The chart is deployed. YVR G.711 fax reception is reported working, while
-the end-to-end voice and failover paths still need live verification:
+The chart is deployed. YVR G.711 fax reception, YXL T.38 reception, and
+automatic fax detection on the voice number are reported working. The
+five-second audio relay interruption is also reported resolved after the
+FreeSWITCH SIP profile RTP timer changes. Call-correlated traces and the
+end-to-end failover paths still need live verification; see
+[SIP identity and call verification](docs/SIP-IDENTITY.md):
 
 1. Confirm an inbound Flowroute INVITE receives an ACK at FreeSWITCH and stays
    up for at least 60 seconds. The prior approximately 32-second `ACK Timeout`
    is reported resolved; one [operator-correlated 129-second call](docs/SIP-IDENTITY.md)
    had a complete recording. Retain a Call-ID-correlated ACK and clean BYE/200
    trace as acceptance evidence. See [SIP identity and call verification](docs/SIP-IDENTITY.md).
-2. Verify an ordinary voice call bridges to Asterisk. For YVR fax, capture
-   the `rxfax` result, TIFF, G.711 mode, and ACK on both SIP hops. Test T.38
-   separately before enabling it there. Verify YXL fax independently.
+2. Verify an ordinary voice call bridges to Asterisk and a fax sent to the
+   voice number is detected and transferred to `rxfax`. Capture the `rxfax`
+   result, TIFF, negotiated fax mode, and ACK on both SIP hops for YVR G.711
+   and YXL T.38 calls.
 3. Exercise site failover and the RTPEngine/Valkey recovery path before treating
    either as production verified.
 

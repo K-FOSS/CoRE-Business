@@ -38,21 +38,24 @@ Inbound calls over either public SIP transport follow this path:
 4. FreeSWITCH matches `fax.did` first and transfers it to `fax-receive`.
    That extension answers, plays a 2100 Hz called-station tone, and runs
    [`mod_spandsp` `rxfax`](https://developer.signalwire.com/freeswitch/applications/fax/).
-   At Home1/YVR, the ApplicationSet selects G.711-only PCMU reception because
-   the reported working fax used G.711 and T.38 has not worked. DC1/YXL keeps
-   the chart's T.38-capable setting. The chart defaults disable V.17 and ECM;
-   the documented Flowroute path is validated only through 9600 bps.
+   At Home1/YVR, the ApplicationSet selects G.711-only PCMU reception. DC1/YXL
+   uses the chart's T.38-capable setting; T.38 fax reception has been reported
+   working there. The chart enables V.17 and ECM. Fax behavior may vary by
+   site and carrier path.
 5. FreeSWITCH writes `${uuid}.tif` under `freeswitch.fax.spoolPath`, logs the
    fax result and packet counts, then hangs up. The spool is a retained
    Longhorn `ReadWriteOnce` claim by default. No automatic TIFF delivery or
    TIFF retention cleanup is configured.
-6. A call to `avoip.did` rings and bridges to Asterisk. The voice DID has no
-   fax-tone detector and does not enter `rxfax`. Unmatched destinations are
-   rejected.
+6. A call to `avoip.did` rings and bridges to Asterisk. After answer,
+   `spandsp_start_fax_detect` monitors the inbound audio for fax CNG while the
+   voice call continues. If it detects a fax tone, FreeSWITCH transfers the
+   call to `fax-receive` and runs `rxfax`; ordinary voice remains bridged to
+   Asterisk. This automatic detection is reported working on the voice number.
+   Unmatched destinations are rejected.
 
-The reported YVR fax success confirms G.711 reception. The page count,
-resulting TIFF and SIP ACK still require a retained call-specific trace to
-document them as verified. Call-detail records are
+YVR G.711 fax reception, YXL T.38 fax reception, and automatic fax detection
+on the voice number are reported working. Call-specific traces, page counts,
+resulting TIFFs and SIP ACK evidence have not been recorded here. Call-detail records are
 written to the service account's PostgreSQL database by
 [`mod_cdr_pg_csv`](https://developer.signalwire.com/freeswitch/module-reference/event-handlers/mod_cdr_pg_csv/);
 the chart creates its `cdr` table during pod initialization. Runtime logs remain
