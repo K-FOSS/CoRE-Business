@@ -173,7 +173,7 @@ data:
     loadmodule "topos_redis.so"
     {{- end }}
 
-    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreConfigured) }}
+    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
     loadmodule "siptrace.so"
     {{- end }}
 
@@ -298,7 +298,7 @@ data:
     }
     {{- end }}
 
-    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) (not $sipCoreConfigured) }}
+    {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
     modparam("siptrace", "trace_on", 1)
     modparam("siptrace", "trace_mode", 1)
     modparam("siptrace", "trace_to_database", 0)

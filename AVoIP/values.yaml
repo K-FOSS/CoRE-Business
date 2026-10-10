@@ -298,7 +298,7 @@ kamailio:
         backendSelection: true
         topology: true
         media: false
-        sipTrace: false
+        sipTrace: true
   instances:
     - name: 'carrier'
       enabled: true
@@ -854,6 +854,9 @@ asterisk:
 
 freeswitch:
   enabled: true
+  homer:
+    # Send internal FreeSWITCH SIP and channel metadata to site-local Homer.
+    sipCapture: true
   ldap:
     # Temporarily disable mod_xml_ldap while the Asterisk peer uses its static
     # Secret-backed directory entry. Enable only after the LDAP callback is

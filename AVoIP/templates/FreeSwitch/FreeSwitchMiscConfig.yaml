@@ -219,6 +219,9 @@ data:
       <global_settings>
         <param name="log-level" value="0"/>
         <param name="debug-presence" value="0"/>
+        {{- if and .Values.freeswitch.homer.sipCapture (ne (include "avoip.homer.enabled" . | trim) "") }}
+        <param name="capture-server" value="udp:{{ $fullName }}-homer-heplify.{{ .Release.Namespace }}.svc.{{ default "cluster.local" .Values.cluster.domain }}:{{ .Values.homer.capture.hepPort }};hep=3;capture_id=102"/>
+        {{- end }}
       </global_settings>
       <profiles>
         <X-PRE-PROCESS cmd="include" data="../sip_profiles/*.xml"/>

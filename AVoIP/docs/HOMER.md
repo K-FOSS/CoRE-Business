@@ -4,7 +4,7 @@ The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/
 
 ## Capture and access
 
-[Kamailio SIP trace](https://www.kamailio.org/docs/modules/stable/modules/siptrace.html) sends HEPv3 SIP requests and replies to the site-local Homer TCP listener on `9061`. [RTPEngine Homer capture](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md) sends RTCP statistics and NG control metadata to that listener when RTPEngine is enabled. The cluster-only capture Service also exposes UDP `9060` and metrics TCP `9096`. The ingest HTTP listener uses container port `9080`; the coordinator UI and v4 API use container port `8080` behind the web Service on port `80`. The HEP and metrics ports have no public route.
+[Kamailio SIP trace](https://www.kamailio.org/docs/modules/stable/modules/siptrace.html) sends HEPv3 SIP requests and replies from carrier and private SBC instances to the site-local Homer TCP listener on `9061`. The internal FreeSWITCH Kamailio profile sends SIP messages and FreeSWITCH channel metadata over HEPv3/UDP to port `9060`, using FreeSWITCH's [Homer HEP capture agent](https://github.com/sipcapture/homer/wiki/Examples%3A-FreeSwitch); the public/Flowroute profile remains excluded. [RTPEngine Homer capture](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md) sends RTCP statistics and NG control metadata to the listener when RTPEngine is enabled. The cluster-only capture Service also exposes metrics TCP `9096`. The ingest HTTP listener uses container port `9080`; the coordinator UI and v4 API use container port `8080` behind the web Service on port `80`. The HEP and metrics ports have no public route.
 
 Homer stores signaling and diagnostic metadata. It does not store RTP payload audio. The separate [FreeSWITCH recording player](HOMER-AUDIO.md) serves WAV files under `/recordings/` on the Homer hostname, but the Homer call-flow view does not automatically attach a WAV to its Call-ID.
 
@@ -24,7 +24,7 @@ After the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/m
 
 1. Confirm both Authentik Workspaces and their connection Secret are ready without printing Secret data.
 2. Confirm the site Homer PVC is `Bound`, the share manager is ready, and the single Homer pod starts without catalog or filesystem errors.
-3. Confirm Kamailio and RTPEngine HEP delivery to the site-local Service. Search a new call by Call-ID in that site's Homer UI and verify SIP messages plus the available RTCP/NG diagnostics.
+3. Confirm private and carrier Kamailio, FreeSWITCH, and RTPEngine HEP delivery to the site-local Service. Search a new internal call by Call-ID in that site's Homer UI and verify SIP messages, FreeSWITCH channel events, and the available RTCP/NG diagnostics.
 4. Verify an unauthenticated UI or `/recordings/` request is challenged by Authentik. Verify the OIDC callback returns to the same site hostname and that Homer queries use `/api/v4`.
 
 For the DC1 hub, inspect resource status and logs without exposing Secret values:
