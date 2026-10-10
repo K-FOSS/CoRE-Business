@@ -4,7 +4,17 @@ set -euo pipefail
 image="${1:?usage: run-integration.sh IMAGE [docker|podman]}"
 engine="${2:-docker}"
 container_name="kamailio-lf-heartbeat-test"
-trap '"$engine" rm -f "$container_name" >/dev/null 2>&1 || true' EXIT
+
+cleanup() {
+  local status=$?
+  trap - EXIT
+  if (( status != 0 )); then
+    "$engine" logs "$container_name" >&2 || true
+  fi
+  "$engine" rm -f "$container_name" >/dev/null 2>&1 || true
+  exit "$status"
+}
+trap cleanup EXIT
 
 start_server() {
   local config_name="$1"
