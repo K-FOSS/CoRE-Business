@@ -30,6 +30,15 @@ cannot be assumed independently available at both sites. The
 [storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
 does not supply a Kamailio registration database.
 
+The published Home1 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+change ([commit `068a779e`](https://github.com/K-FOSS/CoRE-Backplane/commit/068a779e76c7875389710b5faecc89305927b1e6))
+selects database-only provisioning on the Home1 `internal` instance. As of
+2026-10-10, the live AVoIP child has a manifest-generation error because its
+Lovely/Vault plugin cannot connect to the Home1 Vault endpoint. No database
+claim, schema job, or Kamailio database connection has been verified live.
+Keep the SIP registrar disabled until manifests can be generated and the
+PostgreSQL provisioning path is observed.
+
 ## Implemented opt-in pilot and safety boundary
 
 ### Database-only provisioning
