@@ -27,9 +27,13 @@ The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES
 and [restricted outbound service-peer pilot](AVoIP/docs/OUTBOUND-PILOT.md)
 for authenticated service peers. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
 now renders a site-local PostgreSQL service identity and schema migration, but
-credential issuance and live registration are still open. The
-[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
-does not enable these pilots at any site; WSS and webphone work remains open.
+credential issuance and live registration for the private registrar are still
+open. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+does not enable the private registrar or outbound service-peer pilots. Home1
+does run the SIP Core WSS path with a three-replica Kamailio edge and the
+digest-pinned LF-heartbeat compatibility image; the dynamic registrar and
+first-party webphone work remains open. See the
+[Home Assistant SIP Core status](AVoIP/docs/SIPCORE-HASS.md#verified-pilot).
 
 ```text
 CoRE-Backplane Apps/Business ApplicationSet

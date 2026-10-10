@@ -2,13 +2,14 @@
 
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the
-[SIP HA integration baseline](docs/SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-08).
+[SIP HA integration baseline](docs/SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-09).
 The chart supports a separate `internal-wss` Kamailio instance for the opt-in
 three-replica WSS edge. The ordinary `internal` private-SBC remains its own
-one-replica Deployment. Home1's active ApplicationSet still explicitly keeps
-`internal` at one replica and does not yet define `internal-wss`; see the
-[HA rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode) before
-adding the WSS instance and changing the route backend.
+one-replica Deployment. Home1's active ApplicationSet uses the instance name
+`internal-websocket` for its three-replica WSS edge and retains `internal` as
+the one-replica private-SBC. See the
+[HA rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode) for the
+current topology and connection-owner behavior.
 
 This chart is the site-specific desired state for the AVoIP stack in `core-prod`.
 The [SIP, identity, and RTC architecture plan](docs/SIP-STATEFUL-HA.md) and its
@@ -24,11 +25,15 @@ workloads duplicated in this chart. Homer has an Authentik-protected web route
 where enabled.
 
 The dedicated WSS edge has an opt-in, exact LF/LF heartbeat compatibility
-patch for Home Assistant SIP Core. It is disabled by default and requires a
-separately built and digest-pinned Kamailio 6.1.4 image. The
+patch for Home Assistant SIP Core. It is disabled by default; Home1 enables it
+on `internal-websocket` using a separately built, digest-pinned Kamailio 6.1.4
+image. The
 [Forgejo workflow](../.forgejo/workflows/kamailio-lf-heartbeat.yaml) tests an
 amd64 build and publishes an amd64 image on `main`; its successful run
-reports the immutable digest. See the [SIP Core
+reports the immutable digest. Home1 is running tag
+`6.1.4-lf-heartbeat-5264324a63deaa38db2d0bba0d973d8296683899` at digest
+`sha256:5eb5f47706f13edd4a9db90b1670c12c2354476d7eff8c08e748876cadec3545`.
+See the [SIP Core
 compatibility notes](docs/SIPCORE-HASS.md#home-assistant-lf-only-heartbeat-compatibility)
 and [test instructions](tests/README.md#home-assistant-lf-only-heartbeat-regression).
 
@@ -337,9 +342,12 @@ configured internal destinations. Carrier and FreeSWITCH fax signaling stays
 on the separate carrier instance. The WSS instance relays signaling to
 Asterisk over TLS and controls the existing RTPEngine for the Home Assistant
 media leg, separately from the ordinary `internal` private-SBC instance. The
-YVR deployment currently runs three `internal-websocket` replicas behind its
-WSS Service while retaining the one-replica `internal` return instance. Inspect
-the owning ApplicationSet before changing its rollout values. See
+YVR currently runs three `internal-websocket` replicas behind its WSS Service
+while retaining the one-replica `internal` return instance. Home Assistant has
+confirmed that the extension rings and plays audio, and that its registration
+and WSS connection now remain live over time. The Gateway still imposes a
+3600-second maximum connection duration. Inspect the owning ApplicationSet
+before changing its rollout values. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md) and the
 [three-replica WSS edge guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode).
 

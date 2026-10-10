@@ -1,19 +1,20 @@
 # Home Assistant SIP Core with static Asterisk extensions
 
 The current Home1 Envoy Gateway resources, TLS termination, Host/Origin
-contract, timeout layers, and ApplicationSet's explicit one-replica override
-are recorded in the [SIP HA gateway baseline](SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-08).
+contract, timeout layers, and WSS instance are recorded in the [SIP HA gateway
+baseline](SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-09).
 The generated HTTPRoute is owned by this chart and currently targets the
-internal Kamailio Service on port 8088. Increasing replicas alone is unsafe:
+three-replica `internal-websocket` Kamailio Service on port 8088. Increasing
+replicas alone is unsafe:
 the shared Envoy Service balances new connections but cannot route later SIP
 requests to the Kamailio process that owns a registered WebSocket.
 The chart's opt-in `websocketHA` mode runs in a separate named
-`internal-wss` Kamailio instance, apart from the ordinary `internal`
+`internal-websocket` Kamailio instance, apart from the ordinary `internal`
 private-SBC. It supplies stable StatefulSet owner DNS, Path routing and
-Asterisk return routing; the Home1 ApplicationSet remains unchanged until its
-separately reviewed staged cutover. See
+Asterisk return routing. Home1 currently uses this three-replica WSS edge
+while retaining the one-replica `internal` instance. See
 [SIP Stateful HA](SIP-STATEFUL-HA.md#implemented-wss-edge-mode) for the
-observed Envoy resources, exact future values and operator acceptance steps.
+owner-path behavior and limitations.
 
 The [SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration)
 is a browser WebRTC SIP client. It connects to Asterisk over WSS and registers
@@ -58,8 +59,9 @@ records (peer address and local connection ID), without recording the bad
 buffer or close payload. The current YVR route/policy limits are 0s at the
 HTTPRoute, 1h stream idle at the route policy, 300s Gateway backend idle,
 1800s client idle, and 3600s maximum duration; Kamailio sends WebSocket Ping
-frames every 15s. These values do not explain a repeatable 30s disconnect.
-Check the close event and client-side reconnect logs before changing a timeout.
+frames every 15s. The Home1 heartbeat compatibility override addresses the
+previously observed repeatable 30s disconnect. If it recurs, check the close
+event and client-side reconnect logs before changing a timeout.
 
 ### Home Assistant LF-only heartbeat compatibility
 
@@ -84,15 +86,17 @@ are under `AVoIP/image/kamailio-lf-heartbeat/`. The root
 the tested Buildx and registry pattern from
 [Core-Docker's image workflow](https://github.com/K-FOSS/Core-Docker/blob/main/.forgejo/workflows/Daily.yaml):
 it tests and publishes an immutable amd64 image on `main` and records its
-digest. The live Home1 override remains
-pending until that workflow succeeds and the digest is pinned in the owning
-CoRE-Backplane ApplicationSet. Apply the same option and image to every
-`internal-wss` replica. The `internal` private-SBC and carrier instances must
-stay on their existing image.
+digest. The Home1 override is enabled on all three `internal-websocket`
+replicas with the published image pinned by tag and digest in the owning
+[CoRE-Backplane AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+The deployed image is
+`slop.writemy.codes/core/core-business/kamailio-lf-heartbeat:6.1.4-lf-heartbeat-5264324a63deaa38db2d0bba0d973d8296683899@sha256:5eb5f47706f13edd4a9db90b1670c12c2354476d7eff8c08e748876cadec3545`.
+The ordinary `internal` private-SBC and carrier instances keep their existing
+image.
 
-After the image exists, merge this into the existing `internal-wss` entry in
-the Home1 ApplicationSet's complete `kamailio.instances` list (the list
-replaces rather than appends):
+The Home1 ApplicationSet's complete `kamailio.instances` list (the list
+replaces rather than appends) carries this override under its existing
+`internal-websocket` entry:
 
 ```yaml
 websocketHA:
@@ -105,9 +109,10 @@ websocketHA:
         digest: sha256:<published-image-digest>
 ```
 
-Do not apply this example with placeholder values. First build and run the
-integration test, then substitute the published image coordinates and render
-the complete owning ApplicationSet values.
+The values above describe the current Home1 deployment; do not copy placeholder
+coordinates into a deployment. Build and run the image regression workflow,
+then use that run's immutable tag and digest and render the complete owning
+ApplicationSet values before enabling the option at another site.
 
 The current YVR logs also report TOPOS storage errors and OPTIONS relay
 failures. Those are independent problems and are not addressed by this
@@ -367,6 +372,21 @@ echo destination `9090` reached the Asterisk echo extension, as confirmed by
 the operator. This verifies the registration, signaling, and echo-destination
 path. Bidirectional audio through RTPEngine was not separately captured as
 part of this verification.
+
+On 2026-10-10, the patched image was enabled on Home1's separate
+`internal-websocket` StatefulSet through the owning ApplicationSet. The
+published Home1 deployment commit is
+[`f8abd3e53869e6779d8fb023b60104a0720a6102`](https://slop.writemy.codes/CoRE/CoRE-Backplane/commit/f8abd3e53869e6779d8fb023b60104a0720a6102).
+Argo CD reported the Home1 AVoIP application Synced and Healthy. All three
+StatefulSet pods were Ready on image digest
+`sha256:5eb5f47706f13edd4a9db90b1670c12c2354476d7eff8c08e748876cadec3545`,
+and the live Kamailio configuration had
+`lf_keepalive_compat=1`. The operator confirmed the SIP Core extension rang
+and played the test audio. The operator also reports that the Home Assistant
+registration and WebSocket now remain connected over time, resolving the prior
+short disconnect behavior. This is live signaling and client confirmation;
+it does not by itself verify bidirectional RTP, fax, or behavior beyond the
+Gateway's configured 3600-second maximum connection duration.
 
 ## Rollback and verification
 

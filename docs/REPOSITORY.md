@@ -160,6 +160,11 @@ are opt-in and are not enabled by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The registrar pilot requires a site-local `User` database claim and migration
 Job; it is not yet an operational SIP user service or WSS ingress.
+Separately, Home1's static SIP Core extension pilot is active over the
+three-replica WSS edge with the digest-pinned LF-heartbeat image; the operator
+confirmed a long-lived registration and a successful ring/audio test. This
+does not enable the dynamic registrar or first-party webphone. See the
+[SIP Core live status](../AVoIP/docs/SIPCORE-HASS.md#verified-pilot).
 The Nextcloud administrator still needs to register `https://talk.mylogin.space`
 with the generated signaling secret and configure the `talk-media.mylogin.space`
 TURN endpoint; see [AVoIP setup and verification](../AVoIP/README.md#nextcloud-talk-high-performance-backend).
