@@ -17,7 +17,6 @@ RUN curl --fail --location --silent --show-error "$KAMAILIO_SOURCE_URL" -o kamai
     && tar -xzf kamailio.tar.gz
 
 COPY patches/0001-websocket-ignore-lf-only-sip-heartbeat.patch /tmp/lf-heartbeat.patch
-COPY test-kamailio.cfg /tmp/test-kamailio.cfg
 RUN cd /usr/src/kamailio-6.1.4 \
     && patch --batch --fuzz=0 -p1 < /tmp/lf-heartbeat.patch \
     && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
@@ -28,12 +27,13 @@ RUN cd /usr/src/kamailio-6.1.4 \
          include_modules='auth auth_db ctl corex db_postgres dialog dispatcher maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
     && make install prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
-    && /usr/sbin/kamailio -c -f /tmp/test-kamailio.cfg \
     && mkdir -p /out/usr/lib/x86_64-linux-gnu/kamailio/modules \
     && cp /usr/sbin/kamailio /out/usr/sbin-kamailio \
     && for module in auth auth_db ctl corex db_postgres dialog dispatcher maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
          cp "/usr/lib/x86_64-linux-gnu/kamailio/modules/${module}.so" /out/usr/lib/x86_64-linux-gnu/kamailio/modules/; \
        done
+COPY test-kamailio.cfg /tmp/test-kamailio.cfg
+RUN /usr/sbin/kamailio -c -f /tmp/test-kamailio.cfg
 
 FROM ${KAMAILIO_BASE} AS runtime
 USER root
