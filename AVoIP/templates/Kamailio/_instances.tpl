@@ -89,18 +89,23 @@
       {{- fail (printf "Kamailio %s LF-only heartbeat compatibility requires an image repository, immutable tag and sha256 digest" $name) -}}
     {{- end -}}
   {{- end -}}
+  {{- if $effective.registrar.database.enabled -}}
+    {{- if or (ne $role "private-sbc") (not $effective.enabled) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.database.username))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.registrar.database.host))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.database.secretName))) -}}
+      {{- fail (printf "Kamailio %s registrar database requires an enabled private-sbc and dedicated PostgreSQL host, username and Secret" $name) -}}
+    {{- end -}}
+    {{- if eq $effective.registrar.database.secretName $effective.topology.redis.secretName -}}
+      {{- fail (printf "Kamailio %s registrar database Secret must differ from TOPOS Secret" $name) -}}
+    {{- end -}}
+  {{- end -}}
   {{- if $effective.registrar.enabled -}}
     {{- if or $effective.sipLogging.rawInbound $effective.sipLogging.postToposResponses $effective.sipLogging.carrierTraffic $effective.sipLogging.diagnostics.enabled $effective.sipLogging.diagnostics.sdp -}}
       {{- fail (printf "Kamailio %s registrar forbids raw SIP and diagnostic logging of Digest credentials" $name) -}}
     {{- end -}}
-    {{- if or (ne $role "private-sbc") (not $effective.enabled) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.registrar.realm))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.database.username))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.registrar.database.host))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.database.secretName))) -}}
+    {{- if or (not $effective.registrar.database.enabled) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.registrar.realm))) -}}
       {{- fail (printf "Kamailio %s registrar requires an enabled private-sbc, realm and dedicated PostgreSQL host, username and Secret" $name) -}}
     {{- end -}}
     {{- if or (lt (int $effective.registrar.maxContacts) 1) (lt (int $effective.registrar.minExpires) 60) (lt (int $effective.registrar.maxExpires) (int $effective.registrar.minExpires)) -}}
       {{- fail (printf "Kamailio %s registrar requires positive contact and registration expiry limits" $name) -}}
-    {{- end -}}
-    {{- if eq $effective.registrar.database.secretName $effective.topology.redis.secretName -}}
-      {{- fail (printf "Kamailio %s registrar database Secret must differ from TOPOS Secret" $name) -}}
     {{- end -}}
     {{- if not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.accessPeerName)) -}}
       {{- fail (printf "Kamailio %s registrar requires a dedicated access peer" $name) -}}

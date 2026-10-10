@@ -3,16 +3,18 @@
 ## Current state
 
 Backplane references below were inspected at revision
-[`a39ecb3`](https://github.com/K-FOSS/CoRE-Backplane/commit/a39ecb3) on
-2026-10-07. Verify the active cluster state before enabling an instance.
+[`36da49057d3824174494ac36dabe07cf4e6d40fc`](https://github.com/K-FOSS/CoRE-Backplane/commit/36da49057d3824174494ac36dabe07cf4e6d40fc).
+Verify the active cluster state before enabling an instance.
 
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 retains the `carrier` Kamailio instance at DC1, Home1, and the legacy DC1
 cluster, and enables one `internal` `private-sbc` instance in Home1/YVR. The
-operator reports the first pieces live there; Argo health and live SIP behavior
-have not been independently observed in this workspace. The registrar remains
-disabled on that instance. The carrier public listener rejects `REGISTER`
-with 403. The chart's
+user has confirmed the separate SIP Core path rings extension 7101, plays
+audio, and retains its Home Assistant registration and WebSocket connection.
+That validates the current SIP Core route, not PostgreSQL registrar behavior.
+The registrar remains disabled on the `internal` instance, and live PostgreSQL
+provisioning has not yet been verified. The carrier public listener rejects
+`REGISTER` with 403. The chart's
 `private-sbc` role now contains a disabled-by-default registrar pilot with
 mutual-TLS ingress, Digest checks, exact allowed AoRs, database-only contact
 storage and a dedicated Cilium policy. No live internal registration has been
@@ -30,6 +32,29 @@ does not supply a Kamailio registration database.
 
 ## Implemented opt-in pilot and safety boundary
 
+### Database-only provisioning
+
+The private Kamailio PostgreSQL database can now be provisioned before SIP
+registration is enabled. Set `registrar.database.enabled: true` for an enabled
+`private-sbc` instance and provide its dedicated `host`, `username`, and
+`secretName`. Leave `registrar.enabled: false` until the separate SIP identity
+and mTLS access contract below is ready. This database-only mode creates the
+`User.mylogin.space` PostgreSQL claim, stable connection Secret, schema
+migration hook, and migration-only Cilium egress policy. It does not load
+`auth_db`, `registrar`, or `usrloc` into Kamailio or accept REGISTER requests.
+The claim is ordered at sync wave -2, the migration egress policy at -1, and
+the schema hook at 0 so credentials and egress are ready before the Job starts.
+
+The database role and database are retained if the Kamailio instance is later
+removed, following the current `User` Composition's PostgreSQL orphan policy.
+Audit the claim, generated Secret metadata, and downstream database before
+changing identity settings or deleting retained resources. The schema hook is
+an Argo CD sync hook, so perform a normal scoped sync of the owning child
+application when provisioning the schema; a resource-selective sync skips it.
+The Home1 ApplicationSet configures database-only mode on its `internal`
+instance using the site's `psql-int` endpoint. Do not provision it on DC1,
+which currently follows Home1 as PostgreSQL standby.
+
 Set `registrar.enabled: true` on one named `private-sbc` instance only after
 providing `realm`, `accessPeerName`, `allowedUsers`, and the
 `registrar.database` host, username and Secret name. The mTLS access peer must
@@ -45,8 +70,8 @@ stable connection Secret reference, a BJW-S migration Job and two Cilium
 policies. The Job applies the pinned Kamailio 6.1.4 `standard`, `auth_db` and
 `usrloc` PostgreSQL schemas under an advisory transaction lock; it checks
 schema versions and fails instead of silently replacing unknown tables.
-Argo CD runs the claim at wave -2, migration at wave 0 and registrar Deployment
-at wave 1. Resource-selective sync skips hooks: use a scoped full application
+Argo CD runs the claim at wave -2, migration egress policy at -1, schema hook at
+wave 0 and registrar Deployment at wave 1. Resource-selective sync skips hooks: use a scoped full application
 sync when first provisioning the schema. The database and claim can outlive
 the registrar workload; deleting an instance is not credential revocation.
 

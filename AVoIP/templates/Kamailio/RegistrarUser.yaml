@@ -1,6 +1,6 @@
 {{- $root := . -}}
 {{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
-{{- if and $instance.enabled $instance.registrar.enabled -}}
+{{- if and $instance.enabled $instance.registrar.database.enabled -}}
 {{- $database := $instance.registrar.database -}}
 ---
 apiVersion: mylogin.space/v1alpha1

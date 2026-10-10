@@ -114,12 +114,14 @@ spec:
 {{ end }}
 {{ $root := . }}
 {{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
-{{- if and $instance.enabled $instance.registrar.enabled -}}
+{{- if and $instance.enabled $instance.registrar.database.enabled -}}
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: '{{ include "avoip.kamailio.resourceName" (dict "root" $root "instance" $instance "suffix" "registrar-schema-policy") }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
 spec:
   endpointSelector:
     matchLabels:

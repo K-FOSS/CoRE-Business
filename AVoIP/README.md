@@ -37,6 +37,13 @@ See the [SIP Core
 compatibility notes](docs/SIPCORE-HASS.md#home-assistant-lf-only-heartbeat-compatibility)
 and [test instructions](tests/README.md#home-assistant-lf-only-heartbeat-regression).
 
+The private Kamailio registrar supports a database-only provisioning mode. A
+proposed Home1 ApplicationSet change prepares its PostgreSQL role, database,
+schema and stable connection Secret without enabling SIP registration. See the
+[registrar integration contract](docs/INTERNAL-REGISTRAR.md#database-only-provisioning)
+for ordering, access boundaries, and the separate prerequisites for enabling
+REGISTER handling.
+
 ## Deployment ownership
 
 Optional interface profiles for every enabled workload and the named YAML

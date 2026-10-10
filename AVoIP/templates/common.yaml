@@ -1003,7 +1003,7 @@ controllers:
 {{- $_ := set $values "kamailio" $instance -}}
 {{- $ctx := dict "Values" $values "Release" $.Release "Chart" $.Chart "Files" $.Files "Capabilities" $.Capabilities -}}
 {{- include "avoip.kamailio.common.controllers" $ctx }}
-{{- if $instance.registrar.enabled }}
+{{- if $instance.registrar.database.enabled }}
   {{ include "avoip.kamailio.component" $instance }}-registrar-schema:
     enabled: true
     type: 'job'
