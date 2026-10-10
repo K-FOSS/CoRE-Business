@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm ci --ignore-scripts
+          npm ci --ignore-scripts --legacy-peer-deps
           npx lerna run build --scope @routr/location --scope @routr/registry --include-dependencies
           npx mocha -r ts-node/register \
             mods/location/test/redis_db_number.unit.test.ts \
