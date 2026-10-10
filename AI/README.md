@@ -110,6 +110,16 @@ service and allocation registry remain unchanged.
   values are mounted from Secrets and never included in rendered manifests or
   reconciliation logs.
 - MCP search credentials are read through External Secrets.
+- Wyoming OpenWakeWord runs as a single CPU backed pod with a private
+  `ClusterIP` Service on TCP `10400`, for Wyoming compatible voice clients such
+  as Home Assistant. The chart pins `rhasspy/wyoming-openwakeword:1.10.0`:
+  upstream issue [#53](https://github.com/rhasspy/wyoming-openwakeword/issues/53)
+  reports that the `2.1.0` image starts but does not return detections, and
+  identifies `1.10.0` as a working version. CPU and memory requests and limits
+  are defined in `openwakeword.resources`. This is a private Wyoming protocol
+  endpoint, not an HTTP API or public Gateway route. The generic initial models
+  do not include a CoRE trained wake word; custom model delivery and measured
+  audio acceptance remain separate work.
 - Backend and BackendTrafficPolicy resources configure external/upstream speech
   services.
 - Speaches runs separate CPU and NVIDIA CUDA backends. The CPU backend uses the
@@ -198,6 +208,15 @@ transcription remains connected for longer than the former five-minute idle
 window. Removing the chart removes its local ClusterMesh backends but leaves
 the Longhorn PV for manual recovery or deletion because its reclaim policy is
 `Retain`.
+For Wyoming OpenWakeWord, confirm the pod is ready, the release's
+`<release>-openwakeword` Service exposes TCP `10400`, and Home Assistant's
+Wyoming integration can connect to
+`<release>-openwakeword.core-ai-prod.svc.cluster.local:10400`. Select an
+available model and test positive and hard-negative audio through a voice
+pipeline; the TCP readiness probe only verifies that the server is listening.
+Watch CPU and memory use during concurrent voice sessions before raising the
+resource limits. Roll back by disabling `openwakeword.enabled` or restoring
+the prior image tag.
 For Paperclip, verify the site-local `User` and Authentik `Workspace` become
 Ready, inspect the generated connection Secret metadata without printing its
 values, confirm the retained Longhorn PVC is bound and backed up, and test the
@@ -214,5 +233,7 @@ stored agent secrets.
 - [GPUStack website](https://gpustack.ai/) and [documentation](https://docs.gpustack.ai/)
 - [Speaches website and documentation](https://speaches.ai/) and
   [source repository](https://github.com/speaches-ai/speaches)
+- [Wyoming OpenWakeWord source and usage](https://github.com/rhasspy/wyoming-openwakeword)
+- [Wyoming protocol](https://github.com/rhasspy/wyoming)
 - [Model Context Protocol website](https://modelcontextprotocol.io/) and [specification](https://modelcontextprotocol.io/specification/)
 - [bjw-s common chart documentation](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)

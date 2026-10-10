@@ -71,6 +71,47 @@ controllers:
             containerPort: 10300
   {{- end }}
 
+  # Wyoming protocol wake-word detection for Home Assistant voice pipelines.
+  {{- if $.Values.openwakeword.enabled }}
+  openwakeword:
+    strategy: RollingUpdate
+
+    replicas: 1
+
+    containers:
+      openwakeword:
+        image:
+          repository: {{ .Values.openwakeword.image }}
+          tag: {{ .Values.openwakeword.tag | quote }}
+          pullPolicy: IfNotPresent
+
+        args:
+          - '--uri'
+          - 'tcp://0.0.0.0:{{ .Values.openwakeword.port }}'
+
+        ports:
+          - name: wyoming
+            containerPort: {{ .Values.openwakeword.port }}
+            protocol: TCP
+
+        resources:
+          {{- toYaml .Values.openwakeword.resources | nindent 10 }}
+
+        probes:
+          liveness:
+            enabled: true
+            custom: true
+            spec:
+              tcpSocket:
+                port: wyoming
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              tcpSocket:
+                port: wyoming
+  {{- end }}
+
   #
   # MCP Hub
   #
@@ -1361,6 +1402,21 @@ persistence:
 
 
 service:
+  {{- if and $.Values.openwakeword.enabled $.Values.openwakeword.service.enabled }}
+  openwakeword:
+    enabled: true
+    controller: openwakeword
+    primary: true
+    type: ClusterIP
+    ports:
+      wyoming:
+        enabled: true
+        primary: true
+        port: {{ $.Values.openwakeword.port }}
+        targetPort: wyoming
+        protocol: TCP
+  {{- end }}
+
   {{- if and $.Values.wyoming.enabled $.Values.wyoming.service.enabled }}
   wyoming:
     # -- Enables or disables the service

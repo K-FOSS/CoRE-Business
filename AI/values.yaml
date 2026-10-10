@@ -67,6 +67,26 @@ wyoming:
 
   languages: 'en'
 
+openwakeword:
+  enabled: true
+
+  image: rhasspy/wyoming-openwakeword
+  # 2.1.0 has a reported inference regression; retain the known-working 1.x runtime.
+  tag: '1.10.0'
+
+  port: 10400
+
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '128Mi'
+    limits:
+      cpu: '1'
+      memory: '512Mi'
+
+  service:
+    enabled: true
+
 speeches:
   enabled: true
 
