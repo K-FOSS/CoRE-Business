@@ -902,7 +902,7 @@ freeswitch:
       # Temporary inbound-call recording for Homer playback and fax troubleshooting.
       # Disable after the capture is complete because recordings contain call audio.
       callRecording:
-        enabled: true
+        enabled: false
         path: '/var/spool/freeswitch/fax'
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
@@ -916,13 +916,14 @@ freeswitch:
     spoolPath: '/var/spool/freeswitch/fax'
     ident: 'AVoIP'
     header: 'AVoIP'
+    autoDetect: true
     t38:
       # Flowroute initially sends G.711 fax audio. Request T.38 after this
       # many 20 ms packets; keep it non-zero (0 is not "immediate").
       rxReinvitePacketCount: 20
       # The current Flowroute fax path is validated only through 9600 bps.
-      disableV17: true
-      useEcm: false
+      disableV17: false
+      useEcm: true
     # The owning ApplicationSet enables this for Home1/YVR, where G.711 fax
     # reception works and T.38 has not been validated. Other sites retain the
     # T.38-capable default until their own call results justify an override.
