@@ -18,7 +18,9 @@ for workloads and Services. It runs the pinned
 [Kamailio 6.1.4 image](https://github.com/kamailio/kamailio-docker) and uses
 [TOPOS](https://www.kamailio.org/docs/modules/6.1.x/modules/topos.html) with a
 site-local Redis-compatible store. This page describes what the templates
-currently render, including the disabled private registrar pilot.
+currently render, including the disabled private registrar pilot. The chart
+requires Kubernetes 1.33 or newer for stable native sidecar init container
+support.
 
 ## Value layers and instance identity
 
@@ -212,7 +214,7 @@ review of DNS and TLS certificate identity.
 | `registrar.database.host`, `port`, `username`, `secretName`, `terraformProvider`, `crossplaneProvider` | `''`, `5432`, `''`, `''`, `''`, `''` | Site-local PostgreSQL service identity via the existing `User` Composition. The stable Secret supplies `psqlURI`, `username`, `password`, and `database`; no SIP secret is stored in it. Empty provider fields derive from site values. |
 | `registrar.maxContacts`, `minExpires`, `maxExpires` | `2`, `120`, `600` | Registrar contact and refresh limits. The separate `subscriber.enabled`/`expires_at` view controls verifier validity; database triggers purge contacts on disable, expiry change or HA1 rotation. No credential issuer is deployed. |
 | `networkPolicy.envoy.namespace`, `networkPolicy.envoy.podName` | `envoy-gateway-system`, `envoy` | Labels used to permit Gateway data-plane ingress to public TLS/5061. Match the installed Gateway pods. |
-| `topology.enabled` | `true` | Enables Redis-backed TOPOS and its local TLS bridge. Both supported roles require this; disabling it fails role validation. Kamailio waits for the bridge's loopback listener before starting so its `ndb_redis` children do not race sidecar startup. |
+| `topology.enabled` | `true` | Enables Redis-backed TOPOS and its local TLS bridge. Both supported roles require this; disabling it fails role validation. The bridge runs as a [native sidecar init container](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/), and Kubernetes waits for its readiness probe before starting Kamailio. |
 | `topology.redis.secretName`, `topology.redis.serverKey` | `avoip-kamailio-topos`, `server` | Secret containing the Redis server string consumed by Kamailio. Duplicate names are made instance-specific for later instances. |
 | `topology.redis.database` | `51` | Site-local logical database. Enabled instances need different nonzero databases; allocate one before adding an instance. |
 | `topology.redis.host`, `port`, `proxyPort`, `tlsServerName` | derived Dragonfly host, `6379`, `16379`, derived Dragonfly host | The local HAProxy bridge listens on loopback and verifies TLS to the site Dragonfly endpoint. |

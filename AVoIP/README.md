@@ -231,8 +231,9 @@ address with `externalTrafficPolicy: Local`. Kamailio's private listener is
 TLS/5062; it sends accepted calls to FreeSWITCH over TLS/5061 and uses TOPOS
 state in Dragonfly database `51`. Its carrier-facing Contact and route set retain
 the original public transport; the private backend address is hidden.
-The local HAProxy TLS bridge starts alongside Kamailio; Kamailio waits for the
-bridge's loopback listener before initializing its TOPOS clients.
+The local HAProxy TLS bridge runs as a native sidecar init container, so
+Kubernetes waits for its readiness probe before starting Kamailio's TOPOS
+clients.
 A 2xx ACK follows the restored dialog route, including when it reaches a
 different Kamailio replica. This routing still needs live verification.
 
