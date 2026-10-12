@@ -81,8 +81,13 @@
                   app.kubernetes.io/controller: rtpengine
                   app.kubernetes.io/instance: '{{ .Release.Name }}'
           ports:
+          {{- if eq .Values.rtpengine.control.transport "websocket" }}
+            - protocol: TCP
+              port: {{ .Values.rtpengine.control.websocketPort }}
+          {{- else }}
             - protocol: UDP
               port: {{ .Values.rtpengine.controlPort }}
+          {{- end }}
 {{- end }}
         - to:
             - podSelector:
@@ -1113,6 +1118,8 @@ controllers:
 {{ end }}
 {{ end }}
 {{- if (include "avoip.rtpengine.enabled" . | trim) }}
+{{- if not (has .Values.rtpengine.control.transport (list "udp" "websocket")) }}{{- fail "rtpengine.control.transport must be udp or websocket" }}{{- end }}
+{{- if and (eq .Values.rtpengine.control.transport "websocket") (or (lt (int .Values.rtpengine.control.websocketPort) 1) (gt (int .Values.rtpengine.control.websocketPort) 65535)) }}{{- fail "rtpengine.control.websocketPort must be between 1 and 65535" }}{{- end }}
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     strategy: RollingUpdate
@@ -1159,6 +1166,9 @@ controllers:
             --interface=internal/${POD_IP}
             --interface=external/${POD_IP}!{{ .Values.rtpengine.media.address }}
             --listen-ng=0.0.0.0:{{ .Values.rtpengine.controlPort }}
+            {{- if eq .Values.rtpengine.control.transport "websocket" }}
+            --listen-http=0.0.0.0:{{ .Values.rtpengine.control.websocketPort }}
+            {{- end }}
             --port-min={{ .Values.rtpengine.media.min }}
             --port-max={{ sub (.Values.rtpengine.media.max | int) 1 }}
 {{- if .Values.rtpengine.valkey.enabled }}
@@ -1256,6 +1266,11 @@ controllers:
           - name: control
             containerPort: {{ .Values.rtpengine.controlPort }}
             protocol: UDP
+          {{- if eq .Values.rtpengine.control.transport "websocket" }}
+          - name: control-ws
+            containerPort: {{ .Values.rtpengine.control.websocketPort }}
+            protocol: TCP
+          {{- end }}
 {{- if .Values.diagnostics.netshoot.enabled }}
       netshoot:
         command:
@@ -1796,6 +1811,12 @@ service:
         port: {{ .Values.rtpengine.controlPort }}
         targetPort: control
         protocol: UDP
+      {{- if eq .Values.rtpengine.control.transport "websocket" }}
+      control-ws:
+        port: {{ .Values.rtpengine.control.websocketPort }}
+        targetPort: control-ws
+        protocol: TCP
+      {{- end }}
   rtpengine-media:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine-media'
     controller: rtpengine

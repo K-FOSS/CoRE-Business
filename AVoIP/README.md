@@ -238,7 +238,9 @@ Service, TOPOS, and logging options. The
 site-local dialogs from proposed cross-site failover.
 
 The [Sipwise RTPEngine](https://github.com/sipwise/rtpengine) anchors public
-RTP independently of SIP signaling. Its
+RTP independently of SIP signaling. Kamailio sends NG control over the private
+WebSocket control Service so its client reconnects after an RTPEngine pod
+replacement. Its
 [RTPEngine configuration](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md)
 uses the site-specific media address and UDP range supplied by the owning
 ApplicationSet. Kamailio fails closed if RTPEngine cannot handle a media-bearing

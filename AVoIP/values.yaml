@@ -510,6 +510,11 @@ rtpengine:
   # The Valkey proxy supplies the
   # primary-only Redis endpoint required for shared call-state failover.
   replicas: 1
+  control:
+    # WebSocket control reconnects when an RTPEngine pod is replaced, avoiding
+    # the stale UDP control socket observed after endpoint changes.
+    transport: 'websocket'
+    websocketPort: 22223
   controlPort: 22222
   recovery:
     # Probe the stable control Service frequently and retry soon after a

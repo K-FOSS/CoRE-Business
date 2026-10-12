@@ -12,8 +12,15 @@
     modparam(
       "rtpengine",
       "rtpengine_sock",
+      {{- if eq .Values.rtpengine.control.transport "websocket" }}
+      "ws://{{ $fullName }}-rtpengine.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.rtpengine.control.websocketPort }}/"
+      {{- else }}
       "udp:{{ $fullName }}-rtpengine.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.rtpengine.controlPort }}"
+      {{- end }}
     )
+    {{- if eq .Values.rtpengine.control.transport "websocket" }}
+    modparam("rtpengine", "wsapi", "lwsc")
+    {{- end }}
     modparam(
       "rtpengine",
       "rtpengine_disable_tout",

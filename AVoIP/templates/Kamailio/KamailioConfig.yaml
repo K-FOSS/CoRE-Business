@@ -178,6 +178,9 @@ data:
     {{- end }}
 
     {{- if and (or .Values.kamailio.functions.media $sipCoreEnabled) (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
+    {{- if eq .Values.rtpengine.control.transport "websocket" }}
+    loadmodule "lwsc.so"
+    {{- end }}
     loadmodule "rtpengine.so"
     loadmodule "textopsx.so"
     {{- end }}

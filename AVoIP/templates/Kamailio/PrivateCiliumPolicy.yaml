@@ -64,7 +64,8 @@ spec:
             - port: '5061'
               protocol: 'TCP'
     {{- end }}
-    {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) $instance.websocketHA.enabled $instance.websocketHA.legacyOwner) }}
+    {{- $sipCoreEnabled := and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) $instance.websocketHA.enabled $instance.websocketHA.legacyOwner) }}
+    {{- if $sipCoreEnabled }}
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/controller: 'asterisk'
@@ -73,14 +74,21 @@ spec:
         - ports:
             - port: '5061'
               protocol: 'TCP'
+    {{- end }}
+    {{- if or $instance.functions.media $sipCoreEnabled }}
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/controller: 'rtpengine'
             app.kubernetes.io/instance: '{{ $root.Release.Name }}'
       toPorts:
         - ports:
+          {{- if eq $.Values.rtpengine.control.transport "websocket" }}
+            - port: '{{ $.Values.rtpengine.control.websocketPort }}'
+              protocol: 'TCP'
+          {{- else }}
             - port: '{{ $.Values.rtpengine.controlPort }}'
               protocol: 'UDP'
+          {{- end }}
     {{- end }}
     {{- range $destination := $instance.privateRouting.destinations }}
     - toEndpoints:
