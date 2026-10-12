@@ -627,6 +627,12 @@
 
       $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
       set_send_socket_name("private_tls");
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      hlog(
+        "$ci",
+        "kamailio_event=routing_decision route=to_backend call_id=$ci method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru transport=$proto"
+      );
+      {{- end }}
     }
 
     {{- if $sipCoreEnabled }}
@@ -634,6 +640,12 @@
       $du = "sip:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}:5061;transport=tls";
       $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}";
       set_send_socket_name("private_tls");
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      hlog(
+        "$ci",
+        "kamailio_event=routing_decision route=websocket_to_asterisk call_id=$ci method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru transport=$proto"
+      );
+      {{- end }}
     }
     {{- end }}
 
@@ -642,6 +654,12 @@
       $du = "sips:{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}:5062;transport=tls";
       $xavp(tls=>server_name) = "{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}";
       set_send_socket_name("private_tls");
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      hlog(
+        "$ci",
+        "kamailio_event=routing_decision route=authorized_outbound_to_carrier call_id=$ci method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru transport=$proto"
+      );
+      {{- end }}
     }
     {{- end }}
 
@@ -654,6 +672,12 @@
       if ($du == $null || $du == "") {
         $du = $ru;
       }
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      hlog(
+        "$ci",
+        "kamailio_event=routing_decision route=dialog_to_carrier call_id=$ci method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru transport=$proto"
+      );
+      {{- end }}
       # loose_route() selects the public socket from the restored RR's sn
       # parameter. Do not override it: UDP/TCP dialogs must keep their
       # established public transport, while TLS dialogs continue using TLS.

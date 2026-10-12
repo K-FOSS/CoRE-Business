@@ -82,6 +82,12 @@
       }
       $du = "sips:{{ .Values.flowroute.outboundHost }}:5061;transport=tls";
       set_send_socket_name("public_tls");
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      hlog(
+        "$ci",
+        "kamailio_event=routing_decision route=authorized_outbound_to_flowroute call_id=$ci method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru transport=$proto"
+      );
+      {{- end }}
       route(RELAY);
       exit;
     }
