@@ -117,6 +117,20 @@ FreeSWITCH monitors CNG after the voice call is answered and transfers detected
 fax calls to `rxfax`. Call-specific SIP ACK, page-count and TIFF evidence has
 not been recorded here. See the [current fax call path](docs/PHONE-TREE.md).
 
+Codec preferences are configurable under the top-level `codecs` values. Opus
+is enabled by default on the Asterisk-to-FreeSWITCH peer, SIP Core endpoints,
+and the FreeSWITCH-to-Asterisk profile; FreeSWITCH global preferences already
+include Opus. These lists are independent for Asterisk's FreeSWITCH peer,
+SIP Core endpoints, FreeSWITCH global inbound/outbound negotiation, and the
+dedicated FreeSWITCH-to-Asterisk profile. For example, set
+`codecs.freeswitch.outbound: ['G722', 'PCMU']` in a Helm values layer to
+change the global outbound preference order. A site can provide these keys in
+the `LOVELY_HELM_MERGE` values of the owning
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+Use Asterisk's lowercase codec names and FreeSWITCH's uppercase names. The
+fax receive dialplan keeps its separately scoped G.711 selection because fax
+modem audio and T.38 negotiation have different requirements.
+
 ## Components and security
 
 The complete current DID flow, SIP messaging path, registration behavior, and
@@ -154,7 +168,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 
 | Component | Current role | More detail |
 | --- | --- | --- |
-| Asterisk | Private voice PBX; authenticates to FreeSWITCH over TLS with Secret-backed SIP Digest credentials, records CDRs in site-local PostgreSQL, and transfers extension 66 to FreeSWITCH's `gg-audio` dialplan user. | [Call path](docs/PHONE-TREE.md), [Home Assistant SIP Core and GG audio](docs/SIPCORE-HASS.md), [internal TLS check](#internal-asterisk-sip-identity) |
+| Asterisk | Private voice PBX; authenticates to FreeSWITCH over TLS with Secret-backed SIP Digest credentials, offers Opus then G.722 with PCMU fallback on the FreeSWITCH peer, records CDRs in site-local PostgreSQL, and transfers extension 66 to FreeSWITCH's `gg-audio` dialplan user. | [Call path](docs/PHONE-TREE.md), [Home Assistant SIP Core and GG audio](docs/SIPCORE-HASS.md), [internal TLS check](#internal-asterisk-sip-identity) |
 | Kamailio | Public carrier SIP border and private TLS relay with TOPOS. | [Values](docs/KAMAILIO-VALUES.md), [SIP identity](docs/SIP-IDENTITY.md) |
 | FreeSWITCH | Private call control, voice DID, fax `rxfax`, and Secret-backed configuration. | [Call path](docs/PHONE-TREE.md), [fax verification](docs/SIP-IDENTITY.md) |
 | RTPEngine | Public media anchor with private NG control and Valkey recovery state. | [RTPEngine HA](docs/avoip/rtpengine-ha.md) |

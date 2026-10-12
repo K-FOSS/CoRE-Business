@@ -61,8 +61,9 @@ data:
             <param name="sip-domain" value="$${private_sip_host}"/>
             <param name="ext-sip-ip" value="host:$${private_sip_host}"/>
             <param name="ext-sip-port" value="$${internal_tls_port}"/>
-            <param name="inbound-codec-prefs" value="PCMU"/>
-            <param name="outbound-codec-prefs" value="PCMU"/>
+            <!-- Prefer wideband on the Asterisk peer when both call legs support it. -->
+            <param name="inbound-codec-prefs" value="{{ join "," $.Values.codecs.freeswitch.asterisk }}"/>
+            <param name="outbound-codec-prefs" value="{{ join "," $.Values.codecs.freeswitch.asterisk }}"/>
         </settings>
     </profile>
   external.xml: |

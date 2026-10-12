@@ -196,15 +196,15 @@ fax:
 codecs:
   asterisk:
     # Asterisk's TLS peer to FreeSWITCH.
-    freeswitch: ['g722', 'ulaw']
+    freeswitch: ['opus', 'g722', 'ulaw', 'alaw']
     # Dynamically materialized SIP Core WebRTC endpoints.
-    sipCore: ['g722', 'ulaw', 'alaw']
+    sipCore: ['opus', 'g722', 'ulaw', 'alaw']
   freeswitch:
     # Sofia profile and global negotiation preferences.
     inbound: ['OPUS', 'G722', 'PCMU', 'PCMA']
     outbound: ['OPUS', 'G722', 'PCMU', 'PCMA']
     # Dedicated FreeSWITCH TLS profile for the Asterisk peer.
-    asterisk: ['G722', 'PCMU']
+    asterisk: ['OPUS', 'G722', 'PCMU', 'PCMA']
 
 kamailio:
   # Merge order: defaults, then selected roleDefaults, then each named instance.
