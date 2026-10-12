@@ -808,6 +808,11 @@ asterisk:
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
     helloCallbackExtension: '1234'
+    callbackAudioDiagnostics:
+      enabled: true
+      # Send initial silence as RTP before the GG stream. Set to 0 for a
+      # baseline call without pre-roll after testing the startup hypothesis.
+      rtpLeadInMs: 100
     ggCallbackCallerIdName: 'Important Message'
     ggCallbackDelaySeconds: 120
     ggCallbackRingTimeoutSeconds: 30
@@ -924,9 +929,9 @@ freeswitch:
         path: '/var/spool/freeswitch/fax'
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch
-    repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/freeswitch'
+    repository: kristianfjones/freeswitch
     # Pull the tested image by digest without resolving a mutable tag.
-    tag: ''
+    tag: 'latest'
     digest: 'sha256:b5cf4593a3b733decd5b78160d41f6c17a99c9f903112a89feff925e78c40fab'
     pullPolicy: 'IfNotPresent'
   fax:
