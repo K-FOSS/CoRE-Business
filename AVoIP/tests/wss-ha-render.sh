@@ -164,6 +164,7 @@ grep -Fq 'has_body("application/trickle-ice-sdpfrag")' <<<"$wss_config"
 grep -Fq 'rtpengine_info()' <<<"$wss_config"
 grep -Fq 'Trickle ICE Requires INFO' <<<"$wss_config"
 grep -Fq 'Incomplete SDP Offer' <<<"$wss_config"
+grep -Fq 'if (!($rb =~ "m="))' <<<"$wss_config"
 ws_route_line="$(grep -nF 'if ($proto == "ws" && $Rp == 8088)' <<<"$wss_config" | head -1 | cut -d: -f1)"
 peer_guard_line="$(grep -nF 'Peer Not Authorized' <<<"$wss_config" | head -1 | cut -d: -f1)"
 if [[ -z "$ws_route_line" || -z "$peer_guard_line" || "$ws_route_line" -ge "$peer_guard_line" ]]; then
