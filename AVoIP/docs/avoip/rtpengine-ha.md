@@ -23,10 +23,11 @@ path uses WebSocket.
 RTPEngine's [WebSocket NG interface](https://rtpengine.readthedocs.io/en/latest/http_websocket_support.html)
 uses the same NG control commands. The control port is reachable only through
 the cluster-internal Service and the Kamailio egress rules rendered by this
-chart. RTPEngine's HTTP listener also serves its HTTP control endpoints, so
-clusters that isolate workloads from one another should apply an ingress policy
-that permits this port only from the Kamailio pods. It does not expose the
-public media Service or change media ownership.
+chart. Because RTPEngine's HTTP listener also serves HTTP control endpoints,
+the chart's Cilium ingress policy limits both NG control ports to Kamailio pods
+and preserves the configured UDP media range for cluster and external traffic.
+The control listener does not expose the public media Service or change media
+ownership.
 
 The chart creates a one-shard, two-replica `ValkeyCluster` through the
 [Valkey operator](https://github.com/valkey-io/valkey-operator/tree/v0.7.0)
