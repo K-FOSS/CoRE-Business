@@ -13,18 +13,18 @@ or port. Before increasing replicas, choose deterministic public media
 ownership (unique addresses, node-bound addresses, proven ECMP, or controlled
 active/standby takeover).
 
-Kamailio controls RTPEngine over the NG WebSocket protocol on a private TCP
-Service port. The [Kamailio RTPEngine module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
-uses its `lwsc` client, which reconnects after its WebSocket closes. This avoids
-relying on Kamailio's UDP control socket, which failed to recover after a
-Service endpoint replacement in the live deployment. The UDP NG listener
-remains available for compatibility, but the chart's default Kamailio control
-path uses WebSocket.
-RTPEngine's [WebSocket NG interface](https://rtpengine.readthedocs.io/en/latest/http_websocket_support.html)
-uses the same NG control commands. The control port is reachable only through
-the cluster-internal Service and the Kamailio egress rules rendered by this
-chart. Because RTPEngine's HTTP listener also serves HTTP control endpoints,
-the chart's Cilium ingress policy limits both NG control ports to Kamailio pods
+Kamailio currently controls RTPEngine over its private NG UDP Service port.
+The [Kamailio RTPEngine module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
+uses short disable and ping intervals to recover after an endpoint change.
+An earlier UDP socket failed to recover after Service endpoint replacement;
+verify new calls after each RTPEngine rollout. WebSocket control is temporarily
+disabled because the live RTPEngine process exited with signal 11 after its
+first offer on that path. The crash cause still needs a core backtrace.
+RTPEngine's optional [WebSocket NG interface](https://rtpengine.readthedocs.io/en/latest/http_websocket_support.html)
+uses the same NG control commands. The selected control port is reachable
+through the cluster-internal Service and the Kamailio egress rules rendered by
+this chart. When enabled, RTPEngine's HTTP listener also serves HTTP control
+endpoints; the chart's Cilium ingress policy limits NG control to Kamailio pods
 and preserves the configured UDP media range for cluster and external traffic.
 The control listener does not expose the public media Service or change media
 ownership.
@@ -33,10 +33,10 @@ When WebSocket control is enabled, the chart sets RTPEngine's HTTP/WS send
 buffer to 1024 KiB. RTPEngine documents this size for high WebSocket activity
 to improve performance and prevent protocol hiccups
 ([configuration option](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md#http-buf-sizeint)).
-The setting is a preventive mitigation for the observed crash after an NG offer;
-the retained logs show a process exit with signal 11 after its reply, but do not
-establish that buffer pressure caused the segfault. Continue monitoring
-RTPEngine restarts and capture a core/backtrace if another crash occurs.
+Increasing this buffer did not stop the observed crash after an NG offer.
+The retained logs show a process exit with signal 11 after its reply, but do not
+establish the faulting code path. Capture a core/backtrace before re-enabling
+WebSocket control.
 
 The chart creates a one-shard, two-replica `ValkeyCluster` through the
 [Valkey operator](https://github.com/valkey-io/valkey-operator/tree/v0.7.0)
