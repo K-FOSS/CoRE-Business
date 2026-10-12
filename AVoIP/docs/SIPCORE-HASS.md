@@ -245,6 +245,8 @@ behavior.
   extension's dedicated dialplan context, not caller-supplied Caller ID. The
   callback rings with the configured display name
   `asterisk.sipCore.ggCallbackCallerIdName` (default `Important Message`).
+  The callback greeting logs the Asterisk unique ID and audio formats before
+  and after playback; the GG route logs its FreeSWITCH media and RTP counters.
   Kamailio aliases the WebSocket Contact in the callback response so Asterisk's
   later ACK and BYE reuse the active WebSocket flow.
   The callback dials the extension's PJSIP endpoint so Asterisk selects its
@@ -261,6 +263,13 @@ behavior.
   (default 30 seconds), it ends without starting the GG call. The callback
   starts one minute after the hello-world call ends by default, controlled by
   `asterisk.sipCore.ggCallbackDelaySeconds`.
+  The `gg-audio` route emits correlated start, media-established, and playback
+  completion logs with codec and outbound RTP packet/byte counters. It sends a
+  configurable 100 ms `silence_stream` RTP lead-in before the remote audio by
+  default, to test whether media startup is discarding the first audio frames.
+  Set `asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs: 0` for a
+  no-lead-in comparison. The lead-in affects only this test audio route and
+  does not record call audio.
   With the HA WSS instance selected, Asterisk must use the Path stored with
   each PJSIP contact. The endpoint therefore has no `outbound_proxy`: a fixed
   endpoint proxy overrides the per-contact owner Path. Asterisk logs from the
@@ -279,12 +288,12 @@ behavior.
   The `from-asterisk` context has no catch-all or PSTN route; only the explicit
   `gg-audio` route is included by default.
 
-The FreeSWITCH-to-Asterisk TLS peer offers G.722 first and retains PCMU as a
-fallback; Asterisk's FreeSWITCH endpoint allows both. SIP Core endpoints also
-allow G.722 alongside PCMU and PCMA. G.722 is selected only when the other
+The FreeSWITCH-to-Asterisk TLS peer offers Opus first, then G.722, with PCMU
+fallback; Asterisk's FreeSWITCH endpoint allows all three. SIP Core endpoints
+also allow Opus, G.722, PCMU, and PCMA. A codec is selected only when the other
 endpoint offers it, so existing narrowband peers continue to negotiate G.711.
-This can preserve wideband audio on capable internal calls, but it cannot add
-wideband detail to a carrier call received as G.711. See Asterisk's
+This can preserve higher-quality audio on capable internal calls, but it cannot
+add detail to a carrier call received at lower quality. See Asterisk's
 [codec support](https://docs.asterisk.org/Operation/Asterisk-Audio-and-Video-Capabilities/)
 and FreeSWITCH's [codec negotiation](https://developer.signalwire.com/freeswitch/media-and-codecs/codecs/).
 

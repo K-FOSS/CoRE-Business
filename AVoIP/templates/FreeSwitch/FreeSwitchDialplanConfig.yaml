@@ -150,9 +150,23 @@ data:
           <condition field="${sip_authorized}" expression="^true$"/>
           <condition field="${sip_auth_username}" expression="^freeswitch$"/>
           <condition field="destination_number" expression="^{{ $.Values.asterisk.sipCore.ggAudioDestination }}$">
-            <action application="log" data="INFO AVoIP authenticated Asterisk GG audio request"/>
+            <action application="log" data="INFO AVoIP authenticated Asterisk GG audio start uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec}"/>
             <action application="answer"/>
+            {{- if $.Values.asterisk.sipCore.callbackAudioDiagnostics.enabled }}
+            <action application="set" data="log_audio_stats_on_hangup=true"/>
+            <action application="set_media_stats"/>
+            <action application="set" data="execute_on_media=log INFO AVoIP callback RTP established uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec}"/>
+            <action application="log" data="INFO AVoIP callback RTP pre-roll uuid=${uuid} lead_in_ms={{ $.Values.asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs }} out_packets=${rtp_audio_out_packet_count} out_bytes=${rtp_audio_out_media_bytes}"/>
+            {{- if gt (int $.Values.asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs) 0 }}
+            <action application="playback" data="silence_stream://{{ $.Values.asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs }}"/>
+            {{- end }}
+            {{- end }}
+            <action application="log" data="INFO AVoIP callback GG stream begin uuid=${uuid} call_id=${sip_call_id} read_codec=${read_codec} write_codec=${write_codec} out_packets=${rtp_audio_out_packet_count} out_bytes=${rtp_audio_out_media_bytes}"/>
             <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
+            {{- if $.Values.asterisk.sipCore.callbackAudioDiagnostics.enabled }}
+            <action application="set_media_stats"/>
+            <action application="log" data="INFO AVoIP callback GG stream complete uuid=${uuid} call_id=${sip_call_id} read_codec=${read_codec} write_codec=${write_codec} out_packets=${rtp_audio_out_packet_count} out_bytes=${rtp_audio_out_media_bytes}"/>
+            {{- end }}
             <action application="hangup"/>
           </condition>
         </extension>

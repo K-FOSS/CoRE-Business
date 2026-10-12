@@ -133,7 +133,9 @@ data:
     ; Reserved callback service: greet the authenticated source extension, end
     ; that leg, then wait for its PJSIP AOR to answer before starting GG audio.
     exten => {{ $.Values.asterisk.sipCore.helloCallbackExtension }},1,Answer()
+      same => n,NoOp(AVoIP callback greeting start uniqueid=${UNIQUEID} native=${CHANNEL(audionativeformat)} read=${CHANNEL(audioreadformat)} write=${CHANNEL(audiowriteformat)})
       same => n,Playback(hello-world)
+      same => n,NoOp(AVoIP callback greeting complete uniqueid=${UNIQUEID} native=${CHANNEL(audionativeformat)} read=${CHANNEL(audioreadformat)} write=${CHANNEL(audiowriteformat)})
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-callback-{{ .number }},s,1)
       same => n,Hangup()
     exten => _X!,1,Hangup(21)
