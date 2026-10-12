@@ -62,6 +62,7 @@ controllers:
           type: 'RuntimeDefault'
     containers:
       app:
+        command: ['/bin/sh', '/zipline/entrypoint']
         image:
           repository: 'ghcr.io/diced/zipline'
           tag: ''

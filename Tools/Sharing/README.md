@@ -53,6 +53,9 @@ its local TLS bridge when that bridge is enabled.
 Kutt and Zipline are exposed through Gateway API HTTPRoutes and the public
 Forecastle dashboard. Zipline stores uploaded objects in the site-local
 S3-compatible service using path-style requests; PostgreSQL stores metadata.
+The Zipline container runs its bundled entrypoint through `/bin/sh` because
+the `4.7.0` image failed to start on the home1 cluster with `exec format error`
+when Kubernetes invoked `/zipline/entrypoint` directly.
 Before changing deployment behavior, review the linked ApplicationSet
 and render the Lovely composition with its injected values. After reconciliation,
 check the User, ExternalSecret, database and dedicated Dragonfly conditions, then
