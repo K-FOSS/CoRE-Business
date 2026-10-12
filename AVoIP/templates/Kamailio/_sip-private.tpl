@@ -228,7 +228,7 @@
         exit;
       }
       if (has_body("application/sdp")) {
-        if ($rb !~ "m=") {
+        if (!($rb =~ "m=")) {
           xlog("L_ERR", "SIPCORE FLOW stage=reject-incomplete-sdp pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
           if (!is_method("ACK")) sl_send_reply("488", "Incomplete SDP Offer");
           exit;
@@ -416,7 +416,7 @@
         exit;
       }
       if (has_body("application/sdp")) {
-        if ($rb !~ "m=") {
+        if (!($rb =~ "m=")) {
           xlog("L_ERR", "SIPCORE FLOW stage=reject-incomplete-sdp pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
           if (!is_method("ACK")) sl_send_reply("488", "Incomplete SDP Offer");
           exit;
