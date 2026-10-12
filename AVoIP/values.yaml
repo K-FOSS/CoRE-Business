@@ -559,7 +559,7 @@ rtpengine:
     notifyKeyspaceEvents: 'KEA'
     activeSwitchover: true
   image:
-    repository: 'forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/rtpengine'
+    repository: kristianfjones/rtpengine
     tag: 'mr13.5.1.27-build-90'
     digest: 'sha256:405145b8c791a6c2d0f264e332c3159e621e9f6acad8486224e1c1110af90e5f'
     pullPolicy: 'IfNotPresent'
