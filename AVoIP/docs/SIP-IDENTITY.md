@@ -4,6 +4,20 @@ The active chart owner is Backplane's [AVoIP ApplicationSet](https://github.com/
 
 ## Signaling and media paths
 
+### SIP Core WebRTC media updates
+
+SIP Core routes send full `application/sdp` bodies through the normal
+RTPEngine offer/answer path only when the body includes a media section.
+Trickle ICE fragments (`application/trickle-ice-sdpfrag`) use Kamailio's
+`rtpengine_info()` path on SIP INFO. Fragments sent with another method and
+SDP bodies without a media section are rejected before RTPEngine sees them.
+This guards against malformed or partial bodies being interpreted as complete
+offers. The behavior is covered by the WSS rendering regression in
+`tests/wss-ha-render.sh`.
+
+See the [Kamailio RTPengine module documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
+and [RTPEngine NG protocol documentation](https://github.com/sipwise/rtpengine/blob/master/docs/ng_protocol.md).
+
 | Traffic | Path | Carrier-facing identity at the hub |
 | --- | --- | --- |
 | Inbound INVITE and its reply | Flowroute ↔ Kamailio direct Service over UDP/TCP, or Envoy TLS passthrough ↔ Kamailio over TLS | Direct Service hostname on UDP/TCP 5060, or site SIP hostname on TLS 5061 |

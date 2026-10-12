@@ -213,7 +213,26 @@
         if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
+      if (has_body("application/trickle-ice-sdpfrag")) {
+        if (!is_method("INFO")) {
+          xlog("L_ERR", "SIPCORE FLOW stage=reject-trickle-fragment pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
+          if (!is_method("ACK")) sl_send_reply("488", "Trickle ICE Requires INFO");
+          exit;
+        }
+        if (!rtpengine_info()) {
+          xlog("L_ERR", "RTPEngine SIP Core trickle ICE update failed callid=$ci method=$rm\n");
+          sl_send_reply("503", "Media Relay Unavailable");
+          exit;
+        }
+        sl_send_reply("200", "OK");
+        exit;
+      }
       if (has_body("application/sdp")) {
+        if ($rb !~ "m=") {
+          xlog("L_ERR", "SIPCORE FLOW stage=reject-incomplete-sdp pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
+          if (!is_method("ACK")) sl_send_reply("488", "Incomplete SDP Offer");
+          exit;
+        }
         if (!rtpengine_manage("WebRTC replace-origin external internal")) {
           xlog("L_ERR", "RTPEngine SIP Core SDP handling failed callid=$ci method=$rm\n");
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
@@ -382,7 +401,26 @@
           {{- end }}
         }
       }
+      if (has_body("application/trickle-ice-sdpfrag")) {
+        if (!is_method("INFO")) {
+          xlog("L_ERR", "SIPCORE FLOW stage=reject-trickle-fragment pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
+          if (!is_method("ACK")) sl_send_reply("488", "Trickle ICE Requires INFO");
+          exit;
+        }
+        if (!rtpengine_info()) {
+          xlog("L_ERR", "RTPEngine SIP Core Asterisk trickle ICE update failed callid=$ci method=$rm\n");
+          sl_send_reply("503", "Media Relay Unavailable");
+          exit;
+        }
+        sl_send_reply("200", "OK");
+        exit;
+      }
       if (has_body("application/sdp")) {
+        if ($rb !~ "m=") {
+          xlog("L_ERR", "SIPCORE FLOW stage=reject-incomplete-sdp pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
+          if (!is_method("ACK")) sl_send_reply("488", "Incomplete SDP Offer");
+          exit;
+        }
         if (!rtpengine_manage("WebRTC replace-origin internal external")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound SDP handling failed callid=$ci method=$rm\n");
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");

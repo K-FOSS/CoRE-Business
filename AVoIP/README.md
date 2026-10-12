@@ -480,6 +480,15 @@ Nextcloud Talk configuration separately only if the backend is being retired.
 
 ## Internal Asterisk SIP identity
 
+The SIP Core Kamailio routes handle WebRTC trickle ICE fragments separately
+from session SDP. A fragment with content type
+`application/trickle-ice-sdpfrag` is accepted only on SIP INFO and updates
+RTPEngine through `rtpengine_info()`; incomplete `application/sdp` bodies are
+rejected before they reach RTPEngine. This prevents fragment or empty SDP
+bodies from being processed as a new media offer and restarting the relay.
+See the [Kamailio RTPengine module documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
+and the [RTPEngine NG protocol documentation](https://github.com/sipwise/rtpengine/blob/master/docs/ng_protocol.md).
+
 The internal Asterisk PJSIP TLS transport sets the generated Asterisk Service
 FQDN from `avoip.sip.serviceHost` as
 [`external_signaling_address`](https://docs.asterisk.org/Latest_API/API_Documentation/Module_Configuration/res_pjsip/);
