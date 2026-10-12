@@ -197,6 +197,9 @@
       annotations:
         kubectl.kubernetes.io/default-container: '{{ $component }}'
         kubectl.kubernetes.io/default-logs-container: '{{ $component }}'
+        # RTPEngine endpoint replacement leaves Kamailio's UDP control socket
+        # unusable. Roll its consumers with every RTPEngine chart change.
+        checksum/rtpengine-config: '{{ toYaml .Values.rtpengine | sha256sum }}'
         # Restart Kamailio when its generated routing/TLS configuration or the
         # shared certificate material changes so listeners and media routes are
         # loaded from one consistent configuration set.

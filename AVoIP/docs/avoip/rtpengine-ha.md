@@ -20,6 +20,11 @@ An earlier UDP socket failed to recover after Service endpoint replacement;
 verify new calls after each RTPEngine rollout. WebSocket control is temporarily
 disabled because the live RTPEngine process exited with signal 11 after its
 first offer on that path. The crash cause still needs a core backtrace.
+The chart hashes RTPEngine values into Kamailio's pod template so an RTPEngine
+configuration rollout also replaces Kamailio pods and their UDP control sockets.
+An unplanned RTPengine pod replacement can still leave the old socket unusable;
+the module has returned `Destination address required` even with short recovery
+timers, so verify calls and restart Kamailio if that occurs.
 RTPEngine's optional [WebSocket NG interface](https://rtpengine.readthedocs.io/en/latest/http_websocket_support.html)
 uses the same NG control commands. The selected control port is reachable
 through the cluster-internal Service and the Kamailio egress rules rendered by
