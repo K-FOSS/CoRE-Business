@@ -29,6 +29,15 @@ and preserves the configured UDP media range for cluster and external traffic.
 The control listener does not expose the public media Service or change media
 ownership.
 
+When WebSocket control is enabled, the chart sets RTPEngine's HTTP/WS send
+buffer to 1024 KiB. RTPEngine documents this size for high WebSocket activity
+to improve performance and prevent protocol hiccups
+([configuration option](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md#http-buf-sizeint)).
+The setting is a preventive mitigation for the observed crash after an NG offer;
+the retained logs show a process exit with signal 11 after its reply, but do not
+establish that buffer pressure caused the segfault. Continue monitoring
+RTPEngine restarts and capture a core/backtrace if another crash occurs.
+
 The chart creates a one-shard, two-replica `ValkeyCluster` through the
 [Valkey operator](https://github.com/valkey-io/valkey-operator/tree/v0.7.0)
 installed by the [Backplane Valkey operator ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Valkey/Operator.yaml).

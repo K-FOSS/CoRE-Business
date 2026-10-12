@@ -1161,6 +1161,7 @@ controllers:
 {{- if (include "avoip.rtpengine.enabled" . | trim) }}
 {{- if not (has .Values.rtpengine.control.transport (list "udp" "websocket")) }}{{- fail "rtpengine.control.transport must be udp or websocket" }}{{- end }}
 {{- if and (eq .Values.rtpengine.control.transport "websocket") (or (lt (int .Values.rtpengine.control.websocketPort) 1) (gt (int .Values.rtpengine.control.websocketPort) 65535)) }}{{- fail "rtpengine.control.websocketPort must be between 1 and 65535" }}{{- end }}
+{{- if and (eq .Values.rtpengine.control.transport "websocket") (lt (int .Values.rtpengine.control.websocketBufferSizeKB) 1) }}{{- fail "rtpengine.control.websocketBufferSizeKB must be positive when WebSocket control is enabled" }}{{- end }}
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     strategy: RollingUpdate
@@ -1209,6 +1210,7 @@ controllers:
             --listen-ng=0.0.0.0:{{ .Values.rtpengine.controlPort }}
             {{- if eq .Values.rtpengine.control.transport "websocket" }}
             --listen-http=0.0.0.0:{{ .Values.rtpengine.control.websocketPort }}
+            --http-buf-size={{ .Values.rtpengine.control.websocketBufferSizeKB }}
             {{- end }}
             --port-min={{ .Values.rtpengine.media.min }}
             --port-max={{ sub (.Values.rtpengine.media.max | int) 1 }}

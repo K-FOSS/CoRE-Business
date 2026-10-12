@@ -515,6 +515,9 @@ rtpengine:
     # the stale UDP control socket observed after endpoint changes.
     transport: 'websocket'
     websocketPort: 22223
+    # RTPEngine recommends a 1 MiB HTTP/WS send buffer for high WebSocket
+    # activity to avoid protocol hiccups. This affects the HTTP/WS listener only.
+    websocketBufferSizeKB: 1024
   controlPort: 22222
   recovery:
     # Probe the stable control Service frequently and retry soon after a
