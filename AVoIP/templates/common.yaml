@@ -239,7 +239,7 @@
               app: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio) }}'
 {{- end }}
     initContainers:
-{{- if or .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") .Values.kamailio.carrierOutbound.enabled }}
+    {{- if or .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") .Values.kamailio.carrierOutbound.enabled }}
       tls-ca:
         image:
           repository: '{{ .Values.kamailio.image.repository }}'
@@ -261,10 +261,16 @@
           capabilities:
             drop:
               - ALL
-{{- end }}
-    containers:
-{{- if .Values.kamailio.topology.enabled }}
+    {{- end }}
+    {{- if .Values.kamailio.topology.enabled }}
       topos-tls-proxy:
+      {{- if or .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") .Values.kamailio.carrierOutbound.enabled }}
+        dependsOn: tls-ca
+      {{- end }}
+        # Native sidecar init containers are started before application
+        # containers, and Kubernetes waits for this readiness probe before
+        # starting Kamailio's ndb_redis children against the loopback listener.
+        restartPolicy: Always
         command:
           - /usr/local/sbin/haproxy
         args:
@@ -300,7 +306,8 @@
           - name: topos-redis
             containerPort: {{ .Values.kamailio.topology.redis.proxyPort }}
             protocol: TCP
-{{- end }}
+    {{- end }}
+    containers:
       {{ $component }}:
         command:
           - /bin/sh
