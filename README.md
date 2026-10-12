@@ -17,6 +17,12 @@ owned by [CoRE Backplane](https://slop.writemy.codes/CoRE/CoRE-Backplane). Argo 
 ApplicationSets under Backplane's `Apps/Business/` select clusters, choose a
 path in this repository and inject environment-specific values. Many use the
 `argocd-lovely-plugin` to combine Helm and Kustomize inputs.
+
+The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+also provisions a retained, cluster-local RWX sound library shared by its
+Asterisk and FreeSWITCH workloads. The editor is protected on Homer's hostname
+with the existing Authentik access group. See the [sound library guide](AVoIP/docs/avoip/sound-library.md)
+for its data path, recording format, access boundary and verification steps.
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).

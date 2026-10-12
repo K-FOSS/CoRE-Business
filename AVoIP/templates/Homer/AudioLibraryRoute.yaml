@@ -1,0 +1,66 @@
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
+{{- if not .Values.homer.storage.persistence.enabled }}{{ fail "homer.storage.persistence.enabled is required for the sound library StorageClass" }}{{- end }}
+{{- if or (not (regexMatch "^/[a-z0-9/-]+$" .Values.homer.soundLibrary.path)) (contains "//" .Values.homer.soundLibrary.path) (hasSuffix "/" .Values.homer.soundLibrary.path) }}{{ fail "homer.soundLibrary.path must be a lowercase absolute path without a trailing slash" }}{{- end }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ include "avoip.fullname" . }}-audio-library-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ include "avoip.fullname" . }}-audio-library'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'set-cookie'
+        - 'x-authentik-*'
+        - 'authorization'
+        - 'Content-Type'
+        - 'Location'
+      backendSettings:
+        loadBalancer:
+          type: 'ConsistentHash'
+          consistentHash:
+            type: 'SourceIP'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ .Values.homer.authentikOutpost.namespace }}'
+          name: '{{ .Values.homer.authentikOutpost.name }}'
+          port: {{ .Values.homer.authentikOutpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: '{{ include "avoip.fullname" . }}-audio-library'
+  labels:
+    wan-mode: 'public'
+spec:
+  parentRefs:
+    - kind: 'Gateway'
+      name: '{{ .Values.gateway.name }}'
+      namespace: '{{ .Values.gateway.namespace }}'
+      sectionName: '{{ .Values.gateway.sectionName }}'
+  hostnames:
+    - '{{ include "avoip.homer.hostname" . }}'
+  rules:
+    - matches:
+        - path:
+            type: 'PathPrefix'
+            value: '{{ .Values.homer.soundLibrary.path }}'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ include "avoip.fullname" . }}-audio-library'
+          port: {{ .Values.homer.soundLibrary.port }}
+{{- end }}

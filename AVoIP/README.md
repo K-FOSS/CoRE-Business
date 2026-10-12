@@ -24,6 +24,13 @@ or FreeSWITCH. Speech recognition and synthesis are provided by the existing
 workloads duplicated in this chart. Homer has an Authentik-protected web route
 where enabled.
 
+Enabled Asterisk and FreeSWITCH stacks share a retained `ReadWriteMany` sound
+library on the existing `avoip-homer-rwx` Longhorn class. The recorder/editor
+is available at `/audio-library/` on Homer's hostname behind the existing
+Authentik `Home Users` authorization. Each cluster has its own volume. See the
+[sound library guide](docs/avoip/sound-library.md) for formats, PBX paths,
+retention and verification.
+
 The dedicated WSS edge has an opt-in, exact LF/LF heartbeat compatibility
 patch for Home Assistant SIP Core. It is disabled by default; Home1 enables it
 on `internal-websocket` using a separately built, digest-pinned Kamailio 6.1.4
@@ -172,7 +179,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 | Kamailio | Public carrier SIP border and private TLS relay with TOPOS. | [Values](docs/KAMAILIO-VALUES.md), [SIP identity](docs/SIP-IDENTITY.md) |
 | FreeSWITCH | Private call control, voice DID, fax `rxfax`, and Secret-backed configuration. | [Call path](docs/PHONE-TREE.md), [fax verification](docs/SIP-IDENTITY.md) |
 | RTPEngine | Public media anchor with private NG control and Valkey recovery state. | [RTPEngine HA](docs/avoip/rtpengine-ha.md) |
-| Homer 11 | Internal HEP capture and Authentik-protected UI where enabled. | [Homer](docs/HOMER.md), [audio playback](docs/HOMER-AUDIO.md) |
+| Homer 11 | Internal HEP capture and Authentik-protected UI where enabled; the same hostname also serves the shared Asterisk/FreeSWITCH prompt editor. | [Homer](docs/HOMER.md), [call recordings](docs/HOMER-AUDIO.md), [shared sound library](docs/avoip/sound-library.md) |
 | LiveKit | Independent WebRTC signaling and media stack on Home1/YVR. | [LiveKit deployment](docs/LIVEKIT.md) |
 | Speech | External dependency from the AI stack; no local Vosk or Mycroft workload. | [Speech architecture](#speech-architecture-and-todos) |
 | Jitsi Meet | Pinned dependency, disabled by default. | [Upstream chart](https://github.com/jitsi-contrib/jitsi-helm) |

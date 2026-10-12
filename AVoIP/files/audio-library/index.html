@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>AVoIP Sound Library</title>
+    <link rel="stylesheet" href="__PATH__/style.css">
+    <script src="__PATH__/app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">CoRE AVoIP</p>
+        <h1>Shared sound library</h1>
+        <p>Record and trim WAV prompts shared by Asterisk and FreeSWITCH.</p>
+      </header>
+
+      <section class="library" aria-labelledby="library-title">
+        <div class="section-heading">
+          <h2 id="library-title">Saved sounds</h2>
+          <button id="refresh" type="button">Refresh</button>
+        </div>
+        <p id="library-status" role="status">Loading sounds…</p>
+        <ul id="sound-list" aria-label="Saved sound files"></ul>
+        <label class="upload">
+          Import WAV
+          <input id="file-input" type="file" accept="audio/wav,.wav">
+        </label>
+      </section>
+
+      <section class="editor" aria-labelledby="editor-title">
+        <div class="section-heading">
+          <h2 id="editor-title">Record or edit</h2>
+          <span id="format" class="muted">Saved as mono 8 kHz PCM WAV</span>
+        </div>
+        <div class="controls">
+          <button id="record" type="button">Record</button>
+          <button id="stop-recording" type="button" disabled>Stop recording</button>
+          <button id="play" type="button" disabled>Play selection</button>
+          <button id="stop-playback" type="button" disabled>Stop</button>
+          <button id="trim" type="button" disabled>Trim to selection</button>
+        </div>
+        <canvas id="waveform" aria-label="Audio waveform. Drag to select a region." tabindex="0"></canvas>
+        <p id="selection" class="muted">Load a sound or record a new one.</p>
+        <div class="save-row">
+          <label for="file-name">File name</label>
+          <input id="file-name" type="text" maxlength="64" placeholder="welcome-greeting" autocomplete="off">
+          <span>.wav</span>
+          <button id="save" type="button" disabled>Save to shared library</button>
+        </div>
+        <p id="editor-status" role="status" aria-live="polite"></p>
+        <p class="hint">Saving an existing name replaces that sound. Use letters, numbers, hyphens, and underscores.</p>
+      </section>
+    </main>
+  </body>
+</html>

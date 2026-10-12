@@ -168,6 +168,12 @@ does not enable the dynamic registrar or first-party webphone. See the
 The Nextcloud administrator still needs to register `https://talk.mylogin.space`
 with the generated signaling secret and configure the `talk-media.mylogin.space`
 TURN endpoint; see [AVoIP setup and verification](../AVoIP/README.md#nextcloud-talk-high-performance-backend).
+The AVoIP chart also mounts a retained, cluster-local RWX sound library into
+enabled Asterisk and FreeSWITCH workloads and serves a browser recorder/editor
+under Homer's hostname. The [sound library guide](../AVoIP/docs/avoip/sound-library.md)
+documents the Authentik group, WAV format, PBX file paths and retained-volume
+behavior; the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+selects the production clusters and existing StorageClass values.
 
 The active [Vaultwarden chart](../Passwords/VaultWarden/README.md), owned by the
 [VaultWarden ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml),

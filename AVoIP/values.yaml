@@ -626,6 +626,17 @@ homer:
       tag: '1.29.3-alpine'
       digest: 'sha256:5aea7cc516b419e3526f47dd1531be31a56a046cfe44754d94f9383e13e2ee99'
       pullPolicy: 'IfNotPresent'
+  soundLibrary:
+    enabled: true
+    path: '/audio-library'
+    port: 8090
+    size: '5Gi'
+    # The library uses the existing cluster-local avoip-homer-rwx class.
+    # Separate AVoIP clusters each receive their own Longhorn-backed volume.
+    networkPolicy:
+      envoy:
+        namespace: 'kube-system'
+        podName: 'envoy'
   storage:
     storageClass:
       name: 'avoip-homer-rwx'

@@ -726,8 +726,42 @@ configMaps:
       player.js: |
 {{ $.Files.Get "files/homer-recordings/player.js" | indent 8 }}
 {{- end }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
+  audio-library:
+    forceRename: '{{ include "avoip.fullname" . }}-audio-library'
+    includeChecksumInControllers:
+      - 'audio-library'
+    data:
+      default.conf: |
+{{ $.Files.Get "files/audio-library/default.conf" | replace "__PATH__" $.Values.homer.soundLibrary.path | indent 8 }}
+      index.html: |
+{{ $.Files.Get "files/audio-library/index.html" | replace "__PATH__" $.Values.homer.soundLibrary.path | indent 8 }}
+      app.js: |
+{{ $.Files.Get "files/audio-library/app.js" | replace "__PATH__" $.Values.homer.soundLibrary.path | indent 8 }}
+      style.css: |
+{{ $.Files.Get "files/audio-library/style.css" | indent 8 }}
+{{- end }}
 
 networkpolicies:
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
+  audio-library:
+    forceRename: '{{ include "avoip.fullname" . }}-audio-library'
+    controller: audio-library
+    policyTypes:
+      - Ingress
+    rules:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: '{{ .Values.homer.soundLibrary.networkPolicy.envoy.namespace }}'
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: '{{ .Values.homer.soundLibrary.networkPolicy.envoy.podName }}'
+          ports:
+            - protocol: TCP
+              port: {{ .Values.homer.soundLibrary.port }}
+{{- end }}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
 {{- if $instance.enabled -}}
 {{- $values := deepCopy $.Values -}}
@@ -1715,6 +1749,69 @@ controllers:
             containerPort: {{ .Values.homer.web.port }}
             protocol: TCP
 {{- end }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
+  audio-library:
+    forceRename: '{{ include "avoip.fullname" . }}-audio-library'
+    replicas: 1
+    revisionHistoryLimit: 3
+    serviceAccount:
+      name: default
+    pod:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      labels:
+        app: '{{ include "avoip.fullname" . }}-audio-library'
+      annotations:
+        kubectl.kubernetes.io/default-container: 'audio-library'
+        kubectl.kubernetes.io/default-logs-container: 'audio-library'
+    containers:
+      audio-library:
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - exec nginx -g 'daemon off;'
+        image:
+          repository: '{{ .Values.homer.recordings.image.repository }}'
+          tag: '{{ .Values.homer.recordings.image.tag }}'
+          digest: '{{ .Values.homer.recordings.image.digest }}'
+          pullPolicy: '{{ .Values.homer.recordings.image.pullPolicy }}'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+        probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet:
+                path: '{{ .Values.homer.soundLibrary.path }}/'
+                port: http
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 12
+          readiness:
+            enabled: true
+            custom: true
+            spec:
+              httpGet:
+                path: '{{ .Values.homer.soundLibrary.path }}/'
+                port: http
+              periodSeconds: 10
+              timeoutSeconds: 3
+              failureThreshold: 3
+        ports:
+          - name: http
+            containerPort: {{ .Values.homer.soundLibrary.port }}
+            protocol: TCP
+{{- end }}
 
 service:
 {{- with $routrResources.services }}{{ toYaml . | nindent 2 }}{{- end }}
@@ -1754,6 +1851,17 @@ service:
         targetPort: 'udp-{{ . }}'
         protocol: 'UDP'
 {{- end }}
+{{- end }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
+  audio-library:
+    forceRename: '{{ include "avoip.fullname" . }}-audio-library'
+    controller: audio-library
+{{- include "avoip.service.options" (dict "root" $ "name" "audio-library") | nindent 4 }}
+    ports:
+      http:
+        port: {{ .Values.homer.soundLibrary.port }}
+        targetPort: http
+        protocol: TCP
 {{- end }}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
 {{- if $instance.enabled -}}
@@ -1906,6 +2014,56 @@ persistence:
         haproxy:
           - path: /usr/local/etc/haproxy/haproxy.cfg
             subPath: haproxy.cfg
+{{- end }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
+  audio-library-config:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-audio-library'
+    advancedMounts:
+      audio-library:
+        audio-library:
+          - path: /etc/nginx/conf.d/default.conf
+            subPath: default.conf
+          - path: /usr/share/nginx/html/index.html
+            subPath: index.html
+          - path: /usr/share/nginx/html/app.js
+            subPath: app.js
+          - path: /usr/share/nginx/html/style.css
+            subPath: style.css
+{{- end }}
+{{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
+  audio-library-tmp:
+    type: emptyDir
+    advancedMounts:
+      audio-library:
+        audio-library:
+          - path: /tmp
+  avoip-audio-library:
+    forceRename: '{{ include "avoip.fullname" . }}-audio-library'
+    type: persistentVolumeClaim
+    storageClass: '{{ .Values.homer.storage.persistence.storageClass }}'
+    accessMode: 'ReadWriteMany'
+    size: '{{ .Values.homer.soundLibrary.size }}'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+      argocd.argoproj.io/sync-wave: '-1'
+    advancedMounts:
+{{- if .Values.asterisk.enabled }}
+      asterisk:
+        asterisk:
+          - path: /var/lib/asterisk/sounds/avoip-shared
+            readOnly: true
+{{- end }}
+{{- if .Values.freeswitch.enabled }}
+      freeswitch:
+        freeswitch:
+          - path: /usr/share/freeswitch/sounds/avoip-shared
+            readOnly: true
+{{- end }}
+      audio-library:
+        audio-library:
+          - path: /var/lib/avoip/sounds
 {{- end }}
 {{- if .Values.asterisk.enabled }}
   asterisk-config:
