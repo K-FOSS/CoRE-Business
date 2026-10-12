@@ -279,6 +279,15 @@ behavior.
   The `from-asterisk` context has no catch-all or PSTN route; only the explicit
   `gg-audio` route is included by default.
 
+The FreeSWITCH-to-Asterisk TLS peer offers G.722 first and retains PCMU as a
+fallback; Asterisk's FreeSWITCH endpoint allows both. SIP Core endpoints also
+allow G.722 alongside PCMU and PCMA. G.722 is selected only when the other
+endpoint offers it, so existing narrowband peers continue to negotiate G.711.
+This can preserve wideband audio on capable internal calls, but it cannot add
+wideband detail to a carrier call received as G.711. See Asterisk's
+[codec support](https://docs.asterisk.org/Operation/Asterisk-Audio-and-Video-Capabilities/)
+and FreeSWITCH's [codec negotiation](https://developer.signalwire.com/freeswitch/media-and-codecs/codecs/).
+
 The chart does not enable this feature at a site. Set
 `asterisk.sipCore.kamailioInstance` to the name of the dedicated WSS
 `private-sbc` instance (planned name `internal-wss`). Keep both private

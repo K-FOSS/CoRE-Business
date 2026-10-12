@@ -202,7 +202,7 @@ data:
     aors=freeswitch
     context=from-external
     disallow=all
-    allow=ulaw
+    allow={{ join "," .Values.codecs.asterisk.freeswitch }}
     direct_media=no
 
     [freeswitch]

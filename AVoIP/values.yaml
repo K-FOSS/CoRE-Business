@@ -191,6 +191,21 @@ fax:
   # Supplied by the owning Backplane ApplicationSet at each site.
   did: ''
 
+# Codec allowlists are independent by signaling path. Values use the native
+# names expected by Asterisk (lowercase) or FreeSWITCH (uppercase).
+codecs:
+  asterisk:
+    # Asterisk's TLS peer to FreeSWITCH.
+    freeswitch: ['g722', 'ulaw']
+    # Dynamically materialized SIP Core WebRTC endpoints.
+    sipCore: ['g722', 'ulaw', 'alaw']
+  freeswitch:
+    # Sofia profile and global negotiation preferences.
+    inbound: ['OPUS', 'G722', 'PCMU', 'PCMA']
+    outbound: ['OPUS', 'G722', 'PCMU', 'PCMA']
+    # Dedicated FreeSWITCH TLS profile for the Asterisk peer.
+    asterisk: ['G722', 'PCMU']
+
 kamailio:
   # Merge order: defaults, then selected roleDefaults, then each named instance.
   # Site value files replace this whole instances list; copy every desired entry.
