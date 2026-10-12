@@ -1207,7 +1207,7 @@ controllers:
             --table=-1
             --interface=internal/${POD_IP}
             --interface=external/${POD_IP}!{{ .Values.rtpengine.media.address }}
-            --listen-ng=0.0.0.0:{{ .Values.rtpengine.controlPort }}
+            --listen-ng=${POD_IP}:{{ .Values.rtpengine.controlPort }}
             {{- if eq .Values.rtpengine.control.transport "websocket" }}
             --listen-http=0.0.0.0:{{ .Values.rtpengine.control.websocketPort }}
             --http-buf-size={{ .Values.rtpengine.control.websocketBufferSizeKB }}
