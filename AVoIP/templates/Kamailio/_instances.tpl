@@ -61,11 +61,35 @@
       {{- fail (printf "Kamailio %s carrierOutbound requires Vault-backed clientIdentity" $name) -}}
     {{- end -}}
     {{- if $outbound.calls.enabled -}}
-      {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $outbound.testRoute.extension))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.destination))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.callerId))) (hasPrefix "+1900" (toString $outbound.testRoute.destination)) (regexMatch "^\\+1[2-9][0-9]{2}976[0-9]{4}$" (toString $outbound.testRoute.destination)) -}}
-        {{- fail (printf "Kamailio %s carrierOutbound test route requires an extension, non-premium NANP destination and NANP caller ID" $name) -}}
+      {{- if not (has $outbound.calls.mode (list "test" "nanp")) -}}
+        {{- fail (printf "Kamailio %s carrierOutbound.calls.mode must be test or nanp" $name) -}}
+      {{- end -}}
+      {{- if eq $outbound.calls.mode "test" -}}
+        {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $outbound.testRoute.extension))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.destination))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.callerId))) (hasPrefix "+1900" (toString $outbound.testRoute.destination)) (regexMatch "^\\+1[2-9][0-9]{2}976[0-9]{4}$" (toString $outbound.testRoute.destination)) -}}
+          {{- fail (printf "Kamailio %s carrierOutbound test route requires an extension, non-premium NANP destination and NANP caller ID" $name) -}}
+        {{- end -}}
+      {{- else -}}
+        {{- $callerId := toString $outbound.calls.callerId -}}
+        {{- $callerIdConfigured := or (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" $callerId) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" $callerId) -}}
+        {{- if or (not $callerIdConfigured) (not $outbound.calls.extensions) -}}
+          {{- fail (printf "Kamailio %s carrierOutbound NANP policy requires a NANP caller ID and at least one authorized extension" $name) -}}
+        {{- end -}}
+        {{- range $outbound.calls.extensions -}}
+          {{- $authorizedExtension := . -}}
+          {{- $found := false -}}
+          {{- range $.Values.asterisk.sipCore.extensions -}}
+            {{- if eq (toString .number) (toString $authorizedExtension) -}}{{- $found = true -}}{{- end -}}
+          {{- end -}}
+          {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString .))) (not $found) -}}
+            {{- fail (printf "Kamailio %s NANP authorized extensions must match configured Asterisk SIP Core accounts" $name) -}}
+          {{- end -}}
+        {{- end -}}
       {{- end -}}
       {{- if or (lt (int $outbound.limits.callsPerMinute) 1) (lt (int $outbound.limits.concurrentCalls) 1) (lt (int $outbound.limits.maxDurationSeconds) 60) -}}
         {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
+      {{- end -}}
+      {{- if and (eq $role "private-sbc") (eq $outbound.calls.mode "nanp") (or (not $.Values.asterisk.sipCore.outboundNANP.enabled) (not (deepEqual $outbound.calls.extensions $.Values.asterisk.sipCore.outboundNANP.extensions))) -}}
+        {{- fail (printf "Kamailio %s NANP extension allowlist must exactly match Asterisk asterisk.sipCore.outboundNANP.extensions" $name) -}}
       {{- end -}}
     {{- end -}}
     {{- if $outbound.clientIdentity.enabled -}}
@@ -91,10 +115,14 @@
     {{- end -}}
   {{- end -}}
   {{- range $transfer := ($interSite.transfers | default list) -}}
-    {{- $asteriskDID := toString $.Values.dids.asterisk -}}
-    {{- $asteriskDIDConfigured := or (regexMatch "^\\+?[0-9]{10,15}$" $asteriskDID) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" $asteriskDID) -}}
-    {{- if or (ne $role "carrier-sbc") (not $effective.carrierOutbound.clientIdentity.enabled) (not $asteriskDIDConfigured) (not (regexMatch "^[0-9]{2,8}$" (toString $transfer.destinationExtension))) (not (hasKey $interSitePeerNames $transfer.peerName)) -}}
-      {{- fail (printf "Kamailio %s interSite transfer requires a carrier-sbc with Vault client identity, an Asterisk DID, an exact extension and a configured peer" $name) -}}
+    {{- $transferDIDRole := default "avoip" $transfer.destinationDID -}}
+    {{- $transferDID := $.Values.avoip.did -}}
+    {{- if eq $transferDIDRole "fax" -}}
+      {{- $transferDID = $.Values.fax.did -}}
+    {{- end -}}
+    {{- $transferDIDConfigured := or (regexMatch "^\\+?[0-9]{10,15}$" (toString $transferDID)) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" (toString $transferDID)) -}}
+    {{- if or (ne $role "carrier-sbc") (not $effective.carrierOutbound.clientIdentity.enabled) (not (has $transferDIDRole (list "avoip" "fax"))) (not $transferDIDConfigured) (not (regexMatch "^[0-9]{2,8}$" (toString $transfer.destinationExtension))) (not (hasKey $interSitePeerNames $transfer.peerName)) -}}
+      {{- fail (printf "Kamailio %s interSite transfer requires a carrier-sbc with Vault client identity, a configured DID role, an exact extension and a configured peer" $name) -}}
     {{- end -}}
   {{- end -}}
   {{- if and (or ($interSite.peers | default list) ($interSite.transfers | default list)) (or (ne $role "carrier-sbc") (not $effective.carrierOutbound.enabled) (not $effective.carrierOutbound.clientIdentity.enabled)) -}}
@@ -248,7 +276,7 @@
       {{- if not (hasKey $peers "carrier") -}}
         {{- fail (printf "Kamailio %s carrierOutbound requires a carrier mTLS peer" $name) -}}
       {{- end -}}
-      {{- if and $effective.carrierOutbound.calls.enabled (or (not (hasKey $peers $effective.carrierOutbound.testRoute.peerName)) (eq $effective.carrierOutbound.testRoute.peerName "carrier")) -}}
+      {{- if and $effective.carrierOutbound.calls.enabled (eq $effective.carrierOutbound.calls.mode "test") (or (not (hasKey $peers $effective.carrierOutbound.testRoute.peerName)) (eq $effective.carrierOutbound.testRoute.peerName "carrier")) -}}
         {{- fail (printf "Kamailio %s carrierOutbound calls require distinct test-origin and carrier mTLS peers" $name) -}}
       {{- end -}}
       {{- range $peer := $effective.privateRouting.peers -}}

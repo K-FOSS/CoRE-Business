@@ -908,6 +908,10 @@ controllers:
             } >> /tmp/avoip-sipcore-pjsip.conf
             unset sip_password
             {{- end }}
+            {{- if .Values.asterisk.sipCore.outboundNANP.enabled }}
+            printf '\n[carrier-outbound]\ntype=aor\ncontact=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\n\n' >> /tmp/avoip-sipcore-pjsip.conf
+            printf '[carrier-outbound]\ntype=endpoint\ntransport=transport-tls\naors=carrier-outbound\noutbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\ncontext=carrier-outbound-deny\ndirect_media=no\ndisallow=all\nallow={{ join "," $.Values.codecs.asterisk.sipCore }}\n' >> /tmp/avoip-sipcore-pjsip.conf
+            {{- end }}
             {{- end }}
             {{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }}
             turn_shared_secret="$(cat /run/avoip/turn/{{ .Values.asterisk.turn.secret.key }})"

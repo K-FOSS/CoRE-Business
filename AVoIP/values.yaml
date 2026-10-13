@@ -183,11 +183,15 @@ sip:
   tls:
     issuerName: 'kjdev-cluster'
 
-dids:
-  # Neutral inbound routing roles. The owning ApplicationSet maps assigned
-  # numbers to these destinations without assigning a service identity to a DID.
-  asterisk: ''
-  ivr: ''
+avoip:
+  # Main inbound DID, supplied by the owning ApplicationSet. YVR sends this
+  # number to the silent extension IVR when that feature is enabled.
+  did: ''
+
+fax:
+  # Legacy FaxNumber DID, supplied by the owning ApplicationSet and routed to
+  # the configured Asterisk SIP Core endpoint.
+  did: ''
 
 # Codec allowlists are independent by signaling path. Values use the native
 # names expected by Asterisk (lowercase) or FreeSWITCH (uppercase).
@@ -210,9 +214,6 @@ kamailio:
   # Map values merge recursively; listeners, destinations and env lists replace.
   roleDefaults:
     carrier-sbc:
-      # TLS handshakes need at least 5 MiB of free shared memory; 64 MiB
-      # leaves too little headroom for the carrier's TLS and dialog state.
-      shmSizeMb: 128
       functions:
         sanity: true
         classification: true
@@ -460,6 +461,11 @@ kamailio:
       calls:
         # Keep PSTN authorization closed independently of mTLS setup.
         enabled: false
+        mode: 'test'
+        # In NANP mode only calls from these configured Asterisk SIP Core
+        # extensions may use the carrier. The caller ID is the deployed voice DID.
+        extensions: []
+        callerId: ''
       peer:
         cidr: ''
         sanHostname: ''
@@ -836,8 +842,13 @@ asterisk:
     # on 5062; this port is restricted to the Asterisk workload.
     privateEgressPort: 5063
     echoExtension: '9090'
-    # Optional SIP Core endpoint to ring for inbound calls to the Asterisk DID.
+    # Optional SIP Core endpoint to ring for inbound calls to the voice DID.
     inboundVoiceExtension: ''
+    outboundNANP:
+      # When enabled, selected browser/SIP Core extensions may dial +1 E.164
+      # numbers through Asterisk and the existing internal Kamailio route.
+      enabled: false
+      extensions: []
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
     helloCallbackExtension: '1234'
@@ -912,23 +923,15 @@ freeswitch:
     enabled: false
     peerName: ''
     extension: ''
+    # Optional second ingress extension that enters the local IVR.
+    ivrExtension: ''
   ivr:
-    enabled: true
-    # Upload these WAVs to the existing site-local shared sound library.
-    # The editor normalizes files to 8 kHz mono PCM WAV.
-    openingPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-menu.wav'
-    menuPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-choices.wav'
-    invalidPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-invalid.wav'
-    exitPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-goodbye.wav'
-    messages:
-      - digit: '1'
-        prompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-message-1.wav'
-      - digit: '2'
-        prompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-message-2.wav'
-      - digit: '3'
-        prompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-message-3.wav'
-    attempts: 3
-    timeoutMs: 7000
+    # Silent extension dialer, enabled only where a local Asterisk SIP Core
+    # is configured to accept the selected internal destinations.
+    enabled: false
+    extensions: []
+    timeoutMs: 15000
+    digitTimeoutMs: 2000
   homer:
     # Send internal FreeSWITCH SIP and channel metadata to site-local Homer.
     sipCapture: true
@@ -994,6 +997,7 @@ freeswitch:
     spoolPath: '/var/spool/freeswitch/fax'
     ident: 'AVoIP'
     header: 'AVoIP'
+    autoDetect: true
     colour:
       # Enable SpanDSP's T.30 color fax support when the remote endpoint and
       # carrier path also support it.

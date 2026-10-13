@@ -100,25 +100,54 @@ data:
     clearglobalvars=no
 
     [from-external]
-    exten => {{ .Values.dids.asterisk }},1,Progress()
-      {{- if .Values.asterisk.sipCore.inboundVoiceExtension }}
-      same => n,Dial(PJSIP/{{ .Values.asterisk.sipCore.inboundVoiceExtension }},30)
+    {{- range (list .Values.avoip.did .Values.fax.did) }}
+    {{- if . }}
+    ; Keep this leg in ringing state until the selected SIP Core endpoint answers.
+    {{- if $.Values.asterisk.sipCore.inboundVoiceExtension }}
+    exten => {{ . }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.inboundVoiceExtension }},30)
       same => n,Hangup()
-      {{- else }}
-      same => n,Answer()
+    {{- else }}
+    exten => {{ . }},1,Answer()
       same => n,Echo()
       same => n,Playback(hello-world)
       same => n,Playback(hello-world)
       same => n,Playback(hello-world)
       same => n,Playback(hello-world)
       same => n,Hangup()
-      {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
       {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.inboundVoiceExtension }}
     ; The authenticated YVR FreeSWITCH peer may deliver this exact transfer
     ; extension after the carrier mTLS route has authorized it.
     exten => {{ .Values.asterisk.sipCore.inboundVoiceExtension }},1,Dial(PJSIP/{{ .Values.asterisk.sipCore.inboundVoiceExtension }},30)
       same => n,Hangup()
       {{- end }}
+    {{- if and .Values.freeswitch.ivr.enabled .Values.asterisk.sipCore.enabled }}
+    ; These exact destinations are reachable only after FreeSWITCH validates
+    ; caller DTMF against freeswitch.ivr.extensions.
+    {{- range .Values.freeswitch.ivr.extensions }}
+    {{- if ne (toString .) (toString $.Values.asterisk.sipCore.inboundVoiceExtension) }}
+    {{- if eq (toString .) (toString $.Values.asterisk.sipCore.echoExtension) }}
+    exten => {{ . }},1,Answer()
+      same => n,Echo()
+      same => n,Hangup()
+    {{- else if eq (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension) }}
+    exten => {{ . }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30,g)
+      same => n,Hangup()
+    {{- else if eq (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension) }}
+    {{- if gt (len $.Values.asterisk.sipCore.extensions) 0 }}
+    exten => {{ . }},1,Goto(from-sipcore-{{ (index $.Values.asterisk.sipCore.extensions 0).number }},{{ . }},1)
+    {{- else }}
+      {{- fail "the IVR hello callback destination requires at least one Asterisk SIP Core extension" }}
+    {{- end }}
+    {{- else }}
+    exten => {{ . }},1,Dial(PJSIP/{{ . }},30)
+      same => n,Hangup()
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
     {{- if .Values.asterisk.sipCore.enabled }}
 
     {{- range .Values.asterisk.sipCore.extensions }}
@@ -129,6 +158,12 @@ data:
     exten => {{ . }},1,Dial(PJSIP/{{ . }},30)
       same => n,Hangup()
     {{- end }}
+    {{- end }}
+    {{- if and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions) }}
+    ; PSTN egress is limited to the configured NANP-enabled account.
+    exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .number }})
+      same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120)
+      same => n,Hangup()
     {{- end }}
     {{- $echoAllowed := false -}}
     {{- range .allowCallsTo }}{{- if eq (toString .) (toString $.Values.asterisk.sipCore.echoExtension) }}{{- $echoAllowed = true }}{{- end }}{{- end }}
@@ -166,6 +201,8 @@ data:
       same => n,Dial(PJSIP/{{ .number }},{{ $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds }})
       same => n,Hangup()
     {{- end }}
+    [carrier-outbound-deny]
+    exten => _X!,1,Hangup(21)
     {{- end }}
 
 {{- end }}

@@ -149,18 +149,22 @@ Home1/YVR, alongside Office. The [AVoIP ApplicationSet](https://github.com/K-FOS
 owns the signaling Gateway route and public TURN/media LoadBalancer. The
 same ApplicationSet supplies the complete
 [named Kamailio instance list](../AVoIP/README.md#named-kamailio-instances)
-for each AVoIP site. The active DID routes are configured as Asterisk destination and IVR roles.
-The [AVoIP phone tree](../AVoIP/docs/PHONE-TREE.md) documents the YXL-to-YVR
-extension route, local FreeSWITCH sample menu, and retained fax spool behavior. The
+for each AVoIP site. The voice DID now enters a silent YVR FreeSWITCH IVR with
+an exact Asterisk destination allowlist; both sites' FaxNumber DIDs route to
+YVR SIP Core extension `7101` instead of the fax receiver. The
+[AVoIP inbound call path](../AVoIP/docs/PHONE-TREE.md) records the DID routes,
+IVR behavior, and retained fax spool. The
 chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md),
-[YXL and YVR carrier mTLS transport and restricted outbound pilot](../AVoIP/docs/OUTBOUND-PILOT.md) and
+[YXL and YVR carrier mTLS transport and YVR Asterisk NANP outbound calling](../AVoIP/docs/OUTBOUND-PILOT.md) and
 [private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md)
 are documented separately: YXL and YVR enable the carrier mTLS transport
-while general outbound PSTN origination and the private registrar remain disabled in the
+while only YVR Asterisk SIP Core account `7101` is configured for general
+standard NANP outbound calls; the private registrar remains disabled in the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-YXL `dids.asterisk` uses that same carrier link to reach YVR Asterisk SIP Core
-extension `7101`; the exact peer allowlist and rollback are documented
-in the [inter-site voice guide](../AVoIP/docs/INTERSITE-VOICE.md).
+The YXL voice and FaxNumber DIDs now use that same carrier link to reach the
+YVR IVR and Asterisk SIP Core extension `7101`, respectively. The exact peer
+allowlist and rollback are documented in the
+[inter-site voice guide](../AVoIP/docs/INTERSITE-VOICE.md).
 The registrar pilot requires a site-local `User` database claim and migration
 Job; it is not yet an operational SIP user service or WSS ingress.
 Separately, Home1's static SIP Core extension pilot is active over the

@@ -6,13 +6,20 @@
     {{- fail "Asterisk SIP Core requires the existing RTPEngine for WebRTC media" -}}
   {{- end -}}
   {{- $sipCoreKamailioFound := false -}}
+  {{- $sipCoreNANPCarrierFound := false -}}
   {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
     {{- if and $instance.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) (eq $instance.role "private-sbc") -}}
       {{- $sipCoreKamailioFound = true -}}
+      {{- if and $.Values.asterisk.sipCore.outboundNANP.enabled $instance.carrierOutbound.enabled $instance.carrierOutbound.calls.enabled (eq $instance.carrierOutbound.calls.mode "nanp") -}}
+        {{- $sipCoreNANPCarrierFound = true -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
   {{- if not $sipCoreKamailioFound -}}
     {{- fail "Asterisk SIP Core requires a configured enabled private-sbc matching asterisk.sipCore.kamailioInstance" -}}
+  {{- end -}}
+  {{- if and .Values.asterisk.sipCore.outboundNANP.enabled (not $sipCoreNANPCarrierFound) -}}
+    {{- fail "Asterisk NANP outbound requires carrierOutbound calls in nanp mode on its selected private-sbc" -}}
   {{- end -}}
   {{- if not .Values.freeswitch.enabled -}}
     {{- fail "Asterisk SIP Core requires the existing media-enabled AVoIP stack" -}}
@@ -115,6 +122,16 @@
       {{- end -}}
       {{- if not (regexMatch "^[0-9]{2,8}$" (toString $target)) -}}
         {{- fail (printf "Asterisk SIP Core target %s must be 2-8 digits" $target) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if .Values.asterisk.sipCore.outboundNANP.enabled -}}
+    {{- if not .Values.asterisk.sipCore.outboundNANP.extensions -}}
+      {{- fail "asterisk.sipCore.outboundNANP.extensions must list at least one enabled account" -}}
+    {{- end -}}
+    {{- range .Values.asterisk.sipCore.outboundNANP.extensions -}}
+      {{- if not (hasKey $sipExtensions (toString .)) -}}
+        {{- fail (printf "Asterisk NANP outbound extension %s must match a configured SIP Core account" .) -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}

@@ -37,9 +37,8 @@
         exit;
       }
 
-      # This pilot authorizes a single service identity, CLI and test number.
-      # A user registration is not an outbound entitlement.
-      if ($fU != "{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}") {
+      # New calls require the configured service identity and caller policy.
+      if ({{- if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}$fU != "{{ .Values.kamailio.carrierOutbound.calls.callerId }}"{{- else }}$fU != "{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}"{{- end }}) {
         sl_send_reply("403", "Caller Identity Not Authorized");
         exit;
       }
@@ -50,8 +49,8 @@
       }
       if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") ||
           $rU =~ "^\\+1900" ||
-          $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$" ||
-          $rU != "{{ .Values.kamailio.carrierOutbound.testRoute.destination }}") {
+          $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$"{{- if ne .Values.kamailio.carrierOutbound.calls.mode "nanp" }} ||
+          $rU != "{{ .Values.kamailio.carrierOutbound.testRoute.destination }}"{{- end }}) {
         sl_send_reply("403", "Destination Not Authorized");
         exit;
       }
@@ -62,7 +61,7 @@
       $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>={{ .Values.kamailio.carrierOutbound.limits.concurrentCalls }} then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>={{ .Values.kamailio.carrierOutbound.limits.callsPerMinute }} or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }},'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }});return 1";
       if (!redis_cmd(
         "topos", "EVAL %s 1 %s %s", "$var(quota_script)",
-        "avoip:out:quota:{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}",
+        "avoip:out:quota:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}",
         "$ci", "outbound_quota"
       )) {
         sl_send_reply("503", "Outbound Quota Unavailable");
@@ -75,7 +74,7 @@
       }
 
       remove_hf("P-Asserted-Identity");
-      append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
+      append_hf("P-Asserted-Identity: <sip:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
       $ru = "sips:" + $rU + "@{{ .Values.flowroute.outboundHost }}";
       route(RR_BACKEND_TO_CARRIER);
       dlg_manage();
@@ -102,7 +101,7 @@
       $var(release_script) = "redis.call('ZREM',KEYS[1],'call:'..ARGV[1]);return 1";
       if (!redis_cmd(
         "topos", "EVAL %s 1 %s %s", "$var(release_script)",
-        "avoip:out:quota:{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}",
+        "avoip:out:quota:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}",
         "$ci", "outbound_release"
       )) {
         xlog("L_ERR", "Outbound quota release failed callid=$ci\n");

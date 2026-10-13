@@ -26,22 +26,24 @@ for its data path, recording format, access boundary and verification steps.
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-The two assigned DIDs now select neutral Asterisk and IVR routes; the
-[phone tree](AVoIP/docs/PHONE-TREE.md) documents the YXL-to-YVR extension route
-and the FreeSWITCH sample-message menu.
+The pending AVoIP desired-state update routes the voice DID to a silent YVR
+FreeSWITCH digit collector, with exact Asterisk destinations `7101`, `9090`, `66`, and
+`1234`. Both sites' FaxNumber DIDs route to YVR Asterisk extension `7101`;
+they no longer select the fax receiver. See the
+[inbound routing guide](AVoIP/docs/PHONE-TREE.md).
 The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES.md)
-and [restricted outbound service-peer pilot](AVoIP/docs/OUTBOUND-PILOT.md)
-for authenticated service peers. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
+and [YVR Asterisk-to-carrier NANP calling](AVoIP/docs/OUTBOUND-PILOT.md)
+through the authenticated service path. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
 now renders a site-local PostgreSQL service identity and schema migration, but
 credential issuance and live registration for the private registrar are still
 open. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 enables the carrier mTLS transport at YXL and YVR using each site's existing
-Vault `core-tls-vault` issuer, while the private registrar and outbound PSTN
-calls remain disabled. Certificate issuance and workload rollout require
-reconciliation. YXL `dids.asterisk` route uses that existing carrier mTLS link to reach YVR
-Asterisk SIP Core extension `7101`; see the
-[inter-site transfer guide](AVoIP/docs/INTERSITE-VOICE.md). This does not
-enable new outbound PSTN calls. Home1
+Vault `core-tls-vault` issuer, and configures YVR account `7101` for standard
+NANP outbound calls with the YVR Asterisk DID as caller ID. The private
+registrar remains disabled. Certificate issuance and workload rollout require
+reconciliation. The configured YXL voice and FaxNumber routes use that carrier
+mTLS link to reach the YVR IVR and Asterisk respectively; see the
+[inter-site transfer guide](AVoIP/docs/INTERSITE-VOICE.md). Home1
 does run the SIP Core WSS path with a three-replica Kamailio edge and the
 digest-pinned LF-heartbeat compatibility image; the dynamic registrar and
 first-party webphone work remains open. See the

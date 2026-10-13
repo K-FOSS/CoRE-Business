@@ -3,35 +3,38 @@
 {{- if and .Values.freeswitch.fax.enabled (le (int .Values.freeswitch.fax.t38.rxReinvitePacketCount) 0) }}
 {{- fail "freeswitch.fax.t38.rxReinvitePacketCount must be greater than zero" }}
 {{- end }}
+{{- if and .Values.freeswitch.fax.enabled .Values.fax.did (eq (toString .Values.fax.did) (toString .Values.avoip.did)) }}
+{{- fail "fax.did must differ from avoip.did" }}
+{{- end }}
 {{- if .Values.freeswitch.interSite.enabled }}
 {{- if or (not .Values.asterisk.enabled) (not .Values.asterisk.sipCore.enabled) (not (regexMatch "^[0-9]{2,8}$" (toString .Values.freeswitch.interSite.extension))) (ne (toString .Values.freeswitch.interSite.extension) (toString .Values.asterisk.sipCore.inboundVoiceExtension)) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString .Values.freeswitch.interSite.peerName))) }}
 {{- fail "freeswitch.interSite requires SIP Core, the configured inboundVoiceExtension, and an inter-site peer name" }}
 {{- end }}
-{{- end }}
-{{- if and .Values.dids.asterisk .Values.dids.ivr (eq (toString .Values.dids.asterisk) (toString .Values.dids.ivr)) }}
-{{- fail "dids.asterisk and dids.ivr must identify different inbound destinations" }}
-{{- end }}
-{{- range $role, $did := .Values.dids }}
-{{- if and $did (not (or (regexMatch "^\\+?[0-9]{10,15}$" (toString $did)) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" (toString $did)))) }}
-{{- fail (printf "dids.%s must be a phone number or a Vault-backed placeholder" $role) }}
+{{- if and .Values.freeswitch.ivr.enabled (or (not (regexMatch "^[0-9]{2,8}$" (toString .Values.freeswitch.interSite.ivrExtension))) (eq (toString .Values.freeswitch.interSite.ivrExtension) (toString .Values.freeswitch.interSite.extension))) }}
+{{- fail "freeswitch.interSite.ivrExtension must be a distinct numeric ingress extension when inter-site IVR routing is enabled" }}
 {{- end }}
 {{- end }}
-{{- if and .Values.freeswitch.ivr.enabled .Values.dids.ivr }}
-{{- if or (lt (int .Values.freeswitch.ivr.attempts) 1) (gt (int .Values.freeswitch.ivr.attempts) 10) (lt (int .Values.freeswitch.ivr.timeoutMs) 1000) (gt (int .Values.freeswitch.ivr.timeoutMs) 30000) (eq (len .Values.freeswitch.ivr.messages) 0) }}
-{{- fail "freeswitch.ivr requires 1-10 attempts, a 1000-30000 ms timeout, and at least one example message" }}
+{{- if .Values.freeswitch.ivr.enabled }}
+{{- if or (not .Values.asterisk.enabled) (not .Values.asterisk.sipCore.enabled) (eq (len .Values.asterisk.sipCore.extensions) 0) (eq (len .Values.freeswitch.ivr.extensions) 0) (lt (int .Values.freeswitch.ivr.timeoutMs) 1000) (gt (int .Values.freeswitch.ivr.timeoutMs) 60000) (lt (int .Values.freeswitch.ivr.digitTimeoutMs) 500) (gt (int .Values.freeswitch.ivr.digitTimeoutMs) 5000) }}
+{{- fail "freeswitch.ivr requires SIP Core, at least one permitted extension, a 1000-60000 ms input timeout, and a 500-5000 ms digit timeout" }}
 {{- end }}
-{{- if or (not (regexMatch "^/usr/share/freeswitch/sounds/avoip-shared/[a-z0-9_-]+\\.wav$" (toString .Values.freeswitch.ivr.openingPrompt))) (not (regexMatch "^/usr/share/freeswitch/sounds/avoip-shared/[a-z0-9_-]+\\.wav$" (toString .Values.freeswitch.ivr.menuPrompt))) (not (regexMatch "^/usr/share/freeswitch/sounds/avoip-shared/[a-z0-9_-]+\\.wav$" (toString .Values.freeswitch.ivr.invalidPrompt))) (not (regexMatch "^/usr/share/freeswitch/sounds/avoip-shared/[a-z0-9_-]+\\.wav$" (toString .Values.freeswitch.ivr.exitPrompt))) }}
-{{- fail "freeswitch.ivr prompt paths must be WAV files in /usr/share/freeswitch/sounds/avoip-shared" }}
+{{- $ivrExtensions := dict -}}
+{{- range .Values.freeswitch.ivr.extensions }}
+{{- $extension := toString . -}}
+{{- if not (regexMatch "^[0-9]{2,8}$" $extension) }}
+{{- fail "freeswitch.ivr.extensions must contain numeric extensions from 2 to 8 digits" }}
 {{- end }}
-{{- $ivrDigits := dict -}}
-{{- range .Values.freeswitch.ivr.messages }}
-{{- if or (not (regexMatch "^[1-9]$" (toString .digit))) (not (regexMatch "^/usr/share/freeswitch/sounds/avoip-shared/[a-z0-9_-]+\\.wav$" (toString .prompt))) }}
-{{- fail "each freeswitch.ivr.messages item requires a single DTMF digit and a WAV prompt in the shared sound library" }}
+{{- if hasKey $ivrExtensions $extension }}
+{{- fail "freeswitch.ivr.extensions must be unique" }}
 {{- end }}
-{{- if hasKey $ivrDigits (toString .digit) }}
-{{- fail "freeswitch.ivr.messages DTMF digits must be unique" }}
+{{- $_ := set $ivrExtensions $extension true }}
+{{- $authorized := or (eq $extension (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) (eq $extension (toString $.Values.asterisk.sipCore.echoExtension)) (eq $extension (toString $.Values.asterisk.sipCore.ggAudioExtension)) (eq $extension (toString $.Values.asterisk.sipCore.helloCallbackExtension)) -}}
+{{- range $.Values.asterisk.sipCore.extensions }}
+{{- if eq $extension (toString .number) }}{{- $authorized = true }}{{- end }}
 {{- end }}
-{{- $_ := set $ivrDigits (toString .digit) true }}
+{{- if not $authorized }}
+{{- fail (printf "freeswitch.ivr.extensions destination %s is not a configured Asterisk SIP Core destination" $extension) }}
+{{- end }}
 {{- end }}
 {{- end }}
 ---
@@ -55,24 +58,89 @@ data:
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
           </condition>
         </extension>
+        {{- if and $.Values.freeswitch.ivr.enabled $.Values.freeswitch.interSite.ivrExtension }}
+        <extension name="authorized-inter-site-ivr">
+          <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.ivrExtension }}$"/>
+          <condition field="sip_h_X-Core-InterSite" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
+            <action application="log" data="INFO AVoIP authorized inter-site IVR peer={{ $.Values.freeswitch.interSite.peerName }} caller=${caller_id_number}"/>
+            <action application="transfer" data="silent-ivr-entry XML public"/>
+          </condition>
+        </extension>
         {{- end }}
-        {{- if $.Values.dids.asterisk }}
-        <extension name="asterisk-destination-did">
-          <condition field="destination_number" expression="^{{ $.Values.dids.asterisk }}$">
+        {{- end }}
+        {{- if $.Values.fax.did }}
+        <extension name="fax-did-to-asterisk">
+          <condition field="destination_number" expression="^{{ $.Values.fax.did }}$">
             <action application="set" data="outside_call=true"/>
-            <action application="log" data="INFO AVoIP Asterisk destination DID ${destination_number}: bridging to the local Asterisk gateway"/>
+            <action application="log" data="INFO AVoIP FaxNumber DID: bridging to YVR Asterisk caller=${caller_id_number}"/>
             <action application="ring_ready"/>
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
           </condition>
         </extension>
         {{- end }}
-        {{- if and $.Values.freeswitch.ivr.enabled $.Values.dids.ivr }}
-        <extension name="sample-ivr-did">
-          <condition field="destination_number" expression="^{{ $.Values.dids.ivr }}$">
+        {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+        <extension name="did-post-answer">
+          <condition field="destination_number" expression="^did-post-answer$">
+            {{- if $.Values.freeswitch.media.diagnostics.enabled }}
+            <!-- Capture the answered inbound voice leg. -->
+            <action application="set" data="log_audio_stats_on_hangup=true"/>
+            <action application="set_media_stats"/>
+            <action application="log" data="INFO AVoIP inbound media answer uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
+            {{- end }}
+            {{- if $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+            <action application="record_session" data="{{ $.Values.freeswitch.media.diagnostics.callRecording.path }}/${uuid}.wav"/>
+            {{- end }}
+            {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
+            {{- end }}
+
+            {{- if $.Values.freeswitch.fax.autoDetect }}
+            <!-- Monitor inbound fax CNG while the
+                Asterisk voice call continues. -->
+
+            <action application="log"
+                    data="INFO AVoIP main DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/>
+
+            <action application="spandsp_start_fax_detect"
+                    data="transfer 'fax-receive XML public' 20"/>
+            {{- end }}
+          </condition>
+        </extension>
+        {{- end }}
+        <extension name="flowroute-did">
+          <condition field="destination_number" expression="^{{ $.Values.avoip.did }}$">
             <action application="set" data="outside_call=true"/>
-            <action application="log" data="INFO AVoIP sample IVR entered destination=${destination_number} caller=${caller_id_number}"/>
+            <action application="log" data="INFO AVoIP DID ${destination_number}: received call"/>
+            {{- if $.Values.freeswitch.ivr.enabled }}
+            <action application="transfer" data="silent-ivr-entry XML public"/>
+            {{- else }}
+            {{- if $.Values.freeswitch.media.diagnostics.enabled }}
+            <action application="set" data="log_audio_stats_on_hangup=true"/>
+            <action application="set" data="execute_on_media=log INFO AVoIP inbound media established uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec}"/>
+            {{- end }}
+            {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
+            <action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>
+            {{- end }}
+            <!-- Keep the carrier leg ringing until Asterisk returns 200 OK. -->
+            <action application="ring_ready"/>
+            <action application="log" data="INFO AVoIP DID ${destination_number}: bridging to Asterisk"/>
+            <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- end }}
+          </condition>
+        </extension>
+        {{- if $.Values.freeswitch.ivr.enabled }}
+        <extension name="silent-ivr-entry">
+          <condition field="destination_number" expression="^silent-ivr-entry$">
             <action application="answer"/>
-            <action application="transfer" data="sample-ivr-menu XML sample-ivr"/>
+            <action application="log" data="INFO AVoIP silent extension IVR ready caller=${caller_id_number}"/>
+            <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # silence_stream://{{ $.Values.freeswitch.ivr.timeoutMs }} silence_stream://1000 ivr_extension ^({{ join "|" $.Values.freeswitch.ivr.extensions }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
+            <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
+          </condition>
+        </extension>
+        <extension name="silent-ivr-invalid">
+          <condition field="destination_number" expression="^$">
+            <action application="log" data="INFO AVoIP silent extension IVR received no valid destination caller=${caller_id_number}"/>
+            <action application="hangup" data="NO_USER_RESPONSE"/>
           </condition>
         </extension>
         {{- end }}
@@ -140,38 +208,21 @@ data:
           </condition>
         </extension>
       </context>
-      {{- if and $.Values.freeswitch.ivr.enabled $.Values.dids.ivr }}
-      <context name="sample-ivr">
-        <extension name="sample-ivr-menu">
-          <condition field="destination_number" expression="^sample-ivr-menu$">
-            <action application="playback" data="{{ $.Values.freeswitch.ivr.openingPrompt }}"/>
-            <action application="play_and_get_digits" data="1 1 {{ $.Values.freeswitch.ivr.attempts }} {{ $.Values.freeswitch.ivr.timeoutMs }} # {{ $.Values.freeswitch.ivr.menuPrompt }} {{ $.Values.freeswitch.ivr.invalidPrompt }} ivr_choice ^[0-9]$"/>
-            <action application="transfer" data="${ivr_choice} XML sample-ivr"/>
-          </condition>
-        </extension>
-        {{- range $.Values.freeswitch.ivr.messages }}
-        <extension name="example-message-{{ .digit }}">
-          <condition field="destination_number" expression="^{{ .digit }}$">
-            <action application="log" data="INFO AVoIP sample IVR message selected digit={{ .digit }}"/>
-            <action application="playback" data="{{ .prompt }}"/>
-            <action application="transfer" data="sample-ivr-menu XML sample-ivr"/>
-          </condition>
-        </extension>
-        {{- end }}
-        <extension name="sample-ivr-exit">
-          <condition field="destination_number" expression="^0$">
-            <action application="playback" data="{{ $.Values.freeswitch.ivr.exitPrompt }}"/>
+      {{- if $.Values.freeswitch.ivr.enabled }}
+      <context name="silent-ivr-targets">
+        {{- range $.Values.freeswitch.ivr.extensions }}
+        <extension name="silent-ivr-destination-{{ . }}">
+          <condition field="destination_number" expression="^{{ . }}$">
+            <action application="log" data="INFO AVoIP silent IVR forwarding caller=${caller_id_number} to YVR Asterisk extension=${destination_number}"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
             <action application="hangup"/>
           </condition>
         </extension>
-        <extension name="sample-ivr-invalid-digit">
-          <condition field="destination_number" expression="^[1-9]$">
-            <action application="playback" data="{{ $.Values.freeswitch.ivr.invalidPrompt }}"/>
-            <action application="transfer" data="sample-ivr-menu XML sample-ivr"/>
-          </condition>
-        </extension>
-        <extension name="sample-ivr-invalid">
+        {{- end }}
+        <extension name="silent-ivr-invalid-destination">
           <condition field="destination_number" expression="^$">
+            <action application="log" data="INFO AVoIP silent IVR ended without a valid extension caller=${caller_id_number}"/>
             <action application="hangup" data="NO_USER_RESPONSE"/>
           </condition>
         </extension>

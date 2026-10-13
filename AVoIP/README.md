@@ -55,15 +55,21 @@ REGISTER handling.
 YXL's and YVR's `internal` and `carrier` Kamailio instances are configured
 for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`
-ClusterIssuer; PSTN call origination remains disabled. YXL's direct public SIP
+ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
+`7101` to place
+standard NANP calls through that route, with the Asterisk DID as caller ID.
+YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
-outbound SIPS TLSRoute stays enabled. The YXL `dids.asterisk` route now transfers over that existing carrier path
-to YVR Asterisk SIP Core extension `7101`, using the YVR carrier ClusterIP
-and an exact peer allowlist. The `dids.ivr` route enters the local FreeSWITCH
-sample-message menu at both sites. See the
-[outbound pilot runbook](docs/OUTBOUND-PILOT.md) for the original trust
-boundaries and the [inter-site voice guide](docs/INTERSITE-VOICE.md) for the
-transfer and rollout verification.
+outbound SIPS TLSRoute stays enabled. The desired YXL voice route transfers
+over that existing carrier path to the silent YVR FreeSWITCH IVR ingress; its
+FaxNumber DID routes directly to YVR Asterisk SIP Core extension `7101`. The IVR
+accepts only configured Asterisk destinations and uses the existing local
+FreeSWITCH-to-Asterisk gateway. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
+for trust boundaries, destination filters and quotas, and the
+[inter-site voice guide](docs/INTERSITE-VOICE.md) for transfer and rollout
+verification.
+The new DID and outbound call paths still require publish, reconciliation,
+and a live call check.
 
 ## Deployment ownership
 
@@ -127,17 +133,15 @@ databases 155 (Location) and 156 (Registry). Location and Registry require
 patched images built from the pinned Routr source to select those databases.
 See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
-The current DID map assigns the former fax-number secret to `dids.asterisk`
-and the former voice-number secret to `dids.ivr` at both sites. YXL sends its
-Asterisk destination route over the existing carrier mTLS link to YVR extension
-`7101`; each IVR route answers in local FreeSWITCH and offers three configurable
-sample messages from the site's shared sound library. Upload the configured WAV
-files through the Homer audio-library page after reconciliation. The former dedicated fax DID route and automatic
-fax-tone detection on inbound numbers have been removed. Fax receive support
-and its retained spool remain configured but no DID selects them. SpanDSP color
-fax negotiation remains enabled for an explicitly routed fax session. See the
-[current inbound call path](docs/PHONE-TREE.md) and
-[inter-site route](docs/INTERSITE-VOICE.md).
+The Home1/YVR voice DID enters the silent FreeSWITCH IVR, which accepts only
+the configured Asterisk destinations `7101`, `9090`, `66`, and `1234`. The
+YXL voice DID reaches that same IVR through the existing carrier mTLS path at
+ingress extension `7102`. Both sites' FaxNumber DIDs route to YVR Asterisk
+extension `7101`. The DID routes no longer select the `rxfax` receiver or
+automatic fax detection; the retained fax spool and explicit `fax-receive`
+extension remain available for future routing. SpanDSP color fax negotiation
+remains enabled through `freeswitch.fax.colour.enabled`. See the
+[current inbound call path](docs/PHONE-TREE.md).
 
 Codec preferences are configurable under the top-level `codecs` values. Opus
 is enabled by default on the Asterisk-to-FreeSWITCH peer, SIP Core endpoints,
@@ -192,7 +196,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 | --- | --- | --- |
 | Asterisk | Private voice PBX; authenticates to FreeSWITCH over TLS with Secret-backed SIP Digest credentials, offers Opus then G.722 with PCMU fallback on the FreeSWITCH peer, records CDRs in site-local PostgreSQL, and transfers extension 66 to FreeSWITCH's `gg-audio` dialplan user. The SIP Core callback test adds a configurable 100 ms RTP silence lead-in and correlated media logs. | [Call path](docs/PHONE-TREE.md), [Home Assistant SIP Core and GG audio](docs/SIPCORE-HASS.md), [internal TLS check](#internal-asterisk-sip-identity) |
 | Kamailio | Public carrier SIP border and private TLS relay with TOPOS. | [Values](docs/KAMAILIO-VALUES.md), [SIP identity](docs/SIP-IDENTITY.md) |
-| FreeSWITCH | Private call control, the local sample IVR, Asterisk routing, and Secret-backed configuration. | [Inbound routes](docs/PHONE-TREE.md), [SIP verification](docs/SIP-IDENTITY.md) |
+| FreeSWITCH | Private call control, voice DID, fax `rxfax`, and Secret-backed configuration. | [Call path](docs/PHONE-TREE.md), [fax verification](docs/SIP-IDENTITY.md) |
 | RTPEngine | Public media anchor with private NG control and Valkey recovery state. | [RTPEngine HA](docs/avoip/rtpengine-ha.md) |
 | Homer 11 | Internal HEP capture and Authentik-protected UI where enabled; the same hostname also serves the shared Asterisk/FreeSWITCH prompt editor. | [Homer](docs/HOMER.md), [call recordings](docs/HOMER-AUDIO.md), [shared sound library](docs/avoip/sound-library.md) |
 | LiveKit | Independent WebRTC signaling and media stack on Home1/YVR. | [LiveKit deployment](docs/LIVEKIT.md) |
@@ -223,11 +227,6 @@ authenticates inbound requests with SIP Digest. An External Secrets Password
 generator creates a random peer password in an immutable, retained Secret
 referenced by both Asterisk and FreeSWITCH; no internal pod IP or cluster CIDR
 is used as identity. Asterisk's existing outbound auth remains configured.
-The endpoint sends outbound dialog requests through the FreeSWITCH service DNS
-URI on TLS port 5064 so PJSIP verifies the certificate against its DNS SAN;
-keep `verify_server=yes`. PJSIP matches the next-hop host from the top Route
-header or outbound proxy against the certificate identity, as described in the
-[PJProject TLS hostname guidance](https://github.com/pjsip/pjproject_docs/blob/master/docs/source/specific-guides/security/ssl.rst#hostname-matching-and-sni).
 Raw SIP packet traces are suppressed on the authenticated peer path so Digest
 Authorization headers are not written to logs. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md) for endpoint identification and the
@@ -372,12 +371,13 @@ existing private listener still uses its current CIDR guard for dialog
 traffic; new calls from that listener receive 403. The existing Home Assistant
 SIP Core route uses `internal`; HA adds a separate `internal-wss` instance for
 staged route and Asterisk Path cutover. An
-[opt-in outbound service-peer pilot](docs/OUTBOUND-PILOT.md) uses Vault mTLS
+[outbound service-peer route](docs/OUTBOUND-PILOT.md) uses Vault mTLS
 over the existing SIPS Gateway path and site SNI between internal and carrier
 Kamailio. It reuses the current Flowroute trunk and adds no Gateway route,
-SNI, or Service. The exact test extension, destination, fixed caller ID,
-carrier-owned RTPEngine path, and shared rate/concurrency quotas remain gated
-off at both sites; no live carrier call has been made. The chart does not
+SNI, or Service. YVR enables account `7101` for standard NANP calls with the
+Asterisk DID as caller ID, carrier-owned RTPEngine media anchoring, and shared
+rate/concurrency quotas. YXL call origination remains disabled. No live carrier
+call has been made. The chart does not
 enable the Kamailio registrar pilot or an OIDC webphone; its current SIP Core
 path uses Asterisk's PJSIP registrar
 and the existing Envoy WSS route.
@@ -564,10 +564,10 @@ The replacement speech path is the deployed AI stack:
 - The [AI chart documentation](https://github.com/K-FOSS/CoRE-Business/blob/main/AI/README.md)
   describes the current GPUStack, Speaches, Gateway, and Wyoming deployment.
 
-Remaining integration work is to connect the minimal FreeSWITCH DID service to
-the existing Wyoming endpoint (or an OpenAI-compatible speech bridge) if voice
-TTS/STT is needed. This chart does not currently ship an IVR or speech bridge;
-its old Vosk and Mycroft resources have been removed.
+The voice DID now uses a silent DTMF extension collector; it does not use the
+shared prompt library or a speech bridge. If voice TTS/STT is needed later, the
+existing Wyoming endpoint or an OpenAI-compatible speech bridge can be
+integrated without recreating Vosk or Mycroft resources.
 
 ## Historical `dc1-k3s` state
 
@@ -581,9 +581,8 @@ recovery decisions about any remnants.
 
 ## Verification and activation
 
-The chart is deployed. YVR G.711 fax reception and YXL T.38 reception were
-previously reported working; current inbound DIDs now use Asterisk and IVR
-routes, with fax detection removed from inbound calls. The
+The chart is deployed. The voice and FaxNumber DID routes now target the
+silent YVR IVR and Asterisk extension `7101`, respectively. The
 five-second audio relay interruption is also reported resolved after the
 FreeSWITCH SIP profile RTP timer changes. Call-correlated traces and the
 end-to-end failover paths still need live verification; see
@@ -594,8 +593,9 @@ end-to-end failover paths still need live verification; see
    is reported resolved; one [operator-correlated 129-second call](docs/SIP-IDENTITY.md)
    had a complete recording. Retain a Call-ID-correlated ACK and clean BYE/200
    trace as acceptance evidence. See [SIP identity and call verification](docs/SIP-IDENTITY.md).
-2. Verify the YXL Asterisk route, both local IVR routes, DTMF choices, prompt
-   playback and clean hangup. Do not infer media success from pod readiness.
+2. Verify the voice DID accepts each allowlisted DTMF destination and that the
+   FaxNumber DID rings extension `7101`. Confirm an unregistered endpoint
+   does not leave a live answered call after the 30-second dial timeout.
 3. Exercise site failover and the RTPEngine/Valkey recovery path before treating
    either as production verified.
 

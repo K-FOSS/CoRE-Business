@@ -291,6 +291,44 @@
         exit;
       }
 
+      if (has_totag() && $dlg_var(outbound_carrier) == "yes") {
+        if (is_method("ACK") && !is_present_hf("Route") && $(ru{uri.param,tps}) == "") {
+          if (t_check_trans()) route(PRIVATE_RELAY);
+          exit;
+        }
+        if (!loose_route()) {
+          if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
+          exit;
+        }
+        route(PRIVATE_TO_CARRIER_GATEWAY);
+        route(PRIVATE_RELAY);
+      }
+
+      {{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") }}
+      # Asterisk-originated NANP calls use this existing TLS listener and the
+      # private Kamailio's existing Gateway/mTLS connection to the carrier.
+      if (!has_totag() && is_method("INVITE") && $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") {
+        $var(nanp_origin_allowed) = 0;
+        {{- range .Values.kamailio.carrierOutbound.calls.extensions }}
+        if ($fU == "{{ . }}") $var(nanp_origin_allowed) = 1;
+        {{- end }}
+        if ($var(nanp_origin_allowed) != 1) {
+          sl_send_reply("403", "Outbound Identity Not Authorized");
+          exit;
+        }
+        remove_hf("Route");
+        remove_hf("P-Asserted-Identity");
+        append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.calls.callerId }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
+        $fU = "{{ .Values.kamailio.carrierOutbound.calls.callerId }}";
+        $ru = "sips:" + $rU + "@{{ include "avoip.sip.siteHost" . }}";
+        record_route();
+        dlg_manage();
+        $dlg_var(outbound_carrier) = "yes";
+        route(PRIVATE_TO_CARRIER_GATEWAY);
+        route(PRIVATE_RELAY);
+      }
+      {{- end }}
+
       {{- if .Values.kamailio.websocketHA.enabled }}
       # Asterisk must have retained the Path from the registered contact.
       # Missing owner Routes fail closed; never fall back to the shared Service.
