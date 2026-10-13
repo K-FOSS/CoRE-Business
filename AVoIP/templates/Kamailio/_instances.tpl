@@ -91,7 +91,9 @@
     {{- end -}}
   {{- end -}}
   {{- range $transfer := ($interSite.transfers | default list) -}}
-    {{- if or (ne $role "carrier-sbc") (not $effective.carrierOutbound.clientIdentity.enabled) (not (regexMatch "^\\+?[0-9]{10,15}$" (toString $.Values.avoip.did))) (not (regexMatch "^[0-9]{2,8}$" (toString $transfer.destinationExtension))) (not (hasKey $interSitePeerNames $transfer.peerName)) -}}
+    {{- $voiceDID := toString $.Values.avoip.did -}}
+    {{- $voiceDIDConfigured := or (regexMatch "^\\+?[0-9]{10,15}$" $voiceDID) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" $voiceDID) -}}
+    {{- if or (ne $role "carrier-sbc") (not $effective.carrierOutbound.clientIdentity.enabled) (not $voiceDIDConfigured) (not (regexMatch "^[0-9]{2,8}$" (toString $transfer.destinationExtension))) (not (hasKey $interSitePeerNames $transfer.peerName)) -}}
       {{- fail (printf "Kamailio %s interSite transfer requires a carrier-sbc with Vault client identity, a configured voice DID, an exact extension and a configured peer" $name) -}}
     {{- end -}}
   {{- end -}}
