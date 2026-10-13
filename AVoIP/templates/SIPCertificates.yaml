@@ -114,7 +114,6 @@ spec:
 {{- if ne $flowrouteIssuerCount 1 -}}
   {{- fail "freeswitch.flowrouteOutbound.enabled requires exactly one enabled private Kamailio with Vault clientIdentity" -}}
 {{- end }}
-{{- $flowroutePeerHost := include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") -}}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -122,9 +121,9 @@ metadata:
   name: '{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls'
 spec:
   secretName: '{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls'
-  commonName: '{{ printf "%s.svc" (first (splitList "." $flowroutePeerHost)) }}'
+  commonName: '{{ printf "%s.svc" (first (splitList "." (include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch")))) }}'
   dnsNames:
-    - '{{ $flowroutePeerHost }}'
+    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
   usages:
     - 'digital signature'
     - 'key encipherment'
