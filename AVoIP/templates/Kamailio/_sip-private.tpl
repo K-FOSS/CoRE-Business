@@ -291,6 +291,7 @@
         exit;
       }
 
+      {{- if .Values.kamailio.carrierOutbound.enabled }}
       if (has_totag() && $dlg_var(outbound_carrier) == "yes") {
         if (is_method("ACK") && !is_present_hf("Route") && $(ru{uri.param,tps}) == "") {
           if (t_check_trans()) route(PRIVATE_RELAY);
@@ -303,6 +304,7 @@
         route(PRIVATE_TO_CARRIER_GATEWAY);
         route(PRIVATE_RELAY);
       }
+      {{- end }}
 
       {{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") }}
       # Asterisk-originated NANP calls use this existing TLS listener and the
