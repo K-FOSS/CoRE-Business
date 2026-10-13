@@ -100,7 +100,7 @@ data:
     clearglobalvars=no
 
     [from-external]
-    exten => {{ .Values.avoip.did }},1,Progress()
+    exten => {{ .Values.dids.asterisk }},1,Progress()
       {{- if .Values.asterisk.sipCore.inboundVoiceExtension }}
       same => n,Dial(PJSIP/{{ .Values.asterisk.sipCore.inboundVoiceExtension }},30)
       same => n,Hangup()

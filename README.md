@@ -26,9 +26,9 @@ for its data path, recording format, access boundary and verification steps.
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-Home1/YVR fax reception is reported working over G.711; the ApplicationSet
-selects [G.711-only reception](AVoIP/docs/PHONE-TREE.md) for that site's
-dedicated fax DID. T.38 remains unverified there.
+The two assigned DIDs now select neutral Asterisk and IVR routes; the
+[phone tree](AVoIP/docs/PHONE-TREE.md) documents the YXL-to-YVR extension route
+and the FreeSWITCH sample-message menu.
 The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES.md)
 and [restricted outbound service-peer pilot](AVoIP/docs/OUTBOUND-PILOT.md)
 for authenticated service peers. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
@@ -38,8 +38,8 @@ open. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/m
 enables the carrier mTLS transport at YXL and YVR using each site's existing
 Vault `core-tls-vault` issuer, while the private registrar and outbound PSTN
 calls remain disabled. Certificate issuance and workload rollout require
-reconciliation. The YXL inbound voice DID now uses that existing carrier
-mTLS link to reach YVR Asterisk SIP Core extension `7101`; see the
+reconciliation. YXL `dids.asterisk` route uses that existing carrier mTLS link to reach YVR
+Asterisk SIP Core extension `7101`; see the
 [inter-site transfer guide](AVoIP/docs/INTERSITE-VOICE.md). This does not
 enable new outbound PSTN calls. Home1
 does run the SIP Core WSS path with a three-replica Kamailio edge and the

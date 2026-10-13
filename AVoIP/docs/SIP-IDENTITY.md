@@ -108,7 +108,7 @@ The public/private route pair is constructed once per direction with `record_rou
 
 The `sips-tls` Gateway listener uses TLS passthrough to the Kamailio `TLSRoute`; it does not terminate the SIP TLS session. Envoy Gateway normally matches the route hostname against SNI. The fallback [EnvoyPatchPolicy](https://gateway.envoyproxy.io/docs/tasks/extensibility/envoy-patch-policy/) removes the `server_names` match from the one SIPS filter chain, allowing no-SNI TLS clients to reach that same TLSRoute without changing the backend or terminating TLS. This relies on the SIPS listener having one TLSRoute/backend; adding another SIPS route requires revisiting the fallback so it cannot route unrelated SNI traffic incorrectly. Envoy prepends PROXY protocol v2, which Kamailio consumes before its native TLS handshake. Kamailio presents its chart-managed cert-manager certificate; its SAN list includes the site hostname, shared SIP alias, and private Kamailio service name. `sip.tls.issuerName` must issue publicly trusted certificates for the public names. Verify the Kamailio `Certificate` is Ready and run the TLS verification below before testing Flowroute. The private hops remain Kamailio to FreeSWITCH on TLS 5061 at the Kamailio service's private port 5062 and FreeSWITCH to Asterisk on TLS 5061; Sofia verifies the Asterisk server certificate.
 
-The voice DID is configured with `avoip.did` and normally bridges to Asterisk. The fax DID is configured separately with `fax.did`; it defaults to empty, so the owning ApplicationSet must supply the assigned fax number before enabling fax routing. Keep the two values distinct. A fax DID match runs before the voice and reject routes, transfers directly to `fax-receive`, answers, and executes `rxfax` to the persistent fax spool. Home1/YVR selects G.711-only PCMU reception through the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml). DC1/YXL retains the T.38-capable chart setting; T.38 reception there is reported working. The answered voice route runs `spandsp_start_fax_detect` to monitor CNG while the Asterisk voice call continues, and transfers detected fax calls to `fax-receive`. Automatic fax detection on the voice number is reported working. Call-specific traces and resulting TIFF evidence have not been recorded here. Temporary call recording is controlled separately by `freeswitch.media.diagnostics.callRecording.enabled`.
+Inbound routing uses neutral `dids.asterisk` and `dids.ivr` values supplied by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml). At YXL, the Asterisk DID crosses the existing carrier mTLS link to YVR extension `7101`; the IVR DID enters the values-driven FreeSWITCH sample menu. At YVR, the Asterisk DID routes locally to extension `7101`, and the IVR DID uses the local menu. The former dedicated fax DID match and automatic fax detection on inbound calls are removed. Fax receive configuration and the retained spool remain, but no DID selects them. Temporary call recording remains controlled separately by `freeswitch.media.diagnostics.callRecording.enabled`.
 
 The previously observed five-second audio relay interruption is reported gone
 after updating the FreeSWITCH Sofia SIP profiles. The profiles now set
@@ -138,10 +138,10 @@ helm template core-home1-talos-prod-business-avoip-prod . -n core-prod -f values
   --set kamailio.instances[0].publicExposure.sip.directService.enabled=true \
   --set freeswitch.enabled=true --set asterisk.enabled=true \
   --set rtpengine.media.address=1.1.1.1 \
-  --set-string avoip.did=voice-fixture --set-string fax.did=fax-fixture \
+  --set-string dids.asterisk=asterisk-fixture --set-string dids.ivr=ivr-fixture \
   > /tmp/avoip-render.yaml
 python3 tests/sip_identity_render.py /tmp/avoip-render.yaml \
-  --voice-did voice-fixture --fax-did fax-fixture \
+  --asterisk-did asterisk-fixture --ivr-did ivr-fixture \
   --site-host sip.core-home1-talos-prod.home1.yvr.resolvemy.host \
   --cluster-name core-home1-talos-prod \
   --cluster-domain k8s.home1.resolvemy.host --media-address 1.1.1.1
@@ -233,9 +233,10 @@ TLS listeners and certificate SANs with `openssl s_client`,
 `sofia status profile kamailio`, `sofia status profile asterisk`, and
 `pjsip show transports`.
 
-For voice, call `avoip.did` and confirm a bridge to Asterisk without `rxfax`.
-For fax, call `fax.did` and confirm `rxfax`, a result log, and a TIFF under
-`freeswitch.fax.spoolPath` without an Asterisk bridge. Compare RTPEngine packet
+For the Asterisk route, verify the exact DID reaches the intended Asterisk
+extension. For the IVR route, verify each configured prompt, DTMF selection,
+menu loop, and `0` exit. Fax receive has no DID assignment in the current
+route map. Compare RTPEngine packet
 counts in both directions and verify Homer receives RTPEngine HEP on TCP 9061.
 
 The UDP and TLS SIPp scenarios, including steering the UDP dialog ACK and BYE

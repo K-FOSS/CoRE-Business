@@ -1,7 +1,7 @@
 # YXL to YVR inbound voice transfer
 
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-routes the YXL voice DID over the existing carrier Kamailio inter-site SIPS
+routes the YXL Asterisk destination DID over the existing carrier Kamailio inter-site SIPS
 link to YVR. YVR FreeSWITCH passes only extension `7101` to the existing
 Asterisk SIP Core gateway. The general outbound pilot remains disabled. The
 route uses the ordinary YVR carrier ClusterIP Service at `10.44.7.136:5061`;
@@ -10,7 +10,7 @@ it does not depend on the direct public SIP Service.
 ## Trust and call flow
 
 1. Flowroute's configured source CIDR reaches YXL carrier Kamailio, which
-   matches the exact voice DID and selects the YVR peer.
+   matches the exact Asterisk destination DID and selects the YVR peer.
 2. YXL carrier Kamailio connects to the YVR carrier ClusterIP over TLS. It
    presents its existing Vault-issued client certificate and uses the YVR
    TLSRoute SNI. The [Kamailio TLS module](https://www.kamailio.org/docs/modules/stable/modules/tls.html)
@@ -39,7 +39,7 @@ at each site. Its `interSite.peers` entry identifies the remote pod CIDR,
 client-certificate SAN, service ClusterIP, service host, TLS server name, and
 allowed extensions. YXL also has one `interSite.transfers` entry selecting
 peer `yvr` and extension `7101`. Kamailio matches the DID from the existing
-secret-backed `avoip.did` value; the DID is not duplicated in the peer
+secret-backed `dids.asterisk` value; the DID is not duplicated in the peer
 configuration. YVR permits only
 `7101` from YXL and enables its exact FreeSWITCH inter-site dialplan route.
 The existing Vault mTLS `clientIdentity` configuration supplies both

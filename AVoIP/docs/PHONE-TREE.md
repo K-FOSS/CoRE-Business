@@ -1,255 +1,70 @@
-# AVoIP phone tree and DID service
+# AVoIP inbound routing
 
-The AVoIP voice configuration is intentionally minimal. It no longer ships
-the upstream FreeSWITCH demonstration dialplan, sample extensions, conference
-codes, parking codes, fax tests, voicemail routes, or demo IVR.
+The deployed [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+assigns two site-local DIDs to neutral routing roles: `dids.asterisk` and
+`dids.ivr`. The values come from Vault references supplied by Lovely; do not
+put resolved numbers in Git or this page. The current YXL `asterisk` route is
+sent to YVR extension `7101` over the existing carrier Kamailio mTLS link.
+Both sites' `ivr` route enters a sample menu in local FreeSWITCH.
 
-The chart defaults Asterisk and FreeSWITCH to disabled. The active
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-enables both at DC1/YXL and Home1/YVR and supplies a separate voice and fax
-DID at each site. The `dc1-k3s-node1` spoke does not enable either workload.
+## Call routing
 
-Kamailio handles public carrier SIP. Direct site Services accept UDP/5060;
-the shared Gateway passes TLS/5061 through to Kamailio, with PROXY protocol v2
-for the original source address. Kamailio checks the configured Flowroute
-source CIDRs, then relays to the private FreeSWITCH TLS profile. RTPEngine
-anchors public media at the address and port range supplied by the owning
-ApplicationSet. See [SIP identity](SIP-IDENTITY.md) for the transport and
-dialog route details.
+1. Flowroute sends the call to the site's carrier Kamailio. The carrier
+   source CIDR check runs before either DID can be routed.
+2. On YXL, a call to `dids.asterisk` matches the exact configured user part.
+   Kamailio sends it over the existing TLS/mTLS connection to YVR carrier
+   ClusterIP `10.44.7.136:5061`, with destination extension `7101`.
+3. YVR carrier Kamailio verifies the YXL client certificate and pod CIDR,
+   allows only extension `7101`, and marks the request for the authorized
+   cross-site route. YVR FreeSWITCH requires that marker before bridging to
+   the authenticated Asterisk gateway. Asterisk rings SIP Core extension
+   `7101`.
+4. At either site, a call to `dids.ivr` is answered by FreeSWITCH. The sample
+IVR plays its configured introduction, accepts one DTMF digit,
+and plays one of the configured example prompts before returning to the
+menu. `0` plays the goodbye prompt and hangs up; unsupported digits play the
+   invalid-entry prompt. FreeSWITCH voice outbound remains rejected.
+5. YVR's `dids.asterisk` route uses its local FreeSWITCH-to-Asterisk gateway;
+   the Asterisk `from-external` context maps that exact DID to extension `7101`.
 
-## Configured DID
+The old fax/voice DID distinction is no longer used in the chart routing.
+There is no dedicated fax DID route or automatic CNG detection on an inbound
+number. The separate fax receive configuration remains available for future
+explicit routing, but no DID currently selects it. This change does not remove
+the retained fax spool.
 
-The [chart defaults](../values.yaml) leave `avoip.did` and `fax.did` empty.
-The owning ApplicationSet supplies both from site-specific secret references.
-Keep them distinct: `avoip.did` goes to Asterisk for voice, and `fax.did` goes
-directly to FreeSWITCH fax reception. Do not put a DID or Secret value in this
-page.
+The sample IVR settings are under `freeswitch.ivr` in
+[values.yaml](../values.yaml). They define the introduction, menu, invalid and
+goodbye prompts, DTMF attempts and timeout, and digit/prompt pairs. Upload these
+files to each site's existing shared sound library at
+`https://<Homer hostname>/audio-library/`: `ivr-menu.wav`, `ivr-choices.wav`,
+`ivr-invalid.wav`, `ivr-goodbye.wav`, and `ivr-message-1.wav` through
+`ivr-message-3.wav`. `ivr-choices.wav` should announce the choices for digits
+1–3 and 0. Files must be mono 8 kHz PCM WAV; see the
+[sound library guide](avoip/sound-library.md). The chart references the
+site-local library and contains no audio assets. Until these files are uploaded,
+FreeSWITCH cannot play the IVR prompts. The chart keeps the menu in the public
+context but only matches the explicitly assigned IVR DID; unmatched public
+destinations continue to be rejected.
 
-Inbound calls over either public SIP transport follow this path:
+## Trust and operations
 
-1. The direct site Service sends UDP SIP to Kamailio, or the `main-gw` SIPS
-   listener passes TLS through to Kamailio with a PROXY v2 header.
-2. Kamailio validates the source against the configured Flowroute
-   signaling CIDRs and rejects all other sources.
-3. Kamailio forwards accepted SIP to FreeSWITCH's private `kamailio` Sofia
-   profile over TLS. The configured YXL voice DID follows the inter-site
-   carrier SIPS route to YVR before entering YVR FreeSWITCH. Its public Contact
-   and route set follow the carrier's ingress transport; the private leg uses
-   TLS/5062 toward Kamailio and TLS/5061 toward FreeSWITCH.
-4. FreeSWITCH matches `fax.did` first and transfers it to `fax-receive`.
-   That extension answers, plays a 2100 Hz called-station tone, and runs
-   [`mod_spandsp` `rxfax`](https://developer.signalwire.com/freeswitch/applications/fax/).
-   At Home1/YVR, the ApplicationSet selects G.711-only PCMU reception. DC1/YXL
-   uses the chart's T.38-capable setting; T.38 fax reception has been reported
-   working there. The chart enables V.17 and ECM. Fax behavior may vary by
-   site and carrier path.
-5. FreeSWITCH writes `${uuid}.tif` under `freeswitch.fax.spoolPath`, logs the
-   fax result and packet counts, then hangs up. The spool is a retained
-   Longhorn `ReadWriteOnce` claim by default. No automatic TIFF delivery or
-   TIFF retention cleanup is configured.
-6. A call to `avoip.did` rings and bridges to the site Asterisk. For the YXL
-   voice DID, the carrier Kamailio sends the call over the existing inter-site
-   SIPS/mTLS carrier link to YVR's carrier Kamailio, then through YVR
-   FreeSWITCH to Asterisk SIP Core extension `7101`. YVR restricts that
-   inter-site peer to extension `7101`; the registered Home Assistant endpoint
-   rings. At YVR, after answer, `spandsp_start_fax_detect` monitors the inbound
-   audio for fax CNG while the voice call continues. If it detects a fax tone,
-   FreeSWITCH transfers the call to `fax-receive` and runs `rxfax`; ordinary
-   voice remains bridged to Asterisk. This automatic detection is reported
-   working on the voice number.
-   Unmatched destinations are rejected.
-
-The YXL-to-YVR transfer is a site-specific entry under the carrier Kamailio
-`interSite.transfers` value. Both carrier peers authenticate with their
-existing Vault-issued client identities. The receiving Kamailio checks the
-peer certificate SAN and pod CIDR, and FreeSWITCH requires the marker added by
-that authenticated route before bridging the exact extension to its existing
-Asterisk gateway. The route uses YVR carrier ClusterIP `10.44.7.136:5061`;
-the YXL direct Service setting is not involved. See the
-[inter-site voice route guide](INTERSITE-VOICE.md) for deployment inputs,
+The YXL-to-YVR transfer is configured on the carrier Kamailio instance under
+`interSite.transfers`. Both peers use their existing Vault-issued client
+identities. The receiving Kamailio checks the peer certificate SAN and pod
+CIDR, and FreeSWITCH requires the marker from that authenticated route before
+bridging extension `7101`. The YXL direct public SIP Service remains disabled.
+See the [inter-site voice guide](INTERSITE-VOICE.md) for the trust path,
 verification and rollback.
 
-YVR G.711 fax reception, YXL T.38 fax reception, and automatic fax detection
-on the voice number are reported working. Call-specific traces, page counts,
-resulting TIFFs and SIP ACK evidence have not been recorded here. Call-detail records are
-written to the service account's PostgreSQL database by
-[`mod_cdr_pg_csv`](https://developer.signalwire.com/freeswitch/module-reference/event-handlers/mod_cdr_pg_csv/);
-the chart creates its `cdr` table during pod initialization. Runtime logs remain
-stdout logs collected by Kubernetes rather than rows in PostgreSQL.
+After reconciliation, render both Lovely site value layers and inspect the
+resulting DID matches without exposing resolved Secret values. Verify the
+YXL transfer resolves to the YVR ClusterIP and extension `7101`, YVR accepts
+only that extension from YXL, and the FreeSWITCH IVR contains each configured
+prompt. Then place an operator-approved inbound test call to each route and
+verify the Asterisk ring and IVR audio/DTMF behavior. A successful render or
+pod readiness alone does not prove media playback.
 
-The public dialplan is in
-[FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
-The default context is deliberately empty.
-
-FreeSWITCH voice outbound is disabled. The public context contains an explicit
-catch-all rejection after the configured DID route, so authenticated internal
-SIP callers and permitted carrier sources cannot use FreeSWITCH to place an
-unmatched outbound call. FreeSWITCH does not register to Flowroute; carrier
-signaling is accepted only through Kamailio.
-
-## SIP messaging
-
-Flowroute SMS/SIP MESSAGE handling is provided by the
-`mod_sms_flowroute` module. Its generated configuration is mounted from the
-External Secret `freeswitch-sms` at
-`/etc/freeswitch/autoload_configs/sms_flowroute.conf.xml`.
-
-The reduced `modules.conf.xml` loads Sofia, XML dialplan, logging, command,
-DTMF/application, and Opus support. `mod_xml_ldap` is temporarily disabled by
-default because it crashes on the dedicated Asterisk authentication lookup.
-The Flowroute SMS module remains loaded, but directory-backed user lookups are
-unavailable while LDAP is disabled.
-SMS is enabled by default through `freeswitch.sms.enabled`; disabling it omits
-both the SMS modules and the External Secret-backed Flowroute SMS configuration.
-
-## Registration and directory
-
-FreeSWITCH LDAP directory integration is temporarily disabled by default with
-`freeswitch.ldap.enabled: false`. This omits the `mod_xml_ldap` module and its
-configuration mount. Re-enabling the value loads the LDAP directory from
-[FreeSwitchMiscConfig.yaml](../templates/FreeSwitch/FreeSwitchMiscConfig.yaml);
-the LDAPS server hostname is selected from `datacenter` as
-`ldap-<datacenter>.mylogin.space`. The directory maps mylogin.space user
-attributes for identity, password, dial string, number alias, call group, ACL,
-and caller ID fields. Dynamic LDAP-backed SIP users are unavailable while the
-integration is disabled.
-
-The Asterisk peer uses its separate static directory entry, whose Digest
-password comes from the shared Secret. It does not require the LDAP directory.
-The FreeSWITCH `User` claim remains for the service identity credentials used
-by the container; production Secret values are intentionally not documented.
-
-The active SIP profiles are defined in
-[FreeSwitchSIPConfig.yaml](../templates/FreeSwitch/FreeSwitchSIPConfig.yaml):
-
-- `external` listens on SIP `5080` and TLS SIP `5081`, advertises the configured
-  external addresses, and uses the `public` context.
-- `asterisk` is a private TLS-only profile for the Asterisk peer. It requires
-  SIP digest authentication and enters the dedicated `from-asterisk` dialplan
-  context without a broad private-network ACL bypass. The
-  profile listens on its dedicated TLS port `5064` (the Kamailio-facing
-  FreeSWITCH profile uses `5061`). The hop uses TLS and the profile requires
-  SIP Digest. It does not request Asterisk's current public server certificate
-  as a client certificate; mTLS requires a separate certificate from an
-  approved internal CA. The chart keeps the current Digest check active.
-  The
-  peer username/password come from a Kubernetes Secret mounted into the SIP
-  processes, so neither credential is rendered into Git-managed configuration.
-  The configured GG extension transfers to the exact `gg-audio` destination in
-  `asterisk.xml`; other site-specific Asterisk transfer destinations and
-  scripts belong in the same file generated by
-  [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
-  That context has no wildcard route.
-- The image's default `internal`, `internal-ipv6`, and `external-ipv6` Sofia
-  profiles are overlaid with empty files so they cannot compete for SIP port
-  `5060` or create an unintended additional listener.
-
-The internal peer call must validate SIP Digest before reaching its restricted
-context. Flowroute traffic uses the
-separate external profile and source CIDR ACL; inbound Flowroute calls are
-bridged to Asterisk without LDAP authentication.
-
-## Network and media
-
-- Asterisk runs as an unprivileged UID/GID `1000`, with all Linux capabilities
-  dropped, privilege escalation disabled, and the Kubernetes RuntimeDefault
-  seccomp profile. Its root filesystem is read-only; its run, library, log,
-  spool, and temporary files use separate ephemeral `emptyDir` mounts and are
-  lost when the pod is replaced.
-- Asterisk's PJSIP transport treats the cluster pod network as local and does
-  not advertise the public NAT address to FreeSWITCH. With no external media
-  or signaling override configured, Asterisk advertises its pod address for
-  the internal SIP/RTP leg; the Asterisk ClusterIP Service remains the SIP
-  rendezvous point.
-- Asterisk CDRs use the PostgreSQL database provisioned by its `User` claim and
-  the site-local PostgreSQL provider. A startup init container creates the CDR
-  table, while runtime credentials generate `cdr_pgsql.conf` in `emptyDir`;
-  Asterisk does not use local CDR CSV or SQLite storage.
-- The Asterisk init container copies packaged sounds from the image's
-  `/usr/share/asterisk/sounds` into the dedicated `asterisk-sounds` `emptyDir`
-  mounted at `/var/lib/asterisk/sounds`, which is the normal `Playback()` search
-  path. The sounds are lost when the pod is replaced.
-- Asterisk's global Entity ID is explicitly configured in `values.yaml`, so
-  startup does not need to read a hardware MAC address from the pod interface.
-- Asterisk startup, readiness, and liveness use `asterisk -rx 'core show
-  uptime'`; FreeSWITCH uses a non-network process/configuration check because
-  its event socket is not enabled. Startup checks allow up to three minutes
-  for FreeSWITCH and two minutes for Asterisk.
-- Both controllers use surge-first rolling updates with zero unavailable pods
-  and require the replacement to pass readiness before the old replica is
-  removed.
-- FreeSWITCH runs with `-nf -nc` so it remains a foreground Kubernetes process
-  without attaching an interactive console prompt to the container log stream.
-- FreeSWITCH's Event Socket is enabled on loopback TCP `8021` for local control
-  and diagnostics. It is not exposed through a Service or public route, and its
-  password comes from the existing Secret-backed FreeSWITCH credential.
-- Kamailio emits compact markers for inbound SIP requests, backend relay
-  attempts, backend replies, relay failures, source rejections, and
-  in-dialog loose-route decisions when `kamailio.sipLogging.enabled` is true.
-  It records method, source, destination, route URI, request URI, and Call-ID
-  without dumping full SIP messages or SDP bodies.
-- Sofia raw SIP tracing is enabled by default on the Asterisk and external
-  profiles through `freeswitch.sipLogging.enabled`. It is intended for call
-  troubleshooting and includes signaling/SDP metadata in the pod logs.
-- Public FreeSWITCH TCP/UDP SIP Gateway API routes are removed. The UDP SIP
-  path uses the site's direct Kamailio Service. The `core-prod/main-gw` SIPS
-  listener uses TLS passthrough to Kamailio and PROXY protocol v2.
-- Kamailio accepts public signaling only from the Flowroute PoP CIDRs in
-  `flowroute.signalingCIDRs`; the private FreeSWITCH Kamailio
-  profile only accepts traffic from the configured Kamailio pod CIDR.
-- Kamailio presents the certificate for public TLS, and FreeSWITCH uses its
-  private TLS material for the backend leg. No private key is stored in Git.
-- RTPEngine advertises the site-specific public media address from the owning
-  ApplicationSet. FreeSWITCH's own public RTP Service is omitted while
-  Kamailio and RTPEngine are enabled.
-
-See [common.yaml](../templates/common.yaml),
-[Kamailio values](KAMAILIO-VALUES.md), and
-[FreeSwitchEgress.yaml](../templates/FreeSwitch/FreeSwitchEgress.yaml).
-
-## Explicitly removed behavior
-
-The following are no longer configured by this chart:
-
-- FreeSWITCH's stock `default.xml` feature tree.
-- Public extension and conference ranges.
-- Demo IVR and its menu destinations.
-- Conference, eavesdrop, paging, parking, fax, ringback, tone, and diagnostic
-  test numbers.
-- Default provider/sample gateway variables.
-- Unused Verto, Opal, ALSA, FIFO, local-stream, voicemail, and sample module
-  configuration.
-- Vosk and Mycroft/OVOS speech services.
-
-Speech integration remains a separate planned connection to the shared
-[AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml),
-where Wyoming, GPUStack, and Speaches are deployed.
-
-## Validation checklist
-
-Before enabling the hub:
-
-1. Confirm the ApplicationSet supplies distinct `avoip.did` and `fax.did`
-   values for the site; do not print their secret-backed values in logs.
-2. Confirm the Asterisk `User` claim produces its connection Secret and that
-   Asterisk starts with the generated PJSIP auth object (without printing the
-   Secret values).
-3. Send a SIP MESSAGE to the DID and verify delivery through
-   `mod_sms_flowroute`.
-4. Place an inbound voice call and verify the Asterisk bridge. Call the fax
-   DID separately; confirm G.711 reception in YVR, a successful `rxfax` result,
-   a TIFF on the retained spool, and an ACK on both SIP hops.
-5. Place an outbound call through Asterisk and verify FreeSWITCH rejects an
-   invalid credential or non-internal source.
-   Run the [negative SIP probes](../tests/README.md#authorization-and-outbound-call-probes)
-   from both denied and ACL-permitted test sources. The current Asterisk
-   endpoint has no inbound `auth` setting, so its direct private TLS listener
-   needs its own challenge/rejection result before treating that boundary as
-   credential protected.
-6. Verify RTP, DTMF, TLS certificate validation, and provider failure behavior.
-
-FreeSWITCH references: [official documentation](https://developer.signalwire.com/freeswitch/)
-and the [XML dialplan documentation](https://developer.signalwire.com/freeswitch/FreeSWITCH-Explained/Configuration/Dialplan/).
-The LDAP lookup behavior follows [mod_xml_ldap](https://developer.signalwire.com/freeswitch/module-reference/xml-interfaces/mod_xml_ldap/),
-and the profile authentication boundary follows the [Sofia SIP profile
-documentation](https://developer.signalwire.com/freeswitch/users-and-endpoints/sip-profiles/).
+Unmatched destinations are rejected. Public SIP signaling remains on
+Kamailio, while FreeSWITCH is not exposed as a carrier-facing SIP endpoint.
+See [SIP identity](SIP-IDENTITY.md) for transport and dialog routing details.

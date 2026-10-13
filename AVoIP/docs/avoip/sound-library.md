@@ -44,3 +44,9 @@ FreeSWITCH. Do not use a production prompt name for the first save.
 
 The active owner is the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
 which renders this chart through Lovely for the selected production clusters.
+
+The sample FreeSWITCH IVR reads files from this library. Upload
+`ivr-menu.wav`, `ivr-choices.wav`, `ivr-invalid.wav`, `ivr-goodbye.wav`, and
+`ivr-message-1.wav` through `ivr-message-3.wav` in each site. The chart stores
+only these filenames and does not package audio assets. Calls to the IVR DID
+will fail to play a prompt until all seven files are present.

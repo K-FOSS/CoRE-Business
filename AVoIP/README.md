@@ -57,9 +57,10 @@ for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer; PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
-outbound SIPS TLSRoute stays enabled. The YXL voice DID now transfers over
-that existing carrier path to YVR Asterisk SIP Core extension `7101`, using
-the YVR carrier ClusterIP and an exact peer allowlist. See the
+outbound SIPS TLSRoute stays enabled. The YXL `dids.asterisk` route now transfers over that existing carrier path
+to YVR Asterisk SIP Core extension `7101`, using the YVR carrier ClusterIP
+and an exact peer allowlist. The `dids.ivr` route enters the local FreeSWITCH
+sample-message menu at both sites. See the
 [outbound pilot runbook](docs/OUTBOUND-PILOT.md) for the original trust
 boundaries and the [inter-site voice guide](docs/INTERSITE-VOICE.md) for the
 transfer and rollout verification.
@@ -126,20 +127,17 @@ databases 155 (Location) and 156 (Registry). Location and Registry require
 patched images built from the pinned Routr source to select those databases.
 See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
-Home1/YVR fax reception is reported working over G.711. The owning
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-sets `freeswitch.fax.g711Only.enabled: true` for that site, disabling T.38
-negotiation on its dedicated `fax.did` route and selecting PCMU. DC1/YXL keeps
-the chart's T.38-capable settings, and T.38 fax reception is reported working
-there. At Home1/YVR, inbound calls to the voice DID ring SIP Core extension
-`7101` on Asterisk. Automatic fax detection on the voice number is also
-reported working; FreeSWITCH monitors CNG after the voice call is answered and
-transfers detected fax calls to `rxfax`. Call-specific SIP ACK, page-count and
-TIFF evidence has not been recorded here. SpanDSP color fax negotiation is
-enabled through
-`freeswitch.fax.colour.enabled`; successful color transmission still requires
-support from the remote fax endpoint and the carrier path. See the
-[current fax call path](docs/PHONE-TREE.md).
+The current DID map assigns the former fax-number secret to `dids.asterisk`
+and the former voice-number secret to `dids.ivr` at both sites. YXL sends its
+Asterisk destination route over the existing carrier mTLS link to YVR extension
+`7101`; each IVR route answers in local FreeSWITCH and offers three configurable
+sample messages from the site's shared sound library. Upload the configured WAV
+files through the Homer audio-library page after reconciliation. The former dedicated fax DID route and automatic
+fax-tone detection on inbound numbers have been removed. Fax receive support
+and its retained spool remain configured but no DID selects them. SpanDSP color
+fax negotiation remains enabled for an explicitly routed fax session. See the
+[current inbound call path](docs/PHONE-TREE.md) and
+[inter-site route](docs/INTERSITE-VOICE.md).
 
 Codec preferences are configurable under the top-level `codecs` values. Opus
 is enabled by default on the Asterisk-to-FreeSWITCH peer, SIP Core endpoints,
@@ -194,7 +192,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 | --- | --- | --- |
 | Asterisk | Private voice PBX; authenticates to FreeSWITCH over TLS with Secret-backed SIP Digest credentials, offers Opus then G.722 with PCMU fallback on the FreeSWITCH peer, records CDRs in site-local PostgreSQL, and transfers extension 66 to FreeSWITCH's `gg-audio` dialplan user. The SIP Core callback test adds a configurable 100 ms RTP silence lead-in and correlated media logs. | [Call path](docs/PHONE-TREE.md), [Home Assistant SIP Core and GG audio](docs/SIPCORE-HASS.md), [internal TLS check](#internal-asterisk-sip-identity) |
 | Kamailio | Public carrier SIP border and private TLS relay with TOPOS. | [Values](docs/KAMAILIO-VALUES.md), [SIP identity](docs/SIP-IDENTITY.md) |
-| FreeSWITCH | Private call control, voice DID, fax `rxfax`, and Secret-backed configuration. | [Call path](docs/PHONE-TREE.md), [fax verification](docs/SIP-IDENTITY.md) |
+| FreeSWITCH | Private call control, the local sample IVR, Asterisk routing, and Secret-backed configuration. | [Inbound routes](docs/PHONE-TREE.md), [SIP verification](docs/SIP-IDENTITY.md) |
 | RTPEngine | Public media anchor with private NG control and Valkey recovery state. | [RTPEngine HA](docs/avoip/rtpengine-ha.md) |
 | Homer 11 | Internal HEP capture and Authentik-protected UI where enabled; the same hostname also serves the shared Asterisk/FreeSWITCH prompt editor. | [Homer](docs/HOMER.md), [call recordings](docs/HOMER-AUDIO.md), [shared sound library](docs/avoip/sound-library.md) |
 | LiveKit | Independent WebRTC signaling and media stack on Home1/YVR. | [LiveKit deployment](docs/LIVEKIT.md) |
@@ -578,8 +576,9 @@ recovery decisions about any remnants.
 
 ## Verification and activation
 
-The chart is deployed. YVR G.711 fax reception, YXL T.38 reception, and
-automatic fax detection on the voice number are reported working. The
+The chart is deployed. YVR G.711 fax reception and YXL T.38 reception were
+previously reported working; current inbound DIDs now use Asterisk and IVR
+routes, with fax detection removed from inbound calls. The
 five-second audio relay interruption is also reported resolved after the
 FreeSWITCH SIP profile RTP timer changes. Call-correlated traces and the
 end-to-end failover paths still need live verification; see
@@ -590,10 +589,8 @@ end-to-end failover paths still need live verification; see
    is reported resolved; one [operator-correlated 129-second call](docs/SIP-IDENTITY.md)
    had a complete recording. Retain a Call-ID-correlated ACK and clean BYE/200
    trace as acceptance evidence. See [SIP identity and call verification](docs/SIP-IDENTITY.md).
-2. Verify an ordinary voice call bridges to Asterisk and a fax sent to the
-   voice number is detected and transferred to `rxfax`. Capture the `rxfax`
-   result, TIFF, negotiated fax mode, and ACK on both SIP hops for YVR G.711
-   and YXL T.38 calls.
+2. Verify the YXL Asterisk route, both local IVR routes, DTMF choices, prompt
+   playback and clean hangup. Do not infer media success from pod readiness.
 3. Exercise site failover and the RTPEngine/Valkey recovery path before treating
    either as production verified.
 

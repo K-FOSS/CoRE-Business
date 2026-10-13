@@ -456,7 +456,7 @@
       if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
         {{- range .Values.kamailio.interSite.transfers }}
         {{- $transfer := . }}
-        if (is_method("INVITE") && !has_totag() && $rU == "{{ $.Values.avoip.did }}") {
+        if (is_method("INVITE") && !has_totag() && $rU == "{{ $.Values.dids.asterisk }}") {
           $var(interSitePeer) = "{{ $transfer.peerName }}";
           dlg_manage();
           $dlg_var(interSitePeer) = "{{ $transfer.peerName }}";

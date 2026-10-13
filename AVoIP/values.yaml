@@ -183,13 +183,11 @@ sip:
   tls:
     issuerName: 'kjdev-cluster'
 
-avoip:
-  # Supplied by the owning ApplicationSet for clusters with FreeSWITCH enabled.
-  did: ''
-
-fax:
-  # Supplied by the owning Backplane ApplicationSet at each site.
-  did: ''
+dids:
+  # Neutral inbound routing roles. The owning ApplicationSet maps assigned
+  # numbers to these destinations without assigning a service identity to a DID.
+  asterisk: ''
+  ivr: ''
 
 # Codec allowlists are independent by signaling path. Values use the native
 # names expected by Asterisk (lowercase) or FreeSWITCH (uppercase).
@@ -835,7 +833,7 @@ asterisk:
     # on 5062; this port is restricted to the Asterisk workload.
     privateEgressPort: 5063
     echoExtension: '9090'
-    # Optional SIP Core endpoint to ring for inbound calls to the voice DID.
+    # Optional SIP Core endpoint to ring for inbound calls to the Asterisk DID.
     inboundVoiceExtension: ''
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
@@ -911,6 +909,23 @@ freeswitch:
     enabled: false
     peerName: ''
     extension: ''
+  ivr:
+    enabled: true
+    # Upload these WAVs to the existing site-local shared sound library.
+    # The editor normalizes files to 8 kHz mono PCM WAV.
+    openingPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-menu.wav'
+    menuPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-choices.wav'
+    invalidPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-invalid.wav'
+    exitPrompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-goodbye.wav'
+    messages:
+      - digit: '1'
+        prompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-message-1.wav'
+      - digit: '2'
+        prompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-message-2.wav'
+      - digit: '3'
+        prompt: '/usr/share/freeswitch/sounds/avoip-shared/ivr-message-3.wav'
+    attempts: 3
+    timeoutMs: 7000
   homer:
     # Send internal FreeSWITCH SIP and channel metadata to site-local Homer.
     sipCapture: true
@@ -976,7 +991,6 @@ freeswitch:
     spoolPath: '/var/spool/freeswitch/fax'
     ident: 'AVoIP'
     header: 'AVoIP'
-    autoDetect: true
     colour:
       # Enable SpanDSP's T.30 color fax support when the remote endpoint and
       # carrier path also support it.
