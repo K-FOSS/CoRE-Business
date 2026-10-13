@@ -157,8 +157,11 @@ chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md),
 [YXL and YVR carrier mTLS transport and restricted outbound pilot](../AVoIP/docs/OUTBOUND-PILOT.md) and
 [private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md)
 are documented separately: YXL and YVR enable the carrier mTLS transport
-while PSTN calls and the private registrar remain disabled in the
+while general outbound PSTN origination and the private registrar remain disabled in the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+The YXL inbound voice DID now uses that same carrier link to reach YVR Asterisk
+SIP Core extension `7101`; the exact peer allowlist and rollback are documented
+in the [inter-site voice guide](../AVoIP/docs/INTERSITE-VOICE.md).
 The registrar pilot requires a site-local `User` database claim and migration
 Job; it is not yet an operational SIP user service or WSS ingress.
 Separately, Home1's static SIP Core extension pilot is active over the

@@ -366,6 +366,12 @@ kamailio:
     podDisruptionBudget:
       minAvailable: 2
 
+    interSite:
+      # Explicit cross-site SIP peers and inbound DID transfers. Peer traffic
+      # continues to use the carrier listener and its Vault client identity.
+      peers: []
+      transfers: []
+
     topology:
       enabled: true
       redis:
@@ -900,6 +906,11 @@ asterisk:
 
 freeswitch:
   enabled: true
+  interSite:
+    # A private mTLS carrier peer may deliver only the configured extension.
+    enabled: false
+    peerName: ''
+    extension: ''
   homer:
     # Send internal FreeSWITCH SIP and channel metadata to site-local Homer.
     sipCapture: true

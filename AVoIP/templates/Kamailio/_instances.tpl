@@ -74,6 +74,30 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
+  {{- $interSite := $effective.interSite | default dict -}}
+  {{- $interSitePeerNames := dict -}}
+  {{- range $peer := ($interSite.peers | default list) -}}
+    {{- if or (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $peer.name))) (not (regexMatch "^[0-9a-fA-F:.]+/[0-9]{1,3}$" (toString $peer.cidr))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $peer.sanHostname))) (not (regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" (toString $peer.serviceIP))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $peer.serviceHost))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $peer.serverName))) -}}
+      {{- fail (printf "Kamailio %s interSite peer requires a name, CIDR, certificate SAN, IPv4 ClusterIP, service host and TLS server name" $name) -}}
+    {{- end -}}
+    {{- if hasKey $interSitePeerNames $peer.name -}}
+      {{- fail (printf "Kamailio %s interSite has duplicate peer %s" $name $peer.name) -}}
+    {{- end -}}
+    {{- $_ := set $interSitePeerNames $peer.name true -}}
+    {{- range $user := ($peer.allowedUsers | default list) -}}
+      {{- if not (regexMatch "^[0-9]{2,8}$" (toString $user)) -}}
+        {{- fail (printf "Kamailio %s interSite peer %s allowedUsers must contain numeric extensions" $name $peer.name) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- range $transfer := ($interSite.transfers | default list) -}}
+    {{- if or (ne $role "carrier-sbc") (not $effective.carrierOutbound.clientIdentity.enabled) (not (regexMatch "^\\+?[0-9]{10,15}$" (toString $transfer.fromDID))) (not (regexMatch "^[0-9]{2,8}$" (toString $transfer.destinationExtension))) (not (hasKey $interSitePeerNames $transfer.peerName)) -}}
+      {{- fail (printf "Kamailio %s interSite transfer requires a carrier-sbc with Vault client identity, a DID, an exact extension and a configured peer" $name) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if and (or ($interSite.peers | default list) ($interSite.transfers | default list)) (or (ne $role "carrier-sbc") (not $effective.carrierOutbound.enabled) (not $effective.carrierOutbound.clientIdentity.enabled)) -}}
+    {{- fail (printf "Kamailio %s interSite routing requires the carrier-sbc's existing Vault mTLS configuration" $name) -}}
+  {{- end -}}
   {{- if and (eq $role "private-sbc") $effective.publicExposure.enabled -}}
     {{- fail (printf "Kamailio %s private-sbc must not expose public SIP" $name) -}}
   {{- end -}}

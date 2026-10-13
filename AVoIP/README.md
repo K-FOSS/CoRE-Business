@@ -57,9 +57,12 @@ for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer; PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
-outbound SIPS TLSRoute stays enabled. See the
-[outbound pilot runbook](docs/OUTBOUND-PILOT.md) for trust boundaries and
-rollout verification.
+outbound SIPS TLSRoute stays enabled. The YXL voice DID now transfers over
+that existing carrier path to YVR Asterisk SIP Core extension `7101`, using
+the YVR carrier ClusterIP and an exact peer allowlist. See the
+[outbound pilot runbook](docs/OUTBOUND-PILOT.md) for the original trust
+boundaries and the [inter-site voice guide](docs/INTERSITE-VOICE.md) for the
+transfer and rollout verification.
 
 ## Deployment ownership
 

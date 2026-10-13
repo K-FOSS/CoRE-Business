@@ -444,6 +444,20 @@ data:
     private_key = /etc/kamailio/mtls/tls.key
     certificate = /etc/kamailio/mtls/tls.crt
     {{- end }}
+    {{- range .Values.kamailio.interSite.peers }}
+
+    # Per-site client profile lets dialogs use the peer's site SNI while
+    # presenting this carrier's Vault-issued mTLS identity.
+    [client:any]
+    server_id = inter-site-{{ .name }}
+    server_name = {{ .serverName }}
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = no
+    ca_list = /etc/ssl/certs/ca-certificates.crt
+    private_key = /etc/kamailio/mtls/tls.key
+    certificate = /etc/kamailio/mtls/tls.crt
+    {{- end }}
 {{ end }}
 {{- $root := . -}}
 {{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}

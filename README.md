@@ -38,7 +38,10 @@ open. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/m
 enables the carrier mTLS transport at YXL and YVR using each site's existing
 Vault `core-tls-vault` issuer, while the private registrar and outbound PSTN
 calls remain disabled. Certificate issuance and workload rollout require
-reconciliation. Home1
+reconciliation. The YXL inbound voice DID now uses that existing carrier
+mTLS link to reach YVR Asterisk SIP Core extension `7101`; see the
+[inter-site transfer guide](AVoIP/docs/INTERSITE-VOICE.md). This does not
+enable new outbound PSTN calls. Home1
 does run the SIP Core WSS path with a three-replica Kamailio edge and the
 digest-pinned LF-heartbeat compatibility image; the dynamic registrar and
 first-party webphone work remains open. See the

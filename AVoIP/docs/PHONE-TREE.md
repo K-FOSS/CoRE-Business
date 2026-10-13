@@ -32,9 +32,10 @@ Inbound calls over either public SIP transport follow this path:
 2. Kamailio validates the source against the configured Flowroute
    signaling CIDRs and rejects all other sources.
 3. Kamailio forwards accepted SIP to FreeSWITCH's private `kamailio` Sofia
-   profile over TLS. Its public Contact and route set follow the carrier's
-   ingress transport; the private leg uses TLS/5062 toward Kamailio and
-   TLS/5061 toward FreeSWITCH.
+   profile over TLS. The configured YXL voice DID follows the inter-site
+   carrier SIPS route to YVR before entering YVR FreeSWITCH. Its public Contact
+   and route set follow the carrier's ingress transport; the private leg uses
+   TLS/5062 toward Kamailio and TLS/5061 toward FreeSWITCH.
 4. FreeSWITCH matches `fax.did` first and transfers it to `fax-receive`.
    That extension answers, plays a 2100 Hz called-station tone, and runs
    [`mod_spandsp` `rxfax`](https://developer.signalwire.com/freeswitch/applications/fax/).
@@ -46,14 +47,27 @@ Inbound calls over either public SIP transport follow this path:
    fax result and packet counts, then hangs up. The spool is a retained
    Longhorn `ReadWriteOnce` claim by default. No automatic TIFF delivery or
    TIFF retention cleanup is configured.
-6. A call to `avoip.did` rings and bridges to the site Asterisk. At Home1/YVR,
-   Asterisk dials SIP Core extension `7101` so the registered Home Assistant
-   endpoint rings. After answer, `spandsp_start_fax_detect` monitors the inbound
+6. A call to `avoip.did` rings and bridges to the site Asterisk. For the YXL
+   voice DID, the carrier Kamailio sends the call over the existing inter-site
+   SIPS/mTLS carrier link to YVR's carrier Kamailio, then through YVR
+   FreeSWITCH to Asterisk SIP Core extension `7101`. YVR restricts that
+   inter-site peer to extension `7101`; the registered Home Assistant endpoint
+   rings. At YVR, after answer, `spandsp_start_fax_detect` monitors the inbound
    audio for fax CNG while the voice call continues. If it detects a fax tone,
    FreeSWITCH transfers the call to `fax-receive` and runs `rxfax`; ordinary
    voice remains bridged to Asterisk. This automatic detection is reported
    working on the voice number.
    Unmatched destinations are rejected.
+
+The YXL-to-YVR transfer is a site-specific entry under the carrier Kamailio
+`interSite.transfers` value. Both carrier peers authenticate with their
+existing Vault-issued client identities. The receiving Kamailio checks the
+peer certificate SAN and pod CIDR, and FreeSWITCH requires the marker added by
+that authenticated route before bridging the exact extension to its existing
+Asterisk gateway. The route uses YVR carrier ClusterIP `10.44.7.136:5061`;
+the YXL direct Service setting is not involved. See the
+[inter-site voice route guide](INTERSITE-VOICE.md) for deployment inputs,
+verification and rollback.
 
 YVR G.711 fax reception, YXL T.38 fax reception, and automatic fax detection
 on the voice number are reported working. Call-specific traces, page counts,

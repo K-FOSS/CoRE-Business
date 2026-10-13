@@ -85,6 +85,7 @@
 {{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     request_route {
+      $var(interSitePeer) = "";
       if (is_method("ACK")) {
         xlog(
           "L_INFO",
@@ -138,6 +139,41 @@
       }
       {{- end }}
 
+      {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.interSite.peers }}
+      # Cross-site carrier traffic is admitted only by the remote pod CIDR
+      # and its Vault-issued client certificate SAN.
+      if ($proto == "tls" && $Rp == 5061 && $tls_peer_verified == 1) {
+        remove_hf("X-Core-InterSite");
+        {{- range .Values.kamailio.interSite.peers }}
+        {{- $peer := . }}
+        if (src_ip == {{ .cidr }} && $tls_peer_san_hostname == "{{ .sanHostname }}") {
+          $var(interSitePeer) = "{{ .name }}";
+          $var(side) = "inter-site";
+          if (!has_totag() && !is_method("INVITE")) {
+            sl_send_reply("405", "Inter-site Method Not Allowed");
+            exit;
+          }
+          if (is_method("INVITE") && !has_totag()) {
+            $var(interSiteAllowed) = 0;
+            {{- range .allowedUsers }}
+            if ($rU == "{{ . }}") $var(interSiteAllowed) = 1;
+            {{- end }}
+            if ($var(interSiteAllowed) != 1) {
+              sl_send_reply("403", "Inter-site Destination Not Authorized");
+              exit;
+            }
+            append_hf("X-Core-InterSite: {{ $peer.name }}\r\n");
+            dlg_manage();
+            $dlg_var(interSitePeer) = "{{ $peer.name }}";
+            $dlg_var(interSiteDirection) = "terminating";
+          }
+          route(FROM_CARRIER);
+          exit;
+        }
+        {{- end }}
+      }
+      {{- end }}
+
       #
       # Carrier-facing trust boundary.
       #
@@ -149,6 +185,7 @@
         {{- range .Values.flowroute.signalingCIDRs }}
         if (src_ip == {{ . }}) {
           $var(side) = "carrier";
+          remove_hf("X-Core-InterSite");
           {{- if $carrierTrafficLogging }}
           xlog(
             "L_INFO",
@@ -417,6 +454,27 @@
       }
 
       if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
+        {{- range .Values.kamailio.interSite.transfers }}
+        {{- $transfer := . }}
+        if (is_method("INVITE") && !has_totag() && $rU == "{{ $transfer.fromDID }}") {
+          $var(interSitePeer) = "{{ $transfer.peerName }}";
+          dlg_manage();
+          $dlg_var(interSitePeer) = "{{ $transfer.peerName }}";
+          $dlg_var(interSiteDirection) = "origin";
+          route(RR_CARRIER_TO_BACKEND);
+          {{- if and $.Values.kamailio.functions.media (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
+          route(MEDIA_INITIAL);
+          {{- end }}
+          {{- range $.Values.kamailio.interSite.peers }}
+          {{- if eq .name $transfer.peerName }}
+          $ru = "sips:{{ $transfer.destinationExtension }}@{{ .serviceHost }}";
+          {{- end }}
+          {{- end }}
+          route(INTERSITE_TO_PEER);
+          route(RELAY);
+          exit;
+        }
+        {{- end }}
         route(INITIAL_BACKEND);
         exit;
       }
@@ -560,6 +618,17 @@
       }
 
       if ($var(side) == "carrier") {
+        {{- if $.Values.kamailio.interSite.peers }}
+        if ($dlg_var(interSiteDirection) == "origin" && $dlg_var(interSitePeer) != $null) {
+          $var(interSitePeer) = $dlg_var(interSitePeer);
+          route(INTERSITE_TO_PEER);
+          {{- if and $.Values.kamailio.functions.media (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
+          route(MEDIA_DIALOG);
+          {{- end }}
+          route(RELAY);
+          exit;
+        }
+        {{- end }}
         #
         # No Flowroute topology is forwarded to FreeSWITCH.
         # FreeSWITCH's only next hop is this private Kamailio service.
@@ -574,6 +643,41 @@
         route(TO_BACKEND);
         {{- end }}
       } else {
+        {{- if $.Values.kamailio.interSite.peers }}
+        if ($dlg_var(interSiteDirection) == "origin" &&
+            $var(side) == "inter-site" &&
+            $dlg_var(interSitePeer) != $null) {
+          # Requests returning from the YVR carrier follow the original
+          # YXL dialog's carrier route back to Flowroute.
+          route(TO_CARRIER);
+          {{- if and $.Values.kamailio.functions.media (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
+          route(MEDIA_DIALOG);
+          {{- end }}
+          route(RELAY);
+          exit;
+        }
+        if ($dlg_var(interSiteDirection) == "terminating" &&
+            $var(side) == "inter-site" &&
+            $dlg_var(interSitePeer) != $null) {
+          route(TO_BACKEND);
+          {{- if and $.Values.kamailio.functions.media (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
+          route(MEDIA_DIALOG);
+          {{- end }}
+          route(RELAY);
+          exit;
+        }
+        if ($dlg_var(interSiteDirection) == "terminating" &&
+            $var(side) == "backend" &&
+            $dlg_var(interSitePeer) != $null) {
+          $var(interSitePeer) = $dlg_var(interSitePeer);
+          route(INTERSITE_TO_PEER);
+          {{- if and $.Values.kamailio.functions.media (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
+          route(MEDIA_DIALOG);
+          {{- end }}
+          route(RELAY);
+          exit;
+        }
+        {{- end }}
         #
         # The carrier destination restored by TOPOS is retained in $du/$ru.
         # FreeSWITCH never has to know what that carrier destination was.
@@ -660,6 +764,25 @@
         "kamailio_event=routing_decision route=authorized_outbound_to_carrier call_id=$ci method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru transport=$proto"
       );
       {{- end }}
+    }
+    {{- end }}
+
+    {{- if .Values.kamailio.interSite.peers }}
+    route[INTERSITE_TO_PEER] {
+      $var(interSitePeerFound) = 0;
+      {{- range .Values.kamailio.interSite.peers }}
+      if ($var(interSitePeer) == "{{ .name }}") {
+        $var(interSitePeerFound) = 1;
+        $du = "sips:{{ .serviceIP }}:5061;transport=tls";
+        $xavp(tls=>server_name) = "{{ .serverName }}";
+        $xavp(tls[0]=>server_id) = "inter-site-{{ .name }}";
+        set_send_socket_name("public_tls");
+      }
+      {{- end }}
+      if ($var(interSitePeerFound) != 1) {
+        sl_send_reply("404", "Inter-site Peer Not Configured");
+        exit;
+      }
     }
     {{- end }}
 

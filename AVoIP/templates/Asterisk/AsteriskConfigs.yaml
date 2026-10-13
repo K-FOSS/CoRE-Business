@@ -113,6 +113,12 @@ data:
       same => n,Playback(hello-world)
       same => n,Hangup()
       {{- end }}
+      {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.inboundVoiceExtension }}
+    ; The authenticated YVR FreeSWITCH peer may deliver this exact transfer
+    ; extension after the carrier mTLS route has authorized it.
+    exten => {{ .Values.asterisk.sipCore.inboundVoiceExtension }},1,Dial(PJSIP/{{ .Values.asterisk.sipCore.inboundVoiceExtension }},30)
+      same => n,Hangup()
+      {{- end }}
     {{- if .Values.asterisk.sipCore.enabled }}
 
     {{- range .Values.asterisk.sipCore.extensions }}
