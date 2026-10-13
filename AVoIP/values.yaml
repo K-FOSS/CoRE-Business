@@ -210,6 +210,9 @@ kamailio:
   # Map values merge recursively; listeners, destinations and env lists replace.
   roleDefaults:
     carrier-sbc:
+      # TLS handshakes need at least 5 MiB of free shared memory; 64 MiB
+      # leaves too little headroom for the carrier's TLS and dialog state.
+      shmSizeMb: 128
       functions:
         sanity: true
         classification: true
