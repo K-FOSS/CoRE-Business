@@ -59,7 +59,11 @@ data:
             <param name="rtp-notimer-during-bridge" value="false"/>
             <param name="sip-ip" value="$${local_ip_v4}"/>
             <param name="sip-domain" value="$${private_sip_host}"/>
-            <param name="ext-sip-ip" value="host:$${private_sip_host}"/>
+            <!-- Keep the DNS identity in SIP Contact/Via headers. The host:
+                 form resolves this service name to its ClusterIP, which makes
+                 Asterisk validate the TLS certificate against an IP instead
+                 of the DNS SAN on the FreeSWITCH certificate. -->
+            <param name="ext-sip-ip" value="$${private_sip_host}"/>
             <param name="ext-sip-port" value="$${internal_tls_port}"/>
             <!-- Prefer wideband on the Asterisk peer when both call legs support it. -->
             <param name="inbound-codec-prefs" value="{{ join "," $.Values.codecs.freeswitch.asterisk }}"/>
