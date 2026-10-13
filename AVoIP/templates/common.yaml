@@ -1445,9 +1445,9 @@ controllers:
         # consistently instead of retaining a mixed in-memory configuration.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
 {{- if .Values.freeswitch.sms.enabled }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}'
 {{- else }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}'
 {{- end }}
     initContainers:
 {{- if .Values.freeswitch.cdr.enabled }}
@@ -1528,6 +1528,12 @@ controllers:
             cat /tls-input/tls.key >> /tls-output/agent.pem
             awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-input/tls.crt >> /tls-output/agent.pem
             cp /etc/ssl/certs/ca-certificates.crt /tls-output/cafile.pem
+{{- if .Values.freeswitch.flowrouteOutbound.enabled }}
+            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n == 1 { print }' /tls-flowroute/tls.crt > /tls-flowroute-output/agent.pem
+            cat /tls-flowroute/tls.key >> /tls-flowroute-output/agent.pem
+            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-flowroute/tls.crt >> /tls-flowroute-output/agent.pem
+            cat /tls-flowroute/ca.crt >> /tls-flowroute-output/cafile.pem
+{{- end }}
 {{- if .Values.asterisk.enabled }}
             awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-peer/tls.crt >> /tls-output/cafile.pem
 {{- end }}
@@ -2257,6 +2263,23 @@ persistence:
           - path: /tls-output
         freeswitch:
           - path: /etc/freeswitch/tls
+{{- if .Values.freeswitch.flowrouteOutbound.enabled }}
+  freeswitch-flowroute-client-tls:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls'
+    advancedMounts:
+      freeswitch:
+        tls-material:
+          - path: /tls-flowroute
+  freeswitch-flowroute-client-tls-certs:
+    type: emptyDir
+    advancedMounts:
+      freeswitch:
+        tls-material:
+          - path: /tls-flowroute-output
+        freeswitch:
+          - path: /etc/freeswitch/tls-flowroute
+{{- end }}
   freeswitch-sip-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-freeswitch-sip-configs'

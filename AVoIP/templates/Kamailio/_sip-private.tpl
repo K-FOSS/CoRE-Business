@@ -43,6 +43,18 @@
 
       $var(peer_allowed) = 0;
       $var(peer_name) = "";
+      {{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") }}
+      # FreeSWITCH presents its Vault-issued SIP identity on the private TLS
+      # listener when placing Flowroute-registered outbound calls. Limit this
+      # peer to its exact service SAN and pod CIDR before applying the NANP
+      # caller and destination policy below.
+      if (src_ip == {{ .Values.kamailio.backend.podCIDR }} &&
+          $tls_peer_verified == 1 &&
+          $tls_peer_san_hostname == "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}") {
+        $var(peer_allowed) = 1;
+        $var(peer_name) = "freeswitch-flowroute";
+      }
+      {{- end }}
       {{- range .Values.kamailio.privateRouting.peers }}
       if (src_ip == {{ .cidr }} && $tls_peer_san_hostname == "{{ .sanHostname }}") {
         $var(peer_allowed) = 1;
@@ -150,6 +162,40 @@
         remove_hf("P-Asserted-Identity");
         append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
         record_route();
+        route(PRIVATE_TO_CARRIER_GATEWAY);
+        route(PRIVATE_RELAY);
+        exit;
+      }
+      {{- end }}
+
+      {{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") }}
+      # The Flowroute gateway is registered on FreeSWITCH. Its outbound INVITE
+      # comes through this private listener, then the existing local carrier
+      # Gateway continues through carrier Kamailio and RTPEngine.
+      if ($var(peer_name) == "freeswitch-flowroute") {
+        if (!is_method("INVITE") ||
+            !($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") ||
+            $rU =~ "^\\+1900" ||
+            $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}") {
+          sl_send_reply("403", "Outbound Destination Not Authorized");
+          exit;
+        }
+        $var(nanp_origin_allowed) = 0;
+        {{- range .Values.kamailio.carrierOutbound.calls.extensions }}
+        if ($fU == "{{ . }}") $var(nanp_origin_allowed) = 1;
+        {{- end }}
+        if ($var(nanp_origin_allowed) != 1) {
+          sl_send_reply("403", "Outbound Identity Not Authorized");
+          exit;
+        }
+        remove_hf("Route");
+        remove_hf("P-Asserted-Identity");
+        append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.calls.callerId }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
+        $fU = "{{ .Values.kamailio.carrierOutbound.calls.callerId }}";
+        $ru = "sips:" + $rU + "@{{ include "avoip.sip.siteHost" . }}";
+        record_route();
+        dlg_manage();
+        $dlg_var(outbound_carrier) = "yes";
         route(PRIVATE_TO_CARRIER_GATEWAY);
         route(PRIVATE_RELAY);
         exit;

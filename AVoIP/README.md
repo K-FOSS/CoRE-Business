@@ -173,10 +173,12 @@ Asterisk NANP route now sends authorized calls through FreeSWITCH, which
 registers to the regional Flowroute SIP endpoint using the existing Vault
 record `AVoIP/SIP/FlowRoute` (`Username` and `Password`). YXL uses the
 US-East-VA PoP and YVR uses US-West-OR. FreeSWITCH sends outbound INVITEs
-through its private Kamailio TLS listener; the existing
-Kamailio carrier path and RTPEngine continue to handle carrier signaling and
-media. FreeSWITCH uses the Flowroute regional proxy for REGISTER and its
-gateway `outbound-proxy` for the Kamailio INVITE hop, following the
+through its private Kamailio mTLS listener using a dedicated Vault-issued
+client identity. Kamailio authorizes the exact FreeSWITCH SAN and pod range,
+then permits only configured NANP destinations from authorized Asterisk
+extensions. The existing carrier path and RTPEngine continue to handle
+signaling and media. FreeSWITCH uses the Flowroute regional proxy for REGISTER
+and its gateway `outbound-proxy` for the Kamailio INVITE hop, following the
 [FreeSWITCH gateway configuration](https://developer.signalwire.com/freeswitch/users-and-endpoints/gateways/)
 and [Flowroute regional PoP configuration](https://developer.flowroute.com/docs/inbound-and-outbound-calling-with-flowroute-new-pops/).
 The ApplicationSet enables two FreeSWITCH replicas at both sites and disables

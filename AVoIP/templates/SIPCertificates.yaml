@@ -102,3 +102,33 @@ spec:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
 {{- end }}
+{{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled }}
+{{- $flowrouteIssuer := dict "name" "" -}}
+{{- $flowrouteIssuerCount := 0 -}}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+  {{- if and $instance.enabled (eq $instance.role "private-sbc") $instance.carrierOutbound.enabled $instance.carrierOutbound.clientIdentity.enabled -}}
+    {{- $_ := set $flowrouteIssuer "name" $instance.carrierOutbound.clientIdentity.issuerName -}}
+    {{- $flowrouteIssuerCount = add1 $flowrouteIssuerCount -}}
+  {{- end -}}
+{{- end -}}
+{{- if ne $flowrouteIssuerCount 1 -}}
+  {{- fail "freeswitch.flowrouteOutbound.enabled requires exactly one enabled private Kamailio with Vault clientIdentity" -}}
+{{- end }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: '{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls'
+spec:
+  secretName: '{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls'
+  dnsNames:
+    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
+  usages:
+    - 'digital signature'
+    - 'key encipherment'
+    - 'server auth'
+    - 'client auth'
+  issuerRef:
+    kind: ClusterIssuer
+    name: '{{ $flowrouteIssuer.name }}'
+{{- end }}

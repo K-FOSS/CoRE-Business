@@ -10,8 +10,13 @@ identity; the private Kamailio Service FQDN is the application-facing
 identity. Inbound DID signaling continues through Kamailio. FreeSWITCH
 registers with Flowroute over UDP at the regional hostname (US-East-VA at YXL,
 US-West-OR at YVR), while its gateway's outbound proxy sends INVITEs to
-the private Kamailio TLS/5062 listener. Kamailio routes calls using the
-existing carrier path, and RTPEngine remains responsible for carrier media.
+the private Kamailio mTLS/5062 listener. A separate Vault-issued FreeSWITCH
+certificate has both server and client usages; its SAN and pod CIDR identify
+the sole FreeSWITCH peer admitted for this route. The profile uses a dedicated
+TLS certificate directory and trusts the Vault CA. Kamailio accepts only
+configured NANP numbers from the authorized Asterisk extensions, rewrites the
+caller identity to the configured DID, then routes through the existing
+carrier path. RTPEngine remains responsible for carrier media.
 RR maintains an ordered pair of
 public/private socket routes, while TOPOS hides the pair and stores its
 replica-independent reconstruction data in site-local Dragonfly database 51.

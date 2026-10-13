@@ -55,6 +55,17 @@ spec:
               <param name="sip-port" value="5080"/>
               <param name="sip-ip" value="$${local_ip_v4}"/>
               <param name="rtp-ip" value="$${local_ip_v4}"/>
+              <!-- The gateway registers to Flowroute over UDP, but sends
+                   outbound INVITEs through the private Kamailio mTLS path. -->
+              <param name="tls" value="true"/>
+              <param name="tls-only" value="false"/>
+              <param name="tls-sip-port" value="5081"/>
+              <param name="tls-cert-dir" value="/etc/freeswitch/tls-flowroute"/>
+              <param name="tls-verify-date" value="true"/>
+              <param name="tls-verify-policy" value="subjects_out"/>
+              <param name="tls-verify-depth" value="3"/>
+              <param name="tls-version" value="$${sip_tls_version}"/>
+              <param name="tls-ciphers" value="$${sip_tls_ciphers}"/>
             </settings>
           </profile>
   data:
