@@ -25,15 +25,15 @@ No new LoadBalancer or Flowroute ACL entry is introduced. Kamailio's global
 `tcp_accept_haproxy=yes` remains necessary on the carrier pod; the private pod
 uses `no` for direct peers.
 
-Public SIP server certificates remain issued by the existing ACME ClusterIssuer.
-Separate client-auth certificates use each site's existing `core-tls-vault`
+The carrier's public SIP certificate remains on the existing ACME
+ClusterIssuer and its current `sip-tls` Secret path. The private SBC's TLS
+server certificate and separate client-auth certificates use each site's
+existing `core-tls-vault`
 [cert-manager Vault issuer](https://cert-manager.io/docs/configuration/vault/).
-The AVoIP chart opts each Kamailio instance into this identity with
+The AVoIP chart opts each Kamailio instance into the client identity with
 `carrierOutbound.clientIdentity.enabled`. Each peer mounts the other identity
-Secret's `ca.crt` into its CA bundle. The public carrier certificate stays
-server-only. Let's Encrypt
-does not issue client-auth EKUs, so its public SIP certificates cannot serve
-as these client identities.
+Secret's `ca.crt` into its CA bundle; the carrier's Vault client identity is
+mounted separately from its globally trusted server certificate.
 
 The carrier's separate [Kamailio TLS](https://www.kamailio.org/docs/modules/6.1.x/modules/tls.html)
 SNI profile requires a verified client certificate. Carrier routing then

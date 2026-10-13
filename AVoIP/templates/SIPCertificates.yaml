@@ -38,9 +38,14 @@ spec:
     {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
     - '{{ .Values.kamailio.carrierOutbound.sniHost }}'
     {{- end }}
+  {{- if and .Values.kamailio.carrierOutbound.clientIdentity.enabled (eq .Values.kamailio.role "private-sbc") }}
+  commonName: '{{ printf "%s.svc" $component }}'
+  usages:
+    - 'server auth'
+  {{- end }}
   issuerRef:
     kind: ClusterIssuer
-    name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
+    name: '{{ if and .Values.kamailio.carrierOutbound.clientIdentity.enabled (eq .Values.kamailio.role "private-sbc") }}{{ required "kamailio.carrierOutbound.clientIdentity.issuerName is required" .Values.kamailio.carrierOutbound.clientIdentity.issuerName }}{{ else }}{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}{{ end }}'
 {{- if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
 ---
 apiVersion: cert-manager.io/v1
