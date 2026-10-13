@@ -12,11 +12,13 @@ service peer when the exact `testRoute.extension` and `From` caller ID match.
 It replaces the requested destination with one configured E.164 number,
 removes any incoming P-Asserted-Identity, and sets the permitted caller ID.
 The request goes to the existing Envoy SIPS Gateway Service with a dedicated
-SNI. The current [Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml)
-has a single SIPS TLSRoute and a no-SNI fallback filter chain that forwards
-the TLS stream while adding PROXY v2. No new public LoadBalancer or Flowroute
-ACL entry is introduced. Kamailio's global `tcp_accept_haproxy=yes` remains
-necessary on the carrier pod; the private pod uses `no` for direct peers.
+SNI. When enabled, the chart creates a second TLSRoute for that SNI to the
+carrier Service on 5061. It has no DNS annotation; the existing public SIP
+route remains separate. The [Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml)
+owns the shared SIPS listener. Envoy forwards the TLS stream with PROXY v2.
+No new LoadBalancer or Flowroute ACL entry is introduced. Kamailio's global
+`tcp_accept_haproxy=yes` remains necessary on the carrier pod; the private pod
+uses `no` for direct peers.
 
 The carrier's separate [Kamailio TLS](https://www.kamailio.org/docs/modules/6.1.x/modules/tls.html)
 SNI profile requires a verified client certificate. Carrier routing then
