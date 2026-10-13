@@ -125,9 +125,9 @@
       }
       {{- end }}
 
-      {{- if .Values.kamailio.carrierOutbound.enabled }}
-      # Internal outbound uses the existing Envoy SIPS entry, which supplies
-      # PROXY v2. The dedicated SNI profile requires a client certificate.
+      {{- if and .Values.kamailio.carrierOutbound.enabled (eq .Values.kamailio.role "carrier-sbc") }}
+      # Internal outbound uses the existing site SIPS listener and Gateway
+      # path. The peer identity is checked after PROXY v2 supplies its source.
       if ($proto == "tls" && $Rp == 5061 &&
           src_ip == {{ .Values.kamailio.carrierOutbound.peer.cidr }} &&
           $tls_peer_verified == 1 &&

@@ -364,13 +364,14 @@ existing private listener still uses its current CIDR guard for dialog
 traffic; new calls from that listener receive 403. The existing Home Assistant
 SIP Core route uses `internal`; HA adds a separate `internal-wss` instance for
 staged route and Asterisk Path cutover. An
-[opt-in outbound service-peer pilot](docs/OUTBOUND-PILOT.md) now uses the
-existing Gateway, an additional no-DNS TLSRoute for its dedicated SNI/mTLS
-profile, exact test extension and destination, fixed caller ID, carrier-owned
-RTPEngine path, and shared rate/concurrency quotas. It is disabled at both
-sites and has not passed a live carrier call. The chart does not enable the
-Kamailio registrar pilot or
-an OIDC webphone; its current SIP Core path uses Asterisk's PJSIP registrar
+[opt-in outbound service-peer pilot](docs/OUTBOUND-PILOT.md) uses Vault mTLS
+over the existing SIPS Gateway path and site SNI between internal and carrier
+Kamailio. It reuses the current Flowroute trunk and adds no Gateway route,
+SNI, or Service. The exact test extension, destination, fixed caller ID,
+carrier-owned RTPEngine path, and shared rate/concurrency quotas remain gated
+off at both sites; no live carrier call has been made. The chart does not
+enable the Kamailio registrar pilot or an OIDC webphone; its current SIP Core
+path uses Asterisk's PJSIP registrar
 and the existing Envoy WSS route.
 
 The [internal registrar integration contract](docs/INTERNAL-REGISTRAR.md)

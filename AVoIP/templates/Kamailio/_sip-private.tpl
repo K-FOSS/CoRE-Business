@@ -146,9 +146,9 @@
           sl_send_reply("403", "Outbound Identity Not Authorized");
           exit;
         }
-        $ru = "sips:{{ .Values.kamailio.carrierOutbound.testRoute.destination }}@{{ .Values.kamailio.carrierOutbound.sniHost }}";
+        $ru = "sips:{{ .Values.kamailio.carrierOutbound.testRoute.destination }}@{{ include "avoip.sip.siteHost" . }}";
         remove_hf("P-Asserted-Identity");
-        append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}@{{ .Values.kamailio.carrierOutbound.sniHost }}>\r\n");
+        append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
         record_route();
         route(PRIVATE_TO_CARRIER_GATEWAY);
         route(PRIVATE_RELAY);
@@ -577,7 +577,7 @@
     {{- if .Values.kamailio.carrierOutbound.enabled }}
     route[PRIVATE_TO_CARRIER_GATEWAY] {
       $du = "sips:{{ .Values.kamailio.carrierOutbound.gatewayServiceHost }}:5061;transport=tls";
-      $xavp(tls=>server_name) = "{{ .Values.kamailio.carrierOutbound.sniHost }}";
+      $xavp(tls=>server_name) = "{{ include "avoip.sip.siteHost" . }}";
       set_send_socket_name("private_tls");
     }
     {{- end }}

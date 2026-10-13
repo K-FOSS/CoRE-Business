@@ -377,7 +377,7 @@ data:
     verify_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
     require_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
     {{- if eq .Values.kamailio.role "private-sbc" }}
-    ca_list = /etc/kamailio/tls-ca/ca-certificates.crt
+    ca_list = {{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}/etc/kamailio/peer-ca/ca.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
     {{- end }}
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
@@ -408,15 +408,16 @@ data:
     {{- end }}
     {{- end }}
 
-    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
-    # A separate SNI profile requests and verifies the internal SBC cert;
-    # Flowroute continues to use the unchanged default server profile.
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
+    # Reuse the existing public SIPS SNI for the internal peer. Client
+    # certificates are optional here so existing carrier traffic keeps working;
+    # the SIP route requires and checks the Vault SAN for this peer.
     [server:any]
-    server_name = {{ .Values.kamailio.carrierOutbound.sniHost }}
+    server_name = {{ include "avoip.sip.siteHost" . }}
     method = TLSv1.2+
     verify_certificate = yes
-    require_certificate = yes
-    ca_list = /etc/kamailio/tls-ca/ca-certificates.crt
+    require_certificate = no
+    ca_list = /etc/kamailio/peer-ca/ca.crt
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
     {{- end }}
@@ -425,7 +426,7 @@ data:
     method = TLSv1.2+
     verify_certificate = yes
     require_certificate = no
-    ca_list = {{ if .Values.freeswitch.enabled }}/etc/kamailio/tls-ca/ca-certificates.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
+    ca_list = /etc/ssl/certs/ca-certificates.crt
     {{- if or (eq .Values.kamailio.role "private-sbc") .Values.kamailio.carrierOutbound.enabled }}
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
@@ -435,11 +436,11 @@ data:
     # Use the Vault-issued client identity for this authenticated SIP peer.
     # The default client profile remains tied to the public server certificate.
     [client:any]
-    server_name = {{ if eq .Values.kamailio.role "carrier-sbc" }}{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}{{ else }}{{ .Values.kamailio.carrierOutbound.sniHost }}{{ end }}
+    server_name = {{ if eq .Values.kamailio.role "carrier-sbc" }}{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}{{ else }}{{ include "avoip.sip.siteHost" . }}{{ end }}
     method = TLSv1.2+
     verify_certificate = yes
     require_certificate = no
-    ca_list = /etc/kamailio/tls-ca/ca-certificates.crt
+    ca_list = {{ if eq .Values.kamailio.role "carrier-sbc" }}/etc/kamailio/peer-ca/ca.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
     private_key = /etc/kamailio/mtls/tls.key
     certificate = /etc/kamailio/mtls/tls.crt
     {{- end }}

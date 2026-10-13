@@ -1,6 +1,6 @@
 {{- define "avoip.kamailio.sip.outbound" -}}
     # Carrier-owned, opt-in PSTN egress. The peer was authenticated by the
-    # dedicated SNI/mTLS branch before this route is entered.
+    # existing site-SNI mTLS branch before this route is entered.
     route[FROM_OUTBOUND_PEER] {
       if (is_method("CANCEL")) {
         route(OUTBOUND_RELEASE);

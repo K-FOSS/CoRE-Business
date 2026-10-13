@@ -442,19 +442,16 @@ kamailio:
       # limits port 5062 to FreeSWITCH pods when using the default backend.
       podCIDR: '172.16.0.0/12'
     carrierOutbound:
-      # New calls remain denied. The existing carrier TLS listener needs
-      # Envoy's PROXY v2 header, so a future internal caller must use the
-      # existing Gateway with a separately authenticated SNI identity.
+      # New calls remain denied. Internal outbound signaling reuses the
+      # existing SIPS Gateway route and site SNI with mutual TLS.
       enabled: false
       gatewayServiceHost: ''
       gatewayNamespace: 'kube-system'
-      sniHost: ''
       clientIdentity:
         enabled: false
         issuerName: ''
       calls:
-        # Keep the authenticated transport and TLSRoute independently
-        # configurable while PSTN authorization is still closed.
+        # Keep PSTN authorization closed independently of mTLS setup.
         enabled: false
       peer:
         cidr: ''
