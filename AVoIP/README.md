@@ -168,9 +168,24 @@ The [SIP security probes](tests/README.md#authorization-and-outbound-call-probes
 exercise denied sources, registration, unmatched outbound destinations, and
 bad private-peer credentials on an isolated deployment. Carrier DID calls use
 the source ACL rather than SIP digest authentication.
-FreeSWITCH voice outbound is disabled: the public context has an explicit
-catch-all rejection after the configured DID route. FreeSWITCH does not
-register to Flowroute; carrier signaling is accepted through Kamailio.
+FreeSWITCH public inbound DID routing remains on Kamailio. YVR's opt-in
+Asterisk NANP route now sends authorized calls through FreeSWITCH, which
+registers to the regional Flowroute SIP endpoint using the existing Vault
+record `AVoIP/SIP/FlowRoute` (`Username` and `Password`). YXL uses the
+US-East-VA PoP and YVR uses US-West-OR. FreeSWITCH sends outbound INVITEs
+through its private Kamailio TLS listener; the existing
+Kamailio carrier path and RTPEngine continue to handle carrier signaling and
+media. FreeSWITCH uses the Flowroute regional proxy for REGISTER and its
+gateway `outbound-proxy` for the Kamailio INVITE hop, following the
+[FreeSWITCH gateway configuration](https://developer.signalwire.com/freeswitch/users-and-endpoints/gateways/)
+and [Flowroute regional PoP configuration](https://developer.flowroute.com/docs/inbound-and-outbound-calling-with-flowroute-new-pops/).
+The ApplicationSet enables two FreeSWITCH replicas at both sites and disables
+the direct SIP Service. The configured Asterisk SIP Core NANP caller remains
+YVR extension `7101`; YXL has no SIP Core caller configured. This provides
+new-call availability after a pod failure;
+an active FreeSWITCH call is not replicated to another pod. The existing fax
+spool claim remains retained; the HA workload uses a separate RWX claim, and
+the old fax data is not copied automatically.
 Flowroute SMS is enabled by default through `mod_sms` and
 `mod_sms_flowroute`; its API credentials are sourced from the separate SMS
 External Secret and are not stored in chart values.

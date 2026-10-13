@@ -77,11 +77,17 @@ The public dialplan is in
 [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
 The default context is deliberately empty.
 
-FreeSWITCH voice outbound is disabled. The public context contains an explicit
-catch-all rejection after the configured DID route, so authenticated internal
-SIP callers and permitted carrier sources cannot use FreeSWITCH to place an
-unmatched outbound call. FreeSWITCH does not register to Flowroute; carrier
-signaling is accepted only through Kamailio.
+The public context keeps inbound DID routing through Kamailio and rejects
+unmatched public destinations. YVR's authenticated Asterisk SIP Core NANP
+accounts may originate +1 calls through FreeSWITCH. Currently, YVR extension
+`7101` is the configured SIP Core caller; YXL has no SIP Core caller configured.
+FreeSWITCH at both sites registers with the existing Vault record
+`AVoIP/SIP/FlowRoute` at its regional Flowroute endpoint (US-East-VA for YXL,
+US-West-OR for YVR), then sends outbound INVITEs through the private Kamailio TLS
+listener. Kamailio/RTPEngine retain the carrier route and media handling. Two
+FreeSWITCH replicas allow new calls to use a surviving pod; active calls do
+not fail over. HA uses a new RWX fax spool claim. The previous retained RWO
+claim is not migrated automatically.
 
 ## SIP messaging
 

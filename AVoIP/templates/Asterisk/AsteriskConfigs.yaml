@@ -162,7 +162,7 @@ data:
     {{- if and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions) }}
     ; PSTN egress is limited to the configured NANP-enabled account.
     exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .number }})
-      same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120)
+      same => n,Dial(PJSIP/${EXTEN}@freeswitch,120)
       same => n,Hangup()
     {{- end }}
     {{- $echoAllowed := false -}}

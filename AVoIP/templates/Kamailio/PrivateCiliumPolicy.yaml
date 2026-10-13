@@ -31,6 +31,16 @@ spec:
         - ports:
             - port: '{{ $.Values.asterisk.sipCore.privateEgressPort }}'
               protocol: 'TCP'
+    {{- if and $.Values.freeswitch.enabled $.Values.freeswitch.flowrouteOutbound.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'freeswitch'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '5062'
+              protocol: 'TCP'
+    {{- end }}
     {{- end }}
     {{- range $peer := $instance.privateRouting.peers }}
     - fromEndpoints:

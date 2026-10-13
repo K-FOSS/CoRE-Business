@@ -1411,12 +1411,26 @@ controllers:
     rollingUpdate:
       surge: 1
       unavailable: '0'
-    replicas: 1
+    replicas: {{ ternary .Values.freeswitch.highAvailability.replicas 1 .Values.freeswitch.highAvailability.enabled }}
+    {{- if .Values.freeswitch.highAvailability.enabled }}
+    podDisruptionBudget:
+      minAvailable: {{ .Values.freeswitch.highAvailability.minAvailable }}
+    {{- end }}
     minReadySeconds: 30
     revisionHistoryLimit: 3
     serviceAccount:
       name: default
     pod:
+{{- if .Values.freeswitch.highAvailability.enabled }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: 'freeswitch'
+                  app.kubernetes.io/instance: '{{ $.Release.Name }}'
+{{- end }}
       securityContext:
         fsGroup: 1000
         runAsGroup: 1000
@@ -1431,9 +1445,9 @@ controllers:
         # consistently instead of retaining a mixed in-memory configuration.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
 {{- if .Values.freeswitch.sms.enabled }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute{{ end }}'
 {{- else }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute{{ end }}'
 {{- end }}
     initContainers:
 {{- if .Values.freeswitch.cdr.enabled }}
@@ -2261,6 +2275,16 @@ persistence:
             subPath: internal-ipv6.xml
           - path: /etc/freeswitch/sip_profiles/external-ipv6.xml
             subPath: external-ipv6.xml
+{{- if .Values.freeswitch.flowrouteOutbound.enabled }}
+  freeswitch-flowroute-secret:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-freeswitch-flowroute'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: /etc/freeswitch/sip_profiles/flowroute.xml
+            subPath: flowroute.xml
+{{- end }}
   freeswitch-dialplan-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
@@ -2273,6 +2297,21 @@ persistence:
             subPath: public.xml
           - path: /etc/freeswitch/dialplan/asterisk.xml
             subPath: asterisk.xml
+{{- if .Values.freeswitch.highAvailability.enabled }}
+  freeswitch-fax-spool-ha:
+    forceRename: '{{ include "avoip.fullname" . }}-freeswitch-fax-spool-ha'
+    type: persistentVolumeClaim
+    storageClass: '{{ .Values.freeswitch.fax.persistence.haStorageClass }}'
+    accessMode: 'ReadWriteMany'
+    size: '{{ .Values.freeswitch.fax.persistence.size }}'
+    retain: true
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: {{ .Values.freeswitch.fax.spoolPath }}
+{{- else }}
   freeswitch-fax-spool:
 {{- if .Values.freeswitch.fax.persistence.enabled }}
     type: persistentVolumeClaim
@@ -2289,6 +2328,7 @@ persistence:
       freeswitch:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
+{{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
         recordings:
           - path: /recordings

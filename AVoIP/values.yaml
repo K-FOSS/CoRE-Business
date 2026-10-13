@@ -918,6 +918,25 @@ asterisk:
 
 freeswitch:
   enabled: true
+  highAvailability:
+    # Active/active FreeSWITCH supports new-call routing on a surviving pod.
+    # Enable only with an RWX fax spool and at least two eligible nodes.
+    enabled: false
+    replicas: 2
+    minAvailable: 1
+  flowrouteOutbound:
+    # Flowroute registration is separate from its SIP-REG inbound DID route.
+    # Outbound INVITEs use the existing private-to-carrier Kamailio path so
+    # carrier Kamailio and RTPEngine continue anchoring the media leg.
+    enabled: false
+    regionalHost: ''
+    secretStoreRef:
+      kind: 'ClusterSecretStore'
+      name: 'corevault-rootsecrets'
+    remoteRef:
+      key: 'AVoIP/SIP/FlowRoute'
+      usernameProperty: 'Username'
+      passwordProperty: 'Password'
   interSite:
     # A private mTLS carrier peer may deliver only the configured extension.
     enabled: false
@@ -1020,6 +1039,7 @@ freeswitch:
       accessMode: 'ReadWriteOnce'
       size: '1Gi'
       retain: true
+      haStorageClass: 'avoip-homer-rwx'
   cdr:
     enabled: true
     # Defaults to the site-local endpoint for the rendered cluster.

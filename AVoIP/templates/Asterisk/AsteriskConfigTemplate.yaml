@@ -6,20 +6,16 @@
     {{- fail "Asterisk SIP Core requires the existing RTPEngine for WebRTC media" -}}
   {{- end -}}
   {{- $sipCoreKamailioFound := false -}}
-  {{- $sipCoreNANPCarrierFound := false -}}
   {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
     {{- if and $instance.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) (eq $instance.role "private-sbc") -}}
       {{- $sipCoreKamailioFound = true -}}
-      {{- if and $.Values.asterisk.sipCore.outboundNANP.enabled $instance.carrierOutbound.enabled $instance.carrierOutbound.calls.enabled (eq $instance.carrierOutbound.calls.mode "nanp") -}}
-        {{- $sipCoreNANPCarrierFound = true -}}
-      {{- end -}}
     {{- end -}}
   {{- end -}}
   {{- if not $sipCoreKamailioFound -}}
     {{- fail "Asterisk SIP Core requires a configured enabled private-sbc matching asterisk.sipCore.kamailioInstance" -}}
   {{- end -}}
-  {{- if and .Values.asterisk.sipCore.outboundNANP.enabled (not $sipCoreNANPCarrierFound) -}}
-    {{- fail "Asterisk NANP outbound requires carrierOutbound calls in nanp mode on its selected private-sbc" -}}
+  {{- if and .Values.asterisk.sipCore.outboundNANP.enabled (not .Values.freeswitch.flowrouteOutbound.enabled) -}}
+    {{- fail "Asterisk NANP outbound requires freeswitch.flowrouteOutbound.enabled" -}}
   {{- end -}}
   {{- if not .Values.freeswitch.enabled -}}
     {{- fail "Asterisk SIP Core requires the existing media-enabled AVoIP stack" -}}

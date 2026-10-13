@@ -1,0 +1,69 @@
+{{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled }}
+{{- $fullName := include "avoip.fullname" . -}}
+{{- $privateComponent := include "avoip.kamailio.component" (dict "name" .Values.asterisk.sipCore.kamailioInstance) -}}
+{{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $privateComponent) -}}
+{{- if not (regexMatch "^[a-z0-9.-]+$" (toString .Values.freeswitch.flowrouteOutbound.regionalHost)) -}}
+  {{- fail "freeswitch.flowrouteOutbound.regionalHost must be a regional Flowroute SIP hostname" -}}
+{{- end -}}
+{{- if or (not .Values.asterisk.enabled) (not .Values.freeswitch.highAvailability.enabled) -}}
+  {{- fail "Flowroute registration requires Asterisk and FreeSWITCH high availability" -}}
+{{- end -}}
+{{- if lt (int .Values.freeswitch.highAvailability.replicas) 2 -}}
+  {{- fail "freeswitch.highAvailability.replicas must be at least 2 for Flowroute HA" -}}
+{{- end -}}
+{{- if lt (int .Values.freeswitch.highAvailability.minAvailable) 1 -}}
+  {{- fail "freeswitch.highAvailability.minAvailable must be at least 1 for Flowroute HA" -}}
+{{- end -}}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ $fullName }}-freeswitch-flowroute'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+spec:
+  refreshInterval: '1h'
+  secretStoreRef:
+    kind: '{{ .Values.freeswitch.flowrouteOutbound.secretStoreRef.kind }}'
+    name: '{{ .Values.freeswitch.flowrouteOutbound.secretStoreRef.name }}'
+  target:
+    name: '{{ $fullName }}-freeswitch-flowroute'
+    creationPolicy: 'Owner'
+    template:
+      engineVersion: v2
+      data:
+        flowroute.xml: |
+          <profile name="flowroute">
+            <gateways>
+              <gateway name="flowroute">
+                <param name="username" value="{{ `{{ .username }}` }}"/>
+                <param name="auth-username" value="{{ `{{ .username }}` }}"/>
+                <param name="password" value="{{ `{{ .password }}` }}"/>
+                <param name="proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
+                <param name="register-proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
+                <param name="register-transport" value="udp"/>
+                <param name="expire-seconds" value="600"/>
+                <param name="register" value="true"/>
+                <param name="retry-seconds" value="30"/>
+                <param name="ping" value="25"/>
+                <param name="caller-id-in-from" value="true"/>
+                <param name="outbound-proxy" value="sips:{{ $kamailioHost }}:5062;transport=tls"/>
+              </gateway>
+            </gateways>
+            <settings>
+              <param name="context" value="public"/>
+              <param name="sip-port" value="5080"/>
+              <param name="sip-ip" value="$${local_ip_v4}"/>
+              <param name="rtp-ip" value="$${local_ip_v4}"/>
+            </settings>
+          </profile>
+  data:
+    - secretKey: username
+      remoteRef:
+        key: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.key }}'
+        property: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.usernameProperty }}'
+    - secretKey: password
+      remoteRef:
+        key: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.key }}'
+        property: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.passwordProperty }}'
+{{- end }}

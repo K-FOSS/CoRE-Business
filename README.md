@@ -33,13 +33,19 @@ they no longer select the fax receiver. See the
 [inbound routing guide](AVoIP/docs/PHONE-TREE.md).
 The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES.md)
 and [YVR Asterisk-to-carrier NANP calling](AVoIP/docs/OUTBOUND-PILOT.md)
-through the authenticated service path. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
+through the authenticated service path. A new desired-state change moves
+authorized YVR NANP calls through the HA FreeSWITCH Flowroute registration,
+while both sites register at their regional PoPs, inbound DIDs remain on
+Kamailio, and Kamailio/RTPEngine keep the carrier media path; see the
+[outbound setup](AVoIP/docs/PHONE-TREE.md). An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
 now renders a site-local PostgreSQL service identity and schema migration, but
 credential issuance and live registration for the private registrar are still
 open. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 enables the carrier mTLS transport at YXL and YVR using each site's existing
 Vault `core-tls-vault` issuer, and configures YVR account `7101` for standard
-NANP outbound calls with the YVR Asterisk DID as caller ID. The private
+NANP outbound calls with the YVR Asterisk DID as caller ID. The Flowroute
+registration uses the existing Vault record and the West Oregon regional PoP.
+The private
 registrar remains disabled. Certificate issuance and workload rollout require
 reconciliation. The configured YXL voice and FaxNumber routes use that carrier
 mTLS link to reach the YVR IVR and Asterisk respectively; see the

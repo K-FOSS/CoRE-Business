@@ -159,7 +159,10 @@ chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md),
 [private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md)
 are documented separately: YXL and YVR enable the carrier mTLS transport
 while only YVR Asterisk SIP Core account `7101` is configured for general
-standard NANP outbound calls; the private registrar remains disabled in the
+standard NANP outbound calls. The desired-state update places regional
+Flowroute registrations in two-replica FreeSWITCH deployments at both sites
+and keeps inbound DIDs on Kamailio; the existing carrier path continues to anchor media through
+RTPEngine. The private registrar remains disabled in the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The YXL voice and FaxNumber DIDs now use that same carrier link to reach the
 YVR IVR and Asterisk SIP Core extension `7101`, respectively. The exact peer

@@ -131,10 +131,12 @@ data:
     loadmodule "textops.so"
     loadmodule "xlog.so"
     loadmodule "tls.so"
-    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
+    {{- if or .Values.kamailio.carrierOutbound.enabled (and (eq .Values.kamailio.role "private-sbc") (or .Values.kamailio.interSite.peers .Values.kamailio.interSite.transfers)) }}
     loadmodule "dialog.so"
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
     modparam("dialog", "default_timeout", {{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }})
     modparam("dialog", "send_bye", 1)
+    {{- end }}
     {{- end }}
     {{- if eq .Values.kamailio.role "private-sbc" }}
     loadmodule "dispatcher.so"

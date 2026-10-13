@@ -38,7 +38,10 @@ In-dialog requests retain their originating or terminating site direction:
 YVR returns YXL-originated dialog requests to the original Flowroute route;
 YXL routes YVR-originated dialog requests to its local FreeSWITCH backend.
 Kamailio's TOPOS route sets conceal the opposite-side targets. RTPEngine handles
-SDP when enabled by the site's existing media values.
+SDP when enabled by the site's existing media values. Kamailio loads
+`dialog.so` whenever `carrierOutbound` is enabled or a private instance has
+inter-site peers or transfers; `dlg_manage()` and `$dlg_var()` store the
+direction metadata used for those in-dialog routes.
 
 ## Configuration and ownership
 

@@ -7,8 +7,12 @@ carrier address against `flowroute.signalingCIDRs`.
 
 The site-specific public FQDN is the carrier-facing established-dialog
 identity; the private Kamailio Service FQDN is the application-facing
-identity. TLS egress to Flowroute is selected by Kamailio using
-`flowroute.outboundHost`, not by FreeSWITCH. RR maintains an ordered pair of
+identity. Inbound DID signaling continues through Kamailio. FreeSWITCH
+registers with Flowroute over UDP at the regional hostname (US-East-VA at YXL,
+US-West-OR at YVR), while its gateway's outbound proxy sends INVITEs to
+the private Kamailio TLS/5062 listener. Kamailio routes calls using the
+existing carrier path, and RTPEngine remains responsible for carrier media.
+RR maintains an ordered pair of
 public/private socket routes, while TOPOS hides the pair and stores its
 replica-independent reconstruction data in site-local Dragonfly database 51.
 Do not move established-dialog Contact identities to the global SIP name
