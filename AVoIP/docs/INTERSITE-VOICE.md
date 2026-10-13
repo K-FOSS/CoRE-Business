@@ -37,8 +37,10 @@ SDP when enabled by the site's existing media values.
 The Backplane ApplicationSet provides the peer data for the carrier instance
 at each site. Its `interSite.peers` entry identifies the remote pod CIDR,
 client-certificate SAN, service ClusterIP, service host, TLS server name, and
-allowed extensions. YXL also has one `interSite.transfers` entry using the
-secret-backed `avoipDID` and destination extension `7101`. YVR permits only
+allowed extensions. YXL also has one `interSite.transfers` entry selecting
+peer `yvr` and extension `7101`. Kamailio matches the DID from the existing
+secret-backed `avoip.did` value; the DID is not duplicated in the peer
+configuration. YVR permits only
 `7101` from YXL and enables its exact FreeSWITCH inter-site dialplan route.
 The existing Vault mTLS `clientIdentity` configuration supplies both
 certificates; no new key or secret is added.
