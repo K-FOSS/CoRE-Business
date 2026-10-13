@@ -193,6 +193,9 @@ data:
     [freeswitch]
     type=endpoint
     transport=transport-tls
+    ; Keep the TLS next-hop identity on the service DNS name when a dialog
+    ; Contact uses the FreeSWITCH ClusterIP.
+    outbound_proxy=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:{{ .Values.freeswitch.asterisk.tlsPort }}\;transport=tls\;lr
     outbound_auth=freeswitch-auth
     auth=freeswitch-inbound-auth
     trust_id_outbound=yes
