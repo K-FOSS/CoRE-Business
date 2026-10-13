@@ -185,6 +185,7 @@ data:
       <fax-settings>
         <param name="use-ecm" value="true"/>
         <param name="verbose" value="false"/>
+        <param name="enable-colour" value="{{ $.Values.freeswitch.fax.colour.enabled }}"/>
         <param name="enable-t38" value="true"/>
         <param name="enable-t38-request" value="true"/>
         <param name="ident" value="{{ $.Values.freeswitch.fax.ident }}"/>

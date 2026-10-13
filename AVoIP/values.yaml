@@ -967,6 +967,10 @@ freeswitch:
     ident: 'AVoIP'
     header: 'AVoIP'
     autoDetect: true
+    colour:
+      # Enable SpanDSP's T.30 color fax support when the remote endpoint and
+      # carrier path also support it.
+      enabled: true
     t38:
       # Flowroute initially sends G.711 fax audio. Request T.38 after this
       # many 20 ms packets; keep it non-zero (0 is not "immediate").
