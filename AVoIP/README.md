@@ -128,10 +128,12 @@ Home1/YVR fax reception is reported working over G.711. The owning
 sets `freeswitch.fax.g711Only.enabled: true` for that site, disabling T.38
 negotiation on its dedicated `fax.did` route and selecting PCMU. DC1/YXL keeps
 the chart's T.38-capable settings, and T.38 fax reception is reported working
-there. Automatic fax detection on the voice number is also reported working;
-FreeSWITCH monitors CNG after the voice call is answered and transfers detected
-fax calls to `rxfax`. Call-specific SIP ACK, page-count and TIFF evidence has
-not been recorded here. SpanDSP color fax negotiation is enabled through
+there. At Home1/YVR, inbound calls to the voice DID ring SIP Core extension
+`7101` on Asterisk. Automatic fax detection on the voice number is also
+reported working; FreeSWITCH monitors CNG after the voice call is answered and
+transfers detected fax calls to `rxfax`. Call-specific SIP ACK, page-count and
+TIFF evidence has not been recorded here. SpanDSP color fax negotiation is
+enabled through
 `freeswitch.fax.colour.enabled`; successful color transmission still requires
 support from the remote fax endpoint and the carrier path. See the
 [current fax call path](docs/PHONE-TREE.md).

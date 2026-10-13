@@ -101,6 +101,10 @@ data:
 
     [from-external]
     exten => {{ .Values.avoip.did }},1,Progress()
+      {{- if .Values.asterisk.sipCore.inboundVoiceExtension }}
+      same => n,Dial(PJSIP/{{ .Values.asterisk.sipCore.inboundVoiceExtension }},30)
+      same => n,Hangup()
+      {{- else }}
       same => n,Answer()
       same => n,Echo()
       same => n,Playback(hello-world)
@@ -108,6 +112,7 @@ data:
       same => n,Playback(hello-world)
       same => n,Playback(hello-world)
       same => n,Hangup()
+      {{- end }}
     {{- if .Values.asterisk.sipCore.enabled }}
 
     {{- range .Values.asterisk.sipCore.extensions }}

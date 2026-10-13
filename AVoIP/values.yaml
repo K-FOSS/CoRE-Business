@@ -829,6 +829,8 @@ asterisk:
     # on 5062; this port is restricted to the Asterisk workload.
     privateEgressPort: 5063
     echoExtension: '9090'
+    # Optional SIP Core endpoint to ring for inbound calls to the voice DID.
+    inboundVoiceExtension: ''
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
     helloCallbackExtension: '1234'

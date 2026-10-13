@@ -46,11 +46,13 @@ Inbound calls over either public SIP transport follow this path:
    fax result and packet counts, then hangs up. The spool is a retained
    Longhorn `ReadWriteOnce` claim by default. No automatic TIFF delivery or
    TIFF retention cleanup is configured.
-6. A call to `avoip.did` rings and bridges to Asterisk. After answer,
-   `spandsp_start_fax_detect` monitors the inbound audio for fax CNG while the
-   voice call continues. If it detects a fax tone, FreeSWITCH transfers the
-   call to `fax-receive` and runs `rxfax`; ordinary voice remains bridged to
-   Asterisk. This automatic detection is reported working on the voice number.
+6. A call to `avoip.did` rings and bridges to the site Asterisk. At Home1/YVR,
+   Asterisk dials SIP Core extension `7101` so the registered Home Assistant
+   endpoint rings. After answer, `spandsp_start_fax_detect` monitors the inbound
+   audio for fax CNG while the voice call continues. If it detects a fax tone,
+   FreeSWITCH transfers the call to `fax-receive` and runs `rxfax`; ordinary
+   voice remains bridged to Asterisk. This automatic detection is reported
+   working on the voice number.
    Unmatched destinations are rejected.
 
 YVR G.711 fax reception, YXL T.38 fax reception, and automatic fax detection
