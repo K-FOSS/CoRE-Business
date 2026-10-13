@@ -66,9 +66,9 @@
         {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
       {{- end -}}
     {{- end -}}
-    {{- if eq $role "carrier-sbc" -}}
-      {{- if or (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.peer.serviceHost))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $outbound.peer.controller))) -}}
-        {{- fail (printf "Kamailio %s carrierOutbound requires a private peer service host and controller" $name) -}}
+    {{- if $outbound.clientIdentity.enabled -}}
+      {{- if or (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.clientIdentity.issuerName))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.peer.serviceHost))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $outbound.peer.controller))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $outbound.peer.secretName))) -}}
+        {{- fail (printf "Kamailio %s carrierOutbound.clientIdentity requires a Vault issuer and a peer service host, controller and identity Secret" $name) -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}

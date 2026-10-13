@@ -52,12 +52,14 @@ without enabling SIP registration; live provisioning is pending reconciliation. 
 for ordering, access boundaries, and the separate prerequisites for enabling
 REGISTER handling.
 
-Home1's `internal` and `carrier` Kamailio instances have a dedicated mutual-TLS
-SIPS transport configured through the existing Envoy Gateway. New outbound
-calls remain disabled (`carrierOutbound.calls.enabled: false`); the carrier
-rejects initial INVITEs while transport health can be checked with OPTIONS.
-See the [outbound pilot runbook](docs/OUTBOUND-PILOT.md) for trust boundaries
-and rollout verification.
+YXL's and YVR's `internal` and `carrier` Kamailio instances are configured
+for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
+client identities use each site's existing Vault backed `core-tls-vault`
+ClusterIssuer; PSTN call origination remains disabled. YXL's direct public SIP
+Service remains disabled, so public TCP SIP is disabled there while the
+outbound SIPS TLSRoute stays enabled. See the
+[outbound pilot runbook](docs/OUTBOUND-PILOT.md) for trust boundaries and
+rollout verification.
 
 ## Deployment ownership
 
@@ -326,9 +328,11 @@ sites retain the named `carrier` instance with three replicas. This is the
 current public SIP service and provides same-site Kamailio pod redundancy;
 Home1's carrier Deployment currently reports three desired and three ready
 replicas. Public SIP traffic attaches to this carrier instance. YVR also
-enables one `internal` instance with the `private-sbc` role; DC1 configurations
-remain carrier-only. The internal instance handles private application
-signaling such as Asterisk/SIP Core and is separate from public carrier SIP.
+enables one `internal` instance with the `private-sbc` role. YXL's desired
+values now add the same private role for the Vault-backed mTLS transport; its
+certificate rollout is pending reconciliation. The internal instance
+handles private application signaling such as Asterisk/SIP Core and is
+separate from public carrier SIP.
 An instance receives `defaults`, then its role defaults, then its own
 overrides. Site Helm values replace the entire instances array.
 

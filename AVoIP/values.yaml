@@ -449,6 +449,9 @@ kamailio:
       gatewayServiceHost: ''
       gatewayNamespace: 'kube-system'
       sniHost: ''
+      clientIdentity:
+        enabled: false
+        issuerName: ''
       calls:
         # Keep the authenticated transport and TLSRoute independently
         # configurable while PSTN authorization is still closed.
@@ -458,6 +461,7 @@ kamailio:
         sanHostname: ''
         serviceHost: ''
         controller: ''
+        secretName: ''
       testRoute:
         extension: ''
         peerName: ''

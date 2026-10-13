@@ -25,7 +25,7 @@ with the existing Authentik access group. See the [sound library guide](AVoIP/do
 for its data path, recording format, access boundary and verification steps.
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
-[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 Home1/YVR fax reception is reported working over G.711; the ApplicationSet
 selects [G.711-only reception](AVoIP/docs/PHONE-TREE.md) for that site's
 dedicated fax DID. T.38 remains unverified there.
@@ -34,8 +34,11 @@ and [restricted outbound service-peer pilot](AVoIP/docs/OUTBOUND-PILOT.md)
 for authenticated service peers. An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
 now renders a site-local PostgreSQL service identity and schema migration, but
 credential issuance and live registration for the private registrar are still
-open. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
-does not enable the private registrar or outbound service-peer pilots. Home1
+open. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+enables the carrier mTLS transport at YXL and YVR using each site's existing
+Vault `core-tls-vault` issuer, while the private registrar and outbound PSTN
+calls remain disabled. Certificate issuance and workload rollout require
+reconciliation. Home1
 does run the SIP Core WSS path with a three-replica Kamailio edge and the
 digest-pinned LF-heartbeat compatibility image; the dynamic registrar and
 first-party webphone work remains open. See the

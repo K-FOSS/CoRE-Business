@@ -1,12 +1,12 @@
 # Opt-in carrier outbound pilot
 
 This is an implementation and validation record, not permission to place a
-billable call. The Home1 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-enables the carrier mTLS transport between `internal` and `carrier`, with
-`carrierOutbound.calls.enabled: false`. New outbound INVITEs are rejected;
-OPTIONS can verify the signaling path. The fixed-destination call pilot and
-the DC1 outbound transport remain disabled. The production inbound Flowroute,
-RTPEngine, FreeSWITCH, Asterisk and fax path remains separate.
+billable call. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+opts both YXL and YVR `internal` and `carrier` instances into the Vault
+backed mTLS identity and transport using each site's existing
+`core-tls-vault` ClusterIssuer, with `carrierOutbound.calls.enabled: false`.
+New outbound INVITEs remain rejected. The production inbound Flowroute, RTPEngine, FreeSWITCH, Asterisk
+and fax path remains separate.
 
 ## Ownership and trust path
 
@@ -17,16 +17,23 @@ removes any incoming P-Asserted-Identity, and sets the permitted caller ID.
 The request goes to the existing Envoy SIPS Gateway Service with a dedicated
 SNI. When enabled, the chart creates a second TLSRoute for that SNI to the
 carrier Service on 5061. It has no DNS annotation; the existing public SIP
-route remains separate. The [Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml)
+route remains separate. YXL keeps the direct public SIP Service disabled and
+disables its inconsistent public TCP SIP flag; this does not disable the
+outbound SIPS TLSRoute or change the carrier's global server certificate. The [Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml)
 owns the shared SIPS listener. Envoy forwards the TLS stream with PROXY v2.
 No new LoadBalancer or Flowroute ACL entry is introduced. Kamailio's global
 `tcp_accept_haproxy=yes` remains necessary on the carrier pod; the private pod
 uses `no` for direct peers.
 
-The carrier and internal Kamailio certificates keep both `server auth` and
-`client auth` usages while this transport is enabled. cert-manager defaults
-to a server-only certificate when usages are omitted, which the peer correctly
-rejects during mutual-TLS verification.
+Public SIP server certificates remain issued by the existing ACME ClusterIssuer.
+Separate client-auth certificates use each site's existing `core-tls-vault`
+[cert-manager Vault issuer](https://cert-manager.io/docs/configuration/vault/).
+The AVoIP chart opts each Kamailio instance into this identity with
+`carrierOutbound.clientIdentity.enabled`. Each peer mounts the other identity
+Secret's `ca.crt` into its CA bundle. The public carrier certificate stays
+server-only. Let's Encrypt
+does not issue client-auth EKUs, so its public SIP certificates cannot serve
+as these client identities.
 
 The carrier's separate [Kamailio TLS](https://www.kamailio.org/docs/modules/6.1.x/modules/tls.html)
 SNI profile requires a verified client certificate. Carrier routing then
@@ -60,11 +67,13 @@ that loops back toward Flowroute.
 `kamailio.instances[]` is a replace-only list. A site override must retain
 the existing `carrier` entry while adding an `internal` entry. Both roles
 must explicitly enable `carrierOutbound` and supply the same
-`gatewayServiceHost` and `sniHost`. For transport-only setup,
+`gatewayServiceHost` and `sniHost`. Both sites opt into the client identity with `clientIdentity.enabled: true`
+and select their existing `core-tls-vault` issuer. For transport-only setup,
 `carrierOutbound.calls.enabled` stays false; the carrier entry sets
 `peer.cidr`, `peer.sanHostname`, `peer.serviceHost`, and `peer.controller`;
-the private entry lists the carrier as an mTLS peer with an empty
-`allowedUsers` list. To open the fixed call pilot later, both entries also
+when client identity is enabled, each entry sets `peer.secretName` to the
+other instance's Vault-issued client-identity Secret. The private entry lists the carrier as an mTLS peer
+with an empty `allowedUsers` list. To open the fixed call pilot later, both entries also
 need matching test route details and quota limits, and the private role needs
 the distinct authorized test-origin peer. Give the
 private role its own TOPOS database and Secret, and confirm the
@@ -74,14 +83,23 @@ before choosing the database number.
 The private Cilium policy permits only named peer controllers on TLS/5062
 and egress to the existing Gateway proxy on TLS/5061. The carrier policy
 adds egress only to the named internal controller when enabled. The dedicated
-SNI is added to the carrier cert-manager Certificate only when enabled;
-verify the Secret and issuing CA before opening the route. Enabling this
-capability changes the carrier certificate and TLS server profile, so stage
-it at Home1, inspect the rendered complete Lovely output, and take a fresh
-inbound voice/fax baseline before any call. Do not enable it at DC1 by
-copying Home1's instance list or network identity.
+SNI is added to the carrier's public cert-manager Certificate only when
+enabled; verify it and the separate Vault client identities before opening
+the route. Enabling this capability changes the carrier certificate and TLS
+server profile, so stage
+it at both sites, inspect each rendered complete Lovely output, and take a
+fresh inbound voice/fax baseline before any call.
 
 ## Evidence and remaining gate
+
+Observed during the YVR rollout: the Gateway accepted the dedicated TLSRoute,
+but the public ACME certificate had only `serverAuth`, so carrier Kamailio
+rejected it as a client identity. The chart now creates separate Vault-issued
+client identities. Both sites' `core-tls-vault` ClusterIssuers are Ready;
+certificates and workloads still require reconciliation. Do not treat
+the route as operational until the dedicated issuer is Ready, both identity
+Secrets contain `ca.crt`, the Deployments reload them, and the mTLS OPTIONS
+probe returns `200 Keepalive`.
 
 `helm lint AVoIP`, `tests/kamailio-instances.sh`, and
 `tests/sip-outbound-render.sh` validate the default-disabled configuration

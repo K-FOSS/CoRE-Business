@@ -430,6 +430,19 @@ data:
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
     {{- end }}
+    {{- if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
+
+    # Use the Vault-issued client identity for this authenticated SIP peer.
+    # The default client profile remains tied to the public server certificate.
+    [client:any]
+    server_name = {{ if eq .Values.kamailio.role "carrier-sbc" }}{{ .Values.kamailio.carrierOutbound.peer.serviceHost }}{{ else }}{{ .Values.kamailio.carrierOutbound.sniHost }}{{ end }}
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = no
+    ca_list = /etc/kamailio/tls-ca/ca-certificates.crt
+    private_key = /etc/kamailio/mtls/tls.key
+    certificate = /etc/kamailio/mtls/tls.crt
+    {{- end }}
 {{ end }}
 {{- $root := . -}}
 {{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
