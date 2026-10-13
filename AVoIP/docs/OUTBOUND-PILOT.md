@@ -1,9 +1,12 @@
 # Opt-in carrier outbound pilot
 
 This is an implementation and validation record, not permission to place a
-billable call. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-does **not** enable `carrierOutbound` at either site. The production inbound
-Flowroute, RTPEngine, FreeSWITCH, Asterisk and fax path remains separate.
+billable call. The Home1 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+enables the carrier mTLS transport between `internal` and `carrier`, with
+`carrierOutbound.calls.enabled: false`. New outbound INVITEs are rejected;
+OPTIONS can verify the signaling path. The fixed-destination call pilot and
+the DC1 outbound transport remain disabled. The production inbound Flowroute,
+RTPEngine, FreeSWITCH, Asterisk and fax path remains separate.
 
 ## Ownership and trust path
 
@@ -52,13 +55,13 @@ that loops back toward Flowroute.
 `kamailio.instances[]` is a replace-only list. A site override must retain
 the existing `carrier` entry while adding an `internal` entry. Both roles
 must explicitly enable `carrierOutbound` and supply the same
-`gatewayServiceHost`, `sniHost`, `testRoute.extension`,
-`testRoute.destination`, `testRoute.callerId`, and quota limits. The carrier
-entry additionally sets `peer.cidr`, `peer.sanHostname`,
-`peer.serviceHost`, and `peer.controller`; the private entry sets
-`testRoute.peerName` and lists both the test origin and `carrier` in
-`privateRouting.peers`. The carrier peer's `allowedUsers` must be empty.
-Its `peer.cidr`/SAN on the private side identifies the carrier pod. Give the
+`gatewayServiceHost` and `sniHost`. For transport-only setup,
+`carrierOutbound.calls.enabled` stays false; the carrier entry sets
+`peer.cidr`, `peer.sanHostname`, `peer.serviceHost`, and `peer.controller`;
+the private entry lists the carrier as an mTLS peer with an empty
+`allowedUsers` list. To open the fixed call pilot later, both entries also
+need matching test route details and quota limits, and the private role needs
+the distinct authorized test-origin peer. Give the
 private role its own TOPOS database and Secret, and confirm the
 [Dragonfly allocation registry](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Storage/Dragonfly/CoRE/README.md)
 before choosing the database number.

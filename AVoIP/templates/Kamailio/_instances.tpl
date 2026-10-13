@@ -58,11 +58,13 @@
     {{- if or (eq $outbound.sniHost $derivedSiteHost) (and $.Values.sip.siteHost (eq $outbound.sniHost $.Values.sip.siteHost)) (eq $outbound.sniHost $.Values.sip.globalHost) -}}
       {{- fail (printf "Kamailio %s carrierOutbound.sniHost must differ from the public and global SIP hostnames" $name) -}}
     {{- end -}}
-    {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $outbound.testRoute.extension))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.destination))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.callerId))) (hasPrefix "+1900" (toString $outbound.testRoute.destination)) (regexMatch "^\\+1[2-9][0-9]{2}976[0-9]{4}$" (toString $outbound.testRoute.destination)) -}}
-      {{- fail (printf "Kamailio %s carrierOutbound test route requires an extension, non-premium NANP destination and NANP caller ID" $name) -}}
-    {{- end -}}
-    {{- if or (lt (int $outbound.limits.callsPerMinute) 1) (lt (int $outbound.limits.concurrentCalls) 1) (lt (int $outbound.limits.maxDurationSeconds) 60) -}}
-      {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
+    {{- if $outbound.calls.enabled -}}
+      {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $outbound.testRoute.extension))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.destination))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.callerId))) (hasPrefix "+1900" (toString $outbound.testRoute.destination)) (regexMatch "^\\+1[2-9][0-9]{2}976[0-9]{4}$" (toString $outbound.testRoute.destination)) -}}
+        {{- fail (printf "Kamailio %s carrierOutbound test route requires an extension, non-premium NANP destination and NANP caller ID" $name) -}}
+      {{- end -}}
+      {{- if or (lt (int $outbound.limits.callsPerMinute) 1) (lt (int $outbound.limits.concurrentCalls) 1) (lt (int $outbound.limits.maxDurationSeconds) 60) -}}
+        {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
+      {{- end -}}
     {{- end -}}
     {{- if eq $role "carrier-sbc" -}}
       {{- if or (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.peer.serviceHost))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $outbound.peer.controller))) -}}
@@ -215,8 +217,11 @@
       {{- end -}}
     {{- end -}}
     {{- if $effective.carrierOutbound.enabled -}}
-      {{- if or (not (hasKey $peers $effective.carrierOutbound.testRoute.peerName)) (not (hasKey $peers "carrier")) (eq $effective.carrierOutbound.testRoute.peerName "carrier") -}}
-        {{- fail (printf "Kamailio %s carrierOutbound requires distinct test-origin and carrier mTLS peers" $name) -}}
+      {{- if not (hasKey $peers "carrier") -}}
+        {{- fail (printf "Kamailio %s carrierOutbound requires a carrier mTLS peer" $name) -}}
+      {{- end -}}
+      {{- if and $effective.carrierOutbound.calls.enabled (or (not (hasKey $peers $effective.carrierOutbound.testRoute.peerName)) (eq $effective.carrierOutbound.testRoute.peerName "carrier")) -}}
+        {{- fail (printf "Kamailio %s carrierOutbound calls require distinct test-origin and carrier mTLS peers" $name) -}}
       {{- end -}}
       {{- range $peer := $effective.privateRouting.peers -}}
         {{- if and (eq $peer.name "carrier") $peer.allowedUsers -}}

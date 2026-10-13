@@ -136,7 +136,7 @@
       }
       {{- end }}
 
-      {{- if .Values.kamailio.carrierOutbound.enabled }}
+      {{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled }}
       # The pilot is a single exact extension and destination. Registration
       # alone never enters this branch; source mTLS and From caller ID are
       # checked against the one authorized service peer.

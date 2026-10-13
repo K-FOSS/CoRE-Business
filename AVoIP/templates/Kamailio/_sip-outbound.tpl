@@ -26,6 +26,12 @@
         sl_send_reply("200", "Keepalive");
         exit;
       }
+      {{- if not .Values.kamailio.carrierOutbound.calls.enabled }}
+      if (!has_totag() && is_method("INVITE")) {
+        sl_send_reply("403", "Outbound Calls Disabled");
+        exit;
+      }
+      {{- end }}
       if (!is_method("INVITE")) {
         sl_send_reply("405", "Method Not Allowed");
         exit;

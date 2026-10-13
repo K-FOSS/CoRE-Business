@@ -52,6 +52,13 @@ without enabling SIP registration; live provisioning is pending reconciliation. 
 for ordering, access boundaries, and the separate prerequisites for enabling
 REGISTER handling.
 
+Home1's `internal` and `carrier` Kamailio instances have a dedicated mutual-TLS
+SIPS transport configured through the existing Envoy Gateway. New outbound
+calls remain disabled (`carrierOutbound.calls.enabled: false`); the carrier
+rejects initial INVITEs while transport health can be checked with OPTIONS.
+See the [outbound pilot runbook](docs/OUTBOUND-PILOT.md) for trust boundaries
+and rollout verification.
+
 ## Deployment ownership
 
 Optional interface profiles for every enabled workload and the named YAML
