@@ -121,6 +121,7 @@ metadata:
   name: '{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls'
 spec:
   secretName: '{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls'
+  commonName: '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
   usages:
