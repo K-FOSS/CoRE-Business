@@ -23,6 +23,11 @@ No new LoadBalancer or Flowroute ACL entry is introduced. Kamailio's global
 `tcp_accept_haproxy=yes` remains necessary on the carrier pod; the private pod
 uses `no` for direct peers.
 
+The carrier and internal Kamailio certificates keep both `server auth` and
+`client auth` usages while this transport is enabled. cert-manager defaults
+to a server-only certificate when usages are omitted, which the peer correctly
+rejects during mutual-TLS verification.
+
 The carrier's separate [Kamailio TLS](https://www.kamailio.org/docs/modules/6.1.x/modules/tls.html)
 SNI profile requires a verified client certificate. Carrier routing then
 checks that certificate's DNS SAN and the PROXY-reported source range, the

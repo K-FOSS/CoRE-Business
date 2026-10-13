@@ -38,6 +38,13 @@ spec:
     {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
     - '{{ .Values.kamailio.carrierOutbound.sniHost }}'
     {{- end }}
+  {{- if .Values.kamailio.carrierOutbound.enabled }}
+  usages:
+    - 'digital signature'
+    - 'key encipherment'
+    - 'server auth'
+    - 'client auth'
+  {{- end }}
   issuerRef:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
