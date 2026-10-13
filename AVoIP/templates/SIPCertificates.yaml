@@ -51,6 +51,7 @@ metadata:
     argocd.argoproj.io/sync-wave: '-2'
 spec:
   secretName: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-mtls") }}'
+  commonName: '{{ printf "%s.svc" $component }}'
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) }}'
   usages:
