@@ -223,6 +223,11 @@ authenticates inbound requests with SIP Digest. An External Secrets Password
 generator creates a random peer password in an immutable, retained Secret
 referenced by both Asterisk and FreeSWITCH; no internal pod IP or cluster CIDR
 is used as identity. Asterisk's existing outbound auth remains configured.
+The endpoint sends outbound dialog requests through the FreeSWITCH service DNS
+URI on TLS port 5064 so PJSIP verifies the certificate against its DNS SAN;
+keep `verify_server=yes`. PJSIP matches the next-hop host from the top Route
+header or outbound proxy against the certificate identity, as described in the
+[PJProject TLS hostname guidance](https://github.com/pjsip/pjproject_docs/blob/master/docs/source/specific-guides/security/ssl.rst#hostname-matching-and-sni).
 Raw SIP packet traces are suppressed on the authenticated peer path so Digest
 Authorization headers are not written to logs. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md) for endpoint identification and the
