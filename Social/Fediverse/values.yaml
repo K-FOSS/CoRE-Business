@@ -61,6 +61,9 @@ mastodon:
   scheduling:
     topologyKey: 'kubernetes.io/hostname'
     whenUnsatisfiable: 'DoNotSchedule'
+  uploadTmp:
+    storageClass: 'mastodon-upload-rwx'
+    size: '50Gi'
   resources:
     web:
       requests:

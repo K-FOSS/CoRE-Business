@@ -317,8 +317,10 @@ to provision PostgreSQL and an S3 bucket/service account, using the selected
 site's [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
 and [storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
 Crossplane Terraform creates the Authentik OIDC provider, application, access
-group and entitlement bindings. The chart intentionally has no application PVC:
-PostgreSQL and S3 are durable stores, while Mastodon signing/session keys are
+group and entitlement bindings. A 50Gi Longhorn RWX PVC using Home1's
+non-migratable storage class supplies shared temporary upload space to Mastodon
+web and Sidekiq; PostgreSQL and S3 remain
+the durable stores, while Mastodon signing/session keys are
 generated once, pushed to Vault and restored through External Secrets.
 `OMNIAUTH_ONLY` defaults to true, so group
 membership and email-verification policy must be reviewed before exposing the

@@ -102,6 +102,8 @@ Bluesky PDS support, while PeerTube, Lemmy and related federated services are
 future additions to this stack. The live value layer supplies the Mastodon
 hostname, Gateway attachment and PostgreSQL/S3 provider names. It uses
 Authentik OIDC, site PostgreSQL, S3 media storage and Dragonfly.
+Mastodon web and Sidekiq share a 50Gi Longhorn RWX PVC for temporary uploads
+using the Home1 non-migratable storage class.
 
 ## Work in progress
 

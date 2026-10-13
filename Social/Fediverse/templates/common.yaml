@@ -92,6 +92,18 @@ controllers:
               app.kubernetes.io/name: {{ .Release.Name | quote }}
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
+    initContainers:
+      tmp-permissions:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        command: ['chmod', '1777', '/tmp']
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
     containers:
       web:
         image:
@@ -245,6 +257,18 @@ controllers:
               app.kubernetes.io/name: {{ .Release.Name | quote }}
     serviceAccount:
       identifier: {{ .Release.Name | quote }}
+    initContainers:
+      tmp-permissions:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        command: ['chmod', '1777', '/tmp']
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+          runAsGroup: 0
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
     containers:
       sidekiq:
         image:
@@ -849,10 +873,49 @@ podMonitor:
       - port: 'metrics'
         path: '/metrics'
 persistence:
+  upload-tmp:
+    type: 'persistentVolumeClaim'
+    storageClass: {{ .Values.mastodon.uploadTmp.storageClass | quote }}
+    accessMode: 'ReadWriteMany'
+    size: {{ .Values.mastodon.uploadTmp.size | quote }}
+    retain: false
+    advancedMounts:
+      web:
+        tmp-permissions:
+          - path: '/tmp'
+        web:
+          - path: '/tmp'
+      sidekiq:
+        tmp-permissions:
+          - path: '/tmp'
+        sidekiq:
+          - path: '/tmp'
   tmp:
     type: 'emptyDir'
-    globalMounts:
-      - path: '/tmp'
+    advancedMounts:
+      streaming:
+        streaming:
+          - path: '/tmp'
+      migrate:
+        migrate:
+          - path: '/tmp'
+      vapid:
+        vapid:
+          - path: '/tmp'
+      {{- if .Values.bluesky.enabled }}
+      bluesky:
+        bluesky:
+          - path: '/tmp'
+      {{- end }}
+      {{- if .Values.tranquil.enabled }}
+      tranquil:
+        tranquil:
+          - path: '/tmp'
+        {{- if .Values.tranquil.cache.tlsProxy.enabled }}
+        dragonfly-tls-proxy:
+          - path: '/tmp'
+        {{- end }}
+      {{- end }}
 route:
   mastodon:
     kind: 'HTTPRoute'
