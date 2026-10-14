@@ -26,7 +26,7 @@ RUN apk add --no-cache \
     && echo "${ASTERISK_SOURCE_SHA256}  /tmp/asterisk.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/asterisk.tar.gz -C /tmp \
     && cd /tmp/asterisk-20.20.1 \
-    && ./configure --with-unixodbc \
+    && ./configure --with-unixodbc --without-pjproject \
     && make menuselect.makeopts \
     && ./menuselect/menuselect --enable app_voicemail_odbc menuselect.makeopts \
     && make apps/app_voicemail_odbc.so
