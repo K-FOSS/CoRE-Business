@@ -69,10 +69,10 @@
           {{- fail (printf "Kamailio %s carrierOutbound test route requires an extension, non-premium NANP destination and NANP caller ID" $name) -}}
         {{- end -}}
       {{- else -}}
-        {{- $callerId := toString $outbound.calls.callerId -}}
+        {{- $callerId := toString $.Values.avoip.did -}}
         {{- $callerIdConfigured := or (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" $callerId) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" $callerId) -}}
         {{- if or (not $callerIdConfigured) (not $outbound.calls.extensions) -}}
-          {{- fail (printf "Kamailio %s carrierOutbound NANP policy requires a NANP caller ID and at least one authorized extension" $name) -}}
+          {{- fail (printf "Kamailio %s carrierOutbound NANP policy requires avoip.did to be a NANP caller ID and at least one authorized extension" $name) -}}
         {{- end -}}
         {{- range $outbound.calls.extensions -}}
           {{- $authorizedExtension := . -}}

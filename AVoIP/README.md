@@ -57,7 +57,7 @@ for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
 `7101` to place
-standard NANP calls through that route, with the Asterisk DID as caller ID.
+standard NANP calls through that route, with `avoip.did` as caller ID.
 YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
 outbound SIPS TLSRoute stays enabled. The desired YXL voice route transfers
@@ -391,8 +391,8 @@ staged route and Asterisk Path cutover. An
 [outbound service-peer route](docs/OUTBOUND-PILOT.md) uses Vault mTLS
 over the existing SIPS Gateway path and site SNI between internal and carrier
 Kamailio. It reuses the current Flowroute trunk and adds no Gateway route,
-SNI, or Service. YVR enables account `7101` for standard NANP calls with the
-Asterisk DID as caller ID, carrier-owned RTPEngine media anchoring, and shared
+SNI, or Service. YVR enables account `7101` for standard NANP calls with
+`avoip.did` as caller ID, carrier-owned RTPEngine media anchoring, and shared
 rate/concurrency quotas. YXL call origination remains disabled. No live carrier
 call has been made. The chart does not
 enable the Kamailio registrar pilot or an OIDC webphone; its current SIP Core

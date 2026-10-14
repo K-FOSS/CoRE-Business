@@ -2,7 +2,8 @@
 
 The desired YVR configuration allows Asterisk SIP Core account `7101` to
 place standard NANP calls through the existing carrier Kamailio and Flowroute
-connection. The caller ID is the YVR Asterisk DID. YXL keeps PSTN call
+connection. The carrier-facing caller ID is sourced from `avoip.did`, the
+configured voice DID. YXL keeps PSTN call
 origination disabled. This route has not yet been reconciled or verified with
 a live carrier call.
 The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
@@ -36,9 +37,11 @@ Gateway and the existing FreeSWITCH path; the internal request carries
 PROXY v2 and is authenticated by its TLS certificate and source range.
 
 Only standard NANP destinations are routed. `+1900` and `+1` 976 service
-numbers are rejected. The caller ID must match the configured YVR Asterisk
-DID; the internal policy permits only account `7101`. Registration alone does
-not grant PSTN access. Carrier-wide Dragonfly quota allows one call per minute
+numbers are rejected. The internal policy first authenticates account `7101`,
+then both Kamailio hops set the carrier-facing From and P-Asserted-Identity
+from `avoip.did`. The compatibility value `carrierOutbound.calls.callerId`
+does not control NANP caller ID. Registration alone does not grant PSTN access.
+Carrier-wide Dragonfly quota allows one call per minute
 and one concurrent call, with a 600-second maximum lifetime.
 
 ## Configuration and rollout
