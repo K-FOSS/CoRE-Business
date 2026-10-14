@@ -13,13 +13,15 @@ ARG PSQLODBC_PACKAGE_VERSION=16.00.0005-r1
 # modules. Add only ODBC support and the PostgreSQL ODBC driver used by
 # Asterisk voicemail storage; reinstalling some base packages is blocked by
 # the base image's tagged APK repository.
-RUN apk add --no-cache \
+RUN set -eux; \
+    apk add --no-cache \
       "asterisk-odbc=${ASTERISK_PACKAGE_VERSION}" \
       "psqlodbc=${PSQLODBC_PACKAGE_VERSION}" \
       "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
-    && test -x /usr/bin/odbcinst \
-    && odbcinst -q -d | grep -Fqx '[PostgreSQL Unicode]' \
-    && for module in \
+    ; \
+    test -x /usr/bin/odbcinst; \
+    odbcinst -q -d | grep -Fqx '[PostgreSQL Unicode]'; \
+    for module in \
          chan_pjsip.so \
          res_pjsip_endpoint_identifier_user.so \
          res_pjsip_endpoint_identifier_ip.so \
@@ -29,8 +31,9 @@ RUN apk add --no-cache \
          res_odbc.so \
          res_config_odbc.so \
          app_voicemail_odbc.so; do \
-         find /usr/lib/asterisk/modules /usr/lib64/asterisk/modules \
-           -type f -name "$module" -print -quit 2>/dev/null | grep -Fq "$module" || exit 1; \
+         module_path="$(find /usr/lib/asterisk/modules /usr/lib64/asterisk/modules \
+           -type f -name "$module" -print -quit 2>/dev/null)"; \
+         if [ -z "$module_path" ]; then echo "Missing required Asterisk module: $module"; exit 1; fi; \
        done
 
 # The chart replaces the base entrypoint with its runtime credential setup.
