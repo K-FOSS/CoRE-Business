@@ -1,0 +1,42 @@
+# renovate: datasource=docker depName=andrius/asterisk versioning=docker
+ARG ASTERISK_BASE=andrius/asterisk:20.20.1-alpine-3.24@sha256:6a016b132caf4c7c4ece59b8e6a6b0fc5564e0a3ebc7a86ea0564be06eab878a
+
+FROM ${ASTERISK_BASE}
+
+USER root
+
+ARG ASTERISK_PACKAGE_VERSION=20.20.1-r1
+ARG UNIXODBC_PACKAGE_VERSION=2.3.14-r1
+ARG PSQLODBC_PACKAGE_VERSION=16.00.0005-r1
+
+# Keep the package set from the previous CoRE image and add the ODBC module
+# and drivers required by Asterisk voicemail storage.
+RUN apk add --no-cache \
+      "asterisk-alsa=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-odbc=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-pgsql=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-sounds-en=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-sounds-moh=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-speex=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-srtp=${ASTERISK_PACKAGE_VERSION}" \
+      "psqlodbc=${PSQLODBC_PACKAGE_VERSION}" \
+      "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
+    && test -x /usr/bin/odbcinst \
+    && odbcinst -q -d | grep -Fqx '[PostgreSQL Unicode]' \
+    && for module in \
+         chan_pjsip.so \
+         res_pjsip_endpoint_identifier_user.so \
+         res_pjsip_endpoint_identifier_ip.so \
+         res_pjsip_endpoint_identifier_anonymous.so \
+         res_http_media_cache.so \
+         cdr_pgsql.so \
+         res_odbc.so \
+         res_config_odbc.so \
+         app_voicemail_odbc.so; do \
+         find /usr/lib/asterisk/modules /usr/lib64/asterisk/modules \
+           -type f -name "$module" -print -quit 2>/dev/null | grep -Fq "$module" || exit 1; \
+       done
+
+# The chart replaces the base entrypoint with its runtime credential setup.
+# Keep the upstream image's unprivileged runtime identity in effect.
+USER 1000:1000

@@ -657,11 +657,14 @@ for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane
 
 - [Asterisk](https://www.asterisk.org/) and its
   [documentation](https://docs.asterisk.org/)
-- The deployed Asterisk image is currently `core-docker/asterisk:20.20.1` from
-  the `core-docker/asterisk:20` tag, from the site-local
-  [Core-Docker project](https://forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/CoRE/Core-Docker),
-  built from the upstream [andrius/asterisk image source](https://github.com/andrius/asterisk).
-  It uses PJSIP's compatible `external_signaling_address` option;
+- The chart-local [Asterisk image build](image/asterisk/Containerfile) extends
+  the pinned upstream [andrius/asterisk image](https://hub.docker.com/r/andrius/asterisk)
+  and adds the PostgreSQL and ODBC modules, unixODBC, and the PostgreSQL ODBC
+  driver required for voicemail. It retains the existing ALSA, English sounds,
+  music-on-hold, Speex, and SRTP modules. The
+  [Forgejo workflow](../.forgejo/workflows/asterisk.yaml) publishes only to
+  this repository's Forgejo registry. Asterisk uses PJSIP's compatible
+  `external_signaling_address` option;
   `external_signaling_hostname` is introduced in
   [Asterisk 20.21.0](https://downloads.asterisk.org/pub/telephony/asterisk/ChangeLog-20.21.0.html).
   Backups are maintained at

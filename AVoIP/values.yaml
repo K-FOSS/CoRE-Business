@@ -905,8 +905,8 @@ asterisk:
     odbcDriver: 'PostgreSQL Unicode'
     messagesTable: 'voicemail_messages'
   image:
-    # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk
-    repository: kristianfjones/asterisk
+    # Built by .forgejo/workflows/asterisk.yaml and published to this Forgejo registry.
+    repository: slop.writemy.codes/core/core-business/asterisk
     tag: '20'
     digest: ''
     pullPolicy: 'IfNotPresent'
