@@ -153,6 +153,11 @@ data:
     {{- range .Values.asterisk.sipCore.extensions }}
     ; Each SIP Core account has its own context and exact extension allowlist.
     [from-sipcore-{{ .number }}]
+    {{- if and $.Values.freeswitch.voicemail.enabled (eq (toString .number) (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) }}
+    ; Keep mailbox access limited to the direct extension owner.
+    exten => {{ $.Values.freeswitch.voicemail.accessCode }},1,Dial(PJSIP/${EXTEN}@freeswitch,30)
+      same => n,Hangup()
+    {{- end }}
     {{- range .allowCallsTo }}
     {{- if and (ne (toString .) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension)) }}
     exten => {{ . }},1,Dial(PJSIP/{{ . }},30)

@@ -34,6 +34,9 @@ data:
       <X-PRE-PROCESS cmd="env-set" data="default_password=${PASSWORD}"/>
       <X-PRE-PROCESS cmd="env-set" data="username=$USERNAME"/>
       <X-PRE-PROCESS cmd="env-set" data="password=$PASSWORD"/>
+      {{- if .Values.freeswitch.voicemail.enabled }}
+      <X-PRE-PROCESS cmd="env-set" data="voicemail_pin=$VOICEMAIL_PIN"/>
+      {{- end }}
       {{- if .Values.asterisk.enabled }}
       <X-PRE-PROCESS cmd="env-set" data="asterisk_peer_password=$ASTERISK_PEER_PASSWORD"/>
       {{- end }}

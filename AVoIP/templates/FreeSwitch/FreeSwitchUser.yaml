@@ -13,7 +13,7 @@ spec:
   serviceAccount: true
   groups:
     - 'LDAPService'
-{{- if .Values.freeswitch.cdr.enabled }}
+{{- if or .Values.freeswitch.cdr.enabled .Values.freeswitch.voicemail.enabled }}
   psql:
     enabled: true
     crossplane:

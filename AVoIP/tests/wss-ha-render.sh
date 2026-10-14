@@ -48,6 +48,7 @@ private_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core
 grep -Fq '#!substdef "/SIPCORE_OWNER_POD/$env(POD_NAME)/"' <<<"$config"
 grep -Fq 'loadmodule "path.so"' <<<"$config"
 grep -Fq 'modparam("path", "use_received", 0)' <<<"$config"
+grep -Fq 'modparam("topos", "methods_noinitial", "OPTIONS")' <<<"$config"
 grep -Fq 'modparam("websocket", "keepalive_mechanism", 2)' <<<"$config"
 ! grep -Fq 'modparam("websocket", "lf_keepalive_compat", 1)' <<<"$config"
 grep -Fq 'loadmodule "outbound.so"' <<<"$config"

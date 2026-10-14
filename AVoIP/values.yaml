@@ -1050,6 +1050,17 @@ freeswitch:
     # Empty values derive psql-<datacenter>-<region> from the rendered site.
     terraformProvider: ''
     crossplaneProvider: ''
+  voicemail:
+    # FreeSWITCH can provide a mailbox after an extension bridge fails.
+    # Enable in a site value layer only after provisioning the mailbox PIN in
+    # the extension's existing CoreVault secret.
+    enabled: false
+    accessCode: '*97'
+    pinProperty: 'VoicemailPIN'
+    storagePath: '/var/spool/freeswitch/voicemail'
+    storageClass: ''
+    storageSize: '1Gi'
+    retain: true
   rtp:
     min: 11000
     max: 11050

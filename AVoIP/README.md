@@ -65,7 +65,8 @@ over that existing carrier path to the silent YVR FreeSWITCH IVR ingress; its
 FaxNumber DID routes directly to YVR Asterisk SIP Core extension `7101`. The IVR
 accepts only configured Asterisk destinations and uses the existing local
 FreeSWITCH-to-Asterisk gateway. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
-for trust boundaries, destination filters and quotas, and the
+for the Asterisk-to-FreeSWITCH-to-Flowroute path, codec negotiation, trust
+boundaries, destination filters and quotas, and the
 [inter-site voice guide](docs/INTERSITE-VOICE.md) for transfer and rollout
 verification.
 The new DID and outbound call paths still require publish, reconciliation,
@@ -153,6 +154,11 @@ dedicated FreeSWITCH-to-Asterisk profile. For example, set
 change the global outbound preference order. A site can provide these keys in
 the `LOVELY_HELM_MERGE` values of the owning
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+The Flowroute outbound bridge has a separate `freeswitch.flowrouteOutbound.codecs`
+policy, defaulting to `['PCMU', 'PCMA']`; it requires PCMU and only changes the
+FreeSWITCH-to-carrier B-leg. Internal and WebRTC codec preferences remain
+unchanged. Flowroute's supported voice codecs are documented on its
+[voice service page](https://flowroute.com/voice/).
 Use Asterisk's lowercase codec names and FreeSWITCH's uppercase names. The
 fax receive dialplan keeps its separately scoped G.711 selection because fax
 modem audio and T.38 negotiation have different requirements.
@@ -161,6 +167,9 @@ modem audio and T.38 negotiation have different requirements.
 
 The complete current DID flow, SIP messaging path, registration behavior, and
 operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
+The optional direct-extension voicemail path, its external PIN secret,
+PostgreSQL metadata, retained shared audio volume, and verification steps are
+documented in [docs/VOICEMAIL.md](docs/VOICEMAIL.md).
 Inbound external SIP is restricted by the Flowroute signaling CIDRs configured
 under `flowroute.signalingCIDRs`; the public DID route does not
 accept arbitrary Internet SIP sources.

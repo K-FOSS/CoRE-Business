@@ -11,6 +11,24 @@
 {{- fail "freeswitch.flowrouteOutbound.codecs must include PCMU and may include only PCMU and PCMA" }}
 {{- end }}
 {{- end }}
+{{- if .Values.freeswitch.voicemail.enabled }}
+{{- $voicemailExtension := toString .Values.asterisk.sipCore.inboundVoiceExtension -}}
+{{- $voicemailSecretFound := false -}}
+{{- range .Values.asterisk.sipCore.extensions }}
+{{- if and (eq (toString .number) $voicemailExtension) .secret.remoteKey }}
+{{- $voicemailSecretFound = true -}}
+{{- end }}
+{{- end }}
+{{- if or (not .Values.asterisk.enabled) (not .Values.asterisk.sipCore.enabled) (not (regexMatch "^[0-9]{2,8}$" $voicemailExtension)) (not $voicemailSecretFound) }}
+{{- fail "freeswitch.voicemail requires SIP Core's configured inboundVoiceExtension and its matching CoreVault-backed extension" }}
+{{- end }}
+{{- if not (hasPrefix "*" .Values.freeswitch.voicemail.accessCode) }}
+{{- fail "freeswitch.voicemail.accessCode must begin with *" }}
+{{- end }}
+{{- if not (regexMatch "^\\*[0-9]{2,4}$" .Values.freeswitch.voicemail.accessCode) }}
+{{- fail "freeswitch.voicemail.accessCode must be * followed by two to four digits" }}
+{{- end }}
+{{- end }}
 {{- if .Values.freeswitch.interSite.enabled }}
 {{- if or (not .Values.asterisk.enabled) (not .Values.asterisk.sipCore.enabled) (not (regexMatch "^[0-9]{2,8}$" (toString .Values.freeswitch.interSite.extension))) (ne (toString .Values.freeswitch.interSite.extension) (toString .Values.asterisk.sipCore.inboundVoiceExtension)) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString .Values.freeswitch.interSite.peerName))) }}
 {{- fail "freeswitch.interSite requires SIP Core, the configured inboundVoiceExtension, and an inter-site peer name" }}
@@ -79,7 +97,14 @@ data:
             <action application="set" data="outside_call=true"/>
             <action application="log" data="INFO AVoIP FaxNumber DID: bridging to YVR Asterisk caller=${caller_id_number}"/>
             <action application="ring_ready"/>
+            {{- if $.Values.freeswitch.voicemail.enabled }}
+            <action application="set" data="hangup_after_bridge=true"/>
+            {{- end }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- if $.Values.freeswitch.voicemail.enabled }}
+            <action application="log" data="INFO AVoIP voicemail fallback mailbox={{ $.Values.asterisk.sipCore.inboundVoiceExtension }} bridge_cause=${bridge_hangup_cause} disposition=${originate_disposition}"/>
+            <action application="voicemail" data="default $${domain} {{ $.Values.asterisk.sipCore.inboundVoiceExtension }}"/>
+            {{- end }}
           </condition>
         </extension>
         {{- end }}
@@ -238,6 +263,18 @@ data:
   asterisk.xml: |
     <include>
       <context name="from-asterisk">
+        {{- if $.Values.freeswitch.voicemail.enabled }}
+        <extension name="voicemail-check">
+          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
+          <condition field="${sip_authorized}" expression="^true$"/>
+          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
+          <condition field="destination_number" expression="^\*{{ trimPrefix "*" $.Values.freeswitch.voicemail.accessCode }}$">
+            <action application="answer"/>
+            <action application="sleep" data="1000"/>
+            <action application="voicemail" data="check default $${domain} {{ $.Values.asterisk.sipCore.inboundVoiceExtension }}"/>
+          </condition>
+        </extension>
+        {{- end }}
         {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.outboundNANP.enabled $.Values.freeswitch.flowrouteOutbound.enabled }}
         {{- range $.Values.asterisk.sipCore.outboundNANP.extensions }}
         <extension name="flowroute-nanp-{{ . }}">

@@ -1555,7 +1555,17 @@ controllers:
           - /bin/sh
           - -c
         args:
-          - exec /usr/bin/freeswitch -nonat -nocal -nort -nosql -nf -nc </dev/null
+          - |
+            {{- if .Values.freeswitch.voicemail.enabled }}
+            case "$VOICEMAIL_PIN" in
+              ''|*[!0-9]*) printf '%s\n' 'Voicemail PIN must contain digits only' >&2; exit 1 ;;
+            esac
+            if [ "${#VOICEMAIL_PIN}" -lt 4 ] || [ "${#VOICEMAIL_PIN}" -gt 12 ]; then
+              printf '%s\n' 'Voicemail PIN must contain 4 to 12 digits' >&2
+              exit 1
+            fi
+            {{- end }}
+            exec /usr/bin/freeswitch -nonat -nocal -nort -nosql -nf -nc </dev/null
         image:
           repository: '{{ .Values.freeswitch.image.repository }}'
           tag: '{{ .Values.freeswitch.image.tag }}'
@@ -1572,6 +1582,13 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
+        {{- if .Values.freeswitch.voicemail.enabled }}
+          - name: VOICEMAIL_PIN
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-freeswitch-voicemail-pin'
+                key: pin
+        {{- end }}
         {{- if .Values.asterisk.enabled }}
           - name: ASTERISK_PEER_PASSWORD
             valueFrom:
@@ -2238,6 +2255,12 @@ persistence:
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}
+{{- if .Values.freeswitch.voicemail.enabled }}
+          - path: /etc/freeswitch/autoload_configs/voicemail.conf.xml
+            subPath: voicemail.conf.xml
+          - path: /etc/freeswitch/directory/voicemail-directory.xml
+            subPath: voicemail-directory.xml
+{{- end }}
           {{- if .Values.freeswitch.ldap.enabled }}
           - path: /etc/freeswitch/autoload_configs/ldap.conf.xml
             subPath: ldap.conf.xml
@@ -2358,6 +2381,21 @@ persistence:
       freeswitch:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
+{{- end }}
+{{- if .Values.freeswitch.voicemail.enabled }}
+  freeswitch-voicemail-storage:
+    forceRename: '{{ include "avoip.fullname" . }}-freeswitch-voicemail-storage'
+    type: persistentVolumeClaim
+    storageClass: '{{ default .Values.freeswitch.fax.persistence.haStorageClass .Values.freeswitch.voicemail.storageClass }}'
+    accessMode: 'ReadWriteMany'
+    size: '{{ .Values.freeswitch.voicemail.storageSize }}'
+    retain: {{ .Values.freeswitch.voicemail.retain }}
+    annotations:
+      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: {{ .Values.freeswitch.voicemail.storagePath }}
 {{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
         recordings:

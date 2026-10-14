@@ -1,8 +1,11 @@
 # AVoIP phone tree and DID service
 
-The AVoIP voice configuration is intentionally minimal. It no longer ships
-the upstream FreeSWITCH demonstration dialplan, sample extensions, conference
-codes, parking codes, fax tests, voicemail routes, or demo IVR.
+The AVoIP voice configuration is intentionally minimal. It does not ship the
+upstream FreeSWITCH demonstration dialplan, sample extensions, conference
+codes, parking codes, fax tests, or demo IVR. An optional FreeSWITCH voicemail
+route is available for the configured direct Asterisk extension; it remains
+disabled unless a site enables it and provisions a mailbox PIN. See
+[voicemail](VOICEMAIL.md) for its routing and storage requirements.
 
 The chart defaults Asterisk and FreeSWITCH to disabled. The active
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)

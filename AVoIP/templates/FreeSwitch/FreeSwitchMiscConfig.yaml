@@ -87,6 +87,10 @@ data:
         {{- if $.Values.freeswitch.cdr.enabled }}
         <load module="mod_cdr_pg_csv"/>
         {{- end }}
+        {{- if $.Values.freeswitch.voicemail.enabled }}
+        <load module="mod_pgsql"/>
+        <load module="mod_voicemail"/>
+        {{- end }}
         <load module="mod_commands"/>
         <load module="mod_event_socket"/>
         <load module="mod_opus"/>
@@ -149,6 +153,43 @@ data:
         <param name="password" value="$${password}"/>
       </settings>
     </configuration>
+
+  {{- if $.Values.freeswitch.voicemail.enabled }}
+  voicemail.conf.xml: |
+    <configuration name="voicemail.conf" description="Voicemail">
+      <profiles>
+        <profile name="default">
+          <param name="storage-dir" value="{{ $.Values.freeswitch.voicemail.storagePath }}"/>
+          <param name="storage-dir-shared" value="true"/>
+          <param name="odbc-dsn" value="pgsql://hostaddr={{ $cdrHost }} port={{ $.Values.freeswitch.cdr.port }} dbname=$${username} user=$${username} password='$${password}'"/>
+          <param name="db-password-override" value="true"/>
+          <param name="allow-empty-password-auth" value="false"/>
+          <param name="max-login-attempts" value="3"/>
+          <param name="min-record-len" value="3"/>
+        </profile>
+      </profiles>
+    </configuration>
+  {{- end }}
+
+  {{- if $.Values.freeswitch.voicemail.enabled }}
+  voicemail-directory.xml: |
+    <include>
+      <domain name="$${domain}">
+        <groups>
+          <group name="default">
+            <users>
+              <user id="{{ $.Values.asterisk.sipCore.inboundVoiceExtension }}">
+                <params>
+                  <param name="vm-enabled" value="true"/>
+                  <param name="vm-password" value="$${voicemail_pin}"/>
+                </params>
+              </user>
+            </users>
+          </group>
+        </groups>
+      </domain>
+    </include>
+  {{- end }}
 
   cdr_pg_csv.conf.xml: |
     <configuration name="cdr_pg_csv.conf" description="PostgreSQL CDR Format">
