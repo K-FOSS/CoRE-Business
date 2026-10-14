@@ -272,14 +272,14 @@ kamailio:
       publicExposure:
         enabled: false
       sipLogging:
-        carrierTraffic: false
+        carrierTraffic: true
         postToposResponses: false
         rawInbound: false
         # Log sanitized SIP Core ingress, Asterisk return traffic, and replies.
         # This omits SIP message bodies and authentication headers.
         sipCore: true
         diagnostics:
-          enabled: false
+          enabled: true
           sdp: false
       # This role has no carrier route and accepts no peer until explicitly
       # configured for a site. Direct TLS peers never send PROXY headers.
