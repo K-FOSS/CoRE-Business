@@ -1,6 +1,36 @@
 # renovate: datasource=docker depName=andrius/asterisk versioning=docker
 ARG ASTERISK_BASE=andrius/asterisk:20.20.1-alpine-3.24@sha256:6a016b132caf4c7c4ece59b8e6a6b0fc5564e0a3ebc7a86ea0564be06eab878a
 
+FROM ${ASTERISK_BASE} AS voicemail-module-build
+
+USER root
+
+ARG ASTERISK_SOURCE_SHA256=32ef7db8e449629128eb5f7e42d3d704f03daacb91d76ee694a9acf7f1fd53e2
+
+# The upstream Alpine package does not enable app_voicemail_odbc by default.
+# Build that module from the matching Asterisk release with ODBC support.
+RUN apk add --no-cache \
+      build-base \
+      curl \
+      jansson-dev \
+      libedit-dev \
+      libxml2-dev \
+      ncurses-dev \
+      newt-dev \
+      openssl-dev \
+      sqlite-dev \
+      tar \
+      unixodbc-dev \
+      zlib-dev \
+    && curl -fsSL 'https://downloads.asterisk.org/pub/telephony/asterisk/releases/asterisk-20.20.1.tar.gz' -o /tmp/asterisk.tar.gz \
+    && echo "${ASTERISK_SOURCE_SHA256}  /tmp/asterisk.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/asterisk.tar.gz -C /tmp \
+    && cd /tmp/asterisk-20.20.1 \
+    && ./configure --with-unixodbc \
+    && make menuselect.makeopts \
+    && ./menuselect/menuselect --enable app_voicemail_odbc menuselect.makeopts \
+    && make apps/app_voicemail_odbc.so
+
 FROM ${ASTERISK_BASE}
 
 USER root
@@ -33,12 +63,17 @@ RUN set -eux; \
          res_http_media_cache.so \
          cdr_pgsql.so \
          res_odbc.so \
-         res_config_odbc.so \
-         app_voicemail_odbc.so; do \
+         res_config_odbc.so; do \
          module_path="$(find /usr/lib/asterisk/modules /usr/lib64/asterisk/modules \
            -type f -name "$module" -print -quit 2>/dev/null)"; \
          if [ -z "$module_path" ]; then echo "Missing required Asterisk module: $module"; exit 1; fi; \
        done
+
+COPY --from=voicemail-module-build \
+     /tmp/asterisk-20.20.1/apps/app_voicemail_odbc.so \
+     /usr/lib/asterisk/modules/app_voicemail_odbc.so
+
+RUN test -s /usr/lib/asterisk/modules/app_voicemail_odbc.so
 
 # The chart replaces the base entrypoint with its runtime credential setup.
 # Keep the upstream image's unprivileged runtime identity in effect.
