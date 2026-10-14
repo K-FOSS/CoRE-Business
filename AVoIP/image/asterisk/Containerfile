@@ -9,16 +9,12 @@ ARG ASTERISK_PACKAGE_VERSION=20.20.1-r1
 ARG UNIXODBC_PACKAGE_VERSION=2.3.14-r1
 ARG PSQLODBC_PACKAGE_VERSION=16.00.0005-r1
 
-# Keep the package set from the previous CoRE image and add the ODBC module
-# and drivers required by Asterisk voicemail storage.
+# The base image already supplies the ALSA, PostgreSQL, sound, Speex and SRTP
+# modules. Add only ODBC support and the PostgreSQL ODBC driver used by
+# Asterisk voicemail storage; reinstalling some base packages is blocked by
+# the base image's tagged APK repository.
 RUN apk add --no-cache \
-      "asterisk-alsa=${ASTERISK_PACKAGE_VERSION}" \
       "asterisk-odbc=${ASTERISK_PACKAGE_VERSION}" \
-      "asterisk-pgsql=${ASTERISK_PACKAGE_VERSION}" \
-      "asterisk-sounds-en=${ASTERISK_PACKAGE_VERSION}" \
-      "asterisk-sounds-moh=${ASTERISK_PACKAGE_VERSION}" \
-      "asterisk-speex=${ASTERISK_PACKAGE_VERSION}" \
-      "asterisk-srtp=${ASTERISK_PACKAGE_VERSION}" \
       "psqlodbc=${PSQLODBC_PACKAGE_VERSION}" \
       "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
     && test -x /usr/bin/odbcinst \
