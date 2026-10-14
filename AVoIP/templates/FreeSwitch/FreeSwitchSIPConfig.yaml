@@ -153,7 +153,8 @@ data:
         <param name="rtp-timer-name" value="soft"/>
         <param name="rtp-notimer-during-bridge" value="false"/>
         <param name="sip-domain" value="$${external_sip_ip}"/>
-        <param name="ext-sip-ip" value="host:$${external_sip_ip}"/>
+        <!-- TOPOS hides this pod-specific dialog target from carriers. -->
+        <param name="ext-sip-ip" value="$${local_ip_v4}"/>
         <param name="ext-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
         <param name="ext-rtp-ip" value="$${external_rtp_ip}"/>
         <param name="inbound-late-negotiation" value="true"/>

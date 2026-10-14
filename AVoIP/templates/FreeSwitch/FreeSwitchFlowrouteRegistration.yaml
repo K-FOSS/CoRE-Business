@@ -61,6 +61,10 @@ spec:
               <param name="sip-port" value="5080"/>
               <param name="sip-ip" value="$${local_ip_v4}"/>
               <param name="rtp-ip" value="$${local_ip_v4}"/>
+              <!-- Advertise the owner pod through its Kamailio-facing TLS
+                   listener; carrier Kamailio hides this target with TOPOS. -->
+              <param name="ext-sip-ip" value="$${local_ip_v4}"/>
+              <param name="ext-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
               <!-- RFC 4733 telephone-event uses the same dynamic payload on
                    this carrier profile as the existing external profile. -->
               <param name="rfc2833-pt" value="101"/>

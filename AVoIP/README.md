@@ -203,6 +203,10 @@ new-call availability after a pod failure;
 an active FreeSWITCH call is not replicated to another pod. The existing fax
 spool claim remains retained; the HA workload uses a separate RWX claim, and
 the old fax data is not copied automatically.
+For carrier dialogs, Kamailio routes established requests to the FreeSWITCH
+pod IP restored from the TOPOS record. New calls still use the shared Service;
+using that round-robin Service for an established dialog can send its BYE to a
+replica that does not own the call. TOPOS hides the pod address from Flowroute.
 Flowroute SMS is enabled by default through `mod_sms` and
 `mod_sms_flowroute`; its API credentials are sourced from the separate SMS
 External Secret and are not stored in chart values.

@@ -100,7 +100,7 @@ For carrier TLS, `sip.siteHost` is the public SIP identity, supplied through the
 
 Kamailio 6.1.4 is pinned by `values.yaml`. Its version-specific [TOPOS documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/topos.html) documents `contact_mode=1`, `cparam_name`, event hooks, and deriving the Contact host from Record-Route. The chart keeps `contact_mode=1` and the `tps` token; it does not install a Contact rewrite callback. TOPOS derives public Contact host, port, and transport from the selected Record-Route URI, so a UDP dialog now produces a direct-Service UDP/5060 Contact with the opaque `tps` parameter. TLS dialogs continue to produce the site-host TLS Contact. The outgoing-send callback only observes serialized traffic and does not modify messages.
 
-TOPOS state uses a single site-local Dragonfly database and identical `serverid=topos` configuration on all Kamailio replicas; `event_mode=15` enables send and receive processing. The module's documented defaults retain unconfirmed branches for 180 seconds and confirmed dialogs for three hours, both longer than setup and typical calls. FreeSWITCH is one replica per site, so this chart's backend Service resolves to the same B2BUA that accepted the INVITE. An ACK can arrive at a different Kamailio pod over UDP; shared TOPOS state restores the hidden route and directs it to that same FreeSWITCH Service. This does not replicate transaction or FreeSWITCH dialog state and is not cross-site failover.
+TOPOS state uses a single site-local Dragonfly database and identical `serverid=topos` configuration on all Kamailio replicas; `event_mode=15` enables send and receive processing. The module's documented defaults retain unconfirmed branches for 180 seconds and confirmed dialogs for three hours, both longer than setup and typical calls. The earlier one-replica-per-site FreeSWITCH baseline meant the backend Service selected the same B2BUA for every in-dialog request. The active deployment now runs two replicas; established carrier dialogs use the pod-specific Contact restored from TOPOS, as described below. This does not replicate transaction or FreeSWITCH dialog state and is not cross-site failover.
 
 The chart's opt-in `sip.globalRouting.enabled` mode provides a global [Gateway API TLSRoute](https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.TLSRoute) and K8GB DNS identity for new-call discovery. The Contact identity produced by Kamailio remains site-specific even in this mode; do not make established dialogs globally load balanced until dialog state and B2BUA recovery are actually shared across sites. K8GB DNS failover directs new dialog setup; it does not replicate Kamailio, FreeSWITCH, or RTPEngine live state across sites.
 
@@ -254,3 +254,16 @@ not live verification. Rollback is a reviewed Git revert followed by the
 normal scoped Argo CD sync; do not manually edit or apply production resources.
 Existing calls keep their established Contact and route set, so verify rollback
 with a fresh dialog.
+
+## FreeSWITCH dialog ownership in HA
+
+The active YVR deployment runs two FreeSWITCH replicas. The shared Service is
+appropriate for initial calls, but it is not a dialog-owner lookup: a carrier
+BYE sent through it can land on a replica without the Sofia dialog. For
+carrier-originated in-dialog requests, the carrier Kamailio instance now uses
+the per-pod FreeSWITCH address restored by TOPOS and sends TLS to the
+FreeSWITCH Kamailio-facing listener. Its TLS SNI and certificate verification
+continue to use the service DNS identity. New calls retain the existing
+load-balanced Service route. TOPOS keeps the pod address private from the
+carrier. This preserves routing to the current dialog owner; it does not
+replicate live calls across FreeSWITCH pods.

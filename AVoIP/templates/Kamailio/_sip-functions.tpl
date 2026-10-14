@@ -731,8 +731,26 @@
       #
       # The only SIP peer FreeSWITCH has is Kamailio.
       #
+      {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled .Values.freeswitch.enabled }}
+      # On outbound carrier dialogs, TOPOS restores the FreeSWITCH Contact in
+      # the Request-URI. FreeSWITCH's gateway profile advertises its pod IP,
+      # while the shared Service is only for new calls. Route an in-dialog
+      # request to that exact pod; the Service can select a different replica
+      # that has no matching Sofia dialog.
+      if (has_totag() && $var(side) == "carrier" && $rd =~ "^[0-9.]+$") {
+        $du = "sip:" + $rd + ":{{ .Values.kamailio.backend.servicePort }};transport=tls";
+        xlog(
+          "L_INFO",
+          "SIP dialog backend owner route pod=$env(POD_NAME) callid=$ci method=$rm backend_ip=$rd backend_port={{ .Values.kamailio.backend.servicePort }}\n"
+        );
+      } else {
+        $du =
+          "sip:{{ $freeswitchHost }}:{{ .Values.kamailio.backend.servicePort }};transport=tls";
+      }
+      {{- else }}
       $du =
         "sip:{{ $freeswitchHost }}:{{ .Values.kamailio.backend.servicePort }};transport=tls";
+      {{- end }}
 
       $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
       set_send_socket_name("private_tls");
