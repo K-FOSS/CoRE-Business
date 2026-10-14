@@ -153,7 +153,8 @@ for each AVoIP site. The voice DID now enters a silent YVR FreeSWITCH IVR with
 an exact Asterisk destination allowlist; both sites' FaxNumber DIDs route to
 YVR SIP Core extension `7101` instead of the fax receiver. The
 [AVoIP inbound call path](../AVoIP/docs/PHONE-TREE.md) records the DID routes,
-IVR behavior, and retained fax spool. The
+IVR behavior, GG playback after failed inbound Asterisk handoffs, and retained
+fax spool. The
 chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md),
 [YXL and YVR carrier mTLS transport and YVR Asterisk NANP outbound calling](../AVoIP/docs/OUTBOUND-PILOT.md) and
 [private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md)

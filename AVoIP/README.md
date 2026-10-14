@@ -344,6 +344,10 @@ and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
 SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`
 when that exposure or log volume is not appropriate.
 
+Failed inbound Asterisk handoffs in FreeSWITCH answer the caller, play
+the existing GG asset, and hang up normally by default; see the
+[inbound failure policy](docs/PHONE-TREE.md#configured-did).
+
 Each Kamailio-enabled cluster can deploy the internal [Homer 11 SIP monitoring](docs/HOMER.md)
 stack. Kamailio forwards HEPv3 signaling directly to the Homer 11 ingest
 listener, while RTPEngine forwards RTCP/NG diagnostics. The Homer UI is

@@ -33,6 +33,8 @@ FreeSWITCH digit collector, with exact Asterisk destinations `7101`, `9090`, `66
 `1234`. Both sites' FaxNumber DIDs route to YVR Asterisk extension `7101`;
 they no longer select the fax receiver. See the
 [inbound routing guide](AVoIP/docs/PHONE-TREE.md).
+Failed inbound FreeSWITCH handoffs to Asterisk answer the caller, play GG,
+and hang up normally; the same guide documents verification and rollback.
 The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES.md)
 and [YVR Asterisk-to-carrier NANP calling](AVoIP/docs/OUTBOUND-PILOT.md)
 through the authenticated service path. A new desired-state change moves

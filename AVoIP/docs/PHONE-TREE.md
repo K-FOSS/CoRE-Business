@@ -58,8 +58,31 @@ Inbound calls over either public SIP transport follow this path:
    its FaxNumber DID bridges directly to Asterisk.
 5. If no DTMF input is entered, FreeSWITCH ends the answered IVR call after
    its configured 15-second input timeout. If a selected Asterisk extension
-   does not answer, the call ends after the 30-second endpoint timeout.
+   does not answer, the Asterisk endpoint timeout applies. Failed inbound
+   handoffs to Asterisk then play GG in FreeSWITCH and hang up normally.
    Unmatched public destinations are rejected.
+
+`freeswitch.inboundBridgeFailure.enabled` defaults to `true` for the direct
+voice/FaxNumber, authenticated inter-site, and accepted IVR destination bridges.
+FreeSWITCH uses [`continue_on_fail` and `hangup_after_bridge`](https://developer.signalwire.com/freeswitch/dialplan/xml/)
+to continue a failed handoff while ending successful bridges normally. It ignores
+early media until the destination answers, answers the caller on failure, plays
+the existing GG asset from `freeswitch.preBridgeAudio.url` through `mod_shout`,
+then hangs up with `NORMAL_CLEARING`. The fallback clears the post-answer hook
+to avoid playing the same asset twice, and clears the inherited SIP error cause.
+An already answered IVR call proceeds directly to playback. A caller who has
+cancelled or hung up cannot be answered again. This applies once the call has
+reached FreeSWITCH; failures in an earlier carrier/Kamailio hop cannot execute
+its dialplan. Authentication failures and unmatched destinations keep their
+existing rejection behavior.
+
+Verify a new inbound bridge failure by its `AVoIP inbound bridge failed` log,
+carrier `200 OK`/ACK, GG RTP playback, and normal BYE. Also verify a successful
+handoff ends without GG. Reconcile the dialplan ConfigMap through the
+[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+and allow the existing Reloader rollout to finish on both FreeSWITCH replicas.
+Setting the flag to `false` restores the earlier failure handling after the
+same reconciliation; no persistent data or external resources are removed.
 
 The YXL-to-YVR routes use the existing carrier peers' Vault-issued client
 identities and YVR ClusterIP `10.44.7.136:5061`; they do not enable the YXL

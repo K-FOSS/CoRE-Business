@@ -1002,6 +1002,10 @@ freeswitch:
     # sound asset. Enable explicitly only when a post-answer prompt is wanted.
     enabled: false
     url: 'http://10.1.1.84/Sounds/gg-sound-effect.mp3'
+  inboundBridgeFailure:
+    # Answer failed inbound Asterisk handoffs, play the GG asset above, and
+    # hang up normally. Successful bridges terminate without this fallback.
+    enabled: true
   sms:
     enabled: true
   sipLogging:

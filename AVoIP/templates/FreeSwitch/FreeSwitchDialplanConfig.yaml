@@ -60,7 +60,9 @@ data:
           <condition field="sip_h_X-Core-InterSite" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
             <action application="log" data="INFO AVoIP authorized inter-site transfer peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number}"/>
             <action application="ring_ready"/>
+            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
           </condition>
         </extension>
         {{- if and $.Values.freeswitch.ivr.enabled $.Values.freeswitch.interSite.ivrExtension }}
@@ -79,7 +81,9 @@ data:
             <action application="set" data="outside_call=true"/>
             <action application="log" data="INFO AVoIP FaxNumber DID: bridging to YVR Asterisk caller=${caller_id_number}"/>
             <action application="ring_ready"/>
+            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
           </condition>
         </extension>
         {{- end }}
@@ -129,7 +133,9 @@ data:
             <!-- Keep the carrier leg ringing until Asterisk returns 200 OK. -->
             <action application="ring_ready"/>
             <action application="log" data="INFO AVoIP DID ${destination_number}: bridging to Asterisk"/>
+            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
             {{- end }}
           </condition>
         </extension>
@@ -220,7 +226,9 @@ data:
           <condition field="destination_number" expression="^{{ . }}$">
             <action application="log" data="INFO AVoIP silent IVR forwarding caller=${caller_id_number} to YVR Asterisk extension=${destination_number}"/>
             <action application="set" data="hangup_after_bridge=true"/>
+            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
             <action application="hangup"/>
           </condition>
         </extension>
