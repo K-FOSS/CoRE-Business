@@ -463,10 +463,8 @@ kamailio:
         enabled: false
         mode: 'test'
         # In NANP mode only calls from these configured Asterisk SIP Core
-        # extensions may use the carrier. Carrier caller ID comes from avoip.did.
+        # extensions may use the carrier. The caller ID is the configured DID.
         extensions: []
-        # Retained for compatibility with existing value layers. NANP mode
-        # derives its caller ID from avoip.did and ignores this field.
         callerId: ''
       peer:
         cidr: ''

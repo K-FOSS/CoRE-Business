@@ -190,8 +190,8 @@
         }
         remove_hf("Route");
         remove_hf("P-Asserted-Identity");
-        append_hf("P-Asserted-Identity: <sip:{{ .Values.avoip.did }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
-        $fU = "{{ .Values.avoip.did }}";
+        append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.calls.callerId }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
+        $fU = "{{ .Values.kamailio.carrierOutbound.calls.callerId }}";
         $ru = "sips:" + $rU + "@{{ include "avoip.sip.siteHost" . }}";
         record_route();
         dlg_manage();
@@ -366,8 +366,8 @@
         }
         remove_hf("Route");
         remove_hf("P-Asserted-Identity");
-        append_hf("P-Asserted-Identity: <sip:{{ .Values.avoip.did }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
-        $fU = "{{ .Values.avoip.did }}";
+        append_hf("P-Asserted-Identity: <sip:{{ .Values.kamailio.carrierOutbound.calls.callerId }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
+        $fU = "{{ .Values.kamailio.carrierOutbound.calls.callerId }}";
         $ru = "sips:" + $rU + "@{{ include "avoip.sip.siteHost" . }}";
         record_route();
         dlg_manage();

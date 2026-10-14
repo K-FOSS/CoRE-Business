@@ -57,7 +57,7 @@ for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
 `7101` to place
-standard NANP calls through that route, with `avoip.did` as caller ID.
+standard NANP calls through that route, with the configured Asterisk DID as caller ID.
 YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
 outbound SIPS TLSRoute stays enabled. The desired YXL voice route transfers
@@ -181,6 +181,12 @@ signaling and media. FreeSWITCH uses the Flowroute regional proxy for REGISTER
 and its gateway `outbound-proxy` for the Kamailio INVITE hop, following the
 [FreeSWITCH gateway configuration](https://developer.signalwire.com/freeswitch/users-and-endpoints/gateways/)
 and [Flowroute regional PoP configuration](https://developer.flowroute.com/docs/inbound-and-outbound-calling-with-flowroute-new-pops/).
+The carrier Kamailio prefixes the Flowroute registration username and `*` to
+the outbound E.164 Request-URI from a username-only ExternalSecret. This
+provides Flowroute's IP-auth Tech Prefix format; it does not disable the
+existing SIP registration credentials. Flowroute IP authentication also
+requires a static public egress IP and account-side allowlisting; see its
+[IP-auth setup](https://support.bcmone.com/flowroute-support/docs/set-up-ip-based-authentication-for-outbound-calls).
 The ApplicationSet enables two FreeSWITCH replicas at both sites and disables
 the direct SIP Service. The configured Asterisk SIP Core NANP caller remains
 YVR extension `7101`; YXL has no SIP Core caller configured. This provides
@@ -392,7 +398,7 @@ staged route and Asterisk Path cutover. An
 over the existing SIPS Gateway path and site SNI between internal and carrier
 Kamailio. It reuses the current Flowroute trunk and adds no Gateway route,
 SNI, or Service. YVR enables account `7101` for standard NANP calls with
-`avoip.did` as caller ID, carrier-owned RTPEngine media anchoring, and shared
+the configured Asterisk DID as caller ID, carrier-owned RTPEngine media anchoring, and shared
 rate/concurrency quotas. YXL call origination remains disabled. No live carrier
 call has been made. The chart does not
 enable the Kamailio registrar pilot or an OIDC webphone; its current SIP Core
