@@ -24,7 +24,7 @@ jobs:
       DOCKER_CERT_PATH: /certs/client
     steps:
       - name: Bootstrap Docker Buildx prerequisites
-        shell: bash
+        shell: sh
         run: |
           apk add --no-cache bash ca-certificates git nodejs python3
       - name: Check out repository
