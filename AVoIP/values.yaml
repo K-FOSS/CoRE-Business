@@ -357,7 +357,7 @@ kamailio:
       bindAddress: '0.0.0.0'
     # Kamailio's implicit shared memory default is 64 MiB. Private SBC role
     # defaults raise this for SIP Core TLS handshakes and topology state.
-    shmSizeMb: 64
+    shmSizeMb: 256
     tcpChildren: 4
     replicas: 3
     rollingUpdate:
