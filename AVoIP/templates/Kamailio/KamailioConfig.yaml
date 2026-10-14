@@ -260,6 +260,9 @@ data:
     # Store and restore topology around INVITE dialogs.
     modparam("topos", "sanity_checks", 1)
     modparam("topos", "rr_update", 1)
+    # OPTIONS keepalives do not form dialogs and need no topology record. This
+    # avoids futile TOPOS writes when Asterisk probes a stale WSS contact.
+    modparam("topos", "methods_noinitial", "OPTIONS")
 
     #
     # Preserve each side's meaningful Contact user; TOPOS stores its lookup

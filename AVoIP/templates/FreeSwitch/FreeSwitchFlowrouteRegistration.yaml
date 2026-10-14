@@ -61,6 +61,9 @@ spec:
               <param name="sip-port" value="5080"/>
               <param name="sip-ip" value="$${local_ip_v4}"/>
               <param name="rtp-ip" value="$${local_ip_v4}"/>
+              <!-- RFC 4733 telephone-event uses the same dynamic payload on
+                   this carrier profile as the existing external profile. -->
+              <param name="rfc2833-pt" value="101"/>
               <!-- The gateway registers to Flowroute over UDP, but sends
                    outbound INVITEs through the private Kamailio mTLS path. -->
               <param name="tls" value="true"/>

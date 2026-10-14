@@ -69,6 +69,15 @@
       }
       if ($redis(outbound_quota=>type) != $redisd(rpl_int) ||
           $redis(outbound_quota=>value) != 1) {
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        $var(outbound_quota_cause) = "unknown";
+        if ($redis(outbound_quota=>value) == -2) $var(outbound_quota_cause) = "concurrency_limit";
+        else if ($redis(outbound_quota=>value) == -1) $var(outbound_quota_cause) = "rate_limit";
+        hlog(
+          "$ci",
+          "kamailio_event=call_end call_id=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) site={{ $.Values.region }} gateway=flowroute final_sip_status=486 cause_source=local_policy local_cause=$var(outbound_quota_cause)"
+        );
+        {{- end }}
         sl_send_reply("486", "Outbound Limit Reached");
         exit;
       }
@@ -86,6 +95,10 @@
       {{- end }}
       route(RR_BACKEND_TO_CARRIER);
       dlg_manage();
+      $dlg_var(core_linkedid) = $hdr(X-Core-Call-Linkedid);
+      $dlg_var(core_origin_uniqueid) = $hdr(X-Core-Origin-Uniqueid);
+      $dlg_var(outbound_site) = "{{ $.Values.region }}";
+      $dlg_var(outbound_gateway) = "flowroute";
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("replace-origin internal external")) {
           route(OUTBOUND_RELEASE);
@@ -98,7 +111,7 @@
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog(
         "$ci",
-        "kamailio_event=routing_decision route=authorized_outbound_to_flowroute call_id=$ci method=$rm cseq=$hdr(CSeq) source=$si:$sp destination=$du ruri=$ru transport=$proto"
+        "kamailio_event=routing_decision route=authorized_outbound_to_flowroute call_id=$ci linkedid=$dlg_var(core_linkedid) origin_uniqueid=$dlg_var(core_origin_uniqueid) site=$dlg_var(outbound_site) gateway=$dlg_var(outbound_gateway) method=$rm cseq=$hdr(CSeq) transport=$proto"
       );
       {{- end }}
       route(RELAY);

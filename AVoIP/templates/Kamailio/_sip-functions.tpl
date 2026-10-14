@@ -908,8 +908,23 @@
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog(
         "L_INFO",
-        "SIP response call_id=$ci method=$rm status=$rs direction=$var(side) recv_socket=$Ri:$Rp/$proto send_socket=$fsn source_ip=$si destination_ip=$du route_uri=$route_uri ruri=$ru topos_result=processed dialog_direction=$var(side) cseq=$hdr(CSeq)\n"
+        "SIP response call_id=$ci method=$rm status=$rs direction=$var(side) recv_socket=$Ri:$Rp/$proto send_socket=$fsn source_ip=$si destination_ip=$du reason_header=$hdr(Reason) dialog_direction=$var(side) cseq=$hdr(CSeq)\n"
       );
+      if ($dlg_var(outbound_gateway) == "flowroute") {
+        xlog(
+          "L_INFO",
+          "SIP outbound response call_id=$ci linkedid=$dlg_var(core_linkedid) origin_uniqueid=$dlg_var(core_origin_uniqueid) site=$dlg_var(outbound_site) gateway=$dlg_var(outbound_gateway) method=$rm status=$rs reason_header=$hdr(Reason) cause_source=received_sip_response response_source=$si:$sp cseq=$hdr(CSeq)\n"
+        );
+      }
+      {{- end }}
+
+      {{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      if ($dlg_var(outbound_gateway) == "flowroute" && $rm == "INVITE" && $rs >= 200) {
+        hlog(
+          "$ci",
+          "kamailio_event=call_end call_id=$ci linkedid=$dlg_var(core_linkedid) origin_uniqueid=$dlg_var(core_origin_uniqueid) site=$dlg_var(outbound_site) gateway=$dlg_var(outbound_gateway) final_sip_status=$rs reason_header=$hdr(Reason) cause_source=received_sip_response response_source=$si:$sp cseq=$hdr(CSeq)"
+        );
+      }
       {{- end }}
 
       return(1);
@@ -953,7 +968,7 @@
       ) {
         xlog(
           "L_INFO",
-          "SIP wire SDP pod=$env(POD_NAME) callid=$ci method=$rm status=$rs destination=$snd(ip):$snd(port) connection=$(snd(buf){re.subst,/.*\r\n(c=[^\r\n]+)\r\n.*/\\1/s}) media=$(snd(buf){re.subst,/.*\r\n(m=[^\r\n]+)\r\n.*/\\1/s})\n"
+          "SIP wire SDP pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) method=$rm status=$rs destination=$snd(ip):$snd(port) connection=$(snd(buf){re.subst,/.*\r\n(c=[^\r\n]+)\r\n.*/\\1/s}) media=$(snd(buf){re.subst,/.*\r\n(m=[^\r\n]+)\r\n.*/\\1/s}) sdp_body=$(snd(buf){re.subst,/.*\r\n\r\n(.*)/\\1/s})\n"
         );
       }
       {{- end }}
