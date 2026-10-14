@@ -20,6 +20,12 @@
 {{- if lt (int .Values.freeswitch.highAvailability.minAvailable) 1 -}}
   {{- fail "freeswitch.highAvailability.minAvailable must be at least 1 for Flowroute HA" -}}
 {{- end -}}
+{{- if or (lt (int .Values.freeswitch.flowrouteOutbound.tlsPort) 1024) (gt (int .Values.freeswitch.flowrouteOutbound.tlsPort) 65535) -}}
+  {{- fail "freeswitch.flowrouteOutbound.tlsPort must be a TCP port from 1024 through 65535" -}}
+{{- end -}}
+{{- if or (eq (int .Values.freeswitch.flowrouteOutbound.tlsPort) (int .Values.freeswitch.publicExposure.kamailio.backendPort)) (eq (int .Values.freeswitch.flowrouteOutbound.tlsPort) (int .Values.freeswitch.asterisk.tlsPort)) -}}
+  {{- fail "freeswitch.flowrouteOutbound.tlsPort must differ from the Kamailio and Asterisk FreeSWITCH listeners" -}}
+{{- end -}}
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -61,10 +67,10 @@ spec:
               <param name="sip-port" value="5080"/>
               <param name="sip-ip" value="$${local_ip_v4}"/>
               <param name="rtp-ip" value="$${local_ip_v4}"/>
-              <!-- Advertise the owner pod through its Kamailio-facing TLS
-                   listener; carrier Kamailio hides this target with TOPOS. -->
+              <!-- Advertise the Flowroute Sofia listener on this owner pod;
+                   carrier Kamailio hides this target with TOPOS. -->
               <param name="ext-sip-ip" value="$${local_ip_v4}"/>
-              <param name="ext-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
+              <param name="ext-sip-port" value="{{ $.Values.freeswitch.flowrouteOutbound.tlsPort }}"/>
               <!-- RFC 4733 telephone-event uses the same dynamic payload on
                    this carrier profile as the existing external profile. -->
               <param name="rfc2833-pt" value="101"/>
@@ -72,7 +78,7 @@ spec:
                    outbound INVITEs through the private Kamailio mTLS path. -->
               <param name="tls" value="true"/>
               <param name="tls-only" value="false"/>
-              <param name="tls-sip-port" value="5081"/>
+              <param name="tls-sip-port" value="{{ $.Values.freeswitch.flowrouteOutbound.tlsPort }}"/>
               <param name="tls-cert-dir" value="/etc/freeswitch/tls-flowroute"/>
               <param name="tls-verify-date" value="true"/>
               <param name="tls-verify-policy" value="subjects_out"/>

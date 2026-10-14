@@ -1651,6 +1651,11 @@ controllers:
           - name: tls-asterisk
             containerPort: {{ .Values.freeswitch.asterisk.tlsPort }}
             protocol: TCP
+          {{- if .Values.freeswitch.flowrouteOutbound.enabled }}
+          - name: tls-flowroute
+            containerPort: {{ .Values.freeswitch.flowrouteOutbound.tlsPort }}
+            protocol: TCP
+          {{- end }}
           - name: udp-sip-edge
             containerPort: 5090
             protocol: UDP

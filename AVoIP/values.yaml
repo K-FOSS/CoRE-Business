@@ -927,6 +927,9 @@ freeswitch:
     # Outbound INVITEs use the existing private-to-carrier Kamailio path so
     # carrier Kamailio and RTPEngine continue anchoring the media leg.
     enabled: false
+    # Private TLS listener for Flowroute-profile dialogs. Kamailio routes
+    # established carrier requests directly to the FreeSWITCH owner pod here.
+    tlsPort: 5081
     # Used only on the FreeSWITCH-to-Flowroute bridge leg. PCMU is required;
     # PCMA can be omitted if the carrier trunk policy prefers μ-law only.
     codecs: ['PCMU', 'PCMA']
