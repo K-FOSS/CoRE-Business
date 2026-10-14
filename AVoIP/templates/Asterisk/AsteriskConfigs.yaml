@@ -1,6 +1,14 @@
 {{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
+{{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+  {{- if not (regexMatch "^[A-Za-z_][A-Za-z0-9_]*$" .Values.asterisk.voicemail.messagesTable) }}
+    {{- fail "asterisk.voicemail.messagesTable must be a plain SQL identifier" }}
+  {{- end }}
+  {{- if not (regexMatch "^[A-Za-z0-9 _.-]+$" .Values.asterisk.voicemail.odbcDriver) }}
+    {{- fail "asterisk.voicemail.odbcDriver must be a registered ODBC driver name" }}
+  {{- end }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -50,7 +58,14 @@ data:
     noload => res_hep_rtcp.so
     noload => chan_sip.so
     noload => app_voicemail_imap.so
+    {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+    require = res_odbc.so
+    require = res_config_odbc.so
+    noload => app_voicemail.so
+    require = app_voicemail_odbc.so
+    {{- else }}
     noload => app_voicemail_odbc.so
+    {{- end }}
     noload => app_fax.so
     noload => app_faxdetect.so
     noload => res_fax.so
@@ -81,6 +96,31 @@ data:
     batch=yes
     safeshutdown=yes
 
+  res_odbc.conf: |
+    {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+    # ODBC credentials are generated into the writable runtime directory.
+    #include /tmp/avoip-res_odbc.conf
+    {{- else }}
+    [general]
+    {{- end }}
+
+  extconfig.conf: |
+    [settings]
+    {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+    voicemail => odbc,avoip-voicemail,voicemail
+    {{- end }}
+
+  voicemail.conf: |
+    [general]
+    format=wav|wav49|gsm
+    attach=no
+    minpassword=4
+    {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+    odbcstorage=avoip-voicemail
+    odbctable={{ .Values.asterisk.voicemail.messagesTable }}
+    {{- end }}
+    [default]
+
   cdr_pgsql.conf: |
     #include /tmp/avoip-cdr_pgsql.conf
 
@@ -105,7 +145,14 @@ data:
     ; Keep this leg in ringing state until the selected SIP Core endpoint answers.
     {{- if $.Values.asterisk.sipCore.inboundVoiceExtension }}
     exten => {{ . }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.inboundVoiceExtension }},30)
+      {{- if and (or $.Values.asterisk.voicemail.enabled $.Values.freeswitch.voicemail.enabled) (eq (toString .) (toString $.Values.fax.did)) }}
+      same => n,GotoIf($["${DIALSTATUS}" = "CANCEL"]?done)
+      same => n,NoOp(AVoIP voicemail fallback dialstatus=${DIALSTATUS} mailbox={{ $.Values.asterisk.sipCore.inboundVoiceExtension }} cause=${HANGUPCAUSE})
+      same => n,VoiceMail({{ $.Values.asterisk.sipCore.inboundVoiceExtension }}@default,u)
+      same => n(done),Hangup()
+      {{- else }}
       same => n,Hangup()
+      {{- end }}
     {{- else }}
     exten => {{ . }},1,Answer()
       same => n,Echo()
@@ -153,9 +200,9 @@ data:
     {{- range .Values.asterisk.sipCore.extensions }}
     ; Each SIP Core account has its own context and exact extension allowlist.
     [from-sipcore-{{ .number }}]
-    {{- if and $.Values.freeswitch.voicemail.enabled (eq (toString .number) (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) }}
+    {{- if and (or $.Values.asterisk.voicemail.enabled $.Values.freeswitch.voicemail.enabled) (eq (toString .number) (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) }}
     ; Keep mailbox access limited to the direct extension owner.
-    exten => {{ $.Values.freeswitch.voicemail.accessCode }},1,Dial(PJSIP/${EXTEN}@freeswitch,30)
+    exten => {{ default $.Values.freeswitch.voicemail.accessCode $.Values.asterisk.voicemail.accessCode }},1,VoiceMailMain({{ .number }}@default)
       same => n,Hangup()
     {{- end }}
     {{- range .allowCallsTo }}

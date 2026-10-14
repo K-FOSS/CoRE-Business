@@ -893,6 +893,17 @@ asterisk:
     table: 'cdr'
     terraformProvider: ''
     crossplaneProvider: ''
+  voicemail:
+    # Store recordings in PostgreSQL through Asterisk app_voicemail_odbc.
+    # The legacy freeswitch.voicemail.enabled setting remains accepted during
+    # site-value migration; new deployments should use this setting.
+    enabled: false
+    accessCode: ''
+    pinSecret:
+      remoteKey: 'AVoIP/SIPCore/VoiceMail'
+      property: 'Pin'
+    odbcDriver: 'PostgreSQL Unicode'
+    messagesTable: 'voicemail_messages'
   image:
     # renovate: datasource=docker depName=forge.core-dc1-talos-prod.dc1.yxl.writemy.codes/core/core-docker/asterisk
     repository: kristianfjones/asterisk
@@ -1054,16 +1065,11 @@ freeswitch:
     terraformProvider: ''
     crossplaneProvider: ''
   voicemail:
-    # FreeSWITCH can provide a mailbox after an extension bridge fails.
-    # Enable in a site value layer only after provisioning the mailbox PIN in
-    # the extension's existing CoreVault secret.
+    # Deprecated compatibility alias. Voicemail is handled by Asterisk; new
+    # site layers should set asterisk.voicemail.enabled instead.
     enabled: false
     accessCode: '*97'
     pinProperty: 'VoicemailPIN'
-    storagePath: '/var/spool/freeswitch/voicemail'
-    storageClass: ''
-    storageSize: '1Gi'
-    retain: true
   rtp:
     min: 11000
     max: 11050

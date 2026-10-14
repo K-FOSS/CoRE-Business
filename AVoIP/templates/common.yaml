@@ -789,9 +789,9 @@ controllers:
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }},{{ include "avoip.fullname" . }}-asterisk-voicemail-pin{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
     initContainers:
-{{- if .Values.asterisk.cdr.enabled }}
+{{- if or .Values.asterisk.cdr.enabled .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
       cdr-schema:
         image:
           repository: 'postgres'
@@ -804,6 +804,15 @@ controllers:
         args:
           - |
             set -eu
+            {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+            case "$VM_PIN" in
+              ''|*[!0-9]*) printf '%s\n' 'Voicemail PIN must contain digits only' >&2; exit 1 ;;
+            esac
+            if [ "${#VM_PIN}" -lt 4 ] || [ "${#VM_PIN}" -gt 12 ]; then
+              printf '%s\n' 'Voicemail PIN must contain 4 to 12 digits' >&2
+              exit 1
+            fi
+            {{- end }}
             export PGUSER="$USERNAME"
             export PGPASSWORD="$PASSWORD"
             export PGDATABASE="$USERNAME"
@@ -811,6 +820,7 @@ controllers:
               sleep 2
             done
             psql -v ON_ERROR_STOP=1 -h '{{ $asteriskCdrHost }}' -p '{{ $.Values.asterisk.cdr.port }}' <<'SQL'
+            {{- if .Values.asterisk.cdr.enabled }}
             CREATE TABLE IF NOT EXISTS {{ $.Values.asterisk.cdr.table }} (
               calldate timestamp NOT NULL,
               clid varchar(80) NOT NULL,
@@ -831,7 +841,62 @@ controllers:
               peeraccount varchar(20),
               linkedid varchar(150),
               sequence integer
-            )
+            );
+            {{- end }}
+            {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+            CREATE TABLE IF NOT EXISTS {{ $.Values.asterisk.voicemail.messagesTable }} (
+              dir varchar(255) NOT NULL,
+              msgnum integer NOT NULL,
+              context varchar(80),
+              macrocontext varchar(80),
+              callerid varchar(80),
+              origtime integer,
+              duration integer,
+              recording bytea,
+              flag varchar(30),
+              category varchar(30),
+              mailboxuser varchar(30),
+              mailboxcontext varchar(30),
+              msg_id varchar(40),
+              PRIMARY KEY (dir, msgnum)
+            );
+            CREATE TABLE IF NOT EXISTS voicemail (
+              uniqueid bigserial PRIMARY KEY,
+              context varchar(80) NOT NULL,
+              mailbox varchar(80) NOT NULL,
+              password varchar(80) NOT NULL,
+              fullname varchar(80) NOT NULL DEFAULT '',
+              alias varchar(80) NOT NULL DEFAULT '',
+              email varchar(80) NOT NULL DEFAULT '',
+              pager varchar(80) NOT NULL DEFAULT '',
+              tz varchar(30) NOT NULL DEFAULT 'UTC',
+              attach varchar(3) NOT NULL DEFAULT 'no',
+              saycid varchar(3) NOT NULL DEFAULT 'no',
+              sendvoicemail varchar(3) NOT NULL DEFAULT 'no',
+              review varchar(3) NOT NULL DEFAULT 'no',
+              tempgreetwarn varchar(3) NOT NULL DEFAULT 'no',
+              operator varchar(3) NOT NULL DEFAULT 'no',
+              envelope varchar(3) NOT NULL DEFAULT 'yes',
+              sayduration integer NOT NULL DEFAULT 0,
+              saydurationm integer NOT NULL DEFAULT 1,
+              forcename varchar(3) NOT NULL DEFAULT 'no',
+              forcegreetings varchar(3) NOT NULL DEFAULT 'no',
+              callback varchar(80) NOT NULL DEFAULT '',
+              dialout varchar(80) NOT NULL DEFAULT '',
+              exitcontext varchar(80) NOT NULL DEFAULT '',
+              maxmsg integer NOT NULL DEFAULT 100,
+              volgain numeric(5,2) NOT NULL DEFAULT 0,
+              deletevoicemail varchar(3) NOT NULL DEFAULT 'no',
+              nextaftercmd varchar(3) NOT NULL DEFAULT 'yes',
+              hidefromdir varchar(3) NOT NULL DEFAULT 'yes',
+              stamp timestamp with time zone NOT NULL DEFAULT now(),
+              UNIQUE (context, mailbox)
+            );
+            \getenv voicemail_pin VM_PIN
+            INSERT INTO voicemail (context, mailbox, password, fullname, email, attach)
+            VALUES ('default', '{{ $.Values.asterisk.sipCore.inboundVoiceExtension }}', :'voicemail_pin', '', '', 'no')
+            ON CONFLICT (context, mailbox) DO NOTHING;
+            {{- end }}
             SQL
         env:
           - name: USERNAME
@@ -844,6 +909,13 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-asterisk'
                 key: password
+        {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+          - name: VM_PIN
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-asterisk-voicemail-pin'
+                key: pin
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -945,12 +1017,36 @@ controllers:
             printf 'encoding=UTF-8\n' >> /tmp/avoip-cdr_pgsql.conf
             printf 'table={{ .Values.asterisk.cdr.table }}\n' >> /tmp/avoip-cdr_pgsql.conf
             {{- end }}
+            {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+            if ! find /usr/lib/asterisk/modules /usr/lib64/asterisk/modules -type f -name app_voicemail_odbc.so -print -quit 2>/dev/null | grep -q app_voicemail_odbc.so; then
+              printf '%s\n' 'Asterisk voicemail requires app_voicemail_odbc.so in the image' >&2
+              exit 1
+            fi
+            if ! command -v odbcinst >/dev/null 2>&1 || ! odbcinst -q -d 2>/dev/null | grep -Fqx '[{{ .Values.asterisk.voicemail.odbcDriver }}]'; then
+              printf '%s\n' 'Asterisk voicemail requires its configured PostgreSQL ODBC driver in the image' >&2
+              exit 1
+            fi
+            db_username="$(cat /tmp/avoip-username)"
+            db_password="$(cat /tmp/avoip-password)"
+            {
+              printf '[avoip-voicemail]\nenabled => yes\ndsn => avoip-voicemail\nusername => %s\npassword => %s\npre-connect => yes\n' "$db_username" "$db_password"
+            } > /tmp/avoip-res_odbc.conf
+            {
+              printf '[avoip-voicemail]\nDriver={{ .Values.asterisk.voicemail.odbcDriver }}\nServername={{ $asteriskCdrHost }}\nPort={{ .Values.asterisk.cdr.port }}\nDatabase=%s\nUsername=%s\nPassword=%s\nSSLmode=prefer\n' "$db_username" "$db_username" "$db_password"
+            } > /tmp/avoip-odbc.ini
+            unset db_username db_password
+            {{- end }}
             exec /usr/sbin/asterisk -f -C /etc/asterisk/asterisk.conf
         image:
           repository: '{{ .Values.asterisk.image.repository }}'
           tag: '{{ .Values.asterisk.image.tag }}'
           digest: '{{ .Values.asterisk.image.digest }}'
           pullPolicy: '{{ .Values.asterisk.image.pullPolicy }}'
+        {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+        env:
+          - name: ODBCINI
+            value: /tmp/avoip-odbc.ini
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -1556,15 +1652,6 @@ controllers:
           - -c
         args:
           - |
-            {{- if .Values.freeswitch.voicemail.enabled }}
-            case "$VOICEMAIL_PIN" in
-              ''|*[!0-9]*) printf '%s\n' 'Voicemail PIN must contain digits only' >&2; exit 1 ;;
-            esac
-            if [ "${#VOICEMAIL_PIN}" -lt 4 ] || [ "${#VOICEMAIL_PIN}" -gt 12 ]; then
-              printf '%s\n' 'Voicemail PIN must contain 4 to 12 digits' >&2
-              exit 1
-            fi
-            {{- end }}
             exec /usr/bin/freeswitch -nonat -nocal -nort -nosql -nf -nc </dev/null
         image:
           repository: '{{ .Values.freeswitch.image.repository }}'
@@ -1582,13 +1669,6 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
-        {{- if .Values.freeswitch.voicemail.enabled }}
-          - name: VOICEMAIL_PIN
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "avoip.fullname" . }}-freeswitch-voicemail-pin'
-                key: pin
-        {{- end }}
         {{- if .Values.asterisk.enabled }}
           - name: ASTERISK_PEER_PASSWORD
             valueFrom:
@@ -2117,6 +2197,12 @@ persistence:
             subPath: cdr.conf
           - path: /etc/asterisk/cdr_pgsql.conf
             subPath: cdr_pgsql.conf
+          - path: /etc/asterisk/res_odbc.conf
+            subPath: res_odbc.conf
+          - path: /etc/asterisk/extconfig.conf
+            subPath: extconfig.conf
+          - path: /etc/asterisk/voicemail.conf
+            subPath: voicemail.conf
           - path: /etc/asterisk/modules.conf
             subPath: modules.conf
           - path: /etc/asterisk/asterisk.conf
@@ -2260,12 +2346,6 @@ persistence:
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}
-{{- if .Values.freeswitch.voicemail.enabled }}
-          - path: /etc/freeswitch/autoload_configs/voicemail.conf.xml
-            subPath: voicemail.conf.xml
-          - path: /etc/freeswitch/directory/voicemail-directory.xml
-            subPath: voicemail-directory.xml
-{{- end }}
           {{- if .Values.freeswitch.ldap.enabled }}
           - path: /etc/freeswitch/autoload_configs/ldap.conf.xml
             subPath: ldap.conf.xml
@@ -2386,21 +2466,6 @@ persistence:
       freeswitch:
         freeswitch:
           - path: {{ .Values.freeswitch.fax.spoolPath }}
-{{- end }}
-{{- if .Values.freeswitch.voicemail.enabled }}
-  freeswitch-voicemail-storage:
-    forceRename: '{{ include "avoip.fullname" . }}-freeswitch-voicemail-storage'
-    type: persistentVolumeClaim
-    storageClass: '{{ default .Values.freeswitch.fax.persistence.haStorageClass .Values.freeswitch.voicemail.storageClass }}'
-    accessMode: 'ReadWriteMany'
-    size: '{{ .Values.freeswitch.voicemail.storageSize }}'
-    retain: {{ .Values.freeswitch.voicemail.retain }}
-    annotations:
-      argocd.argoproj.io/sync-options: 'Prune=false,Delete=false'
-    advancedMounts:
-      freeswitch:
-        freeswitch:
-          - path: {{ .Values.freeswitch.voicemail.storagePath }}
 {{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
         recordings:
