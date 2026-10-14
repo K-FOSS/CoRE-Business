@@ -1,6 +1,7 @@
 {{- define "avoip.kamailio.render.KamailioConfig" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $bindAddress := default "KAMAILIO_POD_IP" .Values.kamailio.listeners.bindAddress -}}
 {{- $backendService := default (printf "%s-freeswitch" $fullName) .Values.kamailio.backend.serviceName -}}
 {{- $publicSipHost := include "avoip.sip.siteHost" . -}}
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
@@ -26,6 +27,10 @@ metadata:
   name: {{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "config") }}
 data:
   kamailio.cfg: |
+    {{- if eq $bindAddress "KAMAILIO_POD_IP" }}
+    # Bind each pod's actual address so SIP traces and hlog HEP sources are concrete.
+    #!substdef "/KAMAILIO_POD_IP/$env(POD_IP)/"
+    {{- end }}
     {{- if .Values.kamailio.topology.enabled }}
     # TOPOS_REDIS_SERVER comes from a Secret-backed environment variable.
     # Example:
@@ -59,31 +64,31 @@ data:
     enable_tls=1
     {{- if $sipCoreEnabled }}
     tcp_accept_no_cl=yes
-    listen=tcp:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.httpPort }} name "sipcore_ws"
+    listen=tcp:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.httpPort }} name "sipcore_ws"
     {{- if $websocketHA.enabled }}
-    # This one token is substituted by Kamailio's preprocessor from POD_NAME.
+    # This owner token is substituted by Kamailio's preprocessor from POD_NAME.
     # The rest of the SIP script remains untouched by generic envsubst.
     #!substdef "/SIPCORE_OWNER_POD/$env(POD_NAME)/"
-    listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "SIPCORE_OWNER_POD.{{ $ownerHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_owner_tls"
+    listen=tls:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "SIPCORE_OWNER_POD.{{ $ownerHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_owner_tls"
     alias="SIPCORE_OWNER_POD.{{ $ownerHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}"
     {{- else }}
-    listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $kamailioHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
+    listen=tls:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $kamailioHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
     {{- end }}
     {{- end }}
 
     # Public carrier-facing identity.
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled }}
-    listen=udp:{{ .Values.kamailio.listeners.bindAddress }}:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_udp"
+    listen=udp:{{ $bindAddress }}:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_udp"
     {{- end }}
     {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled }}
-    listen=tcp:{{ .Values.kamailio.listeners.bindAddress }}:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_tcp"
+    listen=tcp:{{ $bindAddress }}:5060 advertise "{{ if .Values.kamailio.publicExposure.sip.directService.enabled }}{{ $kamailioPubHost }}{{ else }}{{ $publicSipHost }}{{ end }}":5060 name "public_tcp"
     {{- end }}
     {{- if eq .Values.kamailio.role "carrier-sbc" }}
-    listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"
+    listen=tls:{{ $bindAddress }}:5061 advertise "{{ $publicSipHost }}":{{ .Values.kamailio.advertisedTLSPort }} name "public_tls"
     {{- end }}
 
     # Private application/B2BUA-facing identity.
-    listen=tls:{{ .Values.kamailio.listeners.bindAddress }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
+    listen=tls:{{ $bindAddress }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
 
     {{- if eq .Values.kamailio.role "carrier-sbc" }}
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"

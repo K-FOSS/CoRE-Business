@@ -350,6 +350,10 @@ listener, while RTPEngine forwards RTCP/NG diagnostics. The Homer UI is
 protected by Authentik OIDC and Gateway Forward Auth; its HEP ports are not
 publicly exposed.
 
+Kamailio's default SIP listeners and RTPEngine's control listeners bind to each
+pod's Downward API address so locally emitted HEP traces identify the source pod.
+Received SIP traces retain their peer addresses; see [Homer capture verification](docs/HOMER.md#verification).
+
 Answered calls can be recorded by FreeSWITCH and played in a Homer dashboard
 Iframe panel; see [Homer call audio playback](docs/HOMER-AUDIO.md) for access,
 retention, and verification.

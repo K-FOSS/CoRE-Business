@@ -23,6 +23,8 @@ also provisions a retained, cluster-local RWX sound library shared by its
 Asterisk and FreeSWITCH workloads. The editor is protected on Homer's hostname
 with the existing Authentik access group. See the [sound library guide](AVoIP/docs/avoip/sound-library.md)
 for its data path, recording format, access boundary and verification steps.
+AVoIP's default Kamailio and RTPEngine listeners use each pod's address so
+locally emitted Homer traces identify their source; see [capture verification](AVoIP/docs/HOMER.md#verification).
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).

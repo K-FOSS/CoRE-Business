@@ -354,7 +354,9 @@ kamailio:
     # Listener transport enablement and the direct Service host live under
     # publicExposure.sip; the private TLS listener remains mandatory.
     listeners:
-      bindAddress: '0.0.0.0'
+      # Empty selects status.podIP through Kamailio's preprocessor, keeping
+      # local SIP and hlog HEP addresses concrete without changing SIP advertise.
+      bindAddress: ''
     # Kamailio's implicit shared memory default is 64 MiB. Private SBC role
     # defaults raise this for SIP Core TLS handshakes and topology state.
     shmSizeMb: 256

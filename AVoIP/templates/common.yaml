@@ -299,6 +299,10 @@
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
 {{- if .Values.kamailio.topology.enabled }}
           - name: TOPOS_REDIS_SERVER
             valueFrom:
@@ -1293,7 +1297,7 @@ controllers:
             --interface=external/${POD_IP}!{{ .Values.rtpengine.media.address }}
             --listen-ng=${POD_IP}:{{ .Values.rtpengine.controlPort }}
             {{- if eq .Values.rtpengine.control.transport "websocket" }}
-            --listen-http=0.0.0.0:{{ .Values.rtpengine.control.websocketPort }}
+            --listen-http=${POD_IP}:{{ .Values.rtpengine.control.websocketPort }}
             --http-buf-size={{ .Values.rtpengine.control.websocketBufferSizeKB }}
             {{- end }}
             --port-min={{ .Values.rtpengine.media.min }}

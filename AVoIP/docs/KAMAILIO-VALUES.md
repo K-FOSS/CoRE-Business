@@ -145,7 +145,7 @@ that module parameter is unknown. See the patch and regression test in
 
 | Path under `kamailio.defaults` | Default | Rendered behavior |
 | --- | --- | --- |
-| `listeners.bindAddress` | `'0.0.0.0'` | Bind address for the four configured SIP listeners. The ports are fixed by this chart. |
+| `listeners.bindAddress` | `''` | Empty binds each SIP listener to `status.podIP` through the Downward API and Kamailio preprocessor. An explicit address overrides it. Concrete listener addresses keep local SIP and `hlog()` HEP source fields from becoming `0.0.0.0`; advertised SIP identities and ports are configured separately. |
 | `tcpChildren` | `4` | Kamailio `tcp_children`. |
 | `publicExposure.enabled` | `true` for carrier; `false` for private | Gates public Service ports and Gateway resources. The private Service always includes TLS/5062. A private role cannot turn this on. |
 | `publicExposure.sip.enabled` | `true` | Enables the TLSRoute and TLS/5061 port on the direct public Service if that Service is enabled. The private role does not bind the public TLS socket. |

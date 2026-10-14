@@ -184,6 +184,9 @@ under Homer's hostname. The [sound library guide](../AVoIP/docs/avoip/sound-libr
 documents the Authentik group, WAV format, PBX file paths and retained-volume
 behavior; the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 selects the production clusters and existing StorageClass values.
+Kamailio and RTPEngine default listeners use each pod's Downward API address for
+concrete local HEP source metadata; [Homer verification](../AVoIP/docs/HOMER.md#verification)
+distinguishes locally emitted traces from received SIP peer addresses.
 
 The active [Vaultwarden chart](../Passwords/VaultWarden/README.md), owned by the
 [VaultWarden ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml),
