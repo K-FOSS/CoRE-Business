@@ -30,7 +30,7 @@ RUN apk add --no-cache \
     && ./configure --with-unixodbc --without-pjproject \
     && make menuselect.makeopts \
     && ./menuselect/menuselect --enable app_voicemail_odbc menuselect.makeopts \
-    && make -C apps app_voicemail_odbc.so
+    && make -C apps ASTTOPDIR=/tmp/asterisk-20.20.1 app_voicemail_odbc.so
 
 FROM ${ASTERISK_BASE}
 
