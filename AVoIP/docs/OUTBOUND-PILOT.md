@@ -40,8 +40,17 @@ Only standard NANP destinations are routed. `+1900` and `+1` 976 service
 numbers are rejected. The internal policy first authenticates account `7101`,
 then both Kamailio hops set the carrier-facing From and P-Asserted-Identity
 from `avoip.did`. The compatibility value `carrierOutbound.calls.callerId`
-does not control NANP caller ID. Registration alone does not grant PSTN access.
-Carrier-wide Dragonfly quota allows one call per minute
+does not control NANP caller ID. The carrier Kamailio prepends the Flowroute
+registration username and `*` to the called E.164 user part as Flowroute's
+IP-auth Tech Prefix. Flowroute accepts the optional leading `+` in the E.164
+user part. That username is read from the existing Vault reference
+into a separate username-only Secret and injected only into the carrier
+Kamailio pod; it is never rendered into a ConfigMap or logged. See Flowroute's
+[IP-based authentication format](https://support.bcmone.com/flowroute-support/docs/set-up-ip-based-authentication-for-outbound-calls).
+The existing FreeSWITCH SIP registration remains enabled; adding the prefix
+does not change the authentication method. Flowroute IP authentication
+requires a static public egress IP and account-side allowlisting. Registration
+alone does not grant PSTN access. Carrier-wide Dragonfly quota allows one call per minute
 and one concurrent call, with a 600-second maximum lifetime.
 
 ## Configuration and rollout

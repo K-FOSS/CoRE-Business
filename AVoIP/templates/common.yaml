@@ -313,6 +313,13 @@
                 name: '{{ .Values.kamailio.registrar.database.secretName }}'
                 key: 'psqlURI'
 {{- end }}
+{{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") }}
+          - name: FLOWROUTE_TECH_PREFIX
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-kamailio-flowroute-tech-prefix'
+                key: 'username'
+{{- end }}
 {{- with .Values.kamailio.extraEnv }}
 {{ toYaml . | nindent 10 }}
 {{- end }}

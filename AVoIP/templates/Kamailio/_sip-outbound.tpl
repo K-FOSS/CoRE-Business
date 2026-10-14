@@ -75,7 +75,15 @@
 
       remove_hf("P-Asserted-Identity");
       append_hf("P-Asserted-Identity: <sip:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.avoip.did }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
+      {{- if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}
+      if (!($env(FLOWROUTE_TECH_PREFIX) =~ "^[0-9]{8}$")) {
+        sl_send_reply("503", "Flowroute Tech Prefix Unavailable");
+        exit;
+      }
+      $ru = "sips:" + $env(FLOWROUTE_TECH_PREFIX) + "*" + $rU + "@{{ .Values.flowroute.outboundHost }}";
+      {{- else }}
       $ru = "sips:" + $rU + "@{{ .Values.flowroute.outboundHost }}";
+      {{- end }}
       route(RR_BACKEND_TO_CARRIER);
       dlg_manage();
       if (has_body("application/sdp")) {

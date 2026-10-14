@@ -32,6 +32,9 @@
     {{- if hasKey ($effective.podLabels | default dict) $reserved -}}{{- fail (printf "Kamailio %s podLabels may not override %s" $name $reserved) -}}{{- end -}}
   {{- end -}}
   {{- $envNames := dict "POD_NAME" true "TOPOS_REDIS_SERVER" true "REGISTRAR_DB_URL" true -}}
+  {{- if and $effective.carrierOutbound.enabled $effective.carrierOutbound.calls.enabled (eq $effective.carrierOutbound.calls.mode "nanp") -}}
+    {{- $_ := set $envNames "FLOWROUTE_TECH_PREFIX" true -}}
+  {{- end -}}
   {{- range $entry := $effective.extraEnv -}}
     {{- $envName := required (printf "Kamailio %s extraEnv entry requires name" $name) $entry.name -}}
     {{- if hasKey $envNames $envName -}}{{- fail (printf "Kamailio %s has duplicate or reserved environment variable %s" $name $envName) -}}{{- end -}}
