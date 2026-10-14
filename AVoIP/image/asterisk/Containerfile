@@ -20,6 +20,10 @@ RUN set -eux; \
       "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
     ; \
     test -x /usr/bin/odbcinst; \
+    driver_path="$(find /usr/lib /usr/lib64 -type f -name 'psqlodbcw.so' -print -quit 2>/dev/null)"; \
+    if [ -z "$driver_path" ]; then echo 'PostgreSQL Unicode ODBC driver library was not installed'; exit 1; fi; \
+    printf '[PostgreSQL Unicode]\nDescription=PostgreSQL Unicode ODBC driver\nDriver=%s\n' "$driver_path" > /tmp/psqlodbc.ini; \
+    odbcinst -i -d -f /tmp/psqlodbc.ini; \
     odbcinst -q -d | grep -Fqx '[PostgreSQL Unicode]'; \
     for module in \
          chan_pjsip.so \
