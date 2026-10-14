@@ -21,6 +21,7 @@ RUN apk add --no-cache \
       sqlite-dev \
       tar \
       unixodbc-dev \
+      util-linux-dev \
       zlib-dev \
     && curl -fsSL 'https://downloads.asterisk.org/pub/telephony/asterisk/releases/asterisk-20.20.1.tar.gz' -o /tmp/asterisk.tar.gz \
     && echo "${ASTERISK_SOURCE_SHA256}  /tmp/asterisk.tar.gz" | sha256sum -c - \
