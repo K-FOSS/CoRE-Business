@@ -28,7 +28,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            ca-certificates docker.io git python3
+            ca-certificates docker.io git nodejs python3
       - name: Check out repository
         uses: https://github.com/actions/checkout@v4
         with:
