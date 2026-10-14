@@ -666,9 +666,9 @@ for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane
   and adds the PostgreSQL and ODBC modules, unixODBC, and the PostgreSQL ODBC
   driver required for voicemail. It retains the existing ALSA, English sounds,
   music-on-hold, Speex, and SRTP modules. The
-  [Forgejo workflow](../.forgejo/workflows/asterisk.yaml) publishes only to
-  this repository's Forgejo registry. Asterisk uses PJSIP's compatible
-  `external_signaling_address` option;
+  [Forgejo workflow](../.forgejo/workflows/asterisk.yaml) publishes the
+  `linux/amd64` image only to this repository's Forgejo registry. Asterisk uses
+  PJSIP's compatible `external_signaling_address` option;
   `external_signaling_hostname` is introduced in
   [Asterisk 20.21.0](https://downloads.asterisk.org/pub/telephony/asterisk/ChangeLog-20.21.0.html).
   Backups are maintained at
