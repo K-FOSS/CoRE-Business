@@ -241,10 +241,10 @@ data:
           <condition field="${sip_auth_username}" expression="^freeswitch$"/>
           <condition field="destination_number" expression="^\+1[2-9][0-9]{2}[2-9][0-9]{6}$">
             <action application="set" data="effective_caller_id_number={{ . }}"/>
-            <!-- FreeSWITCH otherwise offers only the inbound A-leg codecs.
-                 Add the configured outbound codecs so Flowroute can choose
-                 G.711 and FreeSWITCH can transcode when needed. -->
-            <action application="set" data="media_mix_inbound_outbound_codecs=true"/>
+            <!-- Flowroute rejected the prior A-leg codec offer with 488.
+                 Offer its supported G.711 codecs explicitly; FreeSWITCH
+                 transcodes from the Asterisk leg when needed. -->
+            <action application="set" data="absolute_codec_string=PCMU,PCMA"/>
             <action application="log" data="INFO AVoIP authenticated NANP outbound via Flowroute extension={{ . }} destination=${destination_number}"/>
             <action application="bridge" data="sofia/gateway/flowroute/${destination_number}"/>
           </condition>
