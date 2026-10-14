@@ -47,10 +47,12 @@ ARG PSQLODBC_PACKAGE_VERSION=16.00.0005-r1
 RUN set -eux; \
     apk add --no-cache \
       "asterisk-odbc=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-sounds-en=${ASTERISK_PACKAGE_VERSION}" \
       "psqlodbc=${PSQLODBC_PACKAGE_VERSION}" \
       "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
     ; \
     test -x /usr/bin/odbcinst; \
+    test -f /usr/share/asterisk/sounds/en/demo-congrats.gsm; \
     driver_path="$(find /usr/lib /usr/lib64 -type f -name 'psqlodbcw.so' -print -quit 2>/dev/null)"; \
     if [ -z "$driver_path" ]; then echo 'PostgreSQL Unicode ODBC driver library was not installed'; exit 1; fi; \
     printf '[PostgreSQL Unicode]\nDescription=PostgreSQL Unicode ODBC driver\nDriver=%s\n' "$driver_path" > /tmp/psqlodbc.ini; \
