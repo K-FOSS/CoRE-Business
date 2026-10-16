@@ -216,7 +216,7 @@ data:
     exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .number }})
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-outbound-hangup,s,1)
       same => n,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} extension={{ .number }} destination=${EXTEN})
-      same => n,Dial(PJSIP/${EXTEN}@freeswitch,120,b(sipcore-outbound-headers^s^1))
+      same => n,Dial(PJSIP/${EXTEN}@freeswitch,120,gb(sipcore-outbound-headers^s^1))
       same => n,NoOp(AVoIP outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
       same => n,Hangup()
     {{- end }}

@@ -899,7 +899,7 @@ asterisk:
     # Store recordings in PostgreSQL through Asterisk app_voicemail_odbc.
     # The legacy freeswitch.voicemail.enabled setting remains accepted during
     # site-value migration; new deployments should use this setting.
-    enabled: true
+    enabled: false
     accessCode: ''
     pinSecret:
       remoteKey: 'AVoIP/SIPCore/VoiceMail'
@@ -910,7 +910,7 @@ asterisk:
     # Built by .forgejo/workflows/asterisk.yaml and published to this Forgejo registry.
     repository: slop.writemy.codes/core/core-business/asterisk
     tag: '20'
-    digest: ''
+    digest: 'sha256:6fcaebbed4c446078988bff784a98f3fc4652d42e4aac8b30bd8d7f90dccd81a'
     pullPolicy: 'IfNotPresent'
   rtp:
     min: 10000
