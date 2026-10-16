@@ -47,7 +47,7 @@ ARG PSQLODBC_PACKAGE_VERSION=16.00.0005-r1
 RUN set -eux; \
     apk add --no-cache \
       "asterisk-odbc=${ASTERISK_PACKAGE_VERSION}" \
-      "asterisk-sounds-en=${ASTERISK_PACKAGE_VERSION}" \
+      "asterisk-sounds-en@andrius-asterisk=${ASTERISK_PACKAGE_VERSION}" \
       "psqlodbc=${PSQLODBC_PACKAGE_VERSION}" \
       "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
     ; \
