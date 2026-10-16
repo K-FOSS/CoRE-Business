@@ -140,6 +140,11 @@ data:
     clearglobalvars=no
 
     [from-external]
+    {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+    ; External callers entering the voice IVR must authenticate to a mailbox.
+    exten => {{ default .Values.freeswitch.voicemail.accessCode .Values.asterisk.voicemail.accessCode }},1,VoiceMailMain()
+      same => n,Hangup()
+    {{- end }}
     {{- range (list .Values.avoip.did .Values.fax.did) }}
     {{- if . }}
     ; Keep this leg in ringing state until the selected SIP Core endpoint answers.

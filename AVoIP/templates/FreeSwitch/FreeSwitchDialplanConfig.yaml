@@ -1,5 +1,7 @@
 {{- if .Values.freeswitch.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
+{{- $voicemailEnabled := or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled -}}
+{{- $voicemailAccessCode := default .Values.freeswitch.voicemail.accessCode .Values.asterisk.voicemail.accessCode -}}
 {{- if and .Values.freeswitch.fax.enabled (le (int .Values.freeswitch.fax.t38.rxReinvitePacketCount) 0) }}
 {{- fail "freeswitch.fax.t38.rxReinvitePacketCount must be greater than zero" }}
 {{- end }}
@@ -22,6 +24,9 @@
 {{- if .Values.freeswitch.ivr.enabled }}
 {{- if or (not .Values.asterisk.enabled) (not .Values.asterisk.sipCore.enabled) (eq (len .Values.asterisk.sipCore.extensions) 0) (eq (len .Values.freeswitch.ivr.extensions) 0) (lt (int .Values.freeswitch.ivr.timeoutMs) 1000) (gt (int .Values.freeswitch.ivr.timeoutMs) 60000) (lt (int .Values.freeswitch.ivr.digitTimeoutMs) 500) (gt (int .Values.freeswitch.ivr.digitTimeoutMs) 5000) }}
 {{- fail "freeswitch.ivr requires SIP Core, at least one permitted extension, a 1000-60000 ms input timeout, and a 500-5000 ms digit timeout" }}
+{{- end }}
+{{- if and $voicemailEnabled (not (regexMatch "^\\*[0-9]{2,4}$" $voicemailAccessCode)) }}
+{{- fail "enabled voicemail requires an access code of * followed by two to four digits" }}
 {{- end }}
 {{- $ivrExtensions := dict -}}
 {{- range .Values.freeswitch.ivr.extensions }}
@@ -144,7 +149,11 @@ data:
           <condition field="destination_number" expression="^silent-ivr-entry$">
             <action application="answer"/>
             <action application="log" data="INFO AVoIP silent extension IVR ready caller=${caller_id_number}"/>
-            <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # silence_stream://{{ $.Values.freeswitch.ivr.timeoutMs }} silence_stream://1000 ivr_extension ^({{ join "|" $.Values.freeswitch.ivr.extensions }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
+            {{- $ivrPattern := join "|" $.Values.freeswitch.ivr.extensions -}}
+            {{- if $voicemailEnabled }}
+            {{- $ivrPattern = printf "%s|\\*%s" $ivrPattern (trimPrefix "*" $voicemailAccessCode) -}}
+            {{- end }}
+            <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # silence_stream://{{ $.Values.freeswitch.ivr.timeoutMs }} silence_stream://1000 ivr_extension ^({{ $ivrPattern }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
             <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
           </condition>
         </extension>
@@ -221,6 +230,18 @@ data:
       </context>
       {{- if $.Values.freeswitch.ivr.enabled }}
       <context name="silent-ivr-targets">
+        {{- if $voicemailEnabled }}
+        <extension name="silent-ivr-voicemail">
+          <condition field="destination_number" expression="^\*{{ trimPrefix "*" $voicemailAccessCode }}$">
+            <action application="log" data="INFO AVoIP silent IVR forwarding caller=${caller_id_number} to Asterisk voicemail access"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
+            <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
+            <action application="hangup"/>
+          </condition>
+        </extension>
+        {{- end }}
         {{- range $.Values.freeswitch.ivr.extensions }}
         <extension name="silent-ivr-destination-{{ . }}">
           <condition field="destination_number" expression="^{{ . }}$">
