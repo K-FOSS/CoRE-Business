@@ -168,9 +168,10 @@ modem audio and T.38 negotiation have different requirements.
 The complete current DID flow, SIP messaging path, registration behavior, and
 operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
 The optional direct-extension voicemail path, including voicemail-only sites
-without SIP Core, its shared external PIN secret,
-PostgreSQL metadata, retained shared audio volume, and verification steps are
-documented in [docs/VOICEMAIL.md](docs/VOICEMAIL.md).
+without SIP Core, its shared external PIN secret, changeable PostgreSQL-backed
+mailbox PIN, PostgreSQL audio storage, retained legacy audio volume, image
+prerequisites, and verification steps are documented in
+[docs/VOICEMAIL.md](docs/VOICEMAIL.md).
 Inbound external SIP is restricted by the Flowroute signaling CIDRs configured
 under `flowroute.signalingCIDRs`; the public DID route does not
 accept arbitrary Internet SIP sources.
@@ -205,9 +206,12 @@ an active FreeSWITCH call is not replicated to another pod. The existing fax
 spool claim remains retained; the HA workload uses a separate RWX claim, and
 the old fax data is not copied automatically.
 For carrier dialogs, Kamailio routes established requests to the FreeSWITCH
-pod IP restored from the TOPOS record. New calls still use the shared Service;
-using that round-robin Service for an established dialog can send its BYE to a
-replica that does not own the call. TOPOS hides the pod address from Flowroute.
+pod IP and Flowroute Sofia TLS port (5081) restored from the TOPOS record. The
+Flowroute profile advertises that pod-local listener; port 5061 belongs to the
+separate Kamailio-facing FreeSWITCH profile. New calls still use the shared
+Service; using that round-robin Service for an established dialog can send its
+BYE to a replica that does not own the call. TOPOS hides the pod address from
+Flowroute.
 Flowroute SMS is enabled by default through `mod_sms` and
 `mod_sms_flowroute`; its API credentials are sourced from the separate SMS
 External Secret and are not stored in chart values.
@@ -667,8 +671,9 @@ for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane
 - [Asterisk](https://www.asterisk.org/) and its
   [documentation](https://docs.asterisk.org/)
 - The chart-local [Asterisk image build](image/asterisk/Containerfile) extends
-  the pinned upstream [andrius/asterisk image](https://hub.docker.com/r/andrius/asterisk)
-  and adds the PostgreSQL and ODBC modules, unixODBC, and the PostgreSQL ODBC
+  the pinned-version upstream
+  [andrius/asterisk image](https://hub.docker.com/r/andrius/asterisk) and adds
+  the Asterisk PostgreSQL and ODBC modules, unixODBC, and the PostgreSQL ODBC
   driver required for voicemail. It retains the existing ALSA, English sounds,
   music-on-hold, Speex, and SRTP modules. The
   [Forgejo workflow](../.forgejo/workflows/asterisk.yaml) publishes the

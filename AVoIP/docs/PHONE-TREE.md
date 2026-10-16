@@ -2,9 +2,9 @@
 
 The AVoIP voice configuration is intentionally minimal. It does not ship the
 upstream FreeSWITCH demonstration dialplan, sample extensions, conference
-codes, parking codes, fax tests, or demo IVR. An optional FreeSWITCH voicemail
-route is available for the configured direct Asterisk extension; it remains
-disabled unless a site enables it and provisions a mailbox PIN. See
+codes, parking codes, fax tests, or demo IVR. An optional Asterisk voicemail
+route is available for the configured direct extension; it remains disabled
+unless a site enables it and provisions a mailbox PIN. See
 [voicemail](VOICEMAIL.md) for its routing and storage requirements.
 
 The chart defaults Asterisk and FreeSWITCH to disabled. The active
@@ -245,8 +245,8 @@ The following are no longer configured by this chart:
 - Conference, eavesdrop, paging, parking, fax, ringback, tone, and diagnostic
   test numbers.
 - Default provider/sample gateway variables.
-- Unused Verto, Opal, ALSA, FIFO, local-stream, voicemail, and sample module
-  configuration.
+- Unused Verto, Opal, ALSA, FIFO, local-stream, FreeSWITCH voicemail, and
+  sample module configuration.
 - Vosk and Mycroft/OVOS speech services.
 
 Speech integration remains a separate planned connection to the shared
