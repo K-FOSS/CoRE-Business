@@ -144,6 +144,9 @@ data:
     ; External callers entering the voice IVR must authenticate to a mailbox.
     exten => {{ default .Values.freeswitch.voicemail.accessCode .Values.asterisk.voicemail.accessCode }},1,VoiceMailMain()
       same => n,Hangup()
+    ; VoiceMail() sends callers who press 0 during a greeting to this extension.
+    exten => o,1,VoiceMailMain()
+      same => n,Hangup()
     {{- end }}
     {{- range (list .Values.avoip.did .Values.fax.did) }}
     {{- if . }}

@@ -3,10 +3,11 @@
 The direct FaxNumber call rings the configured Asterisk SIP Core extension for
 30 seconds. If the endpoint is busy or does not answer, Asterisk plays its
 voicemail greeting and records the message. A caller cancellation does not
-start voicemail. A caller reaching the voice IVR can dial `*97`, enter a
-mailbox number, and authenticate with that mailbox's PIN. The mailbox owner can
-also dial `*97` from their authenticated SIP Core account to open their own
-mailbox. The mailbox menu can change that PIN; Asterisk stores mailbox
+start voicemail. While the unavailable greeting is playing, a caller can press
+`0` to open the mailbox login, then enter a mailbox number and PIN. A caller
+reaching the voice IVR can also dial `*97` to reach that login. The mailbox
+owner can dial `*97` from their authenticated SIP Core account to open their
+own mailbox. The mailbox menu can change that PIN; Asterisk stores mailbox
 credentials in the Asterisk PostgreSQL database. Email delivery is disabled.
 
 The public `*97` route is available only at sites where Asterisk voicemail is
@@ -69,15 +70,17 @@ that the output contains:
   credentials generated from the Asterisk connection Secret at runtime.
 - The voicemail and voicemail message tables, `*97` mailbox route, and
   unanswered FaxNumber fallback in Asterisk. Where voicemail is enabled, the
-  FreeSWITCH IVR accepts `*97` and bridges it to Asterisk's mailbox login.
+  FreeSWITCH IVR accepts `*97` and bridges it to Asterisk's mailbox login; the
+  Asterisk `o` extension sends greeting-time `0` to the same login.
 - No FreeSWITCH voicemail module, dialplan, or volume mount.
 
 After deployment, verify the `User` and ExternalSecret conditions, ODBC driver
 availability, Asterisk module and database startup, and the full call flow:
-ringing, no answer, message recording and retrieval, inbound IVR `*97` mailbox
-and PIN prompts, rejection of a wrong PIN, PIN change and persistence after
-restart, caller cancellation before answer, busy endpoint, and caller hangup
-during recording. Those runtime checks have not been performed.
+ringing, no answer, message recording, pressing `0` during the unavailable
+greeting to reach mailbox and PIN prompts, inbound IVR `*97`, rejection of a
+wrong PIN, PIN change and persistence after restart, caller cancellation
+before answer, busy endpoint, and caller hangup during recording. Those
+runtime checks have not been performed.
 
 See the [Asterisk voicemail configuration](https://github.com/asterisk/asterisk/blob/20/configs/samples/voicemail.conf.sample),
 [Asterisk VoiceMailMain application](https://docs.asterisk.org/Asterisk_20_Documentation/API_Documentation/Dialplan_Applications/VoiceMailMain/),
