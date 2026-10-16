@@ -52,6 +52,10 @@ RUN set -eux; \
       "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
     ; \
     test -x /usr/bin/odbcinst; \
+    if [ ! -d /usr/share/asterisk/sounds/en ] && [ -d /var/lib/asterisk/sounds/en ]; then \
+      mkdir -p /usr/share/asterisk/sounds; \
+      cp -R /var/lib/asterisk/sounds/en /usr/share/asterisk/sounds/en; \
+    fi; \
     test -f /usr/share/asterisk/sounds/en/demo-congrats.gsm; \
     driver_path="$(find /usr/lib /usr/lib64 -type f -name 'psqlodbcw.so' -print -quit 2>/dev/null)"; \
     if [ -z "$driver_path" ]; then echo 'PostgreSQL Unicode ODBC driver library was not installed'; exit 1; fi; \
