@@ -471,6 +471,19 @@ data:
     private_key = /etc/kamailio/mtls/tls.key
     certificate = /etc/kamailio/mtls/tls.crt
     {{- end }}
+    {{- if and (eq .Values.kamailio.role "private-sbc") .Values.freeswitch.enabled .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
+
+    # FreeSWITCH's owner-pod listener presents the site-internal certificate.
+    # Match its service SNI even when the restored TOPOS target is a pod IP.
+    [client:any]
+    server_name = {{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = no
+    ca_list = /etc/kamailio/peer-ca/ca.crt
+    private_key = /etc/kamailio/mtls/tls.key
+    certificate = /etc/kamailio/mtls/tls.crt
+    {{- end }}
     {{- range .Values.kamailio.interSite.peers }}
 
     # Per-site client profile lets dialogs use the peer's site SNI while

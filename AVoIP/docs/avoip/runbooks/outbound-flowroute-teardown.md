@@ -24,6 +24,14 @@ restored target that is not an owner IP on the Flowroute profile's TLS port.
 The Flowroute FreeSWITCH bridge also advertises `transport=tls` in its Contact
 for new calls. Its separate Flowroute registration remains on UDP.
 
+The first live call after that transport correction reached the FreeSWITCH
+owner pod over TLS but failed certificate verification. The owner presented a
+certificate for the FreeSWITCH service hostname issued by the site-internal
+root, while the internal Kamailio client default trusted only the system CA
+bundle. The internal tier now selects an SNI-specific client profile for that
+FreeSWITCH hostname, verifies it against the existing site peer CA, and
+presents its existing Vault-issued client identity. TLS verification stays on.
+
 The incident's `(7/TM)` is the TM response to `t_relay()=-7`. The original
 trace did not include its internal TM debug line. The later controlled call
 did: `get_send_socket2()` reported `forced tls:172.20.57.57:5062, to
@@ -58,7 +66,7 @@ test -s /tmp/avoip-final-render.yaml
 ```
 
 The render test checks both instance configs, independent TOPOS stores, the
-private TLS destination and socket, the FreeSWITCH Contact parameter,
+private TLS destination, socket and CA profile, the FreeSWITCH Contact parameter,
 preserved SIP targets, TM relay diagnostics and retransmission guards. The
 Kustomize command validates the local post-Helm
 overlay syntax only; deployment output must still be rendered through the
