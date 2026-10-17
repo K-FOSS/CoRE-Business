@@ -1,0 +1,57 @@
+cluster:
+  name: 'core-home1-talos-prod'
+  domain: 'k8s.home1.resolvemy.host'
+datacenter: 'home1'
+region: 'yvr'
+sip:
+  globalHost: 'sip.resolvemy.host'
+freeswitch:
+  enabled: true
+kamailio:
+  enabled: true
+  instances:
+    - name: 'carrier'
+      enabled: true
+      role: 'carrier-sbc'
+      publicExposure:
+        enabled: true
+      carrierOutbound:
+        enabled: true
+        gatewayServiceHost: 'envoy-core-prod-main-gw.kube-system.svc.k8s.home1.resolvemy.host'
+        sniHost: 'sip-outbound.core-home1-talos-prod.home1.yvr.resolvemy.host'
+        clientIdentity:
+          enabled: true
+          issuerName: 'core-tls-vault'
+        peer:
+          cidr: '172.20.56.0/21'
+          sanHostname: 'core-home1-talos-prod-business-avoip-internal.core-prod.svc.k8s.home1.resolvemy.host'
+          serviceHost: 'core-home1-talos-prod-business-avoip-internal.core-prod.svc.k8s.home1.resolvemy.host'
+          controller: 'kamailio-internal'
+          secretName: 'carrier-to-internal-mtls'
+    - name: 'internal'
+      enabled: true
+      role: 'private-sbc'
+      topology:
+        redis:
+          database: 52
+          secretName: 'avoip-kamailio-internal-topos'
+      carrierOutbound:
+        enabled: true
+        gatewayServiceHost: 'envoy-core-prod-main-gw.kube-system.svc.k8s.home1.resolvemy.host'
+        sniHost: 'sip-outbound.core-home1-talos-prod.home1.yvr.resolvemy.host'
+        clientIdentity:
+          enabled: true
+          issuerName: 'core-tls-vault'
+        peer:
+          cidr: '172.20.56.0/21'
+          sanHostname: 'core-home1-talos-prod-business-avoip-kamailio.core-prod.svc.k8s.home1.resolvemy.host'
+          serviceHost: 'core-home1-talos-prod-business-avoip-kamailio.core-prod.svc.k8s.home1.resolvemy.host'
+          controller: 'kamailio'
+          secretName: 'internal-to-carrier-mtls'
+      privateRouting:
+        peers:
+          - name: 'carrier'
+            controller: 'kamailio'
+            cidr: '172.20.56.0/21'
+            sanHostname: 'core-home1-talos-prod-business-avoip-kamailio.core-prod.svc.k8s.home1.resolvemy.host'
+            allowedUsers: []

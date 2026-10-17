@@ -68,7 +68,9 @@ FreeSWITCH-to-Asterisk gateway. See the [outbound runbook](docs/OUTBOUND-PILOT.m
 for the Asterisk-to-FreeSWITCH-to-Flowroute path, codec negotiation, trust
 boundaries, destination filters and quotas, and the
 [inter-site voice guide](docs/INTERSITE-VOICE.md) for transfer and rollout
-verification.
+verification. The [Flowroute teardown runbook](docs/avoip/runbooks/outbound-flowroute-teardown.md)
+covers the internal Kamailio BYE route, replica-safe TOPOS restoration,
+render regression and live SIP/media acceptance.
 The new DID and outbound call paths still require publish, reconciliation,
 and a live call check.
 

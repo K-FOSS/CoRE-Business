@@ -15,6 +15,22 @@ the pinned Kamailio runtime image and cluster access, pass each rendered
 without changing the running pod. The render test does not make a live call or
 validate ringing, answer, RTP, or clean hangup.
 
+## Outbound Flowroute teardown regression
+
+Run the two-tier TOPOS and in-dialog route regression from the repository root:
+
+```sh
+AVoIP/tests/outbound-teardown-render.sh
+```
+
+The test renders carrier and private Kamailio configurations, verifies the
+authenticated carrier-peer route chooses the private tier's TLS socket while
+preserving the restored SIP target, and checks TM retransmission and relay
+diagnostics. It does not simulate a Flowroute BYE or prove FreeSWITCH delivery.
+Follow the [outbound teardown live acceptance](../docs/avoip/runbooks/outbound-flowroute-teardown.md)
+for both BYE directions, cross-replica routing, UPDATE, RTPEngine cleanup,
+CDR, and Homer checks.
+
 The optional Routr Connect integration has a separate rendering check:
 
 ```sh

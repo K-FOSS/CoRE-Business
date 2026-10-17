@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+chart_dir="$repo_root/AVoIP"
+render="$(mktemp)"
+trap 'rm -f "$render"' EXIT
+
+helm template core-home1-talos-prod "$chart_dir" --namespace core-prod \
+  -f "$chart_dir/tests/fixtures/outbound-teardown.yaml" > "$render"
+
+carrier_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["kamailio.cfg"]' "$render")"
+internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
+
+# The carrier tier's shared TOPOS store and three-way route restoration remain
+# enabled; the internal tier has its own store and a private_tls socket only.
+grep -Fq 'modparam("topos", "storage", "redis")' <<< "$carrier_cfg"
+grep -Fq 'modparam("topos", "storage", "redis")' <<< "$internal_cfg"
+grep -Fq 'listen=tls:KAMAILIO_POD_IP:5062 advertise' <<< "$internal_cfg"
+! grep -Fq 'name "public_tls"' <<< "$internal_cfg"
+
+# A carrier-originated dialog arrives on the authenticated carrier peer path.
+# The route uses the TOPOS-restored target, keeps Route headers, and chooses
+# the socket actually bound by the internal tier.
+grep -Fq 'if ($var(peer_name) == "carrier") {' <<< "$internal_cfg"
+grep -Fq 'set_send_socket_name("private_tls");' <<< "$internal_cfg"
+grep -Fq 'topos_result=route-restored' <<< "$internal_cfg"
+grep -Fq 'route=$hdr(Route)' <<< "$internal_cfg"
+! grep -Fq '$du = $ru;' <<< "$internal_cfg"
+
+# TM reports its negative relay result and handles duplicate requests before
+# media/quota teardown side effects in both hops.
+grep -Fq 't_relay_result=$var(private_relay_result)' <<< "$internal_cfg"
+grep -Fq 'if (is_method("BYE") && t_check_trans()) {' <<< "$internal_cfg"
+grep -Fq 'if (is_method("BYE") && t_check_trans()) {' <<< "$carrier_cfg"
+grep -Fq 'rtpengine_delete=requested' <<< "$carrier_cfg"
+grep -Fq 'modparam("dialog", "send_bye", 0)' <<< "$carrier_cfg"
+grep -Fq 'route[OUTBOUND_DIALOG_TIMEOUT]' <<< "$carrier_cfg"
+grep -Fq 'OUTBOUND_BYE_PENDING' <<< "$carrier_cfg"
+grep -Fq 'onreply_route[OUTBOUND_BYE_REPLY]' <<< "$carrier_cfg"
+grep -Fq "redis.call('EXISTS',KEYS[1])==0" <<< "$carrier_cfg"
+grep -Fq 't_on_failure("OUTBOUND_BYE_FAILURE");' <<< "$carrier_cfg"
+grep -Fq 'route[OUTBOUND_BYE_CLEAR]' <<< "$carrier_cfg"
+clear_cfg="$(sed -n '/route\[OUTBOUND_BYE_CLEAR\]/,/failure_route\[OUTBOUND_BYE_FAILURE\]/p' <<< "$carrier_cfg")"
+grep -Fq '"topos", "EVAL %s 1 %s",' <<< "$clear_cfg"
+! grep -Fq '"topos", "EVAL %s 1 %s %s",' <<< "$clear_cfg"
+grep -Fq 'rtpengine_delete_result=$var(rtpengine_delete_result)' <<< "$carrier_cfg"
+
+printf '%s\n' 'PASS: outbound teardown route renders the carrier-to-internal mTLS path with independent TOPOS stores'
+printf '%s\n' 'PASS: internal carrier-peer BYEs retain the restored dialog target and use the private TLS socket'
+printf '%s\n' 'PASS: relay results and topology decisions are logged; retransmissions exit before teardown side effects'

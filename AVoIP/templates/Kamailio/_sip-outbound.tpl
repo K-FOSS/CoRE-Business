@@ -205,7 +205,7 @@
       $var(outbound_teardown_key) = "avoip:out:teardown:" + $ci;
       $var(outbound_teardown_script) = "if redis.call('GET',KEYS[1])=='pending' then return redis.call('DEL',KEYS[1]) else return 0 end";
       if (!redis_cmd(
-        "topos", "EVAL %s 1 %s %s",
+        "topos", "EVAL %s 1 %s",
         "$var(outbound_teardown_script)", "$var(outbound_teardown_key)",
         "outbound_teardown_clear"
       )) {
