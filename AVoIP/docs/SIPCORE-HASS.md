@@ -56,6 +56,57 @@ endpoint keeps its private `from-sipcore-7101` context and exact
 `allowCallsTo` destinations, including `9090` when configured. A spoofed
 `X-Forwarded-For` value cannot select the endpoint, authenticate SIP, or change
 the actual PJSIP transport peer.
+
+### REGISTER response Contact compatibility
+
+On 2026-10-17, the browser HAR showed a normal Digest challenge followed by an
+authenticated REGISTER that received `200 OK`; those 401/200 exchanges do not
+indicate bad credentials. The Kamailio WSS request route rewrites each incoming
+browser Contact to the receiving StatefulSet owner's TLS hostname and preserves
+the `alias` used to return traffic to that WebSocket. The response route had
+then rewritten every owner hostname in Asterisk's successful Contact list to
+the literal `.invalid` host. For the current binding this changed
+`sip:4rsbtkuu@ffdmsk3qmcu9.invalid;transport=ws` into
+`sip:4rsbtkuu@.invalid;transport=ws;alias=...`.
+
+The latter is not a valid SIP URI: its host begins with an empty DNS label.
+In JsSIP 3.10.6, `Parser.parseMessage()` parses every Contact header before the
+response reaches the transaction/registrator; a parse failure returns no SIP
+message, so the UA drops the response before emitting `registered` or
+`registrationFailed`. If Contact parsing succeeds, the registrator first
+matches `+sip.instance` with `reg-id`, then falls back to the Contact URI user.
+The HAR's response omitted instance and reg-id, so a valid Contact with the
+same user would match by that fallback even though its host is the internal
+owner hostname. Thus the accepted server-side registration does not prove the
+browser recognized it; for the shown `@.invalid` Contact, JsSIP 3.10.6's
+parser path establishes that it ignores the response rather than rejecting
+the credentials. The HAR has no frontend event or parser-console record, so
+the predicted event behavior still needs a browser-side reproduction. The
+narrow fix is to leave the Asterisk response Contacts unchanged. Asterisk's
+valid owner Contact URI (including each binding's own owner and alias) is
+returned, while the browser continues to use its own WSS Contact for requests;
+the response Contact is not used as the browser's transport destination.
+
+For the HAR's exact registration Call-ID, live `pjsip show contact` showed
+Asterisk storing `sip:4rsbtkuu@OWNER1:5063;transport=tls;alias=172.20.57.165~59600~5`
+with Path to OWNER1 and received flow `172.20.57.165:59600;transport=ws`.
+That binding was Available. This binding-specific state does not match the
+OWNER2 Path shown in the HAR's response, so the single response Path must not
+be used to infer that this binding was stored with OWNER2. The HAR cannot
+identify which other contact's Path was represented there. The eight returned
+contacts remain intact; their identities, expiry/qualification and owner
+relationships must be assessed per Asterisk contact rather than collapsed
+into the current browser flow.
+
+The INVITE to extension `66` was authenticated and answered; the browser sent
+an ACK, later received BYE with Q.850 cause 16, and returned `200 OK`. Cause 16
+means normal clearing and does not identify who initiated the short call.
+This signaling sample does not prove media completion or explain the
+2.585-second duration. The HAR establishes what the browser sent/received, not
+backend receipt of its ACK/BYE response or the client-side
+`registered`/`registrationFailed`/`unregistered` events. Those require
+frontend event telemetry plus correlated internal SIP logs/HEP.
+
 PJSIP packet logging is suppressed while SIP Core is enabled because raw SIP
 traces can include Digest Authorization headers. Kamailio's raw receive logs,
 full carrier packet logs, and Homer SIP trace are also disabled while this
