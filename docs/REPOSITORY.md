@@ -45,6 +45,20 @@ values does not show what Argo CD will deploy.
 
 ## Common integration patterns
 
+### Phone-number commit guard
+
+The repository's [phone-number commit guard](PHONE-NUMBER-GUARD.md) documents
+the local pre-commit and commit-message hooks and how to enable them in a
+checkout.
+
+### Remote hangup latency investigation
+
+The application-boundary findings for the observed remote-party hangup delay
+are documented in [remote hangup latency](remote-hangup-latency.md). The
+available trace places the wait before Asterisk initiates browser teardown;
+it does not establish FreeSWITCH request-receipt time or identify a
+CoRE-Business call-state handler on that path.
+
 ### Secrets
 
 The repository uses `ExternalSecret` to read from platform secret stores and
@@ -163,7 +177,9 @@ while only YVR Asterisk SIP Core account `7101` is configured for general
 standard NANP outbound calls. The desired-state update places regional
 Flowroute registrations in two-replica FreeSWITCH deployments at both sites
 and keeps inbound DIDs on Kamailio; the existing carrier path continues to anchor media through
-RTPEngine. The private registrar remains disabled in the
+RTPEngine. FreeSWITCH includes its configured outbound codec preferences on
+the Flowroute leg so G.711 can be negotiated when the SIP Core leg uses a
+different codec. The private registrar remains disabled in the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The YXL voice and FaxNumber DIDs now use that same carrier link to reach the
 YVR IVR and Asterisk SIP Core extension `7101`, respectively. The exact peer
