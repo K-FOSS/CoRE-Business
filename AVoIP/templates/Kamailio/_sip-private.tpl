@@ -341,6 +341,17 @@
       {{- if .Values.kamailio.websocketHA.enabled }}
       route(TO_SIPCORE_ASTERISK);
       if (is_method("REGISTER")) {
+        # PJSIP_DIAL_CONTACTS() sends the stored Contact URI directly, so a
+        # browser's randomized .invalid host cannot be resolved by Asterisk.
+        # Give each registration the receiving StatefulSet pod's stable owner
+        # hostname; keep the Contact alias so the owner can find its live WS
+        # flow when the INVITE returns. The matching Path remains owner-pod
+        # addressed for path-aware AOR requests.
+        if (is_present_hf("Contact") && $hdr(Contact) != "*" &&
+            !subst_hf("Contact", "/@[^;>; ]+;transport=ws/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/ig", "a")) {
+          sl_send_reply("400", "Unsupported WebSocket Contact");
+          exit;
+        }
         remove_hf("Path");
         set_send_socket_name("sipcore_owner_tls");
         if (!add_path_received()) {
@@ -642,7 +653,15 @@
           drop;
         }
       }
-      if (nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
+      # REGISTER replies echo the browser-facing Contact. Do not alias the
+      # Asterisk transaction socket or expose the internal owner hostname to
+      # the client; restore the original WSS form while preserving its alias.
+      if (!is_method("REGISTER") && nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
+      {{- if .Values.kamailio.websocketHA.enabled }}
+      if (is_method("REGISTER") && $rs =~ "^2[0-9][0-9]$" && is_present_hf("Contact")) {
+        subst_hf("Contact", "/@SIPCORE_OWNER_POD[^:;> ]*:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/@.invalid;transport=ws/ig", "a");
+      }
+      {{- end }}
     }
     {{- end }}
 
