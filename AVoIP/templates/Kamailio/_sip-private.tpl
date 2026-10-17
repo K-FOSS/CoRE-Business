@@ -346,7 +346,7 @@
         # Give Asterisk a dialable owner URI rather than the browser's
         # randomized .invalid Contact host. Keep the Contact alias so the
         # owner can resolve the original WebSocket flow on the return leg.
-        if (is_present_hf("Contact") &&
+        if (is_present_hf("Contact") && $hdr(Contact) != "*" &&
             !subst_hf("Contact", "/@[^;>; ]+;transport=ws/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/ig", "a")) {
           sl_send_reply("400", "Unsupported WebSocket Contact");
           exit;
