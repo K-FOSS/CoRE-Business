@@ -653,15 +653,13 @@
           drop;
         }
       }
-      # REGISTER replies echo the browser-facing Contact. Do not alias the
-      # Asterisk transaction socket or expose the internal owner hostname to
-      # the client; restore the original WSS form while preserving its alias.
+      # Only modify Contact on the REGISTER request sent to Asterisk. Its 2xx
+      # response lists every binding for the AOR, not just this transaction;
+      # rewriting those Contacts here loses each client's dynamic .invalid
+      # host (and can produce the invalid URI sip:user@.invalid). Keep the
+      # registrar's owner Contact URIs intact so each binding retains its own
+      # routable owner and alias.
       if (!is_method("REGISTER") && nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
-      {{- if .Values.kamailio.websocketHA.enabled }}
-      if (is_method("REGISTER") && $rs =~ "^2[0-9][0-9]$" && is_present_hf("Contact")) {
-        subst_hf("Contact", "/@SIPCORE_OWNER_POD[^:;> ]*:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/@.invalid;transport=ws/ig", "a");
-      }
-      {{- end }}
     }
     {{- end }}
 
