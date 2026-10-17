@@ -13,6 +13,7 @@ carrier_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-ho
 internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
 internal_tls="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["tls.cfg"]' "$render")"
 freeswitch_dialplan="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$render")"
+flowroute_profile="$(yq -r 'select(.kind == "ExternalSecret" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-flowroute") | .spec.target.template.data["flowroute.xml"]' "$render")"
 
 # The carrier tier's shared TOPOS store and three-way route restoration remain
 # enabled; the internal tier has its own store and a private_tls socket only.
@@ -32,7 +33,10 @@ grep -Fq '$xavp(tls=>server_name) =' <<< "$internal_cfg"
 grep -Fq 'topos_result=route-restored' <<< "$internal_cfg"
 grep -Fq 'route=$hdr(Route)' <<< "$internal_cfg"
 ! grep -Fq '$du = $ru;' <<< "$internal_cfg"
-grep -Fq "sip_invite_contact_params='transport=tls'" <<< "$freeswitch_dialplan"
+grep -Fq '<param name="tls-bind-params" value="transport=tls"/>' <<< "$flowroute_profile"
+grep -Fq '<param name="register-transport" value="udp"/>' <<< "$flowroute_profile"
+grep -Fq 'transport=tls' <<< "$flowroute_profile"
+! grep -Fq 'sip_invite_contact_params=' <<< "$freeswitch_dialplan"
 freeswitch_tls="$(sed -n '/server_name = core-home1-talos-prod-avoip-freeswitch.core-prod.svc.k8s.home1.resolvemy.host/,/certificate = \/etc\/kamailio\/mtls\/tls.crt/p' <<< "$internal_tls")"
 grep -Fq 'verify_certificate = yes' <<< "$freeswitch_tls"
 grep -Fq 'ca_list = /etc/kamailio/peer-ca/ca.crt' <<< "$freeswitch_tls"
@@ -57,6 +61,6 @@ grep -Fq '"topos", "EVAL %s 1 %s",' <<< "$clear_cfg"
 grep -Fq 'rtpengine_delete_result=$var(rtpengine_delete_result)' <<< "$carrier_cfg"
 
 printf '%s\n' 'PASS: outbound teardown route renders the carrier-to-internal mTLS path with independent TOPOS stores'
-printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; new FreeSWITCH Contacts advertise TLS'
+printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; Sofia uses TLS bind Contact parameters without a duplicate dialplan transport'
 printf '%s\n' 'PASS: FreeSWITCH owner TLS uses the site peer CA and authenticated client identity'
 printf '%s\n' 'PASS: relay results and topology decisions are logged; retransmissions exit before teardown side effects'

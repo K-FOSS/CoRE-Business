@@ -79,6 +79,10 @@ spec:
               <param name="tls" value="true"/>
               <param name="tls-only" value="false"/>
               <param name="tls-sip-port" value="{{ $.Values.freeswitch.flowrouteOutbound.tlsPort }}"/>
+              <!-- Use the TLS bind URI when Sofia builds Contacts for
+                   requests on this profile. Do not append a second transport
+                   parameter from the outbound dialplan. -->
+              <param name="tls-bind-params" value="transport=tls"/>
               <param name="tls-cert-dir" value="/etc/freeswitch/tls-flowroute"/>
               <param name="tls-verify-date" value="true"/>
               <param name="tls-verify-policy" value="subjects_out"/>
