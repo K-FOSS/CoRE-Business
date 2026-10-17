@@ -151,7 +151,8 @@ data:
             <action application="log" data="INFO AVoIP silent extension IVR ready caller=${caller_id_number}"/>
             {{- $ivrPattern := join "|" $.Values.freeswitch.ivr.extensions -}}
             {{- if $voicemailEnabled }}
-            {{- $ivrPattern = printf "%s|\\*%s" $ivrPattern (trimPrefix "*" $voicemailAccessCode) -}}
+            {{- $voicemailDigits := trimPrefix "*" $voicemailAccessCode -}}
+            {{- $ivrPattern = printf "%s|%s|\\%s" $ivrPattern $voicemailDigits $voicemailAccessCode -}}
             {{- end }}
             <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # silence_stream://{{ $.Values.freeswitch.ivr.timeoutMs }} silence_stream://1000 ivr_extension ^({{ $ivrPattern }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
             <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
@@ -232,11 +233,11 @@ data:
       <context name="silent-ivr-targets">
         {{- if $voicemailEnabled }}
         <extension name="silent-ivr-voicemail">
-          <condition field="destination_number" expression="^\*{{ trimPrefix "*" $voicemailAccessCode }}$">
-            <action application="log" data="INFO AVoIP silent IVR forwarding caller=${caller_id_number} to Asterisk voicemail access"/>
+          <condition field="destination_number" expression="^(\*{{ trimPrefix "*" $voicemailAccessCode }}|{{ trimPrefix "*" $voicemailAccessCode }})$">
+            <action application="log" data="INFO AVoIP silent IVR forwarding caller=${caller_id_number} to Asterisk voicemail access code {{ $voicemailAccessCode }}"/>
             <action application="set" data="hangup_after_bridge=true"/>
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
-            <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            <action application="bridge" data="sofia/gateway/asterisk/{{ $voicemailAccessCode }}"/>
             {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
             <action application="hangup"/>
           </condition>
