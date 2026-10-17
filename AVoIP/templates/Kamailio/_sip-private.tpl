@@ -679,7 +679,7 @@
     failure_route[PRIVATE_BYE_FAILURE] {
       xlog(
         "L_ERR",
-        "SIP relay failure stage=private-bye-transaction pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn tm_reply_code=$T_reply_code tm_reply_reason=$T_reply_reason tm_branch_index=$T_branch_idx\n"
+        "SIP relay failure stage=private-bye-transaction pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn\n"
       );
     }
 
