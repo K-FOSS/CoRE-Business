@@ -147,6 +147,13 @@ extension remain available for future routing. SpanDSP color fax negotiation
 remains enabled through `freeswitch.fax.colour.enabled`. See the
 [current inbound call path](docs/PHONE-TREE.md).
 
+Inter-site voice uses the carrier Service on TLS/5061 and its public TLS
+listener, with a site-specific optional-client-certificate TLS profile. The
+request is authorized by the configured peer CIDR, verified client certificate
+SAN, and exact extension allowlist. The private Service on TLS/5062 remains for
+same-site application traffic. See the [inter-site voice guide](docs/INTERSITE-VOICE.md)
+for listener, network policy, trust and dialog behavior.
+
 Codec preferences are configurable under the top-level `codecs` values. Opus
 is enabled by default on the Asterisk-to-FreeSWITCH peer, SIP Core endpoints,
 and the FreeSWITCH-to-Asterisk profile; FreeSWITCH global preferences already

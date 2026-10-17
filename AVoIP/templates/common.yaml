@@ -47,6 +47,14 @@
           ports:
             - protocol: TCP
               port: 5061
+        {{- range .Values.kamailio.interSite.peers }}
+        - from:
+            - ipBlock:
+                cidr: '{{ .cidr }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+        {{- end }}
         - from:
             - podSelector:
                 matchLabels:
@@ -113,6 +121,14 @@
         - to:
             - ipBlock:
                 cidr: '{{ . }}'
+          ports:
+            - protocol: TCP
+              port: 5061
+{{- end }}
+{{- range .Values.kamailio.interSite.peers }}
+        - to:
+            - ipBlock:
+                cidr: '{{ .serviceIP }}/32'
           ports:
             - protocol: TCP
               port: 5061

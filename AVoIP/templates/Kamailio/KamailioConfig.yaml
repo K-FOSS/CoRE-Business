@@ -430,6 +430,20 @@ data:
     ca_list = /etc/kamailio/peer-ca/ca.crt
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
+    {{- if .Values.kamailio.interSite.peers }}
+
+    # Inter-site clients send the receiving site's configured outbound SNI.
+    # Select the same optional-mTLS verification policy for that SNI; the
+    # SIP route still requires a verified certificate, exact SAN and CIDR.
+    [server:any]
+    server_name = {{ .Values.kamailio.carrierOutbound.sniHost }}
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = no
+    ca_list = /etc/kamailio/peer-ca/ca.crt
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
+    {{- end }}
     {{- end }}
 
     [client:default]

@@ -131,6 +131,9 @@
   {{- if and (or ($interSite.peers | default list) ($interSite.transfers | default list)) (or (ne $role "carrier-sbc") (not $effective.carrierOutbound.enabled) (not $effective.carrierOutbound.clientIdentity.enabled)) -}}
     {{- fail (printf "Kamailio %s interSite routing requires the carrier-sbc's existing Vault mTLS configuration" $name) -}}
   {{- end -}}
+  {{- if and ($interSite.peers | default list) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.carrierOutbound.sniHost))) -}}
+    {{- fail (printf "Kamailio %s interSite peers require carrierOutbound.sniHost for the inbound TLS verification profile" $name) -}}
+  {{- end -}}
   {{- if and (eq $role "private-sbc") $effective.publicExposure.enabled -}}
     {{- fail (printf "Kamailio %s private-sbc must not expose public SIP" $name) -}}
   {{- end -}}

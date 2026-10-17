@@ -1,5 +1,20 @@
 # AVoIP render checks
 
+The inter-site inbound trust and listener path has a focused render check:
+
+```sh
+AVoIP/tests/intersite-auth-render.sh
+```
+
+It renders representative DC1/YXL and Home1/YVR carrier values, checks the
+SNI-specific optional-mTLS verification profiles, exact peer and extension
+authorization, header stripping, Service and NetworkPolicy mappings, DID
+rewrite, next-hop logging, and dialog route generation. In an environment with
+the pinned Kamailio runtime image and cluster access, pass each rendered
+`kamailio.cfg` to `kamailio -c -f /dev/stdin`; this checks the SIP script parser
+without changing the running pod. The render test does not make a live call or
+validate ringing, answer, RTP, or clean hangup.
+
 The optional Routr Connect integration has a separate rendering check:
 
 ```sh

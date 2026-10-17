@@ -1,0 +1,51 @@
+cluster:
+  name: 'core-dc1-talos-prod'
+  domain: 'k3s.dc1.resolvemy.host'
+datacenter: 'dc1'
+region: 'yxl'
+sip:
+  globalHost: 'sip.resolvemy.host'
+  tls:
+    issuerName: 'core-tls-vault'
+avoip:
+  did: '18005550101'
+fax:
+  did: '18005550102'
+freeswitch:
+  enabled: true
+kamailio:
+  enabled: true
+  instances:
+    - name: 'carrier'
+      enabled: true
+      role: 'carrier-sbc'
+      publicExposure:
+        enabled: true
+      carrierOutbound:
+        enabled: true
+        sniHost: 'sip-outbound.core-dc1-talos-prod.dc1.yxl.resolvemy.host'
+        clientIdentity:
+          enabled: true
+          issuerName: 'core-tls-vault'
+        peer:
+          cidr: '172.20.48.0/22'
+          sanHostname: 'core-dc1-talos-prod-business-avoip-prod-avoip-kamailio-internal.core-prod.svc.k3s.dc1.resolvemy.host'
+          serviceHost: 'core-dc1-talos-prod-business-avoip-prod-avoip-kamailio-internal.core-prod.svc.k3s.dc1.resolvemy.host'
+          controller: 'kamailio-internal'
+          secretName: 'core-dc1-kamailio-peer-mtls'
+      interSite:
+        peers:
+          - name: 'yvr'
+            cidr: '172.20.56.0/21'
+            sanHostname: 'core-home1-talos-prod-business-avoip-prod-avoip-kamailio.core-prod.svc.k8s.home1.resolvemy.host'
+            serviceIP: '10.44.7.136'
+            serviceHost: 'core-home1-talos-prod-business-avoip-prod-avoip-kamailio.core-prod.svc.k8s.home1.resolvemy.host'
+            serverName: 'sip-outbound.core-home1-talos-prod.home1.yvr.resolvemy.host'
+            allowedUsers: []
+        transfers:
+          - peerName: 'yvr'
+            destinationDID: 'avoip'
+            destinationExtension: '7102'
+          - peerName: 'yvr'
+            destinationDID: 'fax'
+            destinationExtension: '7101'

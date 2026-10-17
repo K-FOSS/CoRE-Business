@@ -15,10 +15,16 @@ inter-site route uses the ordinary YVR carrier ClusterIP Service at
    matches the called DID in the SIP `To` URI and selects the YVR peer. Flowroute
    may include a leading `+`; Kamailio accepts either form. The Request-URI
    carries Flowroute's rendezvous user, so it is not used for DID matching.
-2. YXL carrier Kamailio connects to the YVR carrier ClusterIP over TLS. It
-   presents its existing Vault-issued client certificate and uses the YVR
-   TLSRoute SNI. The [Kamailio TLS module](https://www.kamailio.org/docs/modules/stable/modules/tls.html)
-   selects the peer-specific client profile.
+2. YXL carrier Kamailio connects to the YVR carrier ClusterIP at Service port
+   `5061`, which maps to Kamailio's `public_tls` container listener on `5061`.
+   It presents its existing Vault-issued client certificate and uses YVR's
+   configured `carrierOutbound.sniHost` as SNI. The [Kamailio TLS module](https://www.kamailio.org/docs/modules/stable/modules/tls.html)
+   selects the peer-specific client profile. Each carrier instance also has a
+   server TLS profile for that configured SNI. It verifies a presented client
+   certificate against the existing peer CA while leaving the TLS-level
+   certificate optional for public carrier traffic; SIP authorization then
+   requires successful peer verification, the exact configured SAN and pod
+   CIDR, and the exact allowed extension.
 3. YVR carrier Kamailio requires the client certificate to verify, then checks
    both its SAN and the YXL carrier pod CIDR. It accepts a new INVITE only for
    `7101` or `7102`; that route adds an internal marker and sends the call to
@@ -64,6 +70,34 @@ selection, namespace and Lovely value merge are defined by the
 The chart defaults leave inter-site routing and the IVR disabled with empty
 peer and transfer lists. Keep the route values at the owning ApplicationSet
 layer.
+
+The public carrier listener and the private application listener have distinct
+roles. The carrier Service maps `5061` to `tls-public`/container `5061`, and
+the private service port `5062` maps to `tls-private`/container `5062`. New
+intersite INVITEs intentionally use Service port `5061` and enter `public_tls`
+so they follow the carrier routing and extension authorization path. The
+carrier NetworkPolicy permits only the configured intersite peer CIDRs on
+`5061` and only the configured remote peer Service IP on egress `5061`; public
+carrier CIDRs and Envoy remain separately configured. The
+`Contact` value on an INVITE is not what selects that receiving listener. In
+the generated carrier routing, the local/private URI on `5062` is part of the
+paired Record-Route topology used by TOPOS and the backend-facing dialog leg;
+the intersite next hop remains the peer Service on `5061`. A `5062` Contact
+alone therefore does not explain a rejection on the initial INVITE. Verify
+subsequent ACK, CANCEL, BYE and response routing from a live ladder before
+claiming dialog health.
+
+For the reported rejection, Home1's logs showed the transport peer addresses
+inside YXL's configured `172.20.48.0/22`; the presented client certificate SAN
+matched the configured YXL service identity. The failing predicate was
+`$tls_peer_verified`: the intersite client sent
+`sip-outbound.core-home1-talos-prod.home1.yvr.resolvemy.host` as SNI, while the
+server verification profile had been selected only for the public
+`sip.core-home1-talos-prod.home1.yvr.resolvemy.host` SNI. The default TLS
+profile did not verify client certificates, so the SIP source guard returned
+`403 Source Not Authorized`. The chart now configures the same optional-client
+certificate verification profile for the site's existing outbound SNI in both
+directions. The SIP source, SAN, and extension checks remain in force.
 
 ## Verification and rollback
 

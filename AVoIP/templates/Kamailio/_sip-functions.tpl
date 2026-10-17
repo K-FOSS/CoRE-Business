@@ -159,9 +159,17 @@
             if ($rU == "{{ . }}") $var(interSiteAllowed) = 1;
             {{- end }}
             if ($var(interSiteAllowed) != 1) {
+              xlog(
+                "L_WARN",
+                "SIP peer decision class=inter-site peer={{ $peer.name }} authorization=denied reason=extension pod=$env(POD_NAME) listener=$Rn/$Ri:$Rp/$proto source=$si:$sp tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname ruri=$ru call_id=$ci method=$rm\n"
+              );
               sl_send_reply("403", "Inter-site Destination Not Authorized");
               exit;
             }
+            xlog(
+              "L_INFO",
+              "SIP peer decision class=inter-site peer={{ $peer.name }} authorization=allowed pod=$env(POD_NAME) listener=$Rn/$Ri:$Rp/$proto source=$si:$sp tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname ruri=$ru call_id=$ci method=$rm\n"
+            );
             append_hf("X-Core-InterSite: {{ $peer.name }}\r\n");
             dlg_manage();
             $dlg_var(interSitePeer) = "{{ $peer.name }}";
@@ -186,6 +194,10 @@
         if (src_ip == {{ . }}) {
           $var(side) = "carrier";
           remove_hf("X-Core-InterSite");
+          xlog(
+            "L_INFO",
+            "SIP peer decision class=carrier authorization=allowed pod=$env(POD_NAME) listener=$Rn/$Ri:$Rp/$proto source=$si:$sp call_id=$ci method=$rm\n"
+          );
           {{- if $carrierTrafficLogging }}
           xlog(
             "L_INFO",
@@ -226,6 +238,10 @@
         src_ip == {{ .Values.kamailio.backend.podCIDR }}
       ) {
         $var(side) = "backend";
+        xlog(
+          "L_INFO",
+          "SIP peer decision class=backend authorization=allowed pod=$env(POD_NAME) listener=$Rn/$Ri:$Rp/$proto source=$si:$sp call_id=$ci method=$rm\n"
+        );
         if (is_method("CANCEL")) {
           {{- if .Values.kamailio.carrierOutbound.enabled }}
           route(OUTBOUND_RELEASE);
@@ -247,7 +263,7 @@
 
       xlog(
         "L_WARN",
-        "SIP reject reason=source-or-socket pod=$env(POD_NAME) method=$rm source=$si:$sp recv=$Ri:$Rp proto=$proto callid=$ci\n"
+        "SIP peer decision class=unclassified authorization=denied reason=source-or-socket pod=$env(POD_NAME) method=$rm source=$si:$sp listener=$Rn/$Ri:$Rp/$proto tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname call_id=$ci\n"
       );
 
       if (!is_method("ACK")) {
@@ -754,6 +770,10 @@
 
       $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
       set_send_socket_name("private_tls");
+      xlog(
+        "L_INFO",
+        "SIP peer next-hop class=backend destination=$du tls_sni={{ $freeswitchHost }} send_socket=private_tls source=$si:$sp call_id=$ci method=$rm\n"
+      );
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog(
         "$ci",
@@ -800,6 +820,10 @@
         $xavp(tls=>server_name) = "{{ .serverName }}";
         $xavp(tls[0]=>server_id) = "inter-site-{{ .name }}";
         set_send_socket_name("public_tls");
+        xlog(
+          "L_INFO",
+          "SIP peer next-hop class=inter-site peer={{ .name }} destination=$du tls_sni={{ .serverName }} send_socket=public_tls source=$si:$sp call_id=$ci method=$rm\n"
+        );
       }
       {{- end }}
       if ($var(interSitePeerFound) != 1) {
