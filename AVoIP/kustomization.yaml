@@ -7,6 +7,21 @@ images:
     digest: 'sha256:3602a85840d51981808d0519aefca170a3dbe3dec7bc8c5b87cbd52a503ea89f'
 
 patches:
+  # Let each SIP workload remain Ready for one minute before a rolling update
+  # advances to the next replica. BJW-S common 5.0.1 ignores this Deployment
+  # field, so apply it after the Lovely Helm render.
+  - path: patches/sip-rollout-min-ready.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      labelSelector: app.kubernetes.io/controller in (kamailio,kamailio-internal,freeswitch)
+  - path: patches/sip-rollout-min-ready.yaml
+    target:
+      group: apps
+      version: v1
+      kind: StatefulSet
+      labelSelector: app.kubernetes.io/controller=kamailio-internal-wss
   - path: patches/livekit-deployment.yaml
     target:
       group: apps

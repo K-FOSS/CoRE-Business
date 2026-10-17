@@ -1,0 +1,6 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sip-rollout-min-ready
+spec:
+  minReadySeconds: 60

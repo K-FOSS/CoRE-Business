@@ -166,7 +166,7 @@
               sl_send_reply("403", "Inter-site Destination Not Authorized");
               exit;
             }
-            xlog(
+            xlog( 
               "L_INFO",
               "SIP peer decision class=inter-site peer={{ $peer.name }} authorization=allowed pod=$env(POD_NAME) listener=$Rn/$Ri:$Rp/$proto source=$si:$sp tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname ruri=$ru call_id=$ci method=$rm\n"
             );

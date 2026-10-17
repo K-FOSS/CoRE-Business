@@ -1562,7 +1562,6 @@ controllers:
     podDisruptionBudget:
       minAvailable: {{ .Values.freeswitch.highAvailability.minAvailable }}
     {{- end }}
-    minReadySeconds: 30
     revisionHistoryLimit: 3
     serviceAccount:
       name: default
