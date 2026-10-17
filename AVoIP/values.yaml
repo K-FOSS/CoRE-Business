@@ -136,8 +136,24 @@ functions: []
 
 # Per-controller interface/placement controls for every enabled workload.
 # Keys: asterisk, freeswitch, kamailio, rtpengine, homer-web, or function names.
-# Empty defaults preserve the cluster CNI and existing workload configuration.
-workloadNetworking: {}
+# The generic kamailio profile applies to every Kamailio instance; a profile
+# keyed by a specific controller (for example, kamailio-internal) overrides it.
+workloadNetworking:
+  asterisk:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: '0'
+  freeswitch:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: '0'
+  kamailio:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: '0'
 
 datacenter: 'dc1'
 

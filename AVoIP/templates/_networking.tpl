@@ -71,6 +71,16 @@
 {{- with $function.networking -}}{{- $_ := set $profiles $name . -}}{{- end -}}
 {{- end -}}
 {{- end -}}
+{{- if hasKey $profiles "kamailio" -}}
+{{- $kamailioProfile := get $profiles "kamailio" -}}
+{{- range $name := keys $root.Values.controllers -}}
+{{- if and (ne $name "kamailio") (hasPrefix "kamailio-" $name) -}}
+{{- $profile := deepCopy $kamailioProfile -}}
+{{- with get $profiles $name -}}{{- $_ := mergeOverwrite $profile (deepCopy .) -}}{{- end -}}
+{{- $_ := set $profiles $name $profile -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- range $name, $profile := $profiles -}}
 {{- if hasKey $root.Values.controllers $name -}}
 {{- $controller := get $root.Values.controllers $name -}}
