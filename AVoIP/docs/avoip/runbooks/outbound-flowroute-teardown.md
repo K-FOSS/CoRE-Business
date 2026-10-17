@@ -86,19 +86,20 @@ NS='core-prod'
 CALL_ID='<Call-ID from Homer>'
 CARRIER_APP='core-home1-talos-prod-business-avoip-prod-avoip-kamailio'
 INTERNAL_APP='core-home1-talos-prod-business-avoip-prod-avoip-kamailio-internal'
-FS_DEPLOY='core-home1-talos-prod-business-avoip-prod-avoip-freeswitch'
+FS_INSTANCE='core-home1-talos-prod-business-avoip-prod'
 
 kubectl --context "$SITE_CONTEXT" -n "$NS" logs -l "app=$CARRIER_APP" \
   -c kamailio --prefix --since=10m | rg -F "$CALL_ID"
 kubectl --context "$SITE_CONTEXT" -n "$NS" logs -l "app=$INTERNAL_APP" \
-  -c kamailio --prefix --since=10m | rg -F "$CALL_ID"
-kubectl --context "$SITE_CONTEXT" -n "$NS" logs "deploy/$FS_DEPLOY" \
-  -c freeswitch --since=10m | rg -F "$CALL_ID"
+  -c kamailio-internal --prefix --since=10m | rg -F "$CALL_ID"
+kubectl --context "$SITE_CONTEXT" -n "$NS" logs \
+  -l "app.kubernetes.io/instance=$FS_INSTANCE,app.kubernetes.io/controller=freeswitch" \
+  -c freeswitch --prefix --since=10m | rg -F "$CALL_ID"
 
 POD='<one-internal-kamailio-pod>'
-kubectl --context "$SITE_CONTEXT" -n "$NS" exec "$POD" -c kamailio -- \
+kubectl --context "$SITE_CONTEXT" -n "$NS" exec "$POD" -c kamailio-internal -- \
   kamcmd -s unix:/tmp/kamailio_ctl core.tcp_info
-kubectl --context "$SITE_CONTEXT" -n "$NS" exec "$POD" -c kamailio -- \
+kubectl --context "$SITE_CONTEXT" -n "$NS" exec "$POD" -c kamailio-internal -- \
   kamcmd -s unix:/tmp/kamailio_ctl dlg.dlg_list "$CALL_ID" '2j898vF7vcDFa'
 
 RTP_POD='<rtpengine-pod>'
