@@ -134,8 +134,10 @@ databases 155 (Location) and 156 (Registry). Location and Registry require
 patched images built from the pinned Routr source to select those databases.
 See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
-The Home1/YVR voice DID enters the silent FreeSWITCH IVR, which accepts only
-the configured Asterisk destinations `7101`, `9090`, `66`, and `1234`. The
+The Home1/YVR voice DID enters the silent FreeSWITCH IVR, which accepts the
+configured Asterisk destinations `7101`, `9090`, `66`, and `1234`, plus `97`
+or `*97` for the YVR Asterisk voicemail login. Both voicemail entries bridge
+to Asterisk as `*97`. The
 YXL voice DID reaches that same IVR through the existing carrier mTLS path at
 ingress extension `7102`. Both sites' FaxNumber DIDs route to YVR Asterisk
 extension `7101`. The DID routes no longer select the `rxfax` receiver or
