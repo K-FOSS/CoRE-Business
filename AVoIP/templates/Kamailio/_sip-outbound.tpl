@@ -147,9 +147,9 @@
       if ($var(outbound_teardown_key) == $null ||
           !redis_cmd(
             "topos",
-            "EVAL %s 1 %s %s",
-            "if redis.call('EXISTS',KEYS[1])==0 then redis.call('SET',KEYS[1],'timeout','EX',ARGV[1]);return 1 else return 0 end",
-            "$var(outbound_teardown_key)", "86400", "outbound_timeout_claim"
+            "EVAL %s 1 %s",
+            "if redis.call('EXISTS',KEYS[1])==0 then redis.call('SET',KEYS[1],'timeout','EX',86400);return 1 else return 0 end",
+            "$var(outbound_teardown_key)", "outbound_timeout_claim"
           )) {
         xlog(
           "L_ERR",
@@ -182,11 +182,11 @@
     route[OUTBOUND_BYE_PENDING] {
       $var(outbound_teardown_key) = "avoip:out:teardown:" + $ci;
       $var(outbound_bye_new) = 0;
-      $var(outbound_teardown_script) = "if redis.call('EXISTS',KEYS[1])==0 then redis.call('SET',KEYS[1],ARGV[1],'EX',ARGV[2]);return 1 else return 0 end";
+      $var(outbound_teardown_script) = "if redis.call('EXISTS',KEYS[1])==0 then redis.call('SET',KEYS[1],'pending','EX',86400);return 1 else return 0 end";
       if (!redis_cmd(
-        "topos", "EVAL %s 1 %s %s %s",
+        "topos", "EVAL %s 1 %s",
         "$var(outbound_teardown_script)", "$var(outbound_teardown_key)",
-        "pending", "86400", "outbound_teardown_write"
+        "outbound_teardown_write"
       ) || $redis(outbound_teardown_write=>type) != $redisd(rpl_int)) {
         xlog(
           "L_ERR",
@@ -225,11 +225,11 @@
       if ($rm == "BYE" && $rs >= 200) {
         $var(outbound_teardown_key) = "avoip:out:teardown:" + $ci;
         if ($rs < 300) {
-          $var(outbound_teardown_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX',ARGV[2]);return 1";
+          $var(outbound_teardown_script) = "redis.call('SET',KEYS[1],'complete','EX',86400);return 1";
           if (!redis_cmd(
-            "topos", "EVAL %s 1 %s %s %s",
+            "topos", "EVAL %s 1 %s",
             "$var(outbound_teardown_script)", "$var(outbound_teardown_key)",
-            "complete", "86400", "outbound_teardown_write"
+            "outbound_teardown_write"
           ) || $redis(outbound_teardown_write=>type) != $redisd(rpl_int) ||
               $redis(outbound_teardown_write=>value) != 1) {
             xlog(
