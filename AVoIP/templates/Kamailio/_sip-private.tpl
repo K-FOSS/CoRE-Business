@@ -652,7 +652,9 @@
           drop;
         }
       }
-      if (nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
+      # REGISTER replies echo the Contact alias saved from the browser flow;
+      # do not append an alias for Asterisk's TCP/TLS transaction socket.
+      if (!is_method("REGISTER") && nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
       {{- if .Values.kamailio.websocketHA.enabled }}
       # Asterisk echoes the owner Contact in REGISTER responses. Restore the
       # browser-facing WSS URI while leaving the flow alias intact.
