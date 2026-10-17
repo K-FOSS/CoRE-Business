@@ -11,6 +11,9 @@ helm template core-home1-talos-prod "$repo_root/AVoIP" \
 
 config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-audio-library") | .data["default.conf"]' "$rendered")"
 grep -Fqx '  location ~ "^/audio-library/files/(?<audio_file>[A-Za-z0-9][A-Za-z0-9_-]{0,63}\.wav)$" {' <<< "$config"
+grep -Fqx '  location = /audio-library/ {' <<< "$config"
+grep -Fqx '    alias /usr/share/nginx/html/;' <<< "$config"
+grep -Fqx '    index index.html;' <<< "$config"
 grep -Fqx '    alias /var/lib/avoip/sounds/$audio_file;' <<< "$config"
 grep -Fqx '    dav_methods PUT;' <<< "$config"
 grep -Fqx '    limit_except GET HEAD PUT { deny all; }' <<< "$config"

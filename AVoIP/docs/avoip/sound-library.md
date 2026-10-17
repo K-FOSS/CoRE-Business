@@ -39,6 +39,9 @@ The NGINX WAV-file location quotes its regex so the `{0,63}` quantifier remains
 part of the pattern when NGINX parses the generated configuration. The focused
 render check is `AVoIP/tests/sound-library-nginx-render.sh`; run `nginx -t` with
 the generated configuration and the deployed image before accepting a rollout.
+The editor's exact trailing-slash route aliases the HTML directory and serves
+`index.html` from it, avoiding a duplicate `index.html` suffix during NGINX's
+index lookup.
 
 The PVC has `Retain` reclaim behavior and Argo CD prune/delete protection. If
 the editor or AVoIP release is disabled, the chart removes the workload and its
