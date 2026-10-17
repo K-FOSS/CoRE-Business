@@ -82,6 +82,10 @@ spec:
               <param name="sip-port" value="5080"/>
               <param name="sip-ip" value="$${local_ip_v4}"/>
               <param name="rtp-ip" value="$${local_ip_v4}"/>
+              <!-- Keep bridged RTP breaks interruptible so inbound SIP BYE
+                   handling is not held until a timerless RTP poll expires. -->
+              <param name="rtp-timer-name" value="soft"/>
+              <param name="rtp-notimer-during-bridge" value="false"/>
               <!-- Advertise the Flowroute Sofia listener on this owner pod;
                    carrier Kamailio hides this target with TOPOS. -->
               <param name="ext-sip-ip" value="$${local_ip_v4}"/>
