@@ -72,8 +72,10 @@ the literal `.invalid` host. For the current binding this changed
 The latter is not a valid SIP URI: its host begins with an empty DNS label.
 In JsSIP 3.10.6, `Parser.parseMessage()` parses every Contact header before the
 response reaches the transaction/registrator; a parse failure returns no SIP
-message, so the UA drops the response before emitting `registered` or
-`registrationFailed`. If Contact parsing succeeds, the registrator first
+message, so the UA drops the response without emitting `registered` from this
+200. The REGISTER client transaction then times out; the registrator maps
+that timeout to `registrationFailed` with `REQUEST_TIMEOUT`. If Contact
+parsing succeeds, the registrator first
 matches `+sip.instance` with `reg-id`, then falls back to the Contact URI user.
 The HAR's response omitted instance and reg-id, so a valid Contact with the
 same user would match by that fallback even though its host is the internal
