@@ -330,11 +330,11 @@ RTP independently of SIP signaling. Kamailio sends NG control over the private
 WebSocket control Service so its client reconnects after an RTPEngine pod
 replacement. Its
 [RTPEngine configuration](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md)
-uses the site-specific media address and port range supplied by the owning
+uses the site-specific media address and UDP range supplied by the owning
 ApplicationSet. Kamailio fails closed if RTPEngine cannot handle a media-bearing
 request or SDP reply; it does not expose private FreeSWITCH SDP as a fallback.
-The public media LoadBalancer exposes the configured port range over UDP and
-TCP and uses the site's provider settings under
+The public media LoadBalancer exposes the configured UDP range and uses the
+site's provider settings under
 `serviceOptions`. FreeSWITCH's own public RTP Service is omitted when both
 Kamailio and RTPEngine are enabled. The chart's one-shard Valkey store and
 primary-aware HAProxy endpoint support RTPEngine state recovery, but live

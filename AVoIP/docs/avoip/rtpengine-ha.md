@@ -30,8 +30,7 @@ uses the same NG control commands. The selected control port is reachable
 through the cluster-internal Service and the Kamailio egress rules rendered by
 this chart. When enabled, RTPEngine's HTTP listener also serves HTTP control
 endpoints; the chart's Cilium ingress policy limits NG control to Kamailio pods
-and allows UDP and TCP on the configured media range for cluster and external
-traffic.
+and preserves the configured UDP media range for cluster and external traffic.
 The control listener does not expose the public media Service or change media
 ownership.
 
