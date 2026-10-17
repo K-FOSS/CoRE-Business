@@ -233,6 +233,14 @@ pod allowed and zero unavailable replicas. Asterisk uses its local CLI uptime
 check for startup, readiness, and liveness; FreeSWITCH uses a non-network
 process/configuration check because its event socket is not enabled. Each
 controller must pass startup and readiness before the old replica is removed.
+Asterisk uses `asterisk.timeZone` (Home1/YVR: `America/Vancouver`) for local
+time. A startup init container copies that zoneinfo file from the pinned
+Asterisk image to an ephemeral volume mounted read-only at `/etc/localtime`;
+this is the timezone file Asterisk 20 loads for its local-time functions
+([upstream implementation](https://github.com/asterisk/asterisk/blob/20/main/stdtime/localtime.c)).
+The container also receives the matching `TZ` value for its utilities. Set
+`asterisk.timeZone` in the site values layer when deploying Asterisk in another
+timezone.
 
 Component behavior is controlled by chart values and the ApplicationSet merge:
 

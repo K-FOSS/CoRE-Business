@@ -795,6 +795,27 @@ controllers:
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
         secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }},{{ include "avoip.fullname" . }}-asterisk-voicemail-pin{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
     initContainers:
+      asterisk-timezone:
+        image:
+          repository: '{{ .Values.asterisk.image.repository }}'
+          tag: '{{ .Values.asterisk.image.tag }}'
+          digest: '{{ .Values.asterisk.image.digest }}'
+          pullPolicy: '{{ .Values.asterisk.image.pullPolicy }}'
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - |
+            set -eu
+            zone='/usr/share/zoneinfo/{{ include "avoip.asterisk.timeZone" . }}'
+            test -s "$zone" || { printf '%s\n' 'Configured Asterisk timezone is missing from the image' >&2; exit 1; }
+            cp "$zone" /timezone/localtime
+            chmod 0444 /timezone/localtime
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
 {{- if or .Values.asterisk.cdr.enabled .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
       cdr-schema:
         image:
@@ -1046,8 +1067,10 @@ controllers:
           tag: '{{ .Values.asterisk.image.tag }}'
           digest: '{{ .Values.asterisk.image.digest }}'
           pullPolicy: '{{ .Values.asterisk.image.pullPolicy }}'
-        {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
         env:
+          - name: TZ
+            value: '{{ include "avoip.asterisk.timeZone" . }}'
+        {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
           - name: ODBCINI
             value: /tmp/avoip-odbc.ini
         {{- end }}
@@ -2122,6 +2145,18 @@ service:
 
 persistence:
 {{ include "avoip.routr.common.persistence" . }}
+{{- if .Values.asterisk.enabled }}
+  asterisk-localtime:
+    type: emptyDir
+    advancedMounts:
+      asterisk:
+        asterisk-timezone:
+          - path: /timezone
+        asterisk:
+          - path: /etc/localtime
+            subPath: localtime
+            readOnly: true
+{{- end }}
 {{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
   rtpengine-valkey-proxy-config:
     type: configMap

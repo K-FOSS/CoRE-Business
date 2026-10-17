@@ -28,6 +28,14 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- printf "%s-asterisk-sipcore-%s" $prefix (toString .number) | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- define "avoip.asterisk.timeZone" -}}
+{{- $timeZone := required "asterisk.timeZone is required" .Values.asterisk.timeZone -}}
+{{- if not (regexMatch "^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$" $timeZone) -}}
+  {{- fail "asterisk.timeZone must be a zoneinfo path such as America/Vancouver" -}}
+{{- end -}}
+{{- $timeZone -}}
+{{- end -}}
+
 {{- define "avoip.resourceNameWithSuffix" -}}
 {{- $suffix := .suffix -}}
 {{- $maxPrefix := sub 63 (add 1 (len $suffix)) | int -}}

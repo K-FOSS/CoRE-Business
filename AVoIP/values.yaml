@@ -802,6 +802,8 @@ network:
 
 asterisk:
   enabled: true
+  # Site timezone used by Asterisk's local-time functions and log timestamps.
+  timeZone: 'America/Vancouver'
   logging:
     # Temporary troubleshooting verbosity routed to the container console.
     # PJSIP packet traces can contain caller identities and SIP headers.
