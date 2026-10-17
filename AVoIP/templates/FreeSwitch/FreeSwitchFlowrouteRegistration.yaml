@@ -61,6 +61,20 @@ spec:
                 <param name="caller-id-in-from" value="true"/>
                 <param name="outbound-proxy" value="sips:{{ $kamailioHost }}:5062;transport=tls"/>
               </gateway>
+              <!-- Gateway transport also controls the generated gateway
+                   Contact. Keep UDP registration separate from the
+                   TLS-only outbound call leg. -->
+              <gateway name="flowroute-tls">
+                <param name="username" value="{{ `{{ .username }}` }}"/>
+                <param name="auth-username" value="{{ `{{ .username }}` }}"/>
+                <param name="password" value="{{ `{{ .password }}` }}"/>
+                <param name="proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
+                <param name="register-proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
+                <param name="register-transport" value="tls"/>
+                <param name="register" value="false"/>
+                <param name="caller-id-in-from" value="true"/>
+                <param name="outbound-proxy" value="sips:{{ $kamailioHost }}:5062;transport=tls"/>
+              </gateway>
             </gateways>
             <settings>
               <param name="context" value="public"/>
@@ -79,9 +93,8 @@ spec:
               <param name="tls" value="true"/>
               <param name="tls-only" value="false"/>
               <param name="tls-sip-port" value="{{ $.Values.freeswitch.flowrouteOutbound.tlsPort }}"/>
-              <!-- Use the TLS bind URI when Sofia builds Contacts for
-                   requests on this profile. Do not append a second transport
-                   parameter from the outbound dialplan. -->
+              <!-- Keep the profile's TLS listener URI explicit. Gateway
+                   Contacts use each gateway's register-transport setting. -->
               <param name="tls-bind-params" value="transport=tls"/>
               <param name="tls-cert-dir" value="/etc/freeswitch/tls-flowroute"/>
               <param name="tls-verify-date" value="true"/>

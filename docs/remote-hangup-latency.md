@@ -207,17 +207,57 @@ reported as containing both `transport=udp` and the appended
 `transport=tls`. The profile's UDP/TLS bind configuration combined with the
 dialplan's unconditional appended parameter is the source of the duplicate.
 
-The source correction now sets `tls-bind-params=transport=tls` on the Flowroute
-Sofia profile and removes the dialplan's extra Contact parameter. UDP gateway
-registration remains explicitly configured as UDP; the outbound INVITE still
-uses the existing TLS private Kamailio path and TLS listener port 5081. The
-`outbound-teardown-render.sh` regression now checks that the profile has the
-TLS bind parameter and that the bridge no longer appends another transport.
-This rendered source correction is not yet a live packet-level verification:
-after rollout, capture a new INVITE and verify its Contact contains exactly
-one `transport=tls` parameter, then verify an in-dialog BYE reaches FreeSWITCH
-and returns 200 OK. This independent Contact defect is not established as the
-cause of the five-second delay.
+The first source correction set `tls-bind-params=transport=tls` on the
+Flowroute Sofia profile and removed the dialplan's extra Contact parameter.
+The next live call proves that did not fix the gateway Contact: the active
+profile had that setting, but after TOPOS restoration the target was still
+`sip:gw+flowroute@<FreeSWITCH-pod>:5081;transport=udp;gw=flowroute`. The
+remaining `transport=udp` comes from the gateway's `register-transport`, not
+from the TLS profile bind. FreeSWITCH's gateway path uses the gateway's
+`register_transport` for the outbound leg and the gateway's generated
+`register_contact` for the INVITE Contact ([FreeSWITCH `mod_sofia.c`](https://github.com/signalwire/freeswitch/blob/master/src/mod/endpoints/mod_sofia/mod_sofia.c#L4452-L4544)).
+The profile-level TLS bind parameter does not override that gateway-specific
+Contact.
+
+The follow-up source correction keeps the existing registered UDP gateway and
+adds a separate non-registering `flowroute-tls` gateway with
+`register-transport=tls`. The dialplan now originates through that gateway;
+the existing regional proxy, private Kamailio TLS outbound proxy, credentials,
+TLS profile, and port 5081 remain in use. This should cause Sofia's generated
+gateway Contact to carry one `transport=tls` parameter while leaving the
+existing Flowroute UDP registration intact. The render regression checks both
+gateway configurations and the dialplan selection. This second correction is
+not yet live-validated; after its rollout, inspect an outbound INVITE Contact
+and verify an in-dialog BYE reaches FreeSWITCH and returns 200 OK. Neither
+Contact issue has been established as the cause of the five-second delay.
+
+### Latest live test: 2026-10-17 08:18 UTC
+
+The user's latest call was correlated across carrier Kamailio, internal
+Kamailio, FreeSWITCH, and Asterisk. Carrier-leg SIP Call-ID was
+`3b6daa27-44a6-1240-e388-000000000000`; linked ID was
+`avoip-asterisk-1792225133.336`; FreeSWITCH UUIDs were
+`94227812-8383-4d73-aba8-364b3c1a5bfc` (Flowroute leg) and
+`df9f607b-bbcb-400f-ad79-01e0556db486` (Asterisk leg).
+
+| Event | UTC | Evidence |
+| --- | ---: | --- |
+| Carrier BYE received by carrier Kamailio | 08:19:05.816 | Same Call-ID, BYE CSeq `587712` |
+| Carrier Kamailio forwards BYE | 08:19:05.819–.822 | TLS private socket to internal Kamailio |
+| Internal Kamailio restores Contact and queues BYE to FreeSWITCH | 08:19:05.855–.858 | TLS to pod `172.20.63.99:5081`; `t_relay_result=1` |
+| FreeSWITCH logs both bridge legs hanging up | 08:19:10.878 | Both channels `NORMAL_CLEARING` |
+| Carrier Kamailio receives the BYE response | 08:19:10.885 | 200 OK, same Call-ID and CSeq |
+| Asterisk observes teardown | 08:19:10.887–.890 | SIP 200 OK and Q.850 cause 16 / Normal Clearing |
+
+The gap from internal Kamailio's queued relay to FreeSWITCH's channel-hangup
+log was about 5.020 seconds; the carrier BYE arrived about 5.061 seconds before
+that log. RTPEngine deletion was requested once at carrier dialog end and
+returned result `1`. No 481 or duplicate cleanup BYE was found in the
+Call-ID-matched logs. The call completed, but Sofia's BYE receipt timestamp
+was still absent, so this does not distinguish delayed TLS delivery from
+delayed FreeSWITCH processing. The restored UDP Contact was overridden by the
+internal route's explicit TLS next hop; the BYE succeeded despite the Contact
+defect.
 
 The changed source files for this correction are
 `AVoIP/templates/FreeSwitch/FreeSwitchFlowrouteRegistration.yaml`,
