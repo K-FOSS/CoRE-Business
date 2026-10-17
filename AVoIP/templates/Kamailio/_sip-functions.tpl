@@ -170,7 +170,6 @@
               "L_INFO",
               "SIP peer decision class=inter-site peer={{ $peer.name }} authorization=allowed pod=$env(POD_NAME) listener=$Rn/$Ri:$Rp/$proto source=$si:$sp tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname ruri=$ru call_id=$ci method=$rm\n"
             );
-            append_hf("X-Core-InterSite: {{ $peer.name }}\r\n");
             dlg_manage();
             $dlg_var(interSitePeer) = "{{ $peer.name }}";
             $dlg_var(interSiteDirection) = "terminating";
@@ -748,6 +747,25 @@
       #
       # The only SIP peer FreeSWITCH has is Kamailio.
       #
+      {{- if .Values.kamailio.interSite.peers }}
+      # Add the internal marker at the final backend egress point, after
+      # routing and media handling. Its value is derived only from the
+      # mTLS/CIDR/extension-authorized dialog state above; discard any earlier
+      # copy so the FreeSWITCH dialplan receives exactly one trusted value.
+      if ($var(side) == "inter-site" && $dlg_var(interSiteDirection) == "terminating" &&
+          is_method("INVITE") && !has_totag()) {
+        remove_hf("X-Core-InterSite");
+        {{- range .Values.kamailio.interSite.peers }}
+        if ($dlg_var(interSitePeer) == "{{ .name }}") {
+          append_hf("X-Core-InterSite: {{ .name }}\r\n");
+          xlog(
+            "L_INFO",
+            "SIP inter-site backend authorization=allowed peer={{ .name }} marker={{ .name }} destination=$du source=$si:$sp call_id=$ci method=$rm\n"
+          );
+        }
+        {{- end }}
+      }
+      {{- end }}
       {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled .Values.freeswitch.enabled }}
       # TOPOS restores the FreeSWITCH Contact in the Request-URI. Preserve its
       # profile-specific listener port while routing to the owner pod; the

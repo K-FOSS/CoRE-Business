@@ -16,6 +16,7 @@ dc1_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-dc1-ta
 dc1_tls="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-dc1-talos-prod-avoip-kamailio-config") | .data["tls.cfg"]' "$dc1")"
 home1_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["kamailio.cfg"]' "$home1")"
 home1_tls="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["tls.cfg"]' "$home1")"
+home1_fs="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$home1")"
 
 grep -Fq 'server_name = sip-outbound.core-dc1-talos-prod.dc1.yxl.resolvemy.host' <<< "$dc1_tls"
 grep -Fq 'server_name = sip-outbound.core-home1-talos-prod.home1.yvr.resolvemy.host' <<< "$home1_tls"
@@ -32,18 +33,23 @@ grep -Fq 'src_ip == 172.20.48.0/22 && $tls_peer_san_hostname == "core-dc1-talos-
 grep -Fq 'if ($rU == "7102") $var(interSiteAllowed) = 1;' <<< "$home1_cfg"
 grep -Fq 'SIP peer decision class=inter-site' <<< "$home1_cfg"
 grep -Fq 'listener=$Rn/$Ri:$Rp/$proto source=$si:$sp tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname' <<< "$home1_cfg"
-grep -Fq 'append_hf("X-Core-InterSite: yxl' <<< "$home1_cfg"
 grep -Fq 'SIP peer decision class=unclassified authorization=denied' <<< "$home1_cfg"
 grep -Fq 'SIP peer next-hop class=backend destination=$du tls_sni=core-home1-talos-prod-avoip-freeswitch.core-prod.svc.k8s.home1.resolvemy.host send_socket=private_tls' <<< "$home1_cfg"
 grep -Fq 'route(FROM_CARRIER);' <<< "$home1_cfg"
 ! grep -Fq '$hdr(X-Core-InterSite)' <<< "$home1_cfg"
 
-# Forged marker values are removed before source authorization and recreated
-# only inside the authenticated, extension-authorized branch.
+# Forged marker values are removed before source authorization. The trusted
+# marker is recreated at backend egress only after an authorized dialog has
+# passed peer identity and extension checks.
 remove_line="$(grep -nF 'remove_hf("X-Core-InterSite");' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
-append_line="$(grep -nF 'append_hf("X-Core-InterSite: yxl' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
 deny_line="$(grep -nF 'authorization=denied reason=source-or-socket' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
-[[ -n "$remove_line" && -n "$append_line" && -n "$deny_line" && "$remove_line" -lt "$append_line" && "$append_line" -lt "$deny_line" ]]
+extension_deny_line="$(grep -nF 'authorization=denied reason=extension' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
+append_line="$(grep -nF 'append_hf("X-Core-InterSite: yxl' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
+backend_line="$(grep -nF 'SIP peer next-hop class=backend destination=$du' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
+[[ -n "$remove_line" && -n "$deny_line" && -n "$extension_deny_line" && -n "$append_line" && -n "$backend_line" ]]
+[[ "$remove_line" -lt "$extension_deny_line" && "$extension_deny_line" -lt "$append_line" && "$append_line" -lt "$backend_line" ]]
+grep -Fq 'SIP inter-site backend authorization=allowed peer=yxl marker=yxl' <<< "$home1_cfg"
+grep -Fq 'inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip} call_id=${sip_call_id}' <<< "$home1_fs"
 
 # The YXL DID mapping continues to send extension 7102 to YVR's carrier
 # Service port 5061. The Service maps that to the public_tls container port;
