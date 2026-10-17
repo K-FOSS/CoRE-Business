@@ -974,7 +974,7 @@ controllers:
             if [ "${#sip_password}" -lt 32 ]; then echo 'SIP Core password must be at least 32 characters' >&2; exit 1; fi
             {
               printf '[{{ .number }}]\ntype=auth\nauth_type=userpass\nusername={{ .number }}\npassword=%s\n\n' "$sip_password"
-              printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nqualify_frequency=30\nsupport_path=yes\n\n'
+              printf '[{{ .number }}]\ntype=aor\nmax_contacts={{ default 2 .maxContacts }}\nremove_existing=yes\nremove_unavailable=yes\nqualify_frequency=30\nqualify_2xx_only=yes\nsupport_path=yes\n\n'
               printf '[{{ .number }}]\ntype=endpoint\ntransport=transport-tls\n'
               {{- if $sipCoreWebsocketHA }}
               # In HA mode PJSIP must route each contact through its saved

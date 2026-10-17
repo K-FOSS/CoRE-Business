@@ -469,6 +469,10 @@ headless owner Service provides private TLS addressing. The WSS Service selects
 only the edge instance on port 8088; YVR's live HTTPRoute targets that Service.
 When ingress and legacy return instances differ, Asterisk must route by each
 contact's stored Path and must not retain the shared legacy proxy for OPTIONS.
+If an owner no longer has the contact's WebSocket, Kamailio returns `430 Flow
+Failed`; Asterisk treats non-2xx OPTIONS results as unavailable and prioritizes
+unavailable contacts when replacing registrations at the configured contact
+limit. A disconnected contact otherwise remains until expiry or replacement.
 This is signaling availability only: an unexpected owner loss interrupts that
 connection's dialogs and media until Home Assistant reconnects and registers.
 The CoRE-Backplane Gateway policy still imposes a one-hour maximum connection

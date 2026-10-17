@@ -38,6 +38,16 @@ remain on the carrier instance. The HTTP `X-Forwarded-For` header belongs to
 the upgrade request; it is not part of the SIP messages carried inside the
 WebSocket connection.
 
+When a contact's browser WebSocket has closed, its owner replica cannot relay
+to that local flow. For non-ACK requests the WSS edge returns SIP `430 Flow
+Failed` so Asterisk can treat the specific contact as failed; ACK receives no
+response. SIP Core AORs use `qualify_2xx_only=yes`, so a failed OPTIONS probe
+does not leave the contact marked reachable, and `remove_unavailable=yes`
+prioritizes failed contacts when a later registration must make room under
+`max_contacts`. This does not remove a failed contact immediately: it remains
+until it expires or a replacement registration needs its slot. A client must
+reconnect and register to restore the flow.
+
 PJSIP endpoint selection uses the SIP username before source-IP matching. For
 extension `7101`, the generated endpoint accepts the `username` and
 `auth_username` identifiers, and its Digest `auth` object still validates the

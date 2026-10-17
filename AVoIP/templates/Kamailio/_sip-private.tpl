@@ -591,6 +591,16 @@
 
     route[PRIVATE_RELAY] {
       if (!t_relay()) {
+        if ($var(side) == "sipcore" && $dP == "ws") {
+        {{- if .Values.kamailio.sipLogging.sipCore }}
+          xlog(
+            "L_WARN",
+            "SIPCORE FLOW stage=websocket-flow-unavailable pod=$env(POD_NAME) callid=$ci method=$rm destination_host=$dd destination_port=$dp cseq=$hdr(CSeq) response=430\n"
+          );
+        {{- end }}
+          if (!is_method("ACK")) sl_send_reply("430", "WebSocket Flow Failed");
+          exit;
+        }
         {{- if .Values.kamailio.sipLogging.sipCore }}
         if ($var(side) == "sipcore") {
           xlog(
