@@ -18,6 +18,9 @@ spec:
             - port: '{{ .Values.rtpengine.media.min }}'
               endPort: {{ sub (.Values.rtpengine.media.max | int) 1 }}
               protocol: 'UDP'
+            - port: '{{ .Values.rtpengine.media.min }}'
+              endPort: {{ sub (.Values.rtpengine.media.max | int) 1 }}
+              protocol: 'TCP'
     {{- range $instance := $instances }}
     {{- if $instance.enabled }}
     - fromEndpoints:
