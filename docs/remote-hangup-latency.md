@@ -768,7 +768,10 @@ Argo CD reconciled the policy-only change at commit
 `d2f79e43e12cb0d44b42c6699399111d5f93b2b0` at 09:36:21 UTC. The active
 Cilium object now contains the FreeSWITCH controller/instance selector and
 5081/TCP rule and is reported valid. This confirms desired state reached the
-cluster; it is not a carrier-call acceptance test. The FreeSWITCH trace also
+cluster. At 09:39 UTC, a one-shot TCP connect check from the `netshoot`
+sidecar in the same internal Kamailio pod to `172.20.57.9:5081` succeeded.
+That verifies L4 reachability after the policy change, not TLS negotiation or
+SIP delivery. It is not a carrier-call acceptance test. The FreeSWITCH trace also
 shows prompt 200 OK responses to separate Asterisk-originated BYEs at
 09:36:25.441 and 09:37:02.953, but these use the Asterisk-facing profile and
 do not prove a Flowroute BYE traversed the corrected internal-Kamailio
