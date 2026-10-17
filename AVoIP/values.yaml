@@ -921,24 +921,26 @@ asterisk:
     # Built by .forgejo/workflows/asterisk.yaml and published to this Forgejo registry.
     repository: slop.writemy.codes/core/core-business/asterisk
     tag: '20'
-    digest: 'sha256:6fcaebbed4c446078988bff784a98f3fc4652d42e4aac8b30bd8d7f90dccd81a'
+    digest: 'sha256:345903f76ad699aa55e752d9a9610d42f9fa4a37617e5d62664b1c49798e765a'
     pullPolicy: 'IfNotPresent'
   rtp:
     min: 10000
     max: 10100
     # Use the site-local STUN endpoint selected from region unless overridden.
-    # This is independent of TURN allocation, which remains opt-in below.
+    # This is independent of TURN allocation configured below.
     stunEnabled: true
     stunAddress: ''
   turn:
-    # Enable only after the Asterisk image includes openssl for REST credential generation.
-    enabled: false
-    hostname: 'nat.mylogin.space'
+    # Use the Matrix-managed shared Secret for Asterisk's TURN allocations.
+    enabled: true
+    # Empty selects the site's local CoTURN hostname from region.
+    hostname: ''
     port: 3478
     username: 'asterisk'
     # Asterisk loads fixed TURN credentials at startup; restart before expiry.
     credentialLifetimeSeconds: '31536000'
     secret:
+      # Secret target created by Social/Matrix's ExternalSecret.
       name: 'matrix-turn-auth'
       key: 'TURN_SHARED_SECRET'
 

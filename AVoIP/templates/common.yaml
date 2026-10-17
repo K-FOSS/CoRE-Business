@@ -1043,7 +1043,7 @@ controllers:
             if [ -z "$turn_password" ]; then echo 'CoTURN REST credential generation failed' >&2; exit 1; fi
             {
               printf '[general]\n'
-              printf 'turnaddr={{ .Values.asterisk.turn.hostname }}:{{ .Values.asterisk.turn.port }}\n'
+              printf 'turnaddr={{ include "avoip.asterisk.turnHostname" . }}:{{ .Values.asterisk.turn.port }}\n'
               printf 'turnusername=%s\nturnpassword=%s\n' "$turn_username" "$turn_password"
             } > /tmp/avoip-turn.conf
             unset turn_shared_secret turn_username turn_password turn_expiry

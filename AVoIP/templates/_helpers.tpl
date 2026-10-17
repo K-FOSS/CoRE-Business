@@ -50,6 +50,19 @@ nat.mylogin.space:3478
 {{- end -}}
 {{- end -}}
 
+{{/* Select the site-local TURN service name unless explicitly overridden. */}}
+{{- define "avoip.asterisk.turnHostname" -}}
+{{- if .Values.asterisk.turn.hostname -}}
+{{- .Values.asterisk.turn.hostname -}}
+{{- else if eq .Values.region "yvr" -}}
+nat-home1.mylogin.space
+{{- else if eq .Values.region "yxl" -}}
+nat.mylogin.space
+{{- else -}}
+{{- fail (printf "no site-local Asterisk TURN hostname configured for region %q" .Values.region) -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "avoip.resourceNameWithSuffix" -}}
 {{- $suffix := .suffix -}}
 {{- $maxPrefix := sub 63 (add 1 (len $suffix)) | int -}}

@@ -134,7 +134,8 @@
   {{- end -}}
 {{- end -}}
 {{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled -}}
-  {{- if not (regexMatch "^[A-Za-z0-9.-]+$" .Values.asterisk.turn.hostname) -}}
+  {{- $turnHostname := include "avoip.asterisk.turnHostname" . -}}
+  {{- if not (regexMatch "^[A-Za-z0-9.-]+$" $turnHostname) -}}
     {{- fail "asterisk.turn.hostname must be a DNS hostname when TURN is enabled" -}}
   {{- end -}}
   {{- if or (lt (int .Values.asterisk.turn.port) 1) (gt (int .Values.asterisk.turn.port) 65535) -}}
