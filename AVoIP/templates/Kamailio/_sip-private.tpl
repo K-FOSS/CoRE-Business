@@ -129,7 +129,7 @@
         # Set only the next hop from the restored owner Contact; retain the
         # Request-URI, Route set, and dialog identifiers unchanged.
         if ($var(peer_name) == "carrier") {
-          if ($rd !~ "^[0-9.]+$" ||
+          if (!($rd =~ "^[0-9.]+$") ||
               $rp != {{ .Values.freeswitch.flowrouteOutbound.tlsPort }}) {
             xlog(
               "L_WARN",
