@@ -135,6 +135,14 @@ grep -Fq 'external-callback-route-diagnostic' <<<"$external_freeswitch"
 grep -Fq 'channel-match=true' <<<"$external_freeswitch"
 grep -Fq 'peer-match=true' <<<"$external_freeswitch"
 grep -Fq 'destination-shape=nanp' <<<"$external_freeswitch"
+grep -Fq 'destination-shape=nanp-without-plus' <<<"$external_freeswitch"
+grep -Fq 'destination-shape=national-nanp' <<<"$external_freeswitch"
+grep -Fq 'authenticated-external-callback-without-plus' <<<"$external_freeswitch"
+grep -Fq 'destination-format=nanp-without-plus' <<<"$external_freeswitch"
+grep -Fq 'sofia/gateway/flowroute-tls/+${destination_number}' <<<"$external_freeswitch"
+grep -Fq 'authenticated-external-callback-national-format' <<<"$external_freeswitch"
+grep -Fq 'destination-format=national-nanp' <<<"$external_freeswitch"
+grep -Fq 'sofia/gateway/flowroute-tls/+1${destination_number}' <<<"$external_freeswitch"
 echo 'PASS: opt-in external callback validates ANI, marks the authenticated egress request, and presents the configured DID'
 echo 'PASS: callback IVR handoff bypasses the generic GG bridge-failure fallback'
 

@@ -148,8 +148,10 @@ The callback selection is a control handoff: Asterisk closes the original
 FreeSWITCH bridge after accepting it, so that normal teardown bypasses the
 generic inbound GG error-audio fallback.
 FreeSWITCH still originates the carrier leg through the existing Flowroute
-gateway. The caller identity is not independently verified by this route, so
-carrier-side ANI validation remains an operational trust assumption.
+gateway. The authenticated callback route accepts either E.164 with a leading
+plus or the same valid NANP number without it, restoring the plus for the
+carrier gateway. The caller identity is not independently verified by this
+route, so carrier-side ANI validation remains an operational trust assumption.
 The YVR opt-in is owned by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 
 Routr Connect 2.13.6 is integrated as optional workloads in this chart's
