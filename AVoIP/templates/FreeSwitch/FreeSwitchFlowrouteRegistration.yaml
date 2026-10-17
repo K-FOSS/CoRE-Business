@@ -70,6 +70,7 @@ spec:
                 <param name="auth-username" value="{{ `{{ .username }}` }}"/>
                 <param name="password" value="{{ `{{ .password }}` }}"/>
                 <param name="proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
+                <param name="from-domain" value="{{ include "avoip.sip.siteHost" $ }}"/>
                 <param name="register-transport" value="tls"/>
                 <param name="register" value="false"/>
                 <param name="caller-id-in-from" value="true"/>
