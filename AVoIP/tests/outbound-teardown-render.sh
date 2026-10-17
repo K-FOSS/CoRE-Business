@@ -35,12 +35,10 @@ grep -Fq 'route=$hdr(Route)' <<< "$internal_cfg"
 ! grep -Fq '$du = $ru;' <<< "$internal_cfg"
 grep -Fq '<param name="tls-bind-params" value="transport=tls"/>' <<< "$flowroute_profile"
 udp_gateway="$(sed -n '/<gateway name="flowroute">/,/<\/gateway>/p' <<< "$flowroute_profile")"
-tls_gateway="$(sed -n '/<gateway name="flowroute-tls">/,/<\/gateway>/p' <<< "$flowroute_profile")"
 grep -Fq '<param name="register-transport" value="udp"/>' <<< "$udp_gateway"
 grep -Fq '<param name="register" value="true"/>' <<< "$udp_gateway"
-grep -Fq '<param name="register-transport" value="tls"/>' <<< "$tls_gateway"
-grep -Fq '<param name="register" value="false"/>' <<< "$tls_gateway"
-grep -Fq 'sofia/gateway/flowroute-tls/' <<< "$freeswitch_dialplan"
+! grep -Fq '<gateway name="flowroute-tls">' <<< "$flowroute_profile"
+grep -Fq 'sofia/gateway/flowroute/' <<< "$freeswitch_dialplan"
 ! grep -Fq 'sip_invite_contact_params=' <<< "$freeswitch_dialplan"
 freeswitch_tls="$(sed -n '/server_name = core-home1-talos-prod-avoip-freeswitch.core-prod.svc.k8s.home1.resolvemy.host/,/certificate = \/etc\/kamailio\/mtls\/tls.crt/p' <<< "$internal_tls")"
 grep -Fq 'verify_certificate = yes' <<< "$freeswitch_tls"
@@ -66,6 +64,6 @@ grep -Fq '"topos", "EVAL %s 1 %s",' <<< "$clear_cfg"
 grep -Fq 'rtpengine_delete_result=$var(rtpengine_delete_result)' <<< "$carrier_cfg"
 
 printf '%s\n' 'PASS: outbound teardown route renders the carrier-to-internal mTLS path with independent TOPOS stores'
-printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; outbound calls use a non-registering TLS gateway while Flowroute registration stays UDP'
-printf '%s\n' 'PASS: FreeSWITCH owner TLS uses the site peer CA and authenticated client identity'
+printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; the known-working Flowroute gateway remains selected for outbound calls'
+printf '%s\n' 'PASS: FreeSWITCH outbound calls retain the UDP-registered Flowroute gateway and protected Kamailio TLS path'
 printf '%s\n' 'PASS: relay results and topology decisions are logged; retransmissions exit before teardown side effects'

@@ -225,11 +225,19 @@ adds a separate non-registering `flowroute-tls` gateway with
 the existing regional proxy, private Kamailio TLS outbound proxy, credentials,
 TLS profile, and port 5081 remain in use. This should cause Sofia's generated
 gateway Contact to carry one `transport=tls` parameter while leaving the
-existing Flowroute UDP registration intact. The render regression checks both
-gateway configurations and the dialplan selection. This second correction is
-not yet live-validated; after its rollout, inspect an outbound INVITE Contact
-and verify an in-dialog BYE reaches FreeSWITCH and returns 200 OK. Neither
-Contact issue has been established as the cause of the five-second delay.
+existing Flowroute UDP registration intact. It rendered cleanly, but two
+post-rollout remote-hangup attempts then failed. Their carrier BYEs were
+restored to `gw+flowroute-tls@<owning-FreeSWITCH-pod>:5081;transport=tls` and
+queued by internal Kamailio with `t_relay_result=1`; Flowroute received 408
+about 30 seconds later. The first call later generated a local FreeSWITCH BYE
+that Flowroute rejected with 481. The second call's Asterisk/FreeSWITCH bridge
+remained active more than two minutes after the carrier BYE. This is a
+regression from the prior `flowroute` gateway behavior and is not an acceptable
+fix. The separate gateway has been removed from the source and the dialplan
+restored to `flowroute`; that rollback must be published and reconciled before
+calling the remote-hangup path restored. The original UDP Contact transport
+remains an unresolved, independently observed defect. The five-second delay
+root cause also remains unknown.
 
 ### Latest live test: 2026-10-17 08:18 UTC
 
@@ -248,22 +256,104 @@ Kamailio, FreeSWITCH, and Asterisk. Carrier-leg SIP Call-ID was
 | FreeSWITCH logs both bridge legs hanging up | 08:19:10.878 | Both channels `NORMAL_CLEARING` |
 | Carrier Kamailio receives the BYE response | 08:19:10.885 | 200 OK, same Call-ID and CSeq |
 | Asterisk observes teardown | 08:19:10.887–.890 | SIP 200 OK and Q.850 cause 16 / Normal Clearing |
+| Asterisk originates browser-leg BYE | 08:19:10.894 | Separate browser Call-ID `f7mq2tavdaio8sieg7dp`, CSeq `6720 BYE` |
+| WebSocket Kamailio forwards BYE to browser | 08:19:10.896–.899 | WSS flow target restored; relay queued |
+| WebSocket Kamailio receives browser 200 OK | 08:19:10.913 | Same browser Call-ID and BYE CSeq |
 
 The gap from internal Kamailio's queued relay to FreeSWITCH's channel-hangup
 log was about 5.020 seconds; the carrier BYE arrived about 5.061 seconds before
 that log. RTPEngine deletion was requested once at carrier dialog end and
 returned result `1`. No 481 or duplicate cleanup BYE was found in the
-Call-ID-matched logs. The call completed, but Sofia's BYE receipt timestamp
-was still absent, so this does not distinguish delayed TLS delivery from
-delayed FreeSWITCH processing. The restored UDP Contact was overridden by the
-internal route's explicit TLS next hop; the BYE succeeded despite the Contact
-defect.
+Call-ID-matched logs. The call completed, and the browser's separate-leg 200 OK
+arrived about 19 ms after WebSocket Kamailio queued its BYE. Sofia's incoming
+BYE receipt timestamp was still absent, so this does not distinguish delayed
+TLS delivery from delayed FreeSWITCH processing. The restored UDP Contact was
+overridden by the internal route's explicit TLS next hop; the BYE succeeded
+despite the Contact defect.
+
+This test happened before the temporary `flowroute-tls` gateway was applied.
+The remote BYE completed on the original `flowroute` gateway path. It remains
+the last observed successful remote-initiated teardown in this investigation.
 
 The changed source files for this correction are
 `AVoIP/templates/FreeSwitch/FreeSwitchFlowrouteRegistration.yaml`,
 `AVoIP/templates/FreeSwitch/FreeSwitchDialplanConfig.yaml`, and
 `AVoIP/tests/outbound-teardown-render.sh`. Run the render regression from the
 repository root with `AVoIP/tests/outbound-teardown-render.sh`.
+
+### Regression after `flowroute-tls` rollout: 2026-10-17 08:30–08:34 UTC
+
+Two calls using the newly added TLS gateway reproduced a more severe failure.
+The live rollback in the working tree removes `flowroute-tls` and restores the
+previously successful dialplan gateway. These observations are why the
+dedicated gateway must not be retained without a verified inbound dialog
+route.
+
+For carrier Call-ID `c227041c-44a6-1240-a7b8-000000000000` and Asterisk linked
+ID `avoip-asterisk-1792225789.340`:
+
+| Event | UTC | Evidence |
+| --- | ---: | --- |
+| Internal Kamailio restores BYE to the FreeSWITCH pod | 08:30:07.484 | TOPOS route restored; RURI `gw+flowroute-tls`; TLS destination `172.20.56.123:5081` |
+| Internal Kamailio queues the BYE | 08:30:07.486 | `t_relay_result=1` |
+| Carrier-facing Kamailio receives 408 from internal tier | 08:30:38.094 | Same Call-ID and CSeq `373237 BYE` |
+| FreeSWITCH logs the Asterisk leg hangup | 08:30:39.098 | `NORMAL_CLEARING` |
+| FreeSWITCH originates its own carrier-leg BYE | 08:30:44.110 | CSeq `121559103 BYE` |
+| Flowroute-facing Kamailio receives 481 | 08:30:44.248 | Same Call-ID; carrier dialog had already timed out the incoming BYE |
+
+For separate carrier Call-ID `1ad115c5-44a8-1240-a7b8-000000000000` and
+Asterisk linked ID `avoip-asterisk-1792225938.342`:
+
+| Event | UTC | Evidence |
+| --- | ---: | --- |
+| Carrier BYE received | 08:32:34.192 | Carrier Kamailio; CSeq `331979 BYE` |
+| Internal Kamailio restores BYE to the FreeSWITCH pod | 08:32:34.195 | TOPOS route restored; RURI `gw+flowroute-tls`; TLS destination `172.20.56.123:5081` |
+| Internal Kamailio queues the BYE | 08:32:34.198 | `t_relay_result=1`; RTPEngine delete requested once and returned `1` |
+| Carrier-facing Kamailio receives 408 from internal tier | 08:33:04.188 | Same Call-ID and BYE CSeq |
+| Asterisk call remains active | 08:34:27 | RTP continues under the linked ID; no FreeSWITCH clearing event was present in the inspected window |
+| Asterisk logs BYE timeout and begins clearing | 08:36:08.057 | PJSIP reports `408/BYE`; bridge teardown follows with cause 16 |
+| FreeSWITCH carrier bridge leg clears | 08:36:13.058 | `NORMAL_CLEARING`; the carrier-originated BYE had not received a successful response |
+
+The internal pod's socket table showed an established TCP connection to
+`172.20.56.123:5081`, and Kamailio logged the expected FreeSWITCH TLS server
+name. There were no matching FreeSWITCH SIP-trace lines because Sofia tracing
+was disabled. The established socket and `t_relay_result=1` prove neither SIP
+message receipt nor FreeSWITCH dialog matching. No call-matched FreeSWITCH
+200 OK for either carrier BYE was observed. The first attempt's later 481 was
+again a consequence, not a success.
+
+This regression confirms that the temporary gateway change must be rolled
+back, but does not identify why FreeSWITCH failed to answer the in-dialog BYE.
+The internal request was addressed to the restored owner pod over TLS and
+preserved the dialog identifiers in TOPOS; the missing Sofia receipt time
+still prevents distinguishing TLS payload delivery from FreeSWITCH SIP
+processing. Do not treat the rollback as a fix for the original five-second
+delay or for the separate Contact transport defect.
+
+### Follow-up live call with a stale FreeSWITCH owner: 2026-10-17 08:28–08:29 UTC
+
+The next observed call, carrier Call-ID
+`9c512646-44a7-1240-e388-000000000000`, established on FreeSWITCH address
+`172.20.63.99`. Its carrier BYE reached internal Kamailio and TOPOS restored
+that exact owner address:
+
+| Event | UTC | Evidence |
+| --- | ---: | --- |
+| Internal Kamailio receives/restores carrier BYE | 08:29:00.714 | CSeq `839796 BYE`; `loose_route_result=1`; RURI points to `172.20.63.99:5081` |
+| Internal Kamailio queues BYE | 08:29:00.716 | TLS destination `172.20.63.99:5081`; `t_relay_result=1` |
+| Live cluster inspection | 08:36 UTC | `172.20.63.99` was not assigned to either running FreeSWITCH pod; current pod IPs were `172.20.57.149` and `172.20.56.123` |
+
+No receipt or response for this Call-ID appeared in either current FreeSWITCH
+pod's logs. This proves the restored target was no longer a running FreeSWITCH
+pod at inspection time; it does not establish whether the old pod was already
+gone at the instant of BYE delivery. The application log's `t_relay_result=1`
+only means the SIP transaction was queued. This test therefore cannot establish
+the Sofia receipt timestamp or the original five-second delay's cause. It does
+show that a pod restart/replacement during an active dialog can leave a
+TOPOS-restored Contact pointing at an unavailable pod address. That is a
+separate lifecycle/HA risk from the `flowroute-tls` gateway regression and
+needs a deployment-safe stable FreeSWITCH dialog target designed and validated
+in the AVoIP deployment layer; this task does not change the SIP architecture.
 
 ### Independent observations
 

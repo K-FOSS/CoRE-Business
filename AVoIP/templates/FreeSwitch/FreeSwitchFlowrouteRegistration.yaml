@@ -61,20 +61,6 @@ spec:
                 <param name="caller-id-in-from" value="true"/>
                 <param name="outbound-proxy" value="sips:{{ $kamailioHost }}:5062;transport=tls"/>
               </gateway>
-              <!-- Gateway transport also controls the generated gateway
-                   Contact. Keep UDP registration separate from the
-                   TLS-only outbound call leg. -->
-              <gateway name="flowroute-tls">
-                <param name="username" value="{{ `{{ .username }}` }}"/>
-                <param name="auth-username" value="{{ `{{ .username }}` }}"/>
-                <param name="password" value="{{ `{{ .password }}` }}"/>
-                <param name="proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
-                <param name="register-proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
-                <param name="register-transport" value="tls"/>
-                <param name="register" value="false"/>
-                <param name="caller-id-in-from" value="true"/>
-                <param name="outbound-proxy" value="sips:{{ $kamailioHost }}:5062;transport=tls"/>
-              </gateway>
             </gateways>
             <settings>
               <param name="context" value="public"/>
