@@ -280,6 +280,7 @@ data:
     ; browser and carrier Call-IDs remain distinct SIP dialogs.
     [sipcore-outbound-headers]
     exten => s,1,Set(PJSIP_HEADER(add,X-Core-Call-Linkedid)=${CHANNEL(linkedid)})
+      same => n,Set(PJSIP_HEADER(add,X-Call-ID)=${CHANNEL(linkedid)})
       same => n,Set(PJSIP_HEADER(add,X-Core-Origin-Uniqueid)=${CHANNEL(uniqueid)})
       same => n,Return()
     [sipcore-outbound-hangup]

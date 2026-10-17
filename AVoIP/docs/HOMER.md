@@ -10,6 +10,15 @@ Kamailio's default `listeners.bindAddress: ''` selects the pod's `status.podIP` 
 
 Homer stores signaling and diagnostic metadata. It does not store RTP payload audio. The separate [FreeSWITCH recording player](HOMER-AUDIO.md) serves WAV files under `/recordings/` on the Homer hostname, but the Homer call-flow view does not automatically attach a WAV to its Call-ID.
 
+AVoIP preserves each B2BUA leg's native SIP `Call-ID` and adds `X-Call-ID` with
+the Asterisk `linkedid` on the Asterisk-to-FreeSWITCH outbound leg. FreeSWITCH
+exports that value to the carrier leg. Homer 11 retains this supported B2BUA
+correlation header in `data_extra.x_call_id`; it does not replace
+`session_id`/`cid` automatically. Use the Homer correlation mapping/Lua support
+for cross-leg views, while searching a native SIP dialog by its `Call-ID` still
+works. The browser-side dialog is not rewritten or merged into the carrier
+dialog, and unrelated dialogs remain separate.
+
 The default hostname is `homer.<cluster>.<datacenter>.<region>.resolvemy.host`; `homer.hostname` can override it. The hub and Home1 therefore have separate URLs and separate Authentik applications. The [HTTPRoute](../templates/Homer/HomerRoute.yaml) applies Gateway Forward Auth to the UI and recordings. Only the exact OIDC callback path `/api/v4/auth/oauth2/authentik/callback` bypasses that outer check so Homer can exchange the authorization code.
 
 Homer uses Authentik OIDC with PKCE and OAuth-only login. Its site-specific callback URL is `https://<homer-hostname>/api/v4/auth/oauth2/authentik/callback`. The chart's Authentik Workspaces create the OIDC client and Forward Auth application for the `Home Users` group; the OIDC client credentials and generated JWT secret reach the pod through the Workspace connection Secret. Homer 7's old login URLs redirect to the Homer 11 root login page.
