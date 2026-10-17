@@ -151,9 +151,9 @@ data:
     {{- end }}
     {{- range (list .Values.avoip.did .Values.fax.did) }}
     {{- if . }}
-    ; Keep this leg in ringing state until the selected SIP Core endpoint answers.
+    ; Ring every registered SIP Core contact in parallel until one answers.
     {{- if $.Values.asterisk.sipCore.inboundVoiceExtension }}
-    exten => {{ . }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.inboundVoiceExtension }},30)
+    exten => {{ . }},1,Dial(${PJSIP_DIAL_CONTACTS({{ $.Values.asterisk.sipCore.inboundVoiceExtension }})},30)
       {{- if and (or $.Values.asterisk.voicemail.enabled $.Values.freeswitch.voicemail.enabled) (eq (toString .) (toString $.Values.fax.did)) }}
       same => n,GotoIf($["${DIALSTATUS}" = "CANCEL"]?done)
       same => n,NoOp(AVoIP voicemail fallback dialstatus=${DIALSTATUS} mailbox={{ $.Values.asterisk.sipCore.inboundVoiceExtension }} cause=${HANGUPCAUSE})
