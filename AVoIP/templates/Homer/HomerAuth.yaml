@@ -161,7 +161,7 @@ spec:
       resource "authentik_provider_proxy" "homer" {
         name                  = var.display_name
         mode                  = "forward_single"
-        access_token_validity = "1h"
+        access_token_validity = "hours=3"
         external_host         = var.external_host
         authorization_flow    = data.authentik_flow.authorization.id
         invalidation_flow     = data.authentik_flow.invalidation.id
