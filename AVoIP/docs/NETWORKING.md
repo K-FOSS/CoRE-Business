@@ -11,12 +11,20 @@ uses the site's VyOS WAN-GW/NAT VRRP source address. See
 [SIP identity and egress](SIP-IDENTITY.md) for the observed hub address and
 its distinction from the public RTP address.
 
-`workloadNetworking` is keyed by enabled controller: `asterisk`, `freeswitch`,
-`kamailio`, `rtpengine`, or `homer-web`. It also supports controllers added by
-the `functions` array. Each profile supports placement (`nodeSelector`,
+`workloadNetworking` supports `asterisk`, `freeswitch`, `kamailio`,
+`rtpengine`, `homer-web`, and controllers added by the `functions` array. The
+generic `kamailio` profile applies to every Kamailio instance; an instance
+profile such as `kamailio-internal` overrides its matching settings. Each
+profile supports placement (`nodeSelector`,
 `affinity`, `tolerations`), DNS (`dnsPolicy`, `dnsConfig`), ordered `interfaces`,
 and BJW-S `initContainers` for NIC configuration. An explicit affinity override
 replaces the chart defaults, including RTPEngine replica spreading.
+
+Asterisk, FreeSWITCH, and all Kamailio instances use `ndots: 0` by default.
+This makes the resolver try each queried name as-is before adding Kubernetes
+search suffixes; suffix search can still occur if that lookup fails. Override
+or remove the corresponding `dnsConfig.options` in the owning site's
+`LOVELY_HELM_MERGE` only when a workload requires different resolver behavior.
 
 This follows the Multus model used by Backplane's
 [Tunnels](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Network/Tunnels)
