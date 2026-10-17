@@ -118,6 +118,7 @@ helm template core-home1-talos-prod "$chart_dir" \
   --set-string avoip.did=callback-test-did > "$external_callback"
 external_asterisk="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$external_callback")"
 external_freeswitch="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$external_callback")"
+external_public="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$external_callback")"
 grep -Fq 'REGEX("^1[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})' <<<"$external_asterisk"
 grep -Fq 'REGEX("^[+]?[0-9][0-9 .()-]*$" ${CALLERID(num)})' <<<"$external_asterisk"
 grep -Fq 'PJSIP_DIAL_CONTACTS(${AVOIP_CALLBACK_INTERNAL_TARGET})' <<<"$external_asterisk"
@@ -125,7 +126,15 @@ grep -Fq 'Set(PJSIP_HEADER(add,X-AVOIP-External-Callback)=true)' <<<"$external_a
 grep -Fq 'condition field="${sip_h_X-AVOIP-External-Callback}" expression="^true$"' <<<"$external_freeswitch"
 grep -Fq 'expression="^\+1[2-9][0-9]{2}[2-9][0-9]{6}$"' <<<"$external_freeswitch"
 grep -Fq 'effective_caller_id_number=callback-test-did' <<<"$external_freeswitch"
+callback_handoff="$(sed -n '/<extension name="silent-ivr-destination-1234">/,/<\/extension>/p' <<<"$external_public")"
+grep -Fq 'AVoIP silent IVR handing callback request to Asterisk' <<<"$callback_handoff"
+grep -Fq 'application="bridge" data="sofia/gateway/asterisk/${destination_number}"' <<<"$callback_handoff"
+! grep -Fq 'AVoIP inbound bridge failed' <<<"$callback_handoff"
+! grep -Fq 'application="playback" data="shout://' <<<"$callback_handoff"
+grep -Fq 'external-callback-route-diagnostic' <<<"$external_freeswitch"
+grep -Fq 'destination-shape=nanp' <<<"$external_freeswitch"
 echo 'PASS: opt-in external callback validates ANI, marks the authenticated egress request, and presents the configured DID'
+echo 'PASS: callback IVR handoff bypasses the generic GG bridge-failure fallback'
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \

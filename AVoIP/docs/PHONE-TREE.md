@@ -77,6 +77,12 @@ reached FreeSWITCH; failures in an earlier carrier/Kamailio hop cannot execute
 its dialplan. Authentication failures and unmatched destinations keep their
 existing rejection behavior.
 
+The reserved callback IVR choice is a control handoff, not a media bridge: the
+Asterisk callback handler intentionally clears the inbound leg after accepting
+the request. FreeSWITCH ends that leg normally and does not play the generic GG
+bridge-failure fallback for this choice. Other IVR destinations retain the
+existing fallback behavior.
+
 Verify a new inbound bridge failure by its `AVoIP inbound bridge failed` log,
 carrier `200 OK`/ACK, GG RTP playback, and normal BYE. Also verify a successful
 handoff ends without GG. Reconcile the dialplan ConfigMap through the

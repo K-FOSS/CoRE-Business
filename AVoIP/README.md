@@ -144,6 +144,9 @@ caller identity received over the authenticated FreeSWITCH-to-Asterisk leg.
 Internal accounts ring all of their registered contacts; external callbacks
 use the configured main voice DID as outbound caller ID and connect the
 answered caller to the existing GG audio service.
+The callback selection is a control handoff: Asterisk closes the original
+FreeSWITCH bridge after accepting it, so that normal teardown bypasses the
+generic inbound GG error-audio fallback.
 FreeSWITCH still originates the carrier leg through the existing Flowroute
 gateway. The caller identity is not independently verified by this route, so
 carrier-side ANI validation remains an operational trust assumption.
