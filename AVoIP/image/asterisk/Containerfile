@@ -48,10 +48,12 @@ RUN set -eux; \
     apk add --no-cache \
       "asterisk-odbc=${ASTERISK_PACKAGE_VERSION}" \
       "asterisk-sounds-en@andrius-asterisk=${ASTERISK_PACKAGE_VERSION}" \
+      openssl \
       "psqlodbc=${PSQLODBC_PACKAGE_VERSION}" \
       "unixodbc=${UNIXODBC_PACKAGE_VERSION}" \
     ; \
     test -x /usr/bin/odbcinst; \
+    command -v openssl; \
     if [ ! -d /usr/share/asterisk/sounds/en ] && [ -d /var/lib/asterisk/sounds/en ]; then \
       mkdir -p /usr/share/asterisk/sounds; \
       cp -R /var/lib/asterisk/sounds/en /usr/share/asterisk/sounds/en; \
