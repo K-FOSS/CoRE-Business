@@ -64,6 +64,7 @@ RUN set -eux; \
     odbcinst -q -d | grep -Fqx '[PostgreSQL Unicode]'; \
     for module in \
          chan_pjsip.so \
+         res_rtp_asterisk.so \
          res_pjsip_endpoint_identifier_user.so \
          res_pjsip_endpoint_identifier_ip.so \
          res_pjsip_endpoint_identifier_anonymous.so \
