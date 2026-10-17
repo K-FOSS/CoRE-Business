@@ -461,7 +461,8 @@
         {{- if eq $transferDIDRole "fax" -}}
         {{- $transferDID = $.Values.fax.did -}}
         {{- end }}
-        if (is_method("INVITE") && !has_totag() && $rU == "{{ $transferDID }}") {
+        if (is_method("INVITE") && !has_totag() &&
+            ($tU == "{{ $transferDID }}" || $tU == "+{{ $transferDID }}")) {
           $var(interSitePeer) = "{{ $transfer.peerName }}";
           dlg_manage();
           $dlg_var(interSitePeer) = "{{ $transfer.peerName }}";

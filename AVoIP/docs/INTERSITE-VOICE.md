@@ -12,7 +12,9 @@ inter-site route uses the ordinary YVR carrier ClusterIP Service at
 ## Trust and call flow
 
 1. Flowroute's configured source CIDR reaches YXL carrier Kamailio, which
-   matches the exact DID and selects the YVR peer.
+   matches the called DID in the SIP `To` URI and selects the YVR peer. Flowroute
+   may include a leading `+`; Kamailio accepts either form. The Request-URI
+   carries Flowroute's rendezvous user, so it is not used for DID matching.
 2. YXL carrier Kamailio connects to the YVR carrier ClusterIP over TLS. It
    presents its existing Vault-issued client certificate and uses the YVR
    TLSRoute SNI. The [Kamailio TLS module](https://www.kamailio.org/docs/modules/stable/modules/tls.html)
