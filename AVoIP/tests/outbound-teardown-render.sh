@@ -11,6 +11,8 @@ helm template core-home1-talos-prod "$chart_dir" --namespace core-prod \
 
 carrier_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["kamailio.cfg"]' "$render")"
 internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
+internal_rollout="$(yq -r 'select(.kind == "Deployment" and .metadata.labels["app.kubernetes.io/controller"] == "kamailio-internal") | .spec.strategy.rollingUpdate' "$render")"
+internal_policy="$(yq 'select(.kind == "CiliumNetworkPolicy" and .spec.endpointSelector.matchLabels["app.kubernetes.io/controller"] == "kamailio-internal") | .spec' "$render")"
 internal_tls="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["tls.cfg"]' "$render")"
 freeswitch_dialplan="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$render")"
 flowroute_profile="$(yq -r 'select(.kind == "ExternalSecret" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-flowroute") | .spec.target.template.data["flowroute.xml"]' "$render")"
@@ -53,6 +55,10 @@ grep -Fq 'certificate = /etc/kamailio/mtls/tls.crt' <<< "$freeswitch_tls"
 # media/quota teardown side effects in both hops.
 grep -Fq 't_relay_result=$var(private_relay_result)' <<< "$internal_cfg"
 grep -Fq 'failure_route[PRIVATE_BYE_FAILURE]' <<< "$internal_cfg"
+! grep -Eq '\$T_[[:alnum:]_]+' <<< "$internal_cfg"
+grep -Fq '"maxSurge": 1' <<< "$internal_rollout"
+grep -Fq '"maxUnavailable": 0' <<< "$internal_rollout"
+yq -e 'any(.egress[]; any(.toEndpoints[]?.matchLabels; .["app.kubernetes.io/controller"] == "freeswitch") and any(.toPorts[]?.ports[]; .port == "5081" and .protocol == "TCP"))' <<< "$internal_policy" >/dev/null
 grep -Fq 'SIP BYE wire attempt' <<< "$internal_cfg"
 grep -Fq 'connection_id=$conid transport=$snd(proto)' <<< "$internal_cfg"
 grep -Fq 'tls_sni=$xavp(tls=>server_name)' <<< "$internal_cfg"
@@ -75,3 +81,5 @@ printf '%s\n' 'PASS: outbound teardown route renders the carrier-to-internal mTL
 printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; outbound calls select the explicit Flowroute TLS gateway'
 printf '%s\n' 'PASS: outbound calls select one non-registering Flowroute TLS gateway; the UDP registration gateway remains available for SIP-REG inbound routing'
 printf '%s\n' 'PASS: relay results and topology decisions are logged; retransmissions exit before teardown side effects'
+printf '%s\n' 'PASS: private Kamailio retains its ready pod until a replacement passes startup validation'
+printf '%s\n' 'PASS: internal Kamailio may send TLS signaling only to the FreeSWITCH dialog listener on port 5081'

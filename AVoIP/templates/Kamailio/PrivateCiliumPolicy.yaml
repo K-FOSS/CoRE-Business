@@ -84,6 +84,16 @@ spec:
         - ports:
             - port: '5061'
               protocol: 'TCP'
+    {{- if and $.Values.freeswitch.enabled $.Values.freeswitch.flowrouteOutbound.enabled (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) }}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'freeswitch'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.freeswitch.flowrouteOutbound.tlsPort }}'
+              protocol: 'TCP'
+    {{- end }}
     {{- end }}
     {{- if or $instance.functions.media $sipCoreEnabled }}
     - toEndpoints:

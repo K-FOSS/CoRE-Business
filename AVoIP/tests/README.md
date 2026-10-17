@@ -27,6 +27,9 @@ The test renders carrier and private Kamailio configurations, verifies the
 authenticated carrier-peer route chooses the private tier's TLS socket while
 preserving the restored SIP target, and checks TM retransmission and relay
 diagnostics. It does not simulate a Flowroute BYE or prove FreeSWITCH delivery.
+It also checks that the internal Kamailio Cilium policy allows signaling only
+to the FreeSWITCH dialog-owner pods on the configured TLS listener and that a
+replacement internal SBC keeps its current ready pod during startup checks.
 Follow the [outbound teardown live acceptance](../docs/avoip/runbooks/outbound-flowroute-teardown.md)
 for both BYE directions, cross-replica routing, UPDATE, RTPEngine cleanup,
 CDR, and Homer checks.

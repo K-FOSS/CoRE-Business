@@ -614,3 +614,177 @@ regression tests for idempotency and event ordering if an application handler
 is introduced or found. If the delay occurs before FreeSWITCH receives the
 BYE or within PBX processing, address it in the owning SIP/PBX system rather
 than changing unrelated CoRE-Business application state.
+
+### Correlated comparison: 2026-10-17 09:09–09:11 UTC
+
+Two carrier dialogs were inspected against the Asterisk/WebRTC event stream.
+The successful comparison call (`4a846842-44ad-1240-38a7-000000000000`)
+was ended by FreeSWITCH: it sent BYE at 09:09:38.305 UTC and received
+Flowroute's 200 OK by 09:09:38.377. This establishes that the ordinary
+FreeSWITCH-to-carrier in-dialog route and response path worked for that
+dialog. It does not establish behavior for a different dialog or the reverse
+direction.
+
+For carrier Call-ID `6f058f39-44ad-1240-38a7-000000000000`, the observed
+Flowroute BYE had CSeq `37520`, From-tag `gK04d16d5e`, and To-tag
+`7UBgHSKpeU24S`. Carrier Kamailio logged receipt at 09:10:40.628, then the
+internal tier restored the dialog and selected the FreeSWITCH owner
+`172.20.57.9:5081` over TLS. The internal Kamailio log shows a new TCP
+connection to that address, the configured TLS server name, connection
+promotion, and `t_relay_result=1` at approximately 09:10:40.685. This is
+evidence that Kamailio selected the expected owner and queued the transaction;
+it is not evidence that FreeSWITCH Sofia received the SIP request. No
+FreeSWITCH SIP receive or response record was available because profile SIP
+tracing was disabled. The internal tier timed out that original transaction
+with 408 at 09:11:10.662, which the carrier tier relayed to Flowroute.
+
+At 09:10:49.668, the browser independently sent BYE on its separate Call-ID,
+`k2ooh56qvofp4qlo7llb`. Asterisk acknowledged it through the WebSocket proxy
+within about 5 ms. Asterisk channel-group logs link that browser dialog to
+the external call through `X-Core-Call-Linkedid` /
+`X-Core-Origin-Uniqueid` (`avoip-asterisk-1792228226.383` /
+`avoip-asterisk-1792228226.384`), rather than by assuming a shared Call-ID.
+FreeSWITCH then ended its Asterisk-facing leg at 09:10:49.683 and its
+carrier-facing leg at 09:10:54.683. It sent a new BYE with CSeq `121560322`
+at 09:10:54.701. Flowroute returned 481 to this later FreeSWITCH-originated
+BYE. This is a distinct transaction from Flowroute's original CSeq `37520`
+BYE, which later received a 408; the 481 is not the response to the original
+carrier request. The exact trigger for FreeSWITCH's five-second delay before
+ending its carrier-facing leg is not established by the available logs.
+
+The supplied Homer text says Flowroute addressed carrier Kamailio at
+`172.20.56.242`, while the matching structured carrier log identifies pod
+`172.20.56.70`. These records do not by themselves settle whether the
+difference reflects service routing, a historical endpoint, or capture
+metadata. The three replicas share TOPOS state, and the structured log shows
+successful restoration on a different carrier pod; there is no evidence here
+that per-pod TOPOS state caused this failure. The internal forwarding
+sequence in Homer and Kamailio logs is consistent with correct dialog owner,
+TLS transport, and route restoration, but the absence of Sofia receive
+tracing leaves the delivery boundary unmeasured. HEP forwarding records are
+not a substitute for that measurement.
+
+No functional routing or timer change is justified by this evidence. In
+particular, changing Contact, forcing connection reuse, or altering SIP
+timeouts would not prove or correct the unmeasured receive boundary. The
+existing `PRIVATE_BYE_FAILURE` log reports the dialog and route context. A
+follow-up attempt to include TM reply code, reason, and branch index used
+TMX-only pseudo-variables without loading `tmx.so`; the startup failure and
+correction are documented below. For the next controlled reproduction,
+enable Sofia
+trace only on the owning FreeSWITCH `flowroute` and `asterisk` profiles using
+the already authorized secret-safe Event Socket procedure, verify trace lines
+are emitted to pod logs, capture one call, and turn both traces off
+immediately. Correlate the exact Call-ID, tags, CSeq, FreeSWITCH UUIDs,
+Asterisk linkedid/uniqueid, and UTC timestamps. If packet capture is needed,
+use an approved existing observability path; do not weaken production pod
+security to add `NET_RAW`.
+
+### Internal Kamailio startup regression: 2026-10-17 09:20 UTC
+
+During the requested live reproduction, both FreeSWITCH pods accepted Sofia
+trace commands through their loopback Event Socket. The calls placed during
+that window did not connect, so they provide no new BYE timing evidence. The
+FreeSWITCH/Asterisk logs show outbound attempts at 09:20:52, 09:20:58,
+09:21:06, and 09:21:33 failing with SIP 503 / Asterisk cause 34. At the same
+time, the sole internal Kamailio pod was CrashLooping, and its Service had no
+ready endpoint.
+
+The startup log identifies the direct configuration error: Kamailio rejected
+`$T_reply_code`, `$T_reply_reason`, and `$T_branch_idx` while parsing the
+private BYE failure log template and exited before starting. The chart loads
+`tm.so` but not `tmx.so`; these transaction pseudo-variables are exported by
+Kamailio's TMX module, which documents that it depends on TM. Because this
+small log-only change introduced an unregistered pseudo-variable, it made the
+internal tier unavailable. The [Kamailio 6.1 TMX module documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/tmx.html)
+lists these exported variables. This is a confirmed startup regression in
+the diagnostic change, separate from the earlier unanswered Flowroute BYE
+and the five-second teardown interval.
+
+The internal SBC is deliberately one replica. Its previous rollout strategy
+rendered `maxSurge: 0` and `maxUnavailable: 1`, so a replacement with an
+invalid config could take the only serving pod out before passing the
+container's `kamailio -c` check. The chart now removes those unregistered
+TMX-only variables and renders `maxSurge: 1`, `maxUnavailable: 0` for the
+private-SBC role. That retains an existing ready pod during future replacement
+startup failures. The outbound teardown render test asserts both the safe
+rollout limits and absence of those unregistered variables. Temporary Sofia
+tracing was disabled on both FreeSWITCH pods after the attempts; raw SIP trace
+is not left enabled.
+
+After the corrected revision is reconciled, verify the internal Kamailio pod
+becomes Ready and its Service endpoint reports `ready=true` before retrying a
+call. Then repeat one outbound call that connects and is hung up by the remote
+party. Until that produces a Flowroute BYE received in FreeSWITCH and a genuine
+200 OK back to Flowroute, the original teardown issue remains unresolved.
+
+### Reproduction after the internal tier recovered: 2026-10-17 09:26–09:29 UTC
+
+The user placed and ended another outbound call after the internal Kamailio
+pod recovered. The Asterisk linkedid was
+`avoip-asterisk-1792229177.405`, with origin uniqueid
+`avoip-asterisk-1792229177.406`. FreeSWITCH logged the selected route at
+09:26:17.903 UTC: gateway `flowroute-tls`, profile `flowroute`, transport
+TLS, and FreeSWITCH UUID `00198f9f-f136-424b-a498-f27ea02ee35b`. The carrier
+dialog Call-ID was `a5f1f58d-44ae-1240-38a7-000000000000`; the browser dialog
+has a separate Call-ID.
+
+At 09:27:13.543 UTC, the internal Kamailio pod
+`core-home1-talos-prod-business-avoip-prod-avo-kamailio-intwwp6b` restored
+the carrier BYE (CSeq `730798`, From-tag `gK00bc67a2`, To-tag `p4FX4gBv6XSKa`)
+to the correct FreeSWITCH owner `172.20.57.9:5081`, with TLS transport and
+the configured FreeSWITCH service DNS as SNI. It created a new outbound
+connection, logged the pending connection as promoted, and returned
+`t_relay_result=1`. At 09:27:43.545 UTC the transaction failure route ran,
+30 seconds after the attempt. FreeSWITCH Sofia logs on both replicas contain
+no receive or response record for this carrier Call-ID during the attempt.
+The correlated Asterisk channel was still active at 09:29 UTC. This call
+therefore did not complete remote hangup; the call did not become healthy
+merely because the internal Kamailio pod was Ready.
+
+The active Cilium policy on the internal Kamailio endpoint explains the
+missing return path. Its selector matches the internal pod and its egress
+section allows Envoy, Asterisk, RTPEngine, Dragonfly, and DNS, but no
+FreeSWITCH endpoint on the Flowroute listener. It allows FreeSWITCH to
+initiate ingress to Kamailio port 5062, which does not grant the reverse
+connection. Cilium switches selected endpoints to default-deny for a traffic
+direction when policy defines that direction; see [Cilium policy enforcement](https://docs.cilium.io/en/stable/security/policy/intro/#endpoint-default-policy).
+The BYE is routed to the right dialog owner and queued by Kamailio, but the
+active policy does not allow Kamailio to open the required TLS signaling
+connection to FreeSWITCH port 5081. The later 30-second transaction failure
+and the still-active Asterisk channel match that policy gap. The exact packet
+verdict was not retained in Hubble, so a live flow verdict remains useful
+confirmation, but no broader routing or TLS change is indicated by this
+evidence.
+
+The chart now adds a narrow Cilium egress allow from the configured private
+Kamailio instance to pods labeled as this release's FreeSWITCH controller,
+on `freeswitch.flowrouteOutbound.tlsPort` (5081/TCP). It is conditional on
+the SIP Core owner instance and the Flowroute TLS path being enabled. This
+preserves pod-specific dialog routing, TLS, and the owner identity; it does
+not route through a load-balanced FreeSWITCH Service or open a general
+cluster egress path. The focused render regression checks for this rule.
+The source correction is not yet live, so it has no before/after runtime
+measurement. Reconcile through the owning application and verify a live
+Cilium flow verdict plus FreeSWITCH Sofia receive and 200 OK before treating
+the carrier-originated teardown as fixed.
+
+The browser-initiated comparison and the independent five-second timing
+remain unresolved. This call measured a carrier BYE timeout, not a five-second
+FreeSWITCH processing delay. The active policy gap explains this unanswered
+BYE; it does not establish the cause of the separate five-second delay seen
+on successful calls.
+
+#### Live reproduction and log handling
+
+During a requested test call, the agent should monitor existing pod logs,
+Sofia output, and HEP records directly. Do not ask the user to run console
+commands or collect logs. Ask the user to place or end another call only when
+a controlled reproduction is needed, and correlate it using SIP Call-ID,
+tags, CSeq, Asterisk linkedid/uniqueid, and FreeSWITCH UUID. Sofia tracing is
+temporary diagnostic output and may include sensitive SIP data; keep it on
+only when explicitly requested for the active investigation, filter output
+before review, and do not copy credentials, authentication headers, or SDP
+secrets into documentation. For this reproduction the user explicitly asked
+that tracing remain enabled until they say otherwise; the Flowroute and
+Asterisk profile traces remain enabled on the call-owning FreeSWITCH pod.
