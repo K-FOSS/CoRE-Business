@@ -341,16 +341,6 @@
       {{- if .Values.kamailio.websocketHA.enabled }}
       route(TO_SIPCORE_ASTERISK);
       if (is_method("REGISTER")) {
-        # Asterisk stores this Path with the contact. The URI is generated
-        # from the receiving StatefulSet pod's advertised TLS socket.
-        # Give Asterisk a dialable owner URI rather than the browser's
-        # randomized .invalid Contact host. Keep the Contact alias so the
-        # owner can resolve the original WebSocket flow on the return leg.
-        if (is_present_hf("Contact") && $hdr(Contact) != "*" &&
-            !subst_hf("Contact", "/@[^;>; ]+;transport=ws/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/ig", "a")) {
-          sl_send_reply("400", "Unsupported WebSocket Contact");
-          exit;
-        }
         remove_hf("Path");
         set_send_socket_name("sipcore_owner_tls");
         if (!add_path_received()) {
@@ -652,16 +642,7 @@
           drop;
         }
       }
-      # REGISTER replies echo the Contact alias saved from the browser flow;
-      # do not append an alias for Asterisk's TCP/TLS transaction socket.
-      if (!is_method("REGISTER") && nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
-      {{- if .Values.kamailio.websocketHA.enabled }}
-      # Asterisk echoes the owner Contact in REGISTER responses. Restore the
-      # browser-facing WSS URI while leaving the flow alias intact.
-      if (is_method("REGISTER") && $rs =~ "^2[0-9][0-9]$" && is_present_hf("Contact")) {
-        subst_hf("Contact", "/@SIPCORE_OWNER_POD[^:;> ]*:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/@.invalid;transport=ws/ig", "a");
-      }
-      {{- end }}
+      if (nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
     }
     {{- end }}
 
