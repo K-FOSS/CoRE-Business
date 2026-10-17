@@ -94,7 +94,7 @@ role profile or an instance. Empty maps and lists below are the chart defaults.
 | `scheduling.affinity`, `scheduling.topologySpreadConstraints` | `{}`, `[]` | Nonempty values replace the built-in hostname anti-affinity or spread constraints. |
 | `podAnnotations`, `podLabels` | `{}`, `{}` | Add pod metadata. Required `app`, controller, and Kamailio instance labels cannot be overridden. Do not override generated Reloader annotations. |
 | `extraEnv` | `[]` | Additional main-container environment entries. Duplicate names and `POD_NAME` or `TOPOS_REDIS_SERVER` fail rendering. Use `valueFrom.secretKeyRef` for credentials. |
-| `rollingUpdate.surge`, `rollingUpdate.unavailable` | `'0'`, `1` | Deployment rolling update limits. The quoted zero is intentional for BJW-S rendering. |
+| `rollingUpdate.surge`, `rollingUpdate.unavailable` | `'0'`, `1` for carrier; `'1'`, `0` for private-SBC | Deployment rolling update limits. The quoted zero is intentional for BJW-S rendering. The one-replica private SBC uses a surge pod so an invalid replacement config cannot remove the existing ready call path before startup validation succeeds. |
 | `podDisruptionBudget.minAvailable` | `2` for carrier; `0` for private | Per-instance disruption budget. Set it consistently with replicas. |
 
 Each enabled instance gets its own Deployment, ConfigMap, private Service,

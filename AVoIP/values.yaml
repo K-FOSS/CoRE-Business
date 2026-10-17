@@ -227,6 +227,12 @@ kamailio:
         sipTrace: true
     private-sbc:
       replicas: 1
+      # Keep the existing private SBC serving while a replacement passes the
+      # startup config check and readiness probe. This matters for the
+      # single-replica internal call path.
+      rollingUpdate:
+        surge: '1'
+        unavailable: 0
       websocketHA:
         # Opt in on a separate named private-sbc instance dedicated to WSS.
         # The ordinary internal SBC remains a one-replica Deployment.

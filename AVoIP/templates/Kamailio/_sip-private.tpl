@@ -676,6 +676,8 @@
     }
     {{- end }}
 
+    # Keep this failure route to pseudo-variables exported by the loaded core
+    # and tm modules. TMX-specific $T_* fields require loading tmx.so.
     failure_route[PRIVATE_BYE_FAILURE] {
       xlog(
         "L_ERR",
