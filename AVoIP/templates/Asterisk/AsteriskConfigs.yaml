@@ -208,10 +208,35 @@ data:
     exten => {{ . }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30)
       same => n,Hangup()
     {{- else if eq (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension) }}
+    {{- if $.Values.asterisk.sipCore.externalCallback.enabled }}
+    ; Return only to a configured internal account or a valid NANP caller
+    ; identity. This FreeSWITCH peer is TLS-authenticated; external callback
+    ; egress is separately opt-in and header-gated.
+    exten => {{ . }},1,NoOp(AVoIP callback request received on authenticated FreeSWITCH peer)
+      {{- range $.Values.asterisk.sipCore.extensions }}
+      same => n,GotoIf($["${CALLERID(num)}" = "{{ .number }}"]?internal-{{ .number }})
+      {{- end }}
+      same => n,GotoIf($[${REGEX("^[+]?[0-9][0-9 .()-]*$" ${CALLERID(num)})}]?normalize:reject)
+      same => n(normalize),Set(AVOIP_CALLBACK_DIGITS=${FILTER(0-9,${CALLERID(num)})})
+      same => n,GotoIf($[${REGEX("^1[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})}]?valid)
+      same => n,GotoIf($[${REGEX("^[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})}]?national:reject)
+      same => n(national),Set(AVOIP_CALLBACK_DIGITS=1${AVOIP_CALLBACK_DIGITS})
+      same => n(valid),Set(__AVOIP_CALLBACK_TARGET=+${AVOIP_CALLBACK_DIGITS})
+      same => n,Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1)
+      same => n,Hangup()
+      {{- range $.Values.asterisk.sipCore.extensions }}
+      same => n(internal-{{ .number }}),Set(__AVOIP_CALLBACK_INTERNAL_TARGET={{ .number }})
+      same => n,Set(CHANNEL(hangup_handler_push)=sipcore-external-callback-internal,s,1)
+      same => n,Hangup()
+      {{- end }}
+      same => n(reject),NoOp(AVoIP external callback rejected: caller identity is not a valid NANP number)
+      same => n,Hangup(21)
+    {{- else }}
     {{- if gt (len $.Values.asterisk.sipCore.extensions) 0 }}
     exten => {{ . }},1,Goto(from-sipcore-{{ (index $.Values.asterisk.sipCore.extensions 0).number }},{{ . }},1)
     {{- else }}
       {{- fail "the IVR hello callback destination requires at least one Asterisk SIP Core extension" }}
+    {{- end }}
     {{- end }}
     {{- else }}
     exten => {{ . }},1,Dial(PJSIP/{{ . }},30)
@@ -274,13 +299,12 @@ data:
     ; answers, which happens after a registered SIP Core contact answers.
     exten => s,1,Originate(Local/s@sipcore-callback-contact-{{ .number }}/n,exten,from-sipcore-{{ .number }},{{ $.Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int $.Values.asterisk.sipCore.ggCallbackDelaySeconds) (int $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds) 10 }},a)
       same => n,Return()
-    ; Dial the AOR through its PJSIP endpoint so Asterisk applies the Path
-    ; stored for the selected contact. Explicit contact URIs from
-    ; PJSIP_DIAL_CONTACTS failed before reaching the WSS edge in YVR.
+    ; Ring every registered contact for the authenticated source extension in
+    ; parallel, using the same owner-aware routing as inbound DID fan-out.
     [sipcore-callback-contact-{{ .number }}]
     exten => s,1,Wait({{ $.Values.asterisk.sipCore.ggCallbackDelaySeconds }})
       same => n,Set(CALLERID(name)={{ $.Values.asterisk.sipCore.ggCallbackCallerIdName }})
-      same => n,Dial(PJSIP/{{ .number }},{{ $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds }})
+      same => n,Dial(${PJSIP_DIAL_CONTACTS({{ .number }})},{{ $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds }})
       same => n,Hangup()
     {{- end }}
     ; Correlation IDs cross the Asterisk-to-FreeSWITCH B2BUA boundary. The
@@ -290,6 +314,32 @@ data:
       same => n,Set(PJSIP_HEADER(add,X-Call-ID)=${AVOIP_HOMER_CORRELATION_ID})
       same => n,Set(PJSIP_HEADER(add,X-Core-Origin-Uniqueid)=${CHANNEL(uniqueid)})
       same => n,Return()
+    {{- if .Values.asterisk.sipCore.externalCallback.enabled }}
+    ; The hangup handler outlives the inbound IVR leg. Once the external
+    ; caller answers, Originate enters the GG-audio bridge context.
+    [sipcore-external-callback]
+    exten => s,1,Originate(Local/s@sipcore-external-callback-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
+      same => n,Return()
+    [sipcore-external-callback-internal]
+    exten => s,1,Originate(Local/s@sipcore-external-callback-internal-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
+      same => n,Return()
+    [sipcore-external-callback-contact]
+    exten => s,1,Set(CALLERID(num)={{ .Values.avoip.did }})
+      same => n,Set(CALLERID(name)=Callback)
+      same => n,Dial(PJSIP/${AVOIP_CALLBACK_TARGET}@freeswitch,{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }},gb(sipcore-external-callback-headers^s^1))
+      same => n,Hangup()
+    [sipcore-external-callback-headers]
+    exten => s,1,Set(PJSIP_HEADER(add,X-AVOIP-External-Callback)=true)
+      same => n,Return()
+    [sipcore-external-callback-internal-contact]
+    exten => s,1,Set(CALLERID(num)={{ .Values.avoip.did }})
+      same => n,Set(CALLERID(name)=Callback)
+      same => n,Dial(${PJSIP_DIAL_CONTACTS(${AVOIP_CALLBACK_INTERNAL_TARGET})},{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }})
+      same => n,Hangup()
+    [from-external-callback]
+    exten => {{ .Values.asterisk.sipCore.ggAudioExtension }},1,Dial(PJSIP/{{ .Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30,g)
+      same => n,Hangup()
+    {{- end }}
     [sipcore-outbound-hangup]
     exten => s,1,Set(AVOIP_CAUSE_KEYS=${HANGUPCAUSE_KEYS()})
       same => n,NoOp(AVoIP outbound hangup linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} dialstatus=${DIALSTATUS} caller_cause=${HANGUPCAUSE} causekeys=${AVOIP_CAUSE_KEYS})

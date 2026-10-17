@@ -10,7 +10,8 @@ legacy="$(mktemp)"
 invalid="$(mktemp)"
 compat="$(mktemp)"
 asterisk_file="$(mktemp)"
-trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$legacy" "$invalid" "$compat" "$asterisk_file"' EXIT
+external_callback="$(mktemp)"
+trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$legacy" "$invalid" "$compat" "$asterisk_file" "$external_callback"' EXIT
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
@@ -84,9 +85,47 @@ grep -Fq 'context=from-sipcore-7101' "$rendered"
 grep -Fq 'exten => 9090,1,Answer()' "$rendered"
 grep -Fq 'exten => 66,1,Dial(PJSIP/gg-audio@freeswitch,30,g)' "$rendered"
 grep -Fq 'exten => 1234,1,Answer()' "$rendered"
-grep -Fq 'Dial(PJSIP/7101,30)' "$rendered"
-! grep -Fq 'PJSIP_DIAL_CONTACTS(7101)' "$rendered"
-echo 'PASS: callback dials the Path-aware AOR endpoint rather than explicit WebSocket Contact URIs'
+sed -n '/\[sipcore-callback-contact-7101\]/,/^    \[/p' "$rendered" | grep -Fq 'Dial(${PJSIP_DIAL_CONTACTS(7101)},30)'
+echo 'PASS: callback rings all registered SIP Core contacts in parallel'
+! grep -Fq 'X-AVOIP-External-Callback' "$rendered"
+echo 'PASS: public-IVR external callback is absent unless explicitly enabled'
+
+helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set asterisk.enabled=true \
+  --set asterisk.sipCore.externalCallback.enabled=true \
+  --set asterisk.sipCore.outboundNANP.enabled=true \
+  --set-string asterisk.sipCore.outboundNANP.extensions[0]=7101 \
+  --set freeswitch.ivr.enabled=true \
+  --set-string freeswitch.ivr.extensions[0]=1234 \
+  --set freeswitch.flowrouteOutbound.enabled=true \
+  --set freeswitch.highAvailability.enabled=true \
+  --set kamailio.instances[1].carrierOutbound.enabled=true \
+  --set kamailio.instances[1].carrierOutbound.clientIdentity.enabled=true \
+  --set-string kamailio.instances[1].carrierOutbound.clientIdentity.issuerName=kjdev-cluster \
+  --set-string kamailio.instances[1].carrierOutbound.peer.secretName=flowroute-ca \
+  --set-string kamailio.instances[1].carrierOutbound.peer.cidr=192.0.2.0/24 \
+  --set-string kamailio.instances[1].carrierOutbound.peer.sanHostname=flowroute.test \
+  --set-string kamailio.instances[1].carrierOutbound.peer.serviceHost=flowroute.test \
+  --set-string kamailio.instances[1].carrierOutbound.peer.controller=flowroute \
+  --set-string kamailio.instances[1].carrierOutbound.gatewayServiceHost=gateway.test \
+  --set-string kamailio.instances[1].privateRouting.peers[0].name=carrier \
+  --set-string kamailio.instances[1].privateRouting.peers[0].controller=freeswitch \
+  --set-string kamailio.instances[1].privateRouting.peers[0].cidr=192.0.2.0/24 \
+  --set-string kamailio.instances[1].privateRouting.peers[0].sanHostname=flowroute.test \
+  --set-string freeswitch.flowrouteOutbound.regionalHost=us-west-or.sip.flowroute.com \
+  --set-string avoip.did=callback-test-did > "$external_callback"
+external_asterisk="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$external_callback")"
+external_freeswitch="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$external_callback")"
+grep -Fq 'REGEX("^1[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})' <<<"$external_asterisk"
+grep -Fq 'REGEX("^[+]?[0-9][0-9 .()-]*$" ${CALLERID(num)})' <<<"$external_asterisk"
+grep -Fq 'PJSIP_DIAL_CONTACTS(${AVOIP_CALLBACK_INTERNAL_TARGET})' <<<"$external_asterisk"
+grep -Fq 'Set(PJSIP_HEADER(add,X-AVOIP-External-Callback)=true)' <<<"$external_asterisk"
+grep -Fq 'condition field="${sip_h_X-AVOIP-External-Callback}" expression="^true$"' <<<"$external_freeswitch"
+grep -Fq 'expression="^\+1[2-9][0-9]{2}[2-9][0-9]{6}$"' <<<"$external_freeswitch"
+grep -Fq 'effective_caller_id_number=callback-test-did' <<<"$external_freeswitch"
+echo 'PASS: opt-in external callback validates ANI, marks the authenticated egress request, and presents the configured DID'
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \

@@ -873,6 +873,12 @@ asterisk:
       # numbers through Asterisk and the existing internal Kamailio route.
       enabled: false
       extensions: []
+    externalCallback:
+      # Opt-in IVR callback to the authenticated carrier caller's NANP number.
+      # The configured main DID is presented as caller ID; FreeSWITCH still
+      # anchors the outbound carrier media path.
+      enabled: false
+      ringTimeoutSeconds: 30
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
     helloCallbackExtension: '1234'

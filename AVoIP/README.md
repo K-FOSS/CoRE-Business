@@ -133,6 +133,22 @@ Path Route only when its Contact Request-URI names the exact receiving owner
 pod, then resolves the local WebSocket alias. Requests for another owner and
 other owner-routed methods still require a valid Path Route.
 
+The SIP Core callback targets the authenticated source extension and rings all
+of its registered contacts in parallel, like inbound DID fan-out. When one
+contact answers, Asterisk cancels the other attempts. See the
+[SIP Core configuration and behavior](docs/SIPCORE-HASS.md).
+
+The public-IVR callback is a separate, opt-in route. When enabled, it returns
+the call to an exact configured internal account identity or a valid NANP
+caller identity received over the authenticated FreeSWITCH-to-Asterisk leg.
+Internal accounts ring all of their registered contacts; external callbacks
+use the configured main voice DID as outbound caller ID and connect the
+answered caller to the existing GG audio service.
+FreeSWITCH still originates the carrier leg through the existing Flowroute
+gateway. The caller identity is not independently verified by this route, so
+carrier-side ANI validation remains an operational trust assumption.
+The YVR opt-in is owned by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+
 Routr Connect 2.13.6 is integrated as optional workloads in this chart's
 BJW-S common-library render, based on the [upstream Connect chart](https://github.com/fonoster/routr/tree/v2.13.6/ops/charts/connect)
 and [Routr documentation](https://routr.io/docs/2.11.5/connect/concepts/). It is

@@ -360,14 +360,12 @@ behavior.
   and after playback; the GG route logs its FreeSWITCH media and RTP counters.
   Kamailio aliases the WebSocket Contact in the callback response so Asterisk's
   later ACK and BYE reuse the active WebSocket flow.
-  The callback dials the extension's PJSIP endpoint so Asterisk selects its
-  current AOR contact and applies that contact's stored Path. In YVR, the
-  `PJSIP_DIAL_CONTACTS()` expansion produced explicit WebSocket Contact URIs
-  that failed with 503 before the WSS edge logged an INVITE, while a direct
-  `PJSIP/7101` test reached the owner and returned 180 Ringing. Asterisk's
-  endpoint dial form selects one contact, so this workaround rings one
-  registered client at a time; it does not provide ring-all across multiple
-  clients. Asterisk starts the callback independently of the ended source
+  The callback uses `PJSIP_DIAL_CONTACTS()` to ring all current AOR contacts
+  in parallel, matching the inbound DID fan-out. Its destination is derived
+  from the authenticated extension's private dialplan context, not
+  caller-supplied Caller ID. Kamailio routes each explicit contact URI only
+  through its owning WebSocket pod; Asterisk cancels the other attempts when
+  one contact answers. Asterisk starts the callback independently of the ended source
   channel, then enters the GG route and dials FreeSWITCH only after a contact
   answers. If no contact answers
   within the configured `asterisk.sipCore.ggCallbackRingTimeoutSeconds`
@@ -383,8 +381,24 @@ behavior.
   Asterisk-restricted TLS listener whose Request-URI hostname exactly matches
   the receiving owner pod; Kamailio must still resolve the local Contact
   alias. Other methods, wrong-owner targets and unresolvable aliases remain
-  rejected. This preserves the `PJSIP_DIAL_CONTACTS()` parallel ring-all
-  behavior; live post-reconciliation confirmation is still required.
+  rejected. A live inbound test confirmed three registered contacts rang and
+  answering on one cancelled the other attempts. The callback uses the same
+  fan-out behavior.
+  Separately, the public FreeSWITCH IVR callback is controlled by
+  `asterisk.sipCore.externalCallback.enabled` and is disabled by default. When
+  enabled, selecting the reserved callback destination returns the call to
+  the caller identity delivered on the authenticated FreeSWITCH-to-Asterisk
+  leg. Asterisk accepts only an exact configured internal account identity or
+  a NANP-shaped caller identity. The external callback presents the configured
+  main voice DID and returns through FreeSWITCH's existing Flowroute gateway.
+  A marker header, the authenticated peer identity,
+  and the NANP destination pattern are all required by the FreeSWITCH egress
+  route. This does not independently attest the caller identity, so deployment
+  relies on carrier-side ANI validation. The feature is enabled only in the
+  YVR site values. If the received caller identity exactly matches a
+  configured SIP Core account, the callback instead rings that account's
+  registered contacts in parallel. The internal SIP Core callback remains
+  separately available to authenticated extension users.
   The `gg-audio` route emits correlated start, media-established, and playback
   completion logs with codec and outbound RTP packet/byte counters. It sends a
   configurable 100 ms `silence_stream` RTP lead-in before the remote audio by

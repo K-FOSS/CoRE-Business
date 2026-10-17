@@ -1,6 +1,12 @@
+{{- if and .Values.asterisk.sipCore.externalCallback.enabled (not .Values.asterisk.enabled) -}}
+  {{- fail "Asterisk external callback requires asterisk.enabled" -}}
+{{- end -}}
 {{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $stunAddress := include "avoip.asterisk.stunAddress" . -}}
+{{- if and .Values.asterisk.sipCore.externalCallback.enabled (not .Values.asterisk.sipCore.enabled) -}}
+  {{- fail "Asterisk external callback requires asterisk.sipCore.enabled" -}}
+{{- end -}}
 {{- if .Values.asterisk.sipCore.enabled -}}
   {{- $sipExtensions := dict -}}
   {{- if not (include "avoip.rtpengine.enabled" . | trim) -}}
@@ -17,6 +23,20 @@
   {{- end -}}
   {{- if and .Values.asterisk.sipCore.outboundNANP.enabled (not .Values.freeswitch.flowrouteOutbound.enabled) -}}
     {{- fail "Asterisk NANP outbound requires freeswitch.flowrouteOutbound.enabled" -}}
+  {{- end -}}
+  {{- if .Values.asterisk.sipCore.externalCallback.enabled -}}
+    {{- if or (not .Values.freeswitch.ivr.enabled) (not .Values.freeswitch.flowrouteOutbound.enabled) (not .Values.asterisk.sipCore.outboundNANP.enabled) -}}
+      {{- fail "Asterisk external callback requires the FreeSWITCH IVR, Flowroute outbound, and NANP outbound to be enabled" -}}
+    {{- end -}}
+    {{- if empty $.Values.avoip.did -}}
+      {{- fail "Asterisk external callback requires the configured main voice DID in avoip.did" -}}
+    {{- end -}}
+    {{- if not (has (toString .Values.asterisk.sipCore.helloCallbackExtension) .Values.freeswitch.ivr.extensions) -}}
+      {{- fail "Asterisk external callback requires helloCallbackExtension in freeswitch.ivr.extensions" -}}
+    {{- end -}}
+    {{- if or (lt (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 1) (gt (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 300) -}}
+      {{- fail "Asterisk external callback ringTimeoutSeconds must be between 1 and 300" -}}
+    {{- end -}}
   {{- end -}}
   {{- if not .Values.freeswitch.enabled -}}
     {{- fail "Asterisk SIP Core requires the existing media-enabled AVoIP stack" -}}
