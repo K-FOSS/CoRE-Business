@@ -39,6 +39,13 @@ controller already watches that Secret and the Flowroute client certificate
 for reloader-triggered pod rollout. This explicit selection corrects the
 Contact inconsistency; earlier calls on the same TLS-gateway pattern also
 timed out, so it is not considered a proven fix for intermittent delivery.
+This source was pushed as `c38937f` and selectively reconciled to the Home1
+AVoIP child on 2026-10-17. The Flowroute ExternalSecret is Ready, the
+FreeSWITCH dialplan and both Kamailio ConfigMaps report Synced, and both new
+FreeSWITCH pods report `flowroute-tls` as `NOREG` while `flowroute` remains
+`REGED`. The outbound dialplan now selects `flowroute-tls`. A post-rollout
+Flowroute-originated BYE has not yet been captured, so this deployment status
+does not establish that teardown is fixed.
 
 The first live call after that transport correction reached the FreeSWITCH
 owner pod over TLS but failed certificate verification. The owner presented a
@@ -108,7 +115,14 @@ loading, not the TOPOS schema, Dragonfly ACL, or live topology state.
 Run one controlled call after the reviewed config has reconciled. The current
 Home1 path is Asterisk SIP Core → FreeSWITCH → internal Kamailio → carrier
 Kamailio → Flowroute. Use a test destination allowed by the active site policy.
-Do not enable raw SIP logging; the new route logs and Homer are sufficient.
+Keep raw SIP logging off by default. For a single authorized diagnostic call,
+the agent may enable Sofia tracing on the established FreeSWITCH call's
+`flowroute` and `asterisk` profiles, monitor the pod logs directly, and disable
+both profiles immediately after teardown. Sofia trace can contain SDP and
+authorization headers; do not retain or forward unredacted trace output.
+Packet capture with `kubectl debug --profile=netadmin` is currently blocked by
+the namespace's PodSecurity `baseline` policy, which rejects `NET_RAW` and
+`NET_ADMIN`; do not weaken that policy to work around this limitation.
 
 ```sh
 SITE_CONTEXT='<site-kube-context>'
