@@ -64,6 +64,7 @@ data:
     noload => app_voicemail.so
     require = app_voicemail_odbc.so
     {{- else }}
+    noload => app_voicemail.so
     noload => app_voicemail_odbc.so
     {{- end }}
     noload => app_fax.so

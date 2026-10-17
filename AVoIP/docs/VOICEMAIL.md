@@ -15,6 +15,11 @@ enabled. It uses `VoiceMailMain()` without the option to skip authentication,
 so callers must enter both a mailbox number and its PIN. Sites without
 voicemail enabled do not accept this IVR destination.
 
+The current YXL configuration disables local Asterisk voicemail and its local
+FreeSWITCH IVR. YXL voice calls use the existing carrier mTLS transfer to
+YVR's IVR, where `*97` reaches the YVR Asterisk mailbox login. Asterisk stays
+enabled on YXL for its other call handling.
+
 Enable `asterisk.voicemail.enabled` in the site values supplied through the
 owning [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The chart accepts the former `freeswitch.voicemail.enabled` setting as a
