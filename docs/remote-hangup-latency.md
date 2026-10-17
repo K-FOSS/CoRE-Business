@@ -757,17 +757,24 @@ verdict was not retained in Hubble, so a live flow verdict remains useful
 confirmation, but no broader routing or TLS change is indicated by this
 evidence.
 
-The chart now adds a narrow Cilium egress allow from the configured private
+The chart adds a narrow Cilium egress allow from the configured private
 Kamailio instance to pods labeled as this release's FreeSWITCH controller,
 on `freeswitch.flowrouteOutbound.tlsPort` (5081/TCP). It is conditional on
 the SIP Core owner instance and the Flowroute TLS path being enabled. This
 preserves pod-specific dialog routing, TLS, and the owner identity; it does
 not route through a load-balanced FreeSWITCH Service or open a general
 cluster egress path. The focused render regression checks for this rule.
-The source correction is not yet live, so it has no before/after runtime
-measurement. Reconcile through the owning application and verify a live
-Cilium flow verdict plus FreeSWITCH Sofia receive and 200 OK before treating
-the carrier-originated teardown as fixed.
+Argo CD reconciled the policy-only change at commit
+`d2f79e43e12cb0d44b42c6699399111d5f93b2b0` at 09:36:21 UTC. The active
+Cilium object now contains the FreeSWITCH controller/instance selector and
+5081/TCP rule and is reported valid. This confirms desired state reached the
+cluster; it is not a carrier-call acceptance test. The FreeSWITCH trace also
+shows prompt 200 OK responses to separate Asterisk-originated BYEs at
+09:36:25.441 and 09:37:02.953, but these use the Asterisk-facing profile and
+do not prove a Flowroute BYE traversed the corrected internal-Kamailio
+egress path. A live Cilium flow verdict plus a matching Flowroute BYE,
+FreeSWITCH Sofia receive, and 200 OK back to Flowroute are still required
+before treating the carrier-originated teardown as fixed.
 
 The browser-initiated comparison and the independent five-second timing
 remain unresolved. This call measured a carrier BYE timeout, not a five-second
