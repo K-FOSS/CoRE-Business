@@ -167,7 +167,8 @@ modem audio and T.38 negotiation have different requirements.
 
 The complete current DID flow, SIP messaging path, registration behavior, and
 operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
-The optional direct-extension voicemail path, its external PIN secret,
+The optional direct-extension voicemail path, including voicemail-only sites
+without SIP Core, its shared external PIN secret,
 PostgreSQL metadata, retained shared audio volume, and verification steps are
 documented in [docs/VOICEMAIL.md](docs/VOICEMAIL.md).
 Inbound external SIP is restricted by the Flowroute signaling CIDRs configured

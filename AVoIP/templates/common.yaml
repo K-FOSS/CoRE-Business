@@ -898,7 +898,7 @@ controllers:
             );
             \getenv voicemail_pin VM_PIN
             INSERT INTO voicemail (context, mailbox, password, fullname, email, attach)
-            VALUES ('default', '{{ $.Values.asterisk.sipCore.inboundVoiceExtension }}', :'voicemail_pin', '', '', 'no')
+            VALUES ('default', '{{ default $.Values.asterisk.sipCore.inboundVoiceExtension $.Values.asterisk.voicemail.mailbox }}', :'voicemail_pin', '', '', 'no')
             ON CONFLICT (context, mailbox) DO NOTHING;
             {{- end }}
             SQL

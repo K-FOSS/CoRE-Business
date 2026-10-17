@@ -901,6 +901,9 @@ asterisk:
     # site-value migration; new deployments should use this setting.
     enabled: false
     accessCode: ''
+    # Defaults to SIP Core's inboundVoiceExtension. Set this independently
+    # for voicemail-only sites without a SIP Core browser endpoint.
+    mailbox: ''
     pinSecret:
       remoteKey: 'AVoIP/SIPCore/VoiceMail'
       property: 'Pin'

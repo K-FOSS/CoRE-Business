@@ -28,10 +28,12 @@ locally emitted Homer traces identify their source; see [capture verification](A
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-The pending AVoIP desired-state update routes the voice DID to a silent YVR
-FreeSWITCH digit collector, with exact Asterisk destinations `7101`, `9090`, `66`, and
-`1234`. Both sites' FaxNumber DIDs route to YVR Asterisk extension `7101`;
-they no longer select the fax receiver. See the
+The AVoIP desired state routes both regional voice DIDs to a silent FreeSWITCH
+digit collector. YVR offers its configured Asterisk destinations; YXL routes
+`7101` to its local voicemail mailbox, seeded from the same CoreVault PIN
+property as YVR. Callers can press `0` during the mailbox greeting to open the
+mailbox and PIN prompts. Both sites' FaxNumber DIDs route to Asterisk rather
+than the fax receiver. See the
 [inbound routing guide](AVoIP/docs/PHONE-TREE.md).
 Failed inbound FreeSWITCH handoffs to Asterisk answer the caller, play GG,
 and hang up normally; the same guide documents verification and rollback.

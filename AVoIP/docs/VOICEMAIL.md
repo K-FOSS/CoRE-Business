@@ -1,14 +1,14 @@
 # Asterisk voicemail
 
-The direct FaxNumber call rings the configured Asterisk SIP Core extension for
-30 seconds. If the endpoint is busy or does not answer, Asterisk plays its
-voicemail greeting and records the message. A caller cancellation does not
-start voicemail. While the unavailable greeting is playing, a caller can press
-`0` to open the mailbox login, then enter a mailbox number and PIN. A caller
-reaching the voice IVR can also dial `*97` to reach that login. The mailbox
-owner can dial `*97` from their authenticated SIP Core account to open their
-own mailbox. The mailbox menu can change that PIN; Asterisk stores mailbox
-credentials in the Asterisk PostgreSQL database. Email delivery is disabled.
+Where a SIP Core extension is configured, the direct FaxNumber call rings it
+for 30 seconds and sends unanswered calls to that extension's mailbox. At
+voicemail-only sites such as YXL, the IVR's `7101` destination goes directly to
+the local mailbox; the FaxNumber also records a message there. While the
+unavailable greeting is playing, a caller can press `0` to open the mailbox
+login, then enter a mailbox number and PIN. A caller reaching the voice IVR can
+also dial `*97` at sites whose IVR accepts star codes. The mailbox menu can
+change the PIN; Asterisk stores mailbox credentials in the Asterisk PostgreSQL
+database. Email delivery is disabled.
 
 The public `*97` route is available only at sites where Asterisk voicemail is
 enabled. It uses `VoiceMailMain()` without the option to skip authentication,
@@ -19,10 +19,10 @@ Enable `asterisk.voicemail.enabled` in the site values supplied through the
 owning [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The chart accepts the former `freeswitch.voicemail.enabled` setting as a
 temporary compatibility alias. New site values should use the Asterisk key.
-The feature requires Asterisk SIP Core, a configured `inboundVoiceExtension`,
-and a matching CoreVault-backed extension entry. Add a `VoicemailPIN` property
-to the `AVoIP/SIPCore/VoiceMail` CoreVault secret's `Pin` property for the
-initial PIN. The secret key and property are configurable through
+SIP Core sites use `inboundVoiceExtension` as the mailbox number. A site
+without SIP Core sets `asterisk.voicemail.mailbox` explicitly. The chart reads
+the initial PIN from the shared `AVoIP/SIPCore/VoiceMail` CoreVault secret's
+`Pin` property, the same source used in YVR. The secret key and property are configurable through
 `asterisk.voicemail.pinSecret.remoteKey` and
 `asterisk.voicemail.pinSecret.property`. The PIN value is never placed in Helm
 values or the repository. The seed process inserts the
@@ -70,8 +70,9 @@ that the output contains:
   credentials generated from the Asterisk connection Secret at runtime.
 - The voicemail and voicemail message tables, `*97` mailbox route, and
   unanswered FaxNumber fallback in Asterisk. Where voicemail is enabled, the
-  FreeSWITCH IVR accepts `*97` and bridges it to Asterisk's mailbox login; the
-  Asterisk `o` extension sends greeting-time `0` to the same login.
+  YVR's FreeSWITCH IVR accepts `*97` and bridges it to Asterisk's mailbox
+  login; YXL's numeric IVR destination `7101` bridges to the local mailbox.
+  The Asterisk `o` extension sends greeting-time `0` to the same login.
 - No FreeSWITCH voicemail module, dialplan, or volume mount.
 
 After deployment, verify the `User` and ExternalSecret conditions, ODBC driver
