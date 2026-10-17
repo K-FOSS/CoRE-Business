@@ -123,14 +123,26 @@
         # A remote BYE arriving through the authenticated carrier Kamailio
         # peer has already traversed the public tier. TOPOS restores this
         # tier's FreeSWITCH Contact into the Request-URI. Use that target
-        # directly and the private TLS listener; the restored Route set may
-        # name the public_tls socket, which this private-only instance does
-        # not bind. This keeps the SIP target and headers intact while making
-        # the final owner hop independent of the carrier replica.
+        # directly through TLS. The FreeSWITCH Flowroute profile also has a
+        # UDP registration listener, so its Contact can lack transport=tls.
+        # A forced send socket does not override that URI's UDP transport.
+        # Set only the next hop from the restored owner Contact; retain the
+        # Request-URI, Route set, and dialog identifiers unchanged.
         if ($var(peer_name) == "carrier") {
+          if ($rd !~ "^[0-9.]+$" ||
+              $rp != {{ .Values.freeswitch.flowrouteOutbound.tlsPort }}) {
+            xlog(
+              "L_WARN",
+              "SIP dialog route stage=carrier-to-freeswitch result=invalid-owner-target pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) ruri=$ru route=$hdr(Route)\n"
+            );
+            if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
+            exit;
+          }
+          $du = "sip:" + $rd + ":" + $rp + ";transport=tls";
+          $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
           set_send_socket_name("private_tls");
           xlog(
-            "L_INFO",
+            "L_WARN",
             "SIP dialog route stage=carrier-to-freeswitch pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=carrier-originated topos_result=restored-owner destination=$du socket=$fsn ruri=$ru route=$hdr(Route) rtpengine_delete=requested-upstream\n"
           );
         }

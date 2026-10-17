@@ -287,7 +287,10 @@ data:
             <action application="export" data="sip_h_X-Core-Call-Linkedid=${sip_h_X-Core-Call-Linkedid}"/>
             <action application="export" data="sip_h_X-Core-Origin-Uniqueid=${sip_h_X-Core-Origin-Uniqueid}"/>
             <action application="log" data="INFO AVoIP route selected linkedid=${sip_h_X-Core-Call-Linkedid} origin_uniqueid=${sip_h_X-Core-Origin-Uniqueid} a_uuid=${uuid} a_call_id=${sip_call_id} direction=outbound site={{ $.Values.region }} gateway=flowroute destination=${destination_number} codec_policy={{ join "," $.Values.freeswitch.flowrouteOutbound.codecs }}"/>
-            <action application="bridge" data="[absolute_codec_string='{{ join "," $.Values.freeswitch.flowrouteOutbound.codecs }}']sofia/gateway/flowroute/${destination_number}"/>
+            <!-- This B-leg is sent to Kamailio over TLS while the gateway's
+                 separate Flowroute registration stays on UDP. Advertise the
+                 actual TLS dialog target in Contact for remote BYEs/UPDATEs. -->
+            <action application="bridge" data="[absolute_codec_string='{{ join "," $.Values.freeswitch.flowrouteOutbound.codecs }}',sip_invite_contact_params='transport=tls']sofia/gateway/flowroute/${destination_number}"/>
             <action application="log" data="INFO AVoIP bridge ended linkedid=${sip_h_X-Core-Call-Linkedid} origin_uniqueid=${sip_h_X-Core-Origin-Uniqueid} a_uuid=${uuid} a_call_id=${sip_call_id} b_uuid=${bleg_uuid} b_sip_cause=${last_bridge_proto_specific_hangup_cause} sip_cause=${proto_specific_hangup_cause} bridge_cause=${bridge_hangup_cause} last_bridge_cause=${last_bridge_hangup_cause} hangup_cause=${hangup_cause} q850_cause=${hangup_cause_q850} endpoint_disposition=${endpoint_disposition} sip_disposition=${sip_hangup_disposition}"/>
           </condition>
         </extension>

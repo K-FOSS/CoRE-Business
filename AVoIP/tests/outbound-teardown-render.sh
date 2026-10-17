@@ -11,6 +11,7 @@ helm template core-home1-talos-prod "$chart_dir" --namespace core-prod \
 
 carrier_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["kamailio.cfg"]' "$render")"
 internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
+freeswitch_dialplan="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$render")"
 
 # The carrier tier's shared TOPOS store and three-way route restoration remain
 # enabled; the internal tier has its own store and a private_tls socket only.
@@ -24,9 +25,13 @@ grep -Fq 'listen=tls:KAMAILIO_POD_IP:5062 advertise' <<< "$internal_cfg"
 # the socket actually bound by the internal tier.
 grep -Fq 'if ($var(peer_name) == "carrier") {' <<< "$internal_cfg"
 grep -Fq 'set_send_socket_name("private_tls");' <<< "$internal_cfg"
+grep -Fq '$du = "sip:" + $rd + ":" + $rp + ";transport=tls";' <<< "$internal_cfg"
+grep -Fq '$rp != 5081' <<< "$internal_cfg"
+grep -Fq '$xavp(tls=>server_name) =' <<< "$internal_cfg"
 grep -Fq 'topos_result=route-restored' <<< "$internal_cfg"
 grep -Fq 'route=$hdr(Route)' <<< "$internal_cfg"
 ! grep -Fq '$du = $ru;' <<< "$internal_cfg"
+grep -Fq "sip_invite_contact_params='transport=tls'" <<< "$freeswitch_dialplan"
 
 # TM reports its negative relay result and handles duplicate requests before
 # media/quota teardown side effects in both hops.
@@ -47,5 +52,5 @@ grep -Fq '"topos", "EVAL %s 1 %s",' <<< "$clear_cfg"
 grep -Fq 'rtpengine_delete_result=$var(rtpengine_delete_result)' <<< "$carrier_cfg"
 
 printf '%s\n' 'PASS: outbound teardown route renders the carrier-to-internal mTLS path with independent TOPOS stores'
-printf '%s\n' 'PASS: internal carrier-peer BYEs retain the restored dialog target and use the private TLS socket'
+printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; new FreeSWITCH Contacts advertise TLS'
 printf '%s\n' 'PASS: relay results and topology decisions are logged; retransmissions exit before teardown side effects'

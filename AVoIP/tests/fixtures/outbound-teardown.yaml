@@ -7,6 +7,29 @@ sip:
   globalHost: 'sip.resolvemy.host'
 freeswitch:
   enabled: true
+  highAvailability:
+    enabled: true
+    replicas: 2
+    minAvailable: 1
+  flowrouteOutbound:
+    enabled: true
+    regionalHost: 'us-west-or.sip.flowroute.com'
+asterisk:
+  enabled: true
+  sipCore:
+    enabled: true
+    hostname: 'sipcore.test.invalid'
+    gatewaySectionName: 'https-test'
+    allowedOrigins: ['https://test.invalid']
+    extensions:
+      - number: '7101'
+        secret:
+          remoteKey: 'Tests/SIPCore/7101'
+          property: 'Password'
+        allowCallsTo: ['9090']
+    outboundNANP:
+      enabled: true
+      extensions: ['7101']
 kamailio:
   enabled: true
   instances:
@@ -17,6 +40,11 @@ kamailio:
         enabled: true
       carrierOutbound:
         enabled: true
+        calls:
+          enabled: true
+          mode: 'nanp'
+          callerId: '+16045550100'
+          extensions: ['7101']
         gatewayServiceHost: 'envoy-core-prod-main-gw.kube-system.svc.k8s.home1.resolvemy.host'
         sniHost: 'sip-outbound.core-home1-talos-prod.home1.yvr.resolvemy.host'
         clientIdentity:

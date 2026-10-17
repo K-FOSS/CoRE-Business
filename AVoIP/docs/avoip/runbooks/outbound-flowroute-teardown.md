@@ -13,19 +13,23 @@ TOPOS state and forwards a carrier-originated in-dialog request to the
 authenticated `carrier` peer on the internal tier. The internal tier then
 restores its own TOPOS state and consumes its route set. That tier binds only
 `private_tls`; it does not bind the carrier tier's `public_tls` socket. The
-private route now explicitly selects `private_tls` for this authenticated
-carrier-peer dialog after loose routing, while leaving the restored Request-URI
-and Route headers intact. The request still reaches the FreeSWITCH Contact
-restored by TOPOS, including its Flowroute Sofia listener port.
+private route explicitly selects `private_tls` for this authenticated
+carrier-peer dialog after loose routing. A live BYE on 2026-10-17 exposed the
+remaining fault: the restored Contact pointed to the FreeSWITCH owner at
+`172.20.57.142:5081` with UDP transport. TM logged a forced TLS socket versus
+UDP destination mismatch and returned `-7`. The private tier now selects a
+TLS destination URI using the restored owner IP and port, while leaving the
+Request-URI, Route headers and dialog identifiers intact. It rejects a
+restored target that is not an owner IP on the Flowroute profile's TLS port.
+The Flowroute FreeSWITCH bridge also advertises `transport=tls` in its Contact
+for new calls. Its separate Flowroute registration remains on UDP.
 
-The incident's `(7/TM)` is the TM response to a negative relay result. In the
-checked-in Kamailio route, `-7` is consistent with a destination requiring a
-transport/socket that the internal tier has not bound; Kamailio reports this
-condition as “no corresponding listening socket.” The tier's generated config
-binds `private_tls` only. The explicit socket selection on the authenticated
-carrier-peer path makes that next hop valid. The supplied SIP trace does not
-include the detailed internal TM debug line, so the production log check below
-also verifies the actual relay result and selected socket.
+The incident's `(7/TM)` is the TM response to `t_relay()=-7`. The original
+trace did not include its internal TM debug line. The later controlled call
+did: `get_send_socket2()` reported `forced tls:172.20.57.57:5062, to
+udp:172.20.57.142:5081`, followed by “no corresponding listening socket.”
+This confirms the transport mismatch. A send socket selection alone cannot
+change the destination transport inferred from the Contact URI.
 
 TM retransmission matching now runs before BYE teardown effects in both tiers.
 A repeated BYE is handled by the transaction cache before quota release or
@@ -54,8 +58,9 @@ test -s /tmp/avoip-final-render.yaml
 ```
 
 The render test checks both instance configs, independent TOPOS stores, the
-private TLS socket selection, preserved SIP targets, TM relay diagnostics and
-retransmission guards. The Kustomize command validates the local post-Helm
+private TLS destination and socket, the FreeSWITCH Contact parameter,
+preserved SIP targets, TM relay diagnostics and retransmission guards. The
+Kustomize command validates the local post-Helm
 overlay syntax only; deployment output must still be rendered through the
 owning Lovely Application with its injected site values and pipeline order.
 
@@ -112,7 +117,8 @@ Confirm all of the following in the same Call-ID trace:
 
 1. **Flowroute-originated BYE:** carrier replica receives it; internal tier
    logs `topos_result=route-restored`, a successful loose route, selects
-   `private_tls`, and FreeSWITCH receives that same BYE. FreeSWITCH returns a
+   `private_tls` and a `;transport=tls` destination to the restored owner pod,
+   and FreeSWITCH receives that same BYE. FreeSWITCH returns a
    genuine `200 OK`, which traverses both Kamailio tiers to Flowroute.
 2. **FreeSWITCH-originated BYE:** initiate hangup locally. Flowroute receives
    the BYE and returns 200; its route set and TLS transport remain intact.
