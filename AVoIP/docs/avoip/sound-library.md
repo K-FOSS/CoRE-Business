@@ -35,6 +35,11 @@ the last completed save wins. The route's group authorization permits members
 to upload and replace prompts; do not store private recordings or credentials
 in this library.
 
+The NGINX WAV-file location quotes its regex so the `{0,63}` quantifier remains
+part of the pattern when NGINX parses the generated configuration. The focused
+render check is `AVoIP/tests/sound-library-nginx-render.sh`; run `nginx -t` with
+the generated configuration and the deployed image before accepting a rollout.
+
 The PVC has `Retain` reclaim behavior and Argo CD prune/delete protection. If
 the editor or AVoIP release is disabled, the chart removes the workload and its
 mounts while retaining the sound files. To verify a rollout, inspect the

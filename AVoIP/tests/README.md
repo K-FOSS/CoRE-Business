@@ -66,6 +66,18 @@ the Kamailio IPv4 DNS/media settings, and FreeSWITCH's IPv4 profiles. The image
 build also verifies that `res_rtp_asterisk.so` exists; the render test does not
 exercise live STUN reachability or media candidates.
 
+The sound-library NGINX config has a focused chart-render regression:
+
+```sh
+AVoIP/tests/sound-library-nginx-render.sh
+```
+
+It checks the rendered, quoted WAV filename regex and the editor's 64-character
+name validation, while preserving the read-only listing and authenticated PUT
+path. Validate the generated `default.conf` with `nginx -t` from the deployed
+digest-pinned unprivileged NGINX image before rollout; this render check does
+not run an NGINX parser or exercise a live upload.
+
 The WSS test renders both a selected three-replica tier and a separate staged
 pilot. It checks the headless owner Service, stable StatefulSet identity,
 two-pod disruption floor, existing Envoy backend Service and `/ws` contract,
