@@ -62,7 +62,9 @@ YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
 outbound SIPS TLSRoute stays enabled. The desired YXL voice route transfers
 over that existing carrier path to the silent YVR FreeSWITCH IVR ingress; its
-FaxNumber DID routes directly to YVR Asterisk SIP Core extension `7101`. The IVR
+FaxNumber DID routes directly to YVR Asterisk SIP Core extension `7101`; Asterisk
+dials all currently registered AOR contacts in parallel, so every registered
+device rings until one answers or the 30-second timeout expires. The IVR
 accepts only configured Asterisk destinations and uses the existing local
 FreeSWITCH-to-Asterisk gateway. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
 for the Asterisk-to-FreeSWITCH-to-Flowroute path, codec negotiation, trust
@@ -682,8 +684,10 @@ end-to-end failover paths still need live verification; see
    had a complete recording. Retain a Call-ID-correlated ACK and clean BYE/200
    trace as acceptance evidence. See [SIP identity and call verification](docs/SIP-IDENTITY.md).
 2. Verify the voice DID accepts each allowlisted DTMF destination and that the
-   FaxNumber DID rings extension `7101`. Confirm an unregistered endpoint
-   does not leave a live answered call after the 30-second dial timeout.
+   FaxNumber DID rings every registered `7101` device. Confirm one answering
+   device cancels the other branches, voicemail fallback remains correct, and
+   no registered contact does not leave a live answered call after the
+   30-second dial timeout.
 3. Exercise site failover and the RTPEngine/Valkey recovery path before treating
    either as production verified.
 
