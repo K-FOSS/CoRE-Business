@@ -206,6 +206,13 @@ signaling and media. FreeSWITCH uses the Flowroute regional proxy for REGISTER
 and its gateway `outbound-proxy` for the Kamailio INVITE hop, following the
 [FreeSWITCH gateway configuration](https://developer.signalwire.com/freeswitch/users-and-endpoints/gateways/)
 and [Flowroute regional PoP configuration](https://developer.flowroute.com/docs/inbound-and-outbound-calling-with-flowroute-new-pops/).
+The outbound `flowroute-tls` gateway sets `from-domain` to the configured or
+derived site SIP hostname (`sip.siteHost`); `caller-id-in-from` retains the
+authorized caller number as the From URI user. Thus the carrier sees the
+site-local SIP route identity as the From host rather than a FreeSWITCH pod
+address. This is set when FreeSWITCH creates the dialog, so subsequent
+in-dialog requests retain the same dialog identity without a Kamailio header
+rewrite.
 The carrier Kamailio prefixes the Flowroute registration username and `*` to
 the outbound E.164 Request-URI from a username-only ExternalSecret. This
 provides Flowroute's IP-auth Tech Prefix format; it does not disable the

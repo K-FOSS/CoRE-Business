@@ -42,6 +42,8 @@ grep -Fq '<param name="register-transport" value="udp"/>' <<< "$registration_gat
 grep -Fq '<param name="register" value="true"/>' <<< "$registration_gateway"
 grep -Fq '<param name="register-transport" value="tls"/>' <<< "$tls_gateway"
 grep -Fq '<param name="register" value="false"/>' <<< "$tls_gateway"
+grep -Fq '<param name="from-domain" value="sip.core-home1-talos-prod.home1.yvr.resolvemy.host"/>' <<< "$tls_gateway"
+grep -Fq '<param name="caller-id-in-from" value="true"/>' <<< "$tls_gateway"
 grep -Fq 'gateway=flowroute-tls profile=flowroute' <<< "$freeswitch_dialplan"
 grep -Fq 'sofia/gateway/flowroute-tls/' <<< "$freeswitch_dialplan"
 ! grep -Fq 'sofia/gateway/flowroute/' <<< "$freeswitch_dialplan"
