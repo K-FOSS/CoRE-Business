@@ -995,12 +995,13 @@ freeswitch:
     # Optional second ingress extension that enters the local IVR.
     ivrExtension: ''
   ivr:
-    # Silent extension dialer, enabled only where a local Asterisk SIP Core
-    # is configured to accept the selected internal destinations.
+    # Extension dialer, enabled only where a local Asterisk SIP Core is
+    # configured to accept the selected internal destinations.
     enabled: false
     extensions: []
     timeoutMs: 15000
     digitTimeoutMs: 2000
+    greeting: '/usr/share/freeswitch/sounds/avoip-shared/IVRGreet.wav'
   homer:
     # Send internal FreeSWITCH SIP and channel metadata to site-local Homer.
     sipCapture: true

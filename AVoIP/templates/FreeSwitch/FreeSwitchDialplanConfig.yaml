@@ -154,7 +154,7 @@ data:
             {{- $voicemailDigits := trimPrefix "*" $voicemailAccessCode -}}
             {{- $ivrPattern = printf "%s|%s|\\%s" $ivrPattern $voicemailDigits $voicemailAccessCode -}}
             {{- end }}
-            <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # silence_stream://{{ $.Values.freeswitch.ivr.timeoutMs }} silence_stream://1000 ivr_extension ^({{ $ivrPattern }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
+            <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # {{ $.Values.freeswitch.ivr.greeting }} silence_stream://1000 ivr_extension ^({{ $ivrPattern }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
             <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
           </condition>
         </extension>
