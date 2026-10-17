@@ -231,6 +231,8 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 
 - Preserve unrelated worktree changes. Do not reformat, revert, stage or
   include another author's edits.
+- Keep the repository's local phone-number Git hooks enabled for this checkout
+  when committing; see [the phone-number commit guard](docs/PHONE-NUMBER-GUARD.md).
 - Prefer the [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)
   for supported Kubernetes workloads and supporting resources, including
   controllers, Services, routes, persistence, ConfigMaps and Secrets. Before
@@ -304,6 +306,23 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 - After Argo CD reconciliation, follow downstream operator/Crossplane
   conditions and test the user-facing workflow. `Synced` or pod readiness alone
   does not prove the application is healthy.
+
+## Live application investigations
+
+- When a live reproduction is useful and authorized log access is available,
+  inspect and monitor the relevant service logs directly; do not ask the user
+  to run console commands or collect and paste log output.
+- If a test call or other user action is needed, ask the user to perform that
+  action and provide a time window or correlation identifier. Monitor the
+  relevant logs around that window and correlate events across services
+  yourself.
+- If direct log access is unavailable, state that limitation plainly. Do not
+  imply that logs are being monitored or shift log collection to the user;
+  request only the user action needed for a reproduction when it can still
+  provide useful evidence.
+- Keep live observations read-only unless the user has authorized a specific
+  operational change. Redact secrets and avoid requesting credentials or
+  sensitive call content.
 
 ## Dashboard exposure
 

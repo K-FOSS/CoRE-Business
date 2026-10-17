@@ -42,8 +42,10 @@ and [YVR Asterisk-to-carrier NANP calling](AVoIP/docs/OUTBOUND-PILOT.md)
 through the authenticated service path. A new desired-state change moves
 authorized YVR NANP calls through the HA FreeSWITCH Flowroute registration,
 while both sites register at their regional PoPs, inbound DIDs remain on
-Kamailio, and Kamailio/RTPEngine keep the carrier media path; see the
-[outbound setup](AVoIP/docs/PHONE-TREE.md). An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
+Kamailio, and Kamailio/RTPEngine keep the carrier media path. FreeSWITCH
+includes its outbound codec preferences on the Flowroute leg so G.711 can be
+negotiated when the SIP Core leg uses another codec; see the
+[outbound setup](AVoIP/docs/OUTBOUND-PILOT.md). An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
 now renders a site-local PostgreSQL service identity and schema migration, but
 credential issuance and live registration for the private registrar are still
 open. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)

@@ -30,11 +30,12 @@ hostname anti-affinity and spread constraints, and are protected by a
 one pod or node failure, but does not migrate an in-flight TCP/TLS connection,
 Kamailio transaction, FreeSWITCH channel, or RTPEngine UDP session.
 
-The pinned common-library version does not render `minReadySeconds`; rollout
-safety currently comes from startup/config validation, readiness, zero
-rolling-update unavailability, the disruption budget, graceful termination,
-and spread constraints. Add a supported raw deployment patch or library
-upgrade before treating a minimum-ready dwell time as an availability claim.
+The pinned common-library version does not render `minReadySeconds`, so the
+Lovely Kustomize layer applies a 60-second minimum-ready interval to Kamailio
+and FreeSWITCH Deployments (and the Kamailio StatefulSet when enabled). During
+a rolling update, Kubernetes waits until a replacement has remained Ready for
+that interval before advancing to the next replica. Readiness and graceful
+termination still determine whether a replacement is safe to serve traffic.
 
 ## HA progression
 
