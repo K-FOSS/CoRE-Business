@@ -127,7 +127,11 @@ Kamailio processes do not share live WebSocket connections or transaction
 state. Kubernetes client-IP affinity cannot identify the owner because Envoy
 and Asterisk are different clients. See the
 [WSS edge rollout guide](docs/SIP-STATEFUL-HA.md#implemented-wss-edge-mode)
-before enabling the additional instance.
+before enabling the additional instance. Inbound fan-out uses Asterisk's
+per-contact dial list; the HA edge accepts an initial INVITE without a usable
+Path Route only when its Contact Request-URI names the exact receiving owner
+pod, then resolves the local WebSocket alias. Requests for another owner and
+other owner-routed methods still require a valid Path Route.
 
 Routr Connect 2.13.6 is integrated as optional workloads in this chart's
 BJW-S common-library render, based on the [upstream Connect chart](https://github.com/fonoster/routr/tree/v2.13.6/ops/charts/connect)

@@ -438,11 +438,25 @@
       {{- end }}
 
       {{- if .Values.kamailio.websocketHA.enabled }}
-      # Asterisk must have retained the Path from the registered contact.
-      # Missing owner Routes fail closed; never fall back to the shared Service.
+      # PJSIP_DIAL_CONTACTS() fans out explicit Contact URIs. Some Asterisk
+      # versions do not attach the contact's Path on those initial INVITEs.
+      # The Contact URI itself is rewritten to its owning StatefulSet pod, so
+      # allow this narrowly scoped case only on that exact owner's Asterisk-
+      # only TLS listener. Keep rejecting a missing/invalid Path for all other
+      # initial requests; never fall back to the shared Service.
       if (!has_totag() && (!is_present_hf("Route") || !loose_route())) {
-        if (!is_method("ACK")) sl_send_reply("404", "SIP Contact Owner Path Missing");
-        exit;
+        if (is_method("INVITE") &&
+            $(ru{uri.host}) == "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}") {
+          {{- if .Values.kamailio.sipLogging.sipCore }}
+          xlog(
+            "L_WARN",
+            "SIPCORE FLOW stage=asterisk-invite-owner-uri-fallback pod=$env(POD_NAME) callid=$ci method=$rm ruri_host=$rd cseq=$hdr(CSeq)\n"
+          );
+          {{- end }}
+        } else {
+          if (!is_method("ACK")) sl_send_reply("404", "SIP Contact Owner Path Missing");
+          exit;
+        }
       }
       if (!has_totag()) {
         # During the migration window Asterisk may append its legacy shared

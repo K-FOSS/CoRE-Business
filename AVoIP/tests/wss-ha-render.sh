@@ -135,6 +135,9 @@ grep -Fq 'support_path=yes' "$split"
 echo 'PASS: HA WSS contacts use their Asterisk-stored Path without an overriding endpoint proxy'
 split_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["kamailio.cfg"]' "$split")"
 grep -Fq 'stage=asterisk-return-in' <<<"$split_config"
+grep -Fq 'stage=asterisk-invite-owner-uri-fallback' <<<"$split_config"
+grep -Fq '$(ru{uri.host}) == "SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-owner.core-prod.svc.cluster.local"' <<<"$split_config"
+grep -Fq 'if (is_method("INVITE") &&' <<<"$split_config"
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \

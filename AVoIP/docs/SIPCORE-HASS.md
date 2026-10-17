@@ -374,6 +374,17 @@ behavior.
   (default 30 seconds), it ends without starting the GG call. The callback
   starts one minute after the hello-world call ends by default, controlled by
   `asterisk.sipCore.ggCallbackDelaySeconds`.
+  A later inbound capture showed the fan-out reached the registered owner
+  pods, but each branch was rejected with `404 SIP Contact Owner Path Missing`
+  before WebSocket forwarding. The return-route guard treated the explicit
+  per-contact INVITE URI as invalid whenever its Path Route was absent or
+  unusable, even though the Request-URI already named that contact's owner.
+  HA routing now allows this fallback only for an initial INVITE on the
+  Asterisk-restricted TLS listener whose Request-URI hostname exactly matches
+  the receiving owner pod; Kamailio must still resolve the local Contact
+  alias. Other methods, wrong-owner targets and unresolvable aliases remain
+  rejected. This preserves the `PJSIP_DIAL_CONTACTS()` parallel ring-all
+  behavior; live post-reconciliation confirmation is still required.
   The `gg-audio` route emits correlated start, media-established, and playback
   completion logs with codec and outbound RTP packet/byte counters. It sends a
   configurable 100 ms `silence_stream` RTP lead-in before the remote audio by
