@@ -49,7 +49,15 @@ backend_line="$(grep -nF 'SIP peer next-hop class=backend destination=$du' <<< "
 [[ -n "$remove_line" && -n "$deny_line" && -n "$extension_deny_line" && -n "$append_line" && -n "$backend_line" ]]
 [[ "$remove_line" -lt "$extension_deny_line" && "$extension_deny_line" -lt "$append_line" && "$append_line" -lt "$backend_line" ]]
 grep -Fq 'SIP inter-site backend authorization=allowed peer=yxl marker=yxl' <<< "$home1_cfg"
-grep -Fq 'inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip} call_id=${sip_call_id}' <<< "$home1_fs"
+grep -Fq 'field="${sip_h_X-Core-InterSite}" expression="^yxl$"' <<< "$home1_fs"
+[[ "$(grep -Fc 'field="${sip_h_X-Core-InterSite}" expression="^yxl$"' <<< "$home1_fs")" -eq 2 ]]
+grep -Fq 'inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip}' <<< "$home1_fs"
+
+# A trusted initial CANCEL must reach TM before the new-request-only 405.
+cancel_lookup_line="$(grep -nF 'if (!t_lookup_cancel())' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
+method_deny_line="$(grep -nF 'Inter-site Method Not Allowed' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
+[[ -n "$cancel_lookup_line" && -n "$method_deny_line" && "$cancel_lookup_line" -lt "$method_deny_line" ]]
+grep -Fq 'SIP inter-site CANCEL result=matched peer=yxl' <<< "$home1_cfg"
 
 # The YXL DID mapping continues to send extension 7102 to YVR's carrier
 # Service port 5061. The Service maps that to the public_tls container port;
@@ -84,3 +92,4 @@ printf '%s\n' 'PASS: YXL retains the 7102 DID mapping through YVR Service 5061 -
 printf '%s\n' 'PASS: both peer next hops use their configured ClusterIP, per-site SNI, and public_tls socket'
 printf '%s\n' 'PASS: peer decision logs include listener, transport source, TLS identity, authorization, and selected next hop'
 printf '%s\n' 'PASS: dialog ACK, CANCEL, BYE and in-dialog routing remain generated in both directions'
+printf '%s\n' 'PASS: trusted CANCEL reaches TM before initial method rejection and FreeSWITCH reads the inter-site channel variable'

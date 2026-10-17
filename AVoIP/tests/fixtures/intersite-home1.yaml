@@ -9,6 +9,26 @@ sip:
     issuerName: 'core-tls-vault'
 freeswitch:
   enabled: true
+  interSite:
+    enabled: true
+    peerName: 'yxl'
+    extension: '7101'
+    ivrExtension: '7102'
+  ivr:
+    enabled: true
+    extensions: ['7101', '9090', '66', '1234']
+asterisk:
+  sipCore:
+    enabled: true
+    hostname: 'sipcore.mylogin.space'
+    allowedOrigins: ['https://home.mylogin.space']
+    inboundVoiceExtension: '7101'
+    extensions:
+      - number: '7101'
+        secret:
+          remoteKey: 'AVoIP/SIPCore/YVR/Home1/7101'
+          property: 'Password'
+        allowCallsTo: ['9090', '66', '1234']
 kamailio:
   enabled: true
   instances:
@@ -38,3 +58,10 @@ kamailio:
             serviceHost: 'core-dc1-talos-prod-business-avoip-prod-avoip-kamailio.core-prod.svc.k3s.dc1.resolvemy.host'
             serverName: 'sip-outbound.core-dc1-talos-prod.dc1.yxl.resolvemy.host'
             allowedUsers: ['7101', '7102']
+    - name: 'internal'
+      enabled: true
+      role: 'private-sbc'
+      topology:
+        redis:
+          database: 52
+          secretName: 'avoip-kamailio-internal-topos'

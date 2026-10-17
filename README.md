@@ -57,8 +57,11 @@ The private
 registrar remains disabled. Certificate issuance and workload rollout require
 reconciliation. The configured YXL voice and FaxNumber routes use that carrier
 mTLS link to reach the YVR IVR and Asterisk respectively; see the
-[inter-site transfer guide](AVoIP/docs/INTERSITE-VOICE.md). Home1
-does run the SIP Core WSS path with a three-replica Kamailio edge and the
+[inter-site transfer guide](AVoIP/docs/INTERSITE-VOICE.md).
+The guide records the 2026-10-17 Flowroute to YXL to YVR call, the
+transaction-aware CANCEL correction, and FreeSWITCH's corrected inter-site
+header condition; an answered follow-up call is still required.
+Home1 does run the SIP Core WSS path with a three-replica Kamailio edge and the
 digest-pinned LF-heartbeat compatibility image; the dynamic registrar and
 first-party webphone work remains open. See the
 [Home Assistant SIP Core status](AVoIP/docs/SIPCORE-HASS.md#verified-pilot).

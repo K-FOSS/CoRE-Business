@@ -62,8 +62,8 @@ data:
         {{- if $.Values.freeswitch.interSite.enabled }}
         <extension name="authorized-inter-site-extension">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.extension }}$"/>
-          <condition field="sip_h_X-Core-InterSite" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
-            <action application="log" data="INFO AVoIP authorized inter-site transfer peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number}"/>
+          <condition field="${sip_h_X-Core-InterSite}" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
+            <action application="log" data="INFO AVoIP authorized inter-site transfer peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number} uuid=${uuid} call_id=${sip_call_id} backend=asterisk"/>
             <action application="ring_ready"/>
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
@@ -73,8 +73,8 @@ data:
         {{- if and $.Values.freeswitch.ivr.enabled $.Values.freeswitch.interSite.ivrExtension }}
         <extension name="authorized-inter-site-ivr">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.ivrExtension }}$"/>
-          <condition field="sip_h_X-Core-InterSite" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
-            <action application="log" data="INFO AVoIP authorized inter-site IVR peer={{ $.Values.freeswitch.interSite.peerName }} caller=${caller_id_number}"/>
+          <condition field="${sip_h_X-Core-InterSite}" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
+            <action application="log" data="INFO AVoIP authorized inter-site IVR peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number} uuid=${uuid} call_id=${sip_call_id} backend=silent-ivr-entry"/>
             <action application="transfer" data="silent-ivr-entry XML public"/>
           </condition>
         </extension>
@@ -224,7 +224,7 @@ data:
         </extension>
         <extension name="reject-unmatched-public-destination">
           <condition field="destination_number" expression="^.+$">
-            <action application="log" data="WARNING AVoIP rejecting unmatched public destination ${destination_number}; outbound FreeSWITCH calling is disabled inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip} call_id=${sip_call_id}"/>
+            <action application="log" data="WARNING AVoIP rejecting unmatched public destination=${destination_number} uuid=${uuid} call_id=${sip_call_id} profile=${sofia_profile_name} context=${context} request_uri=${sip_req_uri} to_user=${sip_to_user} inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip}"/>
             <action application="hangup" data="CALL_REJECTED"/>
           </condition>
         </extension>

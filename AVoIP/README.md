@@ -154,7 +154,9 @@ listener, with a site-specific optional-client-certificate TLS profile. The
 request is authorized by the configured peer CIDR, verified client certificate
 SAN, and exact extension allowlist. The private Service on TLS/5062 remains for
 same-site application traffic. See the [inter-site voice guide](docs/INTERSITE-VOICE.md)
-for listener, network policy, trust and dialog behavior.
+for listener, network policy, trust and dialog behavior, including the
+2026-10-17 CANCEL and FreeSWITCH dialplan findings. An answered inter-site
+call remains to be verified after rollout.
 
 Codec preferences are configurable under the top-level `codecs` values. Opus
 is enabled by default on the Asterisk-to-FreeSWITCH peer, SIP Core endpoints,

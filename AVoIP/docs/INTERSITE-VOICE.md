@@ -1,5 +1,112 @@
 # YXL to YVR inbound voice routing
 
+## 2026-10-17 inbound voice investigation
+
+The observed Flowroute call entered YXL over TLS from
+`34.210.91.112:55940`. Its Request-URI was the `flowroute` rendezvous user;
+the `To` user held the YXL voice DID. YXL's DID transfer rule matched that
+`To` user and rewrote the Request-URI to `sips:7102@` the YVR carrier
+Kamailio Service hostname. This is an INVITE route, with no observed REFER.
+YXL sent it to the YVR Service at `10.44.7.136:5061`. YVR verified the YXL
+client certificate, SAN, pod CIDR and allowed extension, added
+`X-Core-InterSite: yxl`, and relayed to the FreeSWITCH Service at
+`10.44.6.19:5061`. Its private TLS listener advertises the stable Kamailio
+Service hostname on port `5062`; the actual outgoing connection used an
+ephemeral source port. FreeSWITCH's `kamailio` Sofia profile received the
+call in context `public`, parsed destination `7102`, and saw the marker
+`yxl`.
+
+Those two ClusterIPs and their DNS names are service identities. The capture's
+YXL Kamailio `172.20.49.131`, YVR Kamailio `172.20.63.35`, YXL RTPEngine
+`172.20.49.211`, YVR RTPEngine `172.20.57.236`, and FreeSWITCH
+`172.20.63.99` are historical pod addresses. Read-only Kubernetes Service
+and pod metadata confirmed the first four during this investigation; the
+FreeSWITCH pod had already been replaced. The YXL ingress capture address
+`172.20.48.42` still needs its Gateway or capture-agent identity checked.
+
+The carrier offered PCMU, PCMA and telephone-event payload 112 with media at
+`162.252.184.24:46016`. YXL's SDP advertised
+`172.20.49.211:11062` and RTCP `11063`; YVR's advertised
+`172.20.57.236:11134` and RTCP `11135`. These are offer rewrites, with no
+answer or demonstrated RTP on this attempt. The configured next route for
+`7102` is FreeSWITCH's silent IVR, which accepts digits `7101`, `9090`,
+`66` or `1234`. Its accepted destinations use the authenticated local
+Asterisk gateway; Asterisk can then dial the `7101` SIP Core registration or
+handle its PostgreSQL-backed voicemail path. The captured attempt never
+reached that route.
+
+The original INVITE arrived at YXL at 08:20:29.443 UTC. YXL sent `100`
+and forwarded the INVITE at 08:20:29.448. YVR received it at 08:20:29.500,
+then forwarded it to FreeSWITCH. Flowroute itself sent the matching CANCEL
+at 08:20:30.279, about 836 ms after its INVITE and before any FreeSWITCH
+final response. YXL forwarded CANCEL at 08:20:30.281 and answered that
+CANCEL with `200`. YVR replied `405 Inter-site Method Not Allowed` to the
+CANCEL and did not forward one to FreeSWITCH. FreeSWITCH sent `100`, then
+`603 Decline` with Q.850 cause 21; YVR and YXL relayed the final response,
+and Flowroute sent its transaction ACK. There was no Ringing, answer,
+registered-client leg, or BYE in this attempt.
+
+Two independent causes are confirmed:
+
+- YVR's inter-site method guard rejected every initial request without a To
+  tag except INVITE, before it could match CANCEL to its pending transaction.
+  The chart now checks CANCEL only after TLS verification, SAN and CIDR trust,
+  and uses Kamailio 6.1's
+  [`t_lookup_cancel()` and `t_relay_cancel()`](https://www.kamailio.org/docs/modules/6.1.x/modules/tm.html)
+  on the
+  receiving pod. An unmatched or already finished CANCEL receives `481`.
+  TOPOS shares dialog topology through Dragonfly, but does not share Kamailio
+  TM transactions; the same TLS connection must stay on the pod with the
+  INVITE transaction. The receiving YVR pod was the same pod for both
+  messages in this capture.
+- A second live call at 08:53:35 UTC reached FreeSWITCH's `kamailio` profile
+  and `public` context with destination `7102` and marker `yxl`. Channel UUID
+  `d805e0b8-ec6e-4456-9db3-2cdbff5eea32` executed the unmatched public
+  destination `hangup(CALL_REJECTED)` action. The dialplan tested the marker
+  as a bare caller-profile field, which cannot read this custom SIP header's
+  channel variable. Both authorized inter-site conditions now use
+  `field="${sip_h_X-Core-InterSite}"`, as described in the
+  [FreeSWITCH XML dialplan field rules](https://developer.signalwire.com/freeswitch/dialplan/xml/).
+  No Asterisk bridge leg was attempted in that live call.
+
+The reason Flowroute sent the original CANCEL remains unknown: its request
+had no `Reason` header. Correlate the carrier call record and calling device
+hangup time; do not change a SIP timer on this evidence. The capture's
+destination `5061` on CANCEL responses and occasional logical port `0`
+records do not prove a failed TLS response. Compare Kamailio's `conn` ID,
+Via `received`/`rport`, actual socket tuples, and carrier receipt on a new
+test. The source timestamps come from separate capture points; compare node
+clock offsets and capture buffering before treating gaps as network latency.
+
+### Focused live checks
+
+Keep a caller connected long enough to hear the IVR, select `7101`, answer
+from the registered client, and hang up from each side on separate calls.
+Record the UTC start time and Call-ID. On each cluster, find the current
+Kamailio and FreeSWITCH pods with `kubectl -n core-prod get pods -o wide`;
+then inspect the narrow window without exposing full SIP messages or SDP:
+
+```sh
+kubectl --context core-dc1-talos-prod -n core-prod logs -l app.kubernetes.io/controller=kamailio --all-containers=false --prefix --max-log-requests=10 --since-time='2026-10-17T08:53:00Z' | rg '<call-id>|SIP inter-site CANCEL'
+kubectl --context logged-user -n core-prod logs -l app.kubernetes.io/controller=kamailio --all-containers=false --prefix --max-log-requests=10 --since-time='2026-10-17T08:53:00Z' | rg '<call-id>|SIP inter-site CANCEL'
+kubectl --context logged-user -n core-prod logs -l app.kubernetes.io/controller=freeswitch --all-containers=false --prefix --max-log-requests=10 --since-time='2026-10-17T08:53:00Z' | rg '<call-id>|<channel-uuid>|AVoIP authorized inter-site|AVoIP rejecting unmatched'
+kubectl --context logged-user -n core-prod get svc,endpointslice,pod -o wide | rg 'avoip.*(kamailio|freeswitch|rtpengine)'
+```
+
+Replace the example time, Call-ID and UUID for each call. Confirm the
+same YVR Kamailio pod receives INVITE and CANCEL, matched CANCEL gets `200`
+without `405`, the pending INVITE completes with `487` when cancellation wins,
+and a final response race completes with one acknowledged final response.
+Check the selected FreeSWITCH route and any Asterisk bridge UUID, then verify
+both BYE directions, WebRTC registration, PostgreSQL voicemail deposit and
+retrieval, and RTPEngine deletion on both sites. Repeat an unauthorized
+inter-site source/extension check using the existing focused signaling tooling;
+do not broaden the peer ACL. For transport diagnosis, compare the current
+`SIP wire request` connection ID with `ss -tn` on the relevant pods and the
+Gateway flow record while the call is active. Consult the carrier record for
+the upstream cancellation. These end-to-end checks require a new live call
+after the chart is deployed.
+
 The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 routes both YXL inbound DIDs over the existing carrier Kamailio inter-site
 SIPS link to YVR. The voice DID enters YVR's silent FreeSWITCH IVR at internal

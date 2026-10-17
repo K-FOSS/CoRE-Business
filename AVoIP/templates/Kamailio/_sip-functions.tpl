@@ -168,6 +168,33 @@
         if (src_ip == {{ .cidr }} && $tls_peer_san_hostname == "{{ .sanHostname }}") {
           $var(interSitePeer) = "{{ .name }}";
           $var(side) = "inter-site";
+          # An initial CANCEL has no To tag. Match it to this pod's pending
+          # INVITE before applying the new-request method restriction. The
+          # mTLS, SAN, and source CIDR checks above still apply.
+          if (is_method("CANCEL")) {
+            force_rport();
+            if (!t_lookup_cancel()) {
+              xlog(
+                "L_INFO",
+                "SIP inter-site CANCEL result=unmatched peer={{ .name }} pod=$env(POD_NAME) call_id=$ci cseq=$hdr(CSeq) via=$hdr(Via) source=$si:$sp\n"
+              );
+              sl_send_reply("481", "Call Does Not Exist");
+              exit;
+            }
+            xlog(
+              "L_INFO",
+              "SIP inter-site CANCEL result=matched peer={{ .name }} pod=$env(POD_NAME) call_id=$ci cseq=$hdr(CSeq) via=$hdr(Via) source=$si:$sp\n"
+            );
+            $var(cancel_result) = t_relay_cancel();
+            if ($var(cancel_result) > 0) {
+              xlog("L_INFO", "SIP inter-site CANCEL result=invite-finished peer={{ .name }} pod=$env(POD_NAME) call_id=$ci\n");
+              sl_send_reply("481", "Call Does Not Exist");
+            } else if ($var(cancel_result) < 0) {
+              xlog("L_ERR", "SIP inter-site CANCEL relay failed peer={{ .name }} pod=$env(POD_NAME) call_id=$ci result=$var(cancel_result)\n");
+              sl_reply_error();
+            }
+            exit;
+          }
           if (!has_totag() && !is_method("INVITE")) {
             sl_send_reply("405", "Inter-site Method Not Allowed");
             exit;

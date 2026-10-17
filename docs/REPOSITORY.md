@@ -168,7 +168,9 @@ an exact Asterisk destination allowlist; both sites' FaxNumber DIDs route to
 YVR SIP Core extension `7101` instead of the fax receiver. The
 [AVoIP inbound call path](../AVoIP/docs/PHONE-TREE.md) records the DID routes,
 IVR behavior, GG playback after failed inbound Asterisk handoffs, and retained
-fax spool. The
+fax spool. The [inter-site voice investigation](../AVoIP/docs/INTERSITE-VOICE.md)
+records the 2026-10-17 CANCEL and FreeSWITCH rejection causes and the
+remaining live call checks. The
 chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md),
 [YXL and YVR carrier mTLS transport and YVR Asterisk NANP outbound calling](../AVoIP/docs/OUTBOUND-PILOT.md) and
 [private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md)
