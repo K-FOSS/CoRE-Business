@@ -1,6 +1,7 @@
 {{- if .Values.asterisk.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $cdrHost := default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.asterisk.cdr.host -}}
+{{- $stunAddress := include "avoip.asterisk.stunAddress" . -}}
 {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
   {{- if not (regexMatch "^[A-Za-z_][A-Za-z0-9_]*$" .Values.asterisk.voicemail.messagesTable) }}
     {{- fail "asterisk.voicemail.messagesTable must be a plain SQL identifier" }}
@@ -131,7 +132,7 @@ data:
     rtpstart={{ .Values.asterisk.rtp.min }}
     rtpend={{ .Values.asterisk.rtp.max }}
     icesupport=true
-    {{- with .Values.asterisk.rtp.stunAddress }}
+    {{- with $stunAddress }}
     stunaddr={{ . }}
     {{- end }}
     {{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }}

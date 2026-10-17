@@ -36,6 +36,20 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- $timeZone -}}
 {{- end -}}
 
+{{/* Select the site-local STUN endpoint unless the deployment overrides it. */}}
+{{- define "avoip.asterisk.stunAddress" -}}
+{{- if not .Values.asterisk.rtp.stunEnabled -}}
+{{- else if .Values.asterisk.rtp.stunAddress -}}
+{{- .Values.asterisk.rtp.stunAddress -}}
+{{- else if eq .Values.region "yvr" -}}
+nat-home1.mylogin.space:3478
+{{- else if eq .Values.region "yxl" -}}
+nat.mylogin.space:3478
+{{- else -}}
+{{- fail (printf "no site-local Asterisk STUN endpoint configured for region %q" .Values.region) -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "avoip.resourceNameWithSuffix" -}}
 {{- $suffix := .suffix -}}
 {{- $maxPrefix := sub 63 (add 1 (len $suffix)) | int -}}
