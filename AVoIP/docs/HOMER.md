@@ -13,11 +13,22 @@ Homer stores signaling and diagnostic metadata. It does not store RTP payload au
 AVoIP preserves each B2BUA leg's native SIP `Call-ID` and adds `X-Call-ID` with
 the Asterisk `linkedid` on the Asterisk-to-FreeSWITCH outbound leg. FreeSWITCH
 exports that value to the carrier leg. Homer 11 retains this supported B2BUA
-correlation header in `data_extra.x_call_id`; it does not replace
-`session_id`/`cid` automatically. Use the Homer correlation mapping/Lua support
-for cross-leg views, while searching a native SIP dialog by its `Call-ID` still
-works. The browser-side dialog is not rewritten or merged into the carrier
-dialog, and unrelated dialogs remain separate.
+correlation header in `data_extra.x_call_id` and, with this chart configuration,
+uses it as the HEP A-leg/CID value. The native SIP `Call-ID` remains the
+`session_id`, so each dialog can still be debugged independently. Homer 11's
+coordinator correlation engine is enabled and seeds its B2BUA Lua mapping; the
+`1_call` script must be enabled once in **Settings → Scripts** (or through the
+Homer scripts API) because Homer intentionally ships seeded scripts disabled.
+After activation, opening either leg expands the transaction view to the other
+session IDs through `data_extra.x_call_id`. The browser-side dialog is not
+rewritten or merged into the carrier dialog, and unrelated dialogs remain
+separate.
+
+The correlation value is the Asterisk `linkedid` (for example,
+`avoip-asterisk-1792231250.474`). `X-Core-Origin-Uniqueid` remains diagnostic
+metadata for the originating channel. `uuid` is a FreeSWITCH/Homer event
+identifier, not the logical call key, and the separate `8a63b27b…` dialog must
+not be joined unless it carries the same explicit `X-Call-ID`.
 
 The default hostname is `homer.<cluster>.<datacenter>.<region>.resolvemy.host`; `homer.hostname` can override it. The hub and Home1 therefore have separate URLs and separate Authentik applications. The [HTTPRoute](../templates/Homer/HomerRoute.yaml) applies Gateway Forward Auth to the UI and recordings. Only the exact OIDC callback path `/api/v4/auth/oauth2/authentik/callback` bypasses that outer check so Homer can exchange the authorization code.
 
