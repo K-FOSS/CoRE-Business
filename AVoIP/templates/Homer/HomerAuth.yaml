@@ -159,11 +159,12 @@ spec:
       }
 
       resource "authentik_provider_proxy" "homer" {
-        name               = var.display_name
-        mode               = "forward_single"
-        external_host      = var.external_host
-        authorization_flow = data.authentik_flow.authorization.id
-        invalidation_flow  = data.authentik_flow.invalidation.id
+        name                  = var.display_name
+        mode                  = "forward_single"
+        access_token_validity = "1h"
+        external_host         = var.external_host
+        authorization_flow    = data.authentik_flow.authorization.id
+        invalidation_flow     = data.authentik_flow.invalidation.id
       }
 
       resource "authentik_application" "homer" {
