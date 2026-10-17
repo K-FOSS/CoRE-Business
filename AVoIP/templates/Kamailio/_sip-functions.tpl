@@ -67,7 +67,26 @@
           exit;
         }
       } else if (is_method("BYE|CANCEL")) {
-        rtpengine_manage();
+        {{- if .Values.kamailio.carrierOutbound.enabled }}
+        if (is_method("BYE") && $var(outbound_bye_new) != 1) {
+          xlog(
+            "L_INFO",
+            "SIP media teardown stage=dialog-end tier={{ .Values.kamailio.name }} pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt direction=$var(side) rtpengine_delete=skipped reason=teardown-already-claimed\n"
+          );
+        } else {
+        {{- end }}
+        xlog(
+          "L_INFO",
+          "SIP media teardown stage=dialog-end tier={{ .Values.kamailio.name }} pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt direction=$var(side) rtpengine_delete=requested\n"
+        );
+        $var(rtpengine_delete_result) = rtpengine_manage();
+        xlog(
+          "L_INFO",
+          "SIP media teardown stage=dialog-end tier={{ .Values.kamailio.name }} pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt direction=$var(side) rtpengine_delete_result=$var(rtpengine_delete_result)\n"
+        );
+        {{- if .Values.kamailio.carrierOutbound.enabled }}
+        }
+        {{- end }}
       }
     }
     {{- end }}
@@ -203,6 +222,11 @@
             "SIP FLOWROUTE RX pod=$env(POD_NAME) source=$si:$sp recv=$Ri:$Rp proto=$proto callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE RX BEGIN ---\n$mb\n--- SIP FLOWROUTE RX END ---\n"
           );
           {{- end }}
+          # Process a retransmitted BYE from the existing TM transaction
+          # without issuing another RTPEngine delete or quota release.
+          if (is_method("BYE") && t_check_trans()) {
+            exit;
+          }
           # CANCEL belongs to the INVITE transaction in TM's local process.
           # TOPOS Redis does not replicate TM state: the same TLS connection
           # must remain pinned by the L4 gateway to the pod holding that
@@ -614,9 +638,6 @@
       if (!is_method("ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY")) {
         route(REJECT_DIALOG);
       }
-      {{- if .Values.kamailio.carrierOutbound.enabled }}
-      if (is_method("BYE")) route(OUTBOUND_RELEASE);
-      {{- end }}
 
       #
       # TOPOS restores the hidden route/contact topology before normal script
@@ -637,6 +658,13 @@
       if (!loose_route_mode("1") && is_present_hf("Route")) {
         route(REJECT_DIALOG);
       }
+
+      {{- if .Values.kamailio.carrierOutbound.enabled }}
+      if (is_method("BYE")) {
+        route(OUTBOUND_BYE_PENDING);
+        route(OUTBOUND_RELEASE);
+      }
+      {{- end }}
 
       if ($var(side) == "carrier") {
         {{- if $.Values.kamailio.interSite.peers }}
@@ -885,6 +913,9 @@
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     route[RELAY] {
       if (!t_relay()) {
+        {{- if .Values.kamailio.carrierOutbound.enabled }}
+        if (is_method("BYE")) route(OUTBOUND_BYE_CLEAR);
+        {{- end }}
         xlog(
           "L_ERR",
           "SIP relay failure pod=$env(POD_NAME) callid=$ci method=$rm side=$var(side) recv=$Ri:$Rp next=$du socket=$fsn\n"

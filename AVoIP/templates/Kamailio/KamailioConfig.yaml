@@ -140,7 +140,10 @@ data:
     loadmodule "dialog.so"
     {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
     modparam("dialog", "default_timeout", {{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }})
-    modparam("dialog", "send_bye", 1)
+    # Outbound dialogs use an explicit timeout route that checks the shared
+    # teardown marker before sending a local cleanup BYE. A process-local
+    # dialog timer cannot observe a BYE handled on another carrier replica.
+    modparam("dialog", "send_bye", 0)
     {{- end }}
     {{- end }}
     {{- if eq .Values.kamailio.role "private-sbc" }}

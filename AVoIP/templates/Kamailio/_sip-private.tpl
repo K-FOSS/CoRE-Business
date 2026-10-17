@@ -66,6 +66,12 @@
         exit;
       }
 
+      # Let TM replay the cached final response to a retransmitted BYE before
+      # topology, media, or teardown side effects run again.
+      if (is_method("BYE") && t_check_trans()) {
+        exit;
+      }
+
       if (is_method("REGISTER")) {
         {{- if .Values.kamailio.registrar.enabled }}
         route(PRIVATE_REGISTER);
@@ -93,17 +99,40 @@
             exit;
           }
         }
+        $var(private_loose_route_result) = loose_route_mode("1");
         if (!is_method("ACK|BYE|INVITE|UPDATE|INFO|PRACK|REFER|NOTIFY") ||
-            !loose_route_mode("1")) {
+            $var(private_loose_route_result) <= 0) {
+          xlog(
+            "L_WARN",
+            "SIP dialog route stage=private-topos-restore pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) topos_result=route-miss loose_route_result=$var(private_loose_route_result) ruri=$ru route=$hdr(Route)\n"
+          );
           if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
           exit;
         }
+        xlog(
+          "L_INFO",
+          "SIP dialog route stage=private-topos-restore pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) topos_result=route-restored loose_route_result=$var(private_loose_route_result) ruri=$ru route=$hdr(Route) selected_next_hop=$du\n"
+        );
         {{- if .Values.kamailio.carrierOutbound.enabled }}
         # TOPOS presents Carrier's public Contact to the originating peer.
         # In-dialog traffic for that Contact still needs Envoy's PROXY v2.
         if ($var(peer_name) != "carrier" &&
             $(ru{uri.host}) == "{{ include "avoip.sip.siteHost" . }}") {
           route(PRIVATE_TO_CARRIER_GATEWAY);
+        }
+        # A remote BYE arriving through the authenticated carrier Kamailio
+        # peer has already traversed the public tier. TOPOS restores this
+        # tier's FreeSWITCH Contact into the Request-URI. Use that target
+        # directly and the private TLS listener; the restored Route set may
+        # name the public_tls socket, which this private-only instance does
+        # not bind. This keeps the SIP target and headers intact while making
+        # the final owner hop independent of the carrier replica.
+        if ($var(peer_name) == "carrier") {
+          set_send_socket_name("private_tls");
+          xlog(
+            "L_INFO",
+            "SIP dialog route stage=carrier-to-freeswitch pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=carrier-originated topos_result=restored-owner destination=$du socket=$fsn ruri=$ru route=$hdr(Route) rtpengine_delete=requested-upstream\n"
+          );
         }
         {{- end }}
         # The Route/Contact selected on the initial request remains the owner.
@@ -590,7 +619,12 @@
     {{- end }}
 
     route[PRIVATE_RELAY] {
-      if (!t_relay()) {
+      $var(private_relay_result) = t_relay();
+      if ($var(private_relay_result) <= 0) {
+        xlog(
+          "L_ERR",
+          "SIP relay result=failed tier=private pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du socket=$fsn t_relay_result=$var(private_relay_result)\n"
+        );
         if ($var(side) == "sipcore" && $dP == "ws") {
         {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
@@ -610,6 +644,11 @@
         }
         {{- end }}
         if (!is_method("ACK")) sl_reply_error();
+      } else {
+        xlog(
+          "L_INFO",
+          "SIP relay result=queued tier=private pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du socket=$fsn t_relay_result=$var(private_relay_result)\n"
+        );
       }
       exit;
     }
