@@ -235,6 +235,8 @@ data:
     ; PSTN egress is limited to the configured NANP-enabled account.
     exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .number }})
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-outbound-hangup,s,1)
+      same => n,Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,X-Call-ID)})
+      same => n,ExecIf($["${AVOIP_HOMER_CORRELATION_ID}" = ""]?Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,Call-ID)}))
       same => n,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} extension={{ .number }} destination=${EXTEN})
       same => n,Dial(PJSIP/${EXTEN}@freeswitch,120,gb(sipcore-outbound-headers^s^1))
       same => n,NoOp(AVoIP outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
@@ -280,7 +282,7 @@ data:
     ; browser and carrier Call-IDs remain distinct SIP dialogs.
     [sipcore-outbound-headers]
     exten => s,1,Set(PJSIP_HEADER(add,X-Core-Call-Linkedid)=${CHANNEL(linkedid)})
-      same => n,Set(PJSIP_HEADER(add,X-Call-ID)=${CHANNEL(linkedid)})
+      same => n,Set(PJSIP_HEADER(add,X-Call-ID)=${AVOIP_HOMER_CORRELATION_ID})
       same => n,Set(PJSIP_HEADER(add,X-Core-Origin-Uniqueid)=${CHANNEL(uniqueid)})
       same => n,Return()
     [sipcore-outbound-hangup]

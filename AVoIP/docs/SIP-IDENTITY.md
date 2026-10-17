@@ -110,13 +110,17 @@ The `sips-tls` Gateway listener uses TLS passthrough to the Kamailio `TLSRoute`;
 
 The voice DID is configured with `avoip.did`; at YVR it enters the silent FreeSWITCH extension collector. The YXL voice DID reaches the same collector through the existing carrier mTLS route at ingress extension `7102`. The separate FaxNumber DID is configured with `fax.did` and routes to YVR Asterisk SIP Core extension `7101`. Neither DID currently selects fax reception or automatic fax detection. The retained fax spool and explicit `fax-receive` dialplan extension remain available for future routing. The current route and extension allowlist are documented in the [inbound call path](PHONE-TREE.md). Temporary call recording is controlled separately by `freeswitch.media.diagnostics.callRecording.enabled`.
 
-The previously observed five-second audio relay interruption is reported gone
-after updating the FreeSWITCH Sofia SIP profiles. The profiles now set
-`rtp-timer-name=soft` and `rtp-notimer-during-bridge=false` for the Asterisk,
-external, and Kamailio legs in
-[FreeSwitchSIPConfig.yaml](../templates/FreeSwitch/FreeSwitchSIPConfig.yaml).
-This records the operator-observed result; a call-correlated RTP trace and
-repeatable verification procedure are still needed for independent acceptance.
+The FreeSWITCH Sofia profiles set `rtp-timer-name=soft` and
+`rtp-notimer-during-bridge=false` on the Asterisk, external, and Kamailio legs
+in [FreeSwitchSIPConfig.yaml](../templates/FreeSwitch/FreeSwitchSIPConfig.yaml)
+and on the separately generated Flowroute profile in
+[FreeSwitchFlowrouteRegistration.yaml](../templates/FreeSwitch/FreeSwitchFlowrouteRegistration.yaml).
+The Flowroute profile omission was present in the live call that reproduced a
+delayed inbound BYE on FreeSWITCH 1.11.3. FreeSWITCH issue
+[#3170](https://github.com/signalwire/freeswitch/issues/3170) documents the
+timerless-RTP break-wakeup delay and the `soft` timer workaround. The change is
+intended to avoid that delay without changing SIP dialog identifiers or
+routing; post-reconciliation call verification is still required.
 
 RTPEngine continues to advertise `rtpengine.media.address` in carrier SDP, independently of every SIP hostname. Its NG control Service and Valkey behavior are unchanged. RTPEngine HEP NG output uses Homer heplify's TCP port, while RTP remains on the existing UDP media range.
 

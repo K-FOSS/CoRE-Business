@@ -271,6 +271,17 @@
         exit;
       }
 
+      # Asterisk assigns its linkedid only after this originating dialog
+      # already exists. Use the dialog's native Call-ID as a deterministic
+      # Homer correlation alias, discard caller-supplied values, and do not
+      # attach call metadata to REGISTER/OPTIONS transactions.
+      remove_hf("X-Core-Call-Linkedid");
+      remove_hf("X-Core-Origin-Uniqueid");
+      if (is_method("INVITE|ACK|BYE|CANCEL|UPDATE|INFO|PRACK|REFER|NOTIFY|MESSAGE")) {
+        remove_hf("X-Call-ID");
+        append_hf("X-Call-ID: $ci\r\n");
+      }
+
       force_rport();
       if (nat_uac_test(64)) {
         if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
@@ -613,6 +624,14 @@
     }
 
     onreply_route[SIPCORE_WS_REPLY] {
+      # Echo the trusted correlation alias in responses so Homer can assign
+      # the same HEP CID to the internal dialog's reply records as to its
+      # forwarded INVITE. SIP dialog identifiers and routing headers are not
+      # modified.
+      if (is_method("INVITE|ACK|BYE|CANCEL|UPDATE|INFO|PRACK|REFER|NOTIFY|MESSAGE")) {
+        remove_hf("X-Call-ID");
+        append_hf("X-Call-ID: $ci\r\n");
+      }
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
