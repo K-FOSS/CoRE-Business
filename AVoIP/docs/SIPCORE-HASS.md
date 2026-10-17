@@ -66,8 +66,8 @@ browser Contact to the receiving StatefulSet owner's TLS hostname and preserves
 the `alias` used to return traffic to that WebSocket. The response route had
 then rewritten every owner hostname in Asterisk's successful Contact list to
 the literal `.invalid` host. For the current binding this changed
-`sip:4rsbtkuu@ffdmsk3qmcu9.invalid;transport=ws` into
-`sip:4rsbtkuu@.invalid;transport=ws;alias=...`.
+`sip:[USER]@<browser-host>.invalid;transport=ws` into
+`sip:[USER]@.invalid;transport=ws;alias=...`.
 
 The latter is not a valid SIP URI: its host begins with an empty DNS label.
 In JsSIP 3.10.6, `Parser.parseMessage()` parses every Contact header before the
@@ -90,7 +90,7 @@ returned, while the browser continues to use its own WSS Contact for requests;
 the response Contact is not used as the browser's transport destination.
 
 For the HAR's exact registration Call-ID, live `pjsip show contact` showed
-Asterisk storing `sip:4rsbtkuu@OWNER1:5063;transport=tls;alias=172.20.57.165~59600~5`
+Asterisk storing `sip:[USER]@OWNER1:5063;transport=tls;alias=172.20.57.165~59600~5`
 with Path to OWNER1 and received flow `172.20.57.165:59600;transport=ws`.
 That binding was Available. This binding-specific state does not match the
 OWNER2 Path shown in the HAR's response, so the single response Path must not
@@ -100,7 +100,7 @@ contacts remain intact; their identities, expiry/qualification and owner
 relationships must be assessed per Asterisk contact rather than collapsed
 into the current browser flow.
 
-The INVITE to extension `66` was authenticated and answered; the browser sent
+The INVITE to `[TEST-A]` was authenticated and answered; the browser sent
 an ACK, later received BYE with Q.850 cause 16, and returned `200 OK`. Cause 16
 means normal clearing and does not identify who initiated the short call.
 This signaling sample does not prove media completion or explain the
@@ -108,6 +108,54 @@ This signaling sample does not prove media completion or explain the
 backend receipt of its ACK/BYE response or the client-side
 `registered`/`registrationFailed`/`unregistered` events. Those require
 frontend event telemetry plus correlated internal SIP logs/HEP.
+
+### Latest outbound-call sample
+
+The browser HAR for Call-ID `ktgiuhspo8fer42ob1g5` shows a successful
+authenticated outbound call to `[EXTERNAL-DESTINATION]`. The initial INVITE
+received the expected Digest challenge; the authenticated retry received 100
+Trying, 183 Session Progress with SDP, then 200 OK with SDP. The 183 and final
+answer expose the same public media address, audio port, ICE ufrag, and DTLS
+fingerprint. The browser sent ACK, refreshed the session with UPDATE about 45
+seconds after answer (200 OK in about 11 ms), then sent BYE after about 73
+seconds. The matching browser-facing 200 OK arrived about 1.313 seconds after
+the BYE. OPTIONS qualification continued afterward. No INVITE 200 or BYE
+retransmission is visible for this sample.
+
+The operator reports that local hangup disconnected the external party. The
+HAR independently establishes successful browser signaling and the
+browser-facing BYE response, but does not show the backend or carrier dialogs;
+it is not packet-level proof that the carrier leg received teardown or that
+media resources were released. The response interval is measured end-to-end
+at the browser and cannot locate the delay. Correlate backend and carrier
+events, independent-leg session refresh, and media cleanup before making those
+claims. This successful call does not resolve the separate malformed REGISTER
+Contact captures or the earlier same-dialog 200 OK responses with divergent
+public/private SDP and DTLS identities.
+
+For the earlier divergent-response capture, both final responses have the
+same Call-ID and dialog tags but different SDP, ICE credentials, and DTLS
+fingerprints; the second exposes a private backend address and lacks the
+correlation header. These are not identical retransmissions. In the deployed
+client version, JsSIP's [`RTCSession._receiveInviteResponse()`]
+(https://github.com/versatica/JsSIP/blob/3.10.6/lib/RTCSession.js) detects an
+already-established dialog with the same Call-ID and tags, sends ACK, and
+returns before applying the later response's SDP. This matches the two ACKs
+in the HAR and means that the HAR alone does not show the second SDP being
+applied. Kamailio's rendered WSS reply callback is attached to the transaction
+and invokes RTPEngine for SDP responses, but no internal trace is available to
+show whether both responses traversed that callback, what RTPEngine returned,
+or where the unanchored body and missing correlation header arose. Do not
+attribute this defect to a specific proxy or alter RTPEngine behavior until
+those boundaries are correlated.
+
+Regression status: the existing WSS render check and Helm lint pass, including
+the check that the broad REGISTER response Contact rewrite is absent. They do
+not exercise repeated INVITE 200 responses or live registration events. The
+browser HAR supplies one successful refresh/hangup example; internal ACK/BYE
+receipt, carrier-leg teardown, and frontend registration events still need
+correlated evidence. PostgreSQL voicemail and its persistence path were not
+changed by the Contact fix and were not re-tested by this signaling sample.
 
 PJSIP packet logging is suppressed while SIP Core is enabled because raw SIP
 traces can include Digest Authorization headers. Kamailio's raw receive logs,

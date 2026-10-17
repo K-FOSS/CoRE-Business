@@ -76,6 +76,30 @@ then reconcile and confirm the pod stays ready before accepting the sound
 library. The DC1 Kubernetes context does not expose the Argo CD Application
 resource, so its reconciled revision was not verified in this check.
 
+A later browser HAR records a successful authenticated outbound call to
+`[EXTERNAL-DESTINATION]` (Call-ID `ktgiuhspo8fer42ob1g5`). The browser received
+183 early media and a final answer with matching public media address, ICE
+ufrag, and DTLS fingerprint; session UPDATE succeeded about 45 seconds after
+answer. The browser sent BYE after about 73 seconds and received its matching
+200 OK about 1.313 seconds later. WebSocket OPTIONS qualification continued.
+The operator reports the external party disconnected. This is a successful
+browser-side long-call/refresh/hangup sample, not proof of carrier-leg BYE
+receipt or backend media cleanup. Correlate both B2BUA legs and measure the
+BYE interval at each boundary. It does not resolve the earlier malformed
+REGISTER Contact responses or same-dialog duplicate INVITE 200 responses with
+divergent SDP; both still need internal traces and focused regression checks.
+The confirmed Contact defect was a Kamailio reply substitution that replaced
+every owner Contact host with `.invalid`; the current source removes that
+reply rewrite and retains the request-side routable owner Contact. JsSIP 3.10.6
+drops the malformed response during parsing, before the registration
+transaction, so frontend event verification is still required. Why the HAR
+showed different Contact forms on OWNER0 versus OWNER2 remains unproven; the
+read-only cluster credential has expired, preventing comparison of historical
+pod revisions and internal logs. JsSIP 3.10.6 ACKs a later 2xx for its
+established dialog without applying that response's SDP; the divergent SDP's
+server-side path remains unknown. Do not count the new call as resolving
+either defect.
+
 ### Remaining implementation
 
 - Finish and observe YVR internal SIP rollout, then exercise mTLS peer
