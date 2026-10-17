@@ -484,8 +484,8 @@ kamailio:
         destination: ''
         callerId: ''
       limits:
-        callsPerMinute: 1
-        concurrentCalls: 1
+        callsPerMinute: 3
+        concurrentCalls: 2
         maxDurationSeconds: 600
     privateRouting:
       # peers: [{cidr: '10.0.0.10/32', sanHostname: 'pbx.example', controller: 'asterisk', name: 'pbx', allowedUsers: ['1000']}]
