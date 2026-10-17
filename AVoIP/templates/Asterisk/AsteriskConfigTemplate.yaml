@@ -211,6 +211,8 @@ data:
     outbound_proxy=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:{{ .Values.freeswitch.asterisk.tlsPort }}\;transport=tls\;lr
     outbound_auth=freeswitch-auth
     auth=freeswitch-inbound-auth
+    ; FreeSWITCH sends the preserved inbound caller identity in P-Asserted-Identity.
+    trust_id_inbound=yes
     trust_id_outbound=yes
     from_user=freeswitch
     from_domain={{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
