@@ -200,7 +200,7 @@ data:
       same => n,Echo()
       same => n,Hangup()
     {{- else if eq (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension) }}
-    exten => {{ . }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30,g)
+    exten => {{ . }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30)
       same => n,Hangup()
     {{- else if eq (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension) }}
     {{- if gt (len $.Values.asterisk.sipCore.extensions) 0 }}
