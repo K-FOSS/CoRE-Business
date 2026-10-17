@@ -109,7 +109,7 @@
       $var(outbound_teardown_key) = "avoip:out:teardown:" + $ci;
       $dlg_var(outbound_teardown_key) = $var(outbound_teardown_key);
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("replace-origin internal external")) {
+        if (!rtpengine_manage("replace-origin internal external address-family=IP4")) {
           route(OUTBOUND_RELEASE);
           sl_send_reply("503", "Media Relay Unavailable");
           exit;

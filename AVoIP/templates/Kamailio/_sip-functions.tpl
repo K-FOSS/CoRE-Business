@@ -42,7 +42,7 @@
         return;
       }
 
-      if (!rtpengine_manage("replace-origin external internal")) {
+      if (!rtpengine_manage("replace-origin external internal address-family=IP4")) {
         xlog(
           "L_ERR",
           "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n"
@@ -54,7 +54,7 @@
 
     route[MEDIA_DIALOG] {
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("replace-origin")) {
+        if (!rtpengine_manage("replace-origin address-family=IP4")) {
           xlog(
             "L_ERR",
             "RTPEngine dialog SDP handling failed callid=$ci method=$rm source=$si:$sp\n"
@@ -364,7 +364,7 @@
       }
 
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin external internal")) {
+        if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core SDP handling failed callid=$ci method=$rm\n");
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
@@ -426,7 +426,7 @@
       }
 
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin internal external")) {
+        if (!rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound SDP handling failed callid=$ci method=$rm\n");
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
@@ -442,7 +442,7 @@
 
     onreply_route[SIPCORE_ASTERISK_REPLY] {
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin external internal")) {
+        if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
           drop;
         }
@@ -451,7 +451,7 @@
 
     onreply_route[SIPCORE_WS_REPLY] {
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin internal external")) {
+        if (!rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core WebSocket answer handling failed callid=$ci status=$rs\n");
           drop;
         }
@@ -991,7 +991,7 @@
       {{- end }}
       {{- if and .Values.kamailio.functions.media (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("replace-origin")) {
+        if (!rtpengine_manage("replace-origin address-family=IP4")) {
           xlog(
             "L_ERR",
             "RTPEngine reply SDP handling failed callid=$ci status=$rs\n"

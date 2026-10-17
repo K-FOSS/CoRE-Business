@@ -48,6 +48,7 @@ data:
 
     children=2
     tcp_children={{ default 4 .Values.kamailio.tcpChildren }}
+    dns_try_ipv6=off
 
     auto_aliases=no
 

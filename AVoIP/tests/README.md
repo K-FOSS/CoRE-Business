@@ -54,6 +54,18 @@ helm lint AVoIP
 AVoIP/tests/wss-ha-render.sh
 ```
 
+Verify Asterisk's RTP engine/STUN configuration and the IPv4-only SIP/RTP
+path with:
+
+```sh
+AVoIP/tests/asterisk-stun-render.sh
+```
+
+This checks the default STUN target, a site override, invalid-port rejection,
+the Kamailio IPv4 DNS/media settings, and FreeSWITCH's IPv4 profiles. The image
+build also verifies that `res_rtp_asterisk.so` exists; the render test does not
+exercise live STUN reachability or media candidates.
+
 The WSS test renders both a selected three-replica tier and a separate staged
 pilot. It checks the headless owner Service, stable StatefulSet identity,
 two-pod disruption floor, existing Envoy backend Service and `/ws` contract,

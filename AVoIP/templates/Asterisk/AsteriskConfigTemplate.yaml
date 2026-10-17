@@ -154,6 +154,15 @@
     {{- fail "asterisk.turn.secret.key must be a valid Kubernetes Secret data key" -}}
   {{- end -}}
 {{- end -}}
+{{- if .Values.asterisk.rtp.stunAddress -}}
+  {{- if not (regexMatch "^[A-Za-z0-9.-]+:[0-9]{1,5}$" .Values.asterisk.rtp.stunAddress) -}}
+    {{- fail "asterisk.rtp.stunAddress must be a hostname and port" -}}
+  {{- end -}}
+  {{- $stunPort := (splitList ":" .Values.asterisk.rtp.stunAddress | last | int) -}}
+  {{- if or (lt $stunPort 1) (gt $stunPort 65535) -}}
+    {{- fail "asterisk.rtp.stunAddress port must be between 1 and 65535" -}}
+  {{- end -}}
+{{- end -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -221,6 +230,7 @@ data:
     context=from-external
     disallow=all
     allow={{ join "," .Values.codecs.asterisk.freeswitch }}
+    rtp_ipv6=no
     direct_media=no
 
     [freeswitch]

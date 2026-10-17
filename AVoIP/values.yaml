@@ -926,6 +926,9 @@ asterisk:
   rtp:
     min: 10000
     max: 10100
+    # STUN endpoint for Asterisk RTP/ICE address discovery. This is separate
+    # from TURN allocation, which remains opt-in below.
+    stunAddress: 'nat.mylogin.space:3478'
   turn:
     # Enable only after the Asterisk image includes openssl for REST credential generation.
     enabled: false

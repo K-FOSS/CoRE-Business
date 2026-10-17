@@ -1021,7 +1021,7 @@ controllers:
               {{- else }}
               printf 'outbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\n'
               {{- end }}
-              printf 'aors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\ndirect_media=no\ndisallow=all\nallow={{ join "," $.Values.codecs.asterisk.sipCore }}\n'
+              printf 'aors={{ .number }}\nauth={{ .number }}\nidentify_by=username,auth_username\ncontext=from-sipcore-{{ .number }}\nwebrtc=yes\nrtp_ipv6=no\ndirect_media=no\ndisallow=all\nallow={{ join "," $.Values.codecs.asterisk.sipCore }}\n'
               {{- if and $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.media.enabled }}
               printf 'media_address={{ $.Values.asterisk.sipCore.media.address }}\n'
               {{- end }}
@@ -1030,7 +1030,7 @@ controllers:
             {{- end }}
             {{- if .Values.asterisk.sipCore.outboundNANP.enabled }}
             printf '\n[carrier-outbound]\ntype=aor\ncontact=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\n\n' >> /tmp/avoip-sipcore-pjsip.conf
-            printf '[carrier-outbound]\ntype=endpoint\ntransport=transport-tls\naors=carrier-outbound\noutbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\ncontext=carrier-outbound-deny\ndirect_media=no\ndisallow=all\nallow={{ join "," $.Values.codecs.asterisk.sipCore }}\n' >> /tmp/avoip-sipcore-pjsip.conf
+            printf '[carrier-outbound]\ntype=endpoint\ntransport=transport-tls\naors=carrier-outbound\noutbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\ncontext=carrier-outbound-deny\ndirect_media=no\nrtp_ipv6=no\ndisallow=all\nallow={{ join "," $.Values.codecs.asterisk.sipCore }}\n' >> /tmp/avoip-sipcore-pjsip.conf
             {{- end }}
             {{- end }}
             {{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }}
@@ -1042,7 +1042,7 @@ controllers:
             turn_password="$(printf '%s' "$turn_username" | openssl dgst -sha1 -hmac "$turn_shared_secret" -binary | openssl base64 -A)"
             if [ -z "$turn_password" ]; then echo 'CoTURN REST credential generation failed' >&2; exit 1; fi
             {
-              printf '[general]\nstunaddr={{ .Values.asterisk.turn.hostname }}:{{ .Values.asterisk.turn.port }}\n'
+              printf '[general]\n'
               printf 'turnaddr={{ .Values.asterisk.turn.hostname }}:{{ .Values.asterisk.turn.port }}\n'
               printf 'turnusername=%s\nturnpassword=%s\n' "$turn_username" "$turn_password"
             } > /tmp/avoip-turn.conf

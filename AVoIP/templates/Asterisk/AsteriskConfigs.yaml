@@ -26,6 +26,7 @@ data:
     [modules]
     autoload=yes
     require = chan_pjsip.so
+    require = res_rtp_asterisk.so
     require = res_pjsip_endpoint_identifier_user.so
     require = res_pjsip_endpoint_identifier_ip.so
     require = res_pjsip_endpoint_identifier_anonymous.so
@@ -130,6 +131,9 @@ data:
     rtpstart={{ .Values.asterisk.rtp.min }}
     rtpend={{ .Values.asterisk.rtp.max }}
     icesupport=true
+    {{- with .Values.asterisk.rtp.stunAddress }}
+    stunaddr={{ . }}
+    {{- end }}
     {{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }}
     #include /tmp/avoip-turn.conf
     {{- end }}

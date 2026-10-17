@@ -538,8 +538,12 @@ verification, and recovery](docs/LIVEKIT.md).
 ## Asterisk WebRTC media relay candidates
 
 The [Asterisk RTP/ICE configuration](https://docs.asterisk.org/Configuration/Miscellaneous/Interactive-Connectivity-Establishment-ICE-in-Asterisk/)
-uses the existing [CoTURN](https://github.com/coturn/coturn) service at
-`nat.mylogin.space:3478` for STUN discovery and TURN relay candidates. Its
+loads `res_rtp_asterisk.so` and uses configurable
+`asterisk.rtp.stunAddress` (default `nat.mylogin.space:3478`) for STUN address
+discovery independently of TURN. The Asterisk image build verifies that RTP
+module is present, and `modules.conf` requires it at startup. Optional TURN
+relay candidates use the existing [CoTURN](https://github.com/coturn/coturn)
+service. Its
 [REST shared secret](https://github.com/coturn/coturn/blob/master/README.turnserver)
 is mounted directly from the existing `matrix-turn-auth` Secret created by
 Social/Matrix. Asterisk derives a time-limited TURN username/password at
@@ -547,12 +551,20 @@ startup and stores the generated include only in its runtime `/tmp`; no
 credential is rendered into a ConfigMap or Helm values. The credential lifetime
 is configurable up to one year, so restart Asterisk before the expiry.
 
-This provides ICE candidates for Asterisk's media socket. The Home Assistant
+This provides server-reflexive ICE candidates for Asterisk's media socket;
+STUN does not provide a TURN relay. The Home Assistant
 signaling path remains WSS through Envoy and Kamailio, and browser media remains
 relayed through the existing RTPEngine. CoTURN does not replace RTPEngine or
 provide credentials to the browser. See
 [the SIP Core media notes](docs/SIPCORE-HASS.md#media-reachability) before
 diagnosing two-way audio.
+
+The server-side SIP/RTP call path is configured IPv4-only: Asterisk PJSIP
+endpoints disable IPv6 RTP, Kamailio resolves SIP destinations using IPv4 DNS,
+and its RTPEngine SDP operations request `IP4`. FreeSWITCH's SIP/RTP profiles
+bind to `local_ip_v4`, with the image's IPv6 profiles disabled. This controls
+the server-side call path; it does not prevent browsers from gathering IPv6
+host candidates locally.
 
 ## Nextcloud Talk high performance backend
 
