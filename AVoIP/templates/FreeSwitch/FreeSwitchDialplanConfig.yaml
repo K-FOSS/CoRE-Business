@@ -312,13 +312,18 @@ data:
             <action application="log" data="INFO AVoIP callback route destination-shape=nanp-without-plus uuid=${uuid} call_id=${sip_call_id}"/>
           </condition>
         </extension>
+        <extension name="external-callback-plus-national-diagnostic" continue="true">
+          <condition field="destination_number" expression="^\+[2-9][0-9]{2}[2-9][0-9]{6}$">
+            <action application="log" data="INFO AVoIP callback route destination-shape=plus-national-nanp uuid=${uuid} call_id=${sip_call_id}"/>
+          </condition>
+        </extension>
         <extension name="external-callback-national-diagnostic" continue="true">
           <condition field="destination_number" expression="^[2-9][0-9]{2}[2-9][0-9]{6}$">
             <action application="log" data="INFO AVoIP callback route destination-shape=national-nanp uuid=${uuid} call_id=${sip_call_id}"/>
           </condition>
         </extension>
         <extension name="external-callback-other-diagnostic" continue="true">
-          <condition field="destination_number" expression="^(?!\+?1[2-9][0-9]{2}[2-9][0-9]{6}$)(?![2-9][0-9]{2}[2-9][0-9]{6}$).+$">
+          <condition field="destination_number" expression="^(?!\+?1[2-9][0-9]{2}[2-9][0-9]{6}$)(?!\+[2-9][0-9]{2}[2-9][0-9]{6}$)(?![2-9][0-9]{2}[2-9][0-9]{6}$).+$">
             <action application="log" data="WARNING AVoIP callback route destination-shape=other uuid=${uuid} call_id=${sip_call_id}"/>
           </condition>
         </extension>
@@ -360,6 +365,19 @@ data:
             <action application="set" data="hangup_after_bridge=true"/>
             <action application="log" data="INFO AVoIP authenticated external callback route selected uuid=${uuid} call_id=${sip_call_id} direction=callback destination-format=national-nanp gateway=flowroute-tls transport=tls"/>
             <action application="bridge" data="[absolute_codec_string='{{ join "," $.Values.freeswitch.flowrouteOutbound.codecs }}']sofia/gateway/flowroute-tls/+1${destination_number}"/>
+            <action application="log" data="INFO AVoIP external callback bridge ended uuid=${uuid} call_id=${sip_call_id} b_uuid=${bleg_uuid} b_sip_cause=${last_bridge_proto_specific_hangup_cause} sip_cause=${proto_specific_hangup_cause} bridge_cause=${bridge_hangup_cause} hangup_cause=${hangup_cause} q850_cause=${hangup_cause_q850}"/>
+          </condition>
+        </extension>
+        <extension name="authenticated-external-callback-plus-national-format">
+          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
+          <condition field="${sip_authorized}" expression="^true$"/>
+          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
+          <condition field="${sip_h_X-AVOIP-External-Callback}" expression="^true$"/>
+          <condition field="destination_number" expression="^\+[2-9][0-9]{2}[2-9][0-9]{6}$">
+            <action application="set" data="effective_caller_id_number={{ $.Values.avoip.did }}"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            <action application="log" data="INFO AVoIP authenticated external callback route selected uuid=${uuid} call_id=${sip_call_id} direction=callback destination-format=plus-national-nanp gateway=flowroute-tls transport=tls"/>
+            <action application="bridge" data="[absolute_codec_string='{{ join "," $.Values.freeswitch.flowrouteOutbound.codecs }}']sofia/gateway/flowroute-tls/+1${destination_number:1}"/>
             <action application="log" data="INFO AVoIP external callback bridge ended uuid=${uuid} call_id=${sip_call_id} b_uuid=${bleg_uuid} b_sip_cause=${last_bridge_proto_specific_hangup_cause} sip_cause=${proto_specific_hangup_cause} bridge_cause=${bridge_hangup_cause} hangup_cause=${hangup_cause} q850_cause=${hangup_cause_q850}"/>
           </condition>
         </extension>
