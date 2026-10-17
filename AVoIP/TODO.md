@@ -37,12 +37,55 @@ extension, Vault credential, route, RTP Service, or Home Assistant
 registration/call has been enabled or observed. It does not complete the
 planned Authentik-backed dynamic registrar or first-party webphone.
 
+## Progress recorded 2026-10-17
+
+Recent chart changes address several SIP teardown and trace-correlation
+issues. Private BYEs can route to FreeSWITCH over TLS; outbound Flowroute
+signaling selects the TLS gateway and its listener; FreeSWITCH's Flowroute
+profile now uses the `soft` RTP timer associated with the observed delayed-BYE
+failure mode. SIP Core call correlation now propagates a trusted `X-Call-ID`
+alias while preserving each dialog's native Call-ID. The new alias depends on
+Homer's `1_call` correlation script being activated in its persistent settings;
+chart configuration only seeds that script. See [Homer correlation](docs/HOMER.md)
+and the [outbound teardown runbook](docs/avoip/runbooks/outbound-flowroute-teardown.md).
+
+Live evidence now includes one Flowroute-originated BYE that reached its
+FreeSWITCH dialog owner and received a relayed `200 OK`, with INVITE, ACK and
+BYE handled by different carrier Kamailio replicas. A separate call still
+showed a delayed BYE with no FreeSWITCH SIP response before Kamailio timed out;
+the exact FreeSWITCH wait remains unexplained. The operator subsequently
+reported instant hangups in all directions, but that report lacks a retained
+Call-ID trace. Treat these as progress samples, not proof that teardown is
+consistently fixed. The timer change and current chart state need post-rollout
+verification against the actual SIP response sequence.
+
+The [RTPEngine failure runbook](docs/avoip/runbooks/rtpengine-failure.md)
+records the failure procedure and evidence requirements. Keep media-engine
+failure behavior separate from SIP dialog recovery and do not infer active-call
+survival from signaling success.
+
+At `2026-10-17 17:31 UTC`, a read-only DC1/YXL snapshot showed Asterisk,
+both FreeSWITCH replicas, all three carrier Kamailio replicas, the private
+Kamailio pod, RTPEngine, and both RTP Valkey pods ready. The shared
+audio-library pod was in `CrashLoopBackOff` with 1,262 restarts. Its startup
+log reports an NGINX PCRE compile error at the WAV filename regex in
+`default.conf`; the live ConfigMap has an unquoted `{0,63}` quantifier, which
+NGINX parses as configuration syntax instead of part of the regex. Quote the
+regex in the chart source, render and validate the resulting NGINX config,
+then reconcile and confirm the pod stays ready before accepting the sound
+library. The DC1 Kubernetes context does not expose the Argo CD Application
+resource, so its reconciled revision was not verified in this check.
+
 ### Remaining implementation
 
 - Finish and observe YVR internal SIP rollout, then exercise mTLS peer
   authorization, internal routing, dialog ACK/BYE/re-INVITE/UPDATE, and backend
   health behavior. Keep the registrar pilot disabled until its PostgreSQL
   claim, migrations, TLS trust, and identity provisioning are verified.
+- Repair the DC1/YXL shared sound-library NGINX regex parse failure. Confirm
+  the live pod is stable, the authorized editor works, and a test WAV can be
+  read by both PBX services; current evidence is a CrashLoopBackOff pod, not a
+  functioning shared library.
 - Complete the SIP identity lifecycle: immutable user/AoR mapping, authorized
   extension permissions, short-lived per-device Digest issuance, expiry,
   rotation, revocation, and active-contact invalidation. The current `User`
@@ -78,10 +121,10 @@ or live evidence required by each row.
 
 | Priority / phase | Dependency | Work and evidence to collect | Acceptance | Status |
 | --- | --- | --- | --- | --- |
-| P0 / 0 — Working baseline | None | The inbound approximately 32-second ACK-timeout issue is reported resolved. Capture serialized public Contact/Record-Route, public/private socket choice and outbound SDP offer/answer. Inventory deployed versions, replicas, endpoints, Services, Gateway routes, certificates, PROXY protocol and media address ownership at YVR/YXL. Save successful trace/Call-ID references and separate voice/fax reports. | Voice has bidirectional audio beyond 60 seconds, ACK at both hops and clean BYE/200. Dedicated fax behavior is documented separately. | **Partial** — the operator correlated a 129-second total voice call with a complete recording in Homer; see the [SIP identity report](docs/SIP-IDENTITY.md). The retained 2xx ACK at both hops and clean BYE/200 still need review. The [test fixture](tests/README.md) is not a live call. |
+| P0 / 0 — Working baseline | None | The inbound approximately 32-second ACK-timeout issue is reported resolved. Capture serialized public Contact/Record-Route, public/private socket choice and outbound SDP offer/answer. Inventory deployed versions, replicas, endpoints, Services, Gateway routes, certificates, PROXY protocol and media address ownership at YVR/YXL. Save successful trace/Call-ID references and separate voice/fax reports. | Voice has bidirectional audio beyond 60 seconds, ACK at both hops and clean BYE/200. Dedicated fax behavior is documented separately. | **Partial** — the operator correlated a 129-second total voice call with a complete recording in Homer; see the [SIP identity report](docs/SIP-IDENTITY.md). The teardown runbook now records one carrier BYE/200 relayed successfully across carrier replicas, a separate delayed-BYE failure, and a later uncorrelated report of instant hangups. Retained 2xx ACK-at-both-hops evidence and repeatable clean teardown remain open. The [test fixture](tests/README.md) is not a live call. |
 | P0 / YVR fax baseline | Dedicated fax DID and Home1/YVR [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml) G.711-only override | Preserve the reported working G.711 receive path. Capture a new call-specific `rxfax` result, page count, TIFF on the retained spool, SIP ACK at both hops, and G.711 media trace. Investigate T.38 separately before enabling it in YVR; verify YXL fax on its own settings. | A retained YVR trace shows successful G.711 fax reception and output; no T.38 success or YXL result is inferred from it. | **Partial** — YVR G.711 fax reception is reported working; T.38 has not worked. The G.711-only override is published, but a post-change trace and TIFF check remain open. See [fax call path](docs/PHONE-TREE.md). |
 | P0 / RTC inventory | None | Inspect the existing [NATPuncher ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/NATPuncher.yaml) and live CoTURN: advertised address/DNS/cert, 3478/5349 transports, relay range including upper boundary, REST secret publication/rotation, YXL/YVR availability, allocation capacity and observability. Inventory deployed Synapse/MAS/Element Web/Element X versions and RTC settings under the [Matrix ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Matrix.yaml). | External authenticated allocations and restrictive-network fallback are captured by client/transport; version and site inventory distinguishes manifests from observed workloads. | **Open** — chart shows YXL CoTURN and Matrix TURN consumption; live capacity, upper relay port and client compatibility unverified. |
-| P1 / 1 — Correct routing | P0 | Centralize destination, TLS SNI and sending socket; separate initial/in-dialog routes. Put negative-response ACK and CANCEL on the matching transaction path. Authorize carrier/backend independently of To tags. Replace broad/positional header rewriting with direction-specific handling; log actual pod identity and connection correlation without credentials. Add meaningful SIP tests. | Tests cover positive/negative INVITE outcomes, ACK, CANCEL, BYE in both directions, re-INVITE, duplicate replies, invalid routes, unauthorized traffic and socket choice; live baseline still passes. | **Partial** — the private role and [outbound service-peer pilot](docs/OUTBOUND-PILOT.md) render and pass the pinned Kamailio parser; Dragonfly quota admission was tested in isolation. Backplane enables one private-SBC instance in YVR, reported live by the operator, but live SIP/Gateway/media routing evidence is not yet recorded. The outbound pilot remains disabled; optional carrier Digest mode and user-level PSTN entitlements remain open. |
+| P1 / 1 — Correct routing | P0 | Centralize destination, TLS SNI and sending socket; separate initial/in-dialog routes. Put negative-response ACK and CANCEL on the matching transaction path. Authorize carrier/backend independently of To tags. Replace broad/positional header rewriting with direction-specific handling; log actual pod identity and connection correlation without credentials. Add meaningful SIP tests. | Tests cover positive/negative INVITE outcomes, ACK, CANCEL, BYE in both directions, re-INVITE, duplicate replies, invalid routes, unauthorized traffic and socket choice; live baseline still passes. | **Partial** — routing fixes now cover private BYEs over TLS, Flowroute TLS gateway/listener selection, and transport-specific routing and cross-leg correlation. One live BYE/200 was observed across different carrier replicas, while a separate delayed BYE still timed out; post-rollout SIP traces and broader negative-path acceptance remain open. The private role and [outbound service-peer pilot](docs/OUTBOUND-PILOT.md) render and pass the pinned Kamailio parser; Backplane enables one private-SBC instance in YVR, reported live by the operator. The outbound pilot remains disabled; optional carrier Digest mode and user-level PSTN entitlements remain open. |
 | P2 / 2 — Balance within a site | P1 | Add [dispatcher](https://www.kamailio.org/docs/modules/stable/modules/dispatcher.html) with individually addressable FreeSWITCH endpoints. Select once per initial attempt and retain the winning endpoint. Define probes, capacity, drain and safe pre-answer retries; never replay answered calls or duplicate downstream calls. Pin RTPEngine NG operations and media IP/port delivery to one instance. Specify Kubernetes EndpointSlice discovery/reconciliation. | Calls distribute across healthy replicas. Pool changes retain established backend/media owners. Draining stops new assignments and existing calls finish. | **Open** — one backend Service and one media control Service today. |
 | P3 / 3 — Recover routing on another proxy | P2 | Evaluate [topos](https://www.kamailio.org/docs/modules/stable/modules/topos.html) supported stores in place of manual hiding; evaluate [dialog/DMQ](https://www.kamailio.org/docs/modules/stable/modules/dialog.html) supported fields. Choose one authoritative token/registry for site/backend/media assignment; list custom fields needing persistence. Test Valkey/Dragonfly commands, ACL/TLS, retention, expiry, cleanup, persistence and outage policy; cover early dialogs, forks, retransmissions and visibility races. Match identity and config on Kamailio replicas. | Request on another replica recovers owner and reaches original live backend; transaction and connection limits are documented. | **Open** — no shared Kamailio dialog assignment in current config. |
 | P4 / 4 — Multisite ingress | P3 and independent site-local new-call path | Use global `sip.resolvemy.host` entry plus configurable cluster-scoped identities and explicit owner. Forward other-site ingress to owner over verified private TLS; prefer local state lookup. Define partition, replication lag, split-brain prevention and ownership rules. Evaluate K8GB/DNS steering, carrier fallback and BGP anycast separately. Use usable SIP/media health; define connection drain and route withdrawal. | Either site accepts new calls during intersite outage. Cross-site signaling reaches a live existing owner. Full site loss has a tested, explicit outcome. | **Open** — global mode is opt-in; live steering/owner forwarding unverified. |

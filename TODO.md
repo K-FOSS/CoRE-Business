@@ -238,10 +238,15 @@ ledgers when work begins; do not clone their rows here.
 - **Depends on:** Existing AVoIP P0 evidence and target site operator
 - **Current state:** [AVoIP/TODO.md](AVoIP/TODO.md) reports a long call and
   Home1 G.711 fax reception, while complete ACK/BYE acceptance, YXL fax,
-  active session recovery and site failover remain open. The SIP plan has
-  WSS ownership/cutover gates and a current naming discrepancy.
-- **Next action:** Continue the existing tracker with live, call-correlated
-  acceptance evidence; reconcile `internal-websocket`/`internal-wss` first.
+  active session recovery and site failover remain open. Recent repository
+  changes correct transport-specific SIP routing and improve call-leg
+  correlation; these are implementation progress, not proof of the deployed
+  signaling path. The SIP plan has WSS ownership/cutover gates and a current
+  naming discrepancy.
+- **Next action:** Continue the existing tracker with a post-rollout,
+  call-correlated Homer trace confirming the 2xx ACK at both hops and clean
+  BYE/200. Reconcile `internal-websocket`/`internal-wss` first, and keep YXL
+  fax, recovery and failover evidence separate.
 - **Acceptance:** Only the specific tracker phases with SIP/media traces,
   cross-site/failure tests and rollback evidence are marked complete.
 - **Failure / rollback:** Follow AVoIP phase-specific migration/rollback; do

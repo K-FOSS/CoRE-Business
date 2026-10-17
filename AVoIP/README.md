@@ -389,6 +389,11 @@ listener, while RTPEngine forwards RTCP/NG diagnostics. The Homer UI is
 protected by Authentik OIDC and Gateway Forward Auth; its HEP ports are not
 publicly exposed.
 
+Cross-dialog call linking preserves each SIP Call-ID and uses the originating
+SIP Core dialog Call-ID as the shared Homer HEP correlation ID. Homer 11's
+seeded `1_call` correlation script still requires one-time activation in
+Settings → Scripts; see [Homer correlation](docs/HOMER.md#capture-and-access).
+
 Kamailio's default SIP listeners and RTPEngine's control listeners bind to each
 pod's Downward API address so locally emitted HEP traces identify the source pod.
 Received SIP traces retain their peer addresses; see [Homer capture verification](docs/HOMER.md#verification).
