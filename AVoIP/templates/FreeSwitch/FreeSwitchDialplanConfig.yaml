@@ -285,26 +285,26 @@ data:
     <include>
       <context name="from-asterisk">
         {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.externalCallback.enabled $.Values.freeswitch.flowrouteOutbound.enabled }}
-        <!-- Report boolean route predicates for the fixed callback caller name;
+        <!-- These temporary boolean checks run before route selection. They
              never log caller identity or the dialed destination. -->
         <extension name="external-callback-route-diagnostic" continue="true">
-          <condition field="${caller_id_name}" expression="^Callback$">
-            <action application="log" data="INFO AVoIP callback egress evaluation uuid=${uuid} call_id=${sip_call_id} channel=${channel_name} authorized=${sip_authorized} marker=${sip_h_X-AVOIP-External-Callback}"/>
-          </condition>
-        </extension>
-        <extension name="external-callback-peer-diagnostic" continue="true">
-          <condition field="${caller_id_name}" expression="^Callback$">
-            <condition field="${sip_auth_username}" expression="^freeswitch$">
-              <action application="log" data="INFO AVoIP callback egress peer-match=true uuid=${uuid} call_id=${sip_call_id}"/>
-              <anti-action application="log" data="WARNING AVoIP callback egress peer-match=false uuid=${uuid} call_id=${sip_call_id}"/>
+          <condition field="destination_number" expression="^.+$">
+            <action application="log" data="INFO AVoIP callback route evaluation uuid=${uuid} call_id=${sip_call_id} authorized=${sip_authorized} marker=${sip_h_X-AVOIP-External-Callback}"/>
+            <condition field="${channel_name}" expression="^sofia/asterisk/">
+              <action application="log" data="INFO AVoIP callback route channel-match=true uuid=${uuid} call_id=${sip_call_id}"/>
+              <anti-action application="log" data="WARNING AVoIP callback route channel-match=false uuid=${uuid} call_id=${sip_call_id}"/>
             </condition>
-          </condition>
-        </extension>
-        <extension name="external-callback-destination-diagnostic" continue="true">
-          <condition field="${caller_id_name}" expression="^Callback$">
+            <condition field="${sip_auth_username}" expression="^freeswitch$">
+              <action application="log" data="INFO AVoIP callback route peer-match=true uuid=${uuid} call_id=${sip_call_id}"/>
+              <anti-action application="log" data="WARNING AVoIP callback route peer-match=false uuid=${uuid} call_id=${sip_call_id}"/>
+            </condition>
+            <condition field="${caller_id_name}" expression="^Callback$">
+              <action application="log" data="INFO AVoIP callback route caller-name-match=true uuid=${uuid} call_id=${sip_call_id}"/>
+              <anti-action application="log" data="INFO AVoIP callback route caller-name-match=false uuid=${uuid} call_id=${sip_call_id}"/>
+            </condition>
             <condition field="destination_number" expression="^\+1[2-9][0-9]{2}[2-9][0-9]{6}$">
-              <action application="log" data="INFO AVoIP callback egress destination-shape=nanp uuid=${uuid} call_id=${sip_call_id}"/>
-              <anti-action application="log" data="WARNING AVoIP callback egress destination-shape=other uuid=${uuid} call_id=${sip_call_id}"/>
+              <action application="log" data="INFO AVoIP callback route destination-shape=nanp uuid=${uuid} call_id=${sip_call_id}"/>
+              <anti-action application="log" data="WARNING AVoIP callback route destination-shape=other uuid=${uuid} call_id=${sip_call_id}"/>
             </condition>
           </condition>
         </extension>

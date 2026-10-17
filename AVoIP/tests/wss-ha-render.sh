@@ -132,6 +132,8 @@ grep -Fq 'application="bridge" data="sofia/gateway/asterisk/${destination_number
 ! grep -Fq 'AVoIP inbound bridge failed' <<<"$callback_handoff"
 ! grep -Fq 'application="playback" data="shout://' <<<"$callback_handoff"
 grep -Fq 'external-callback-route-diagnostic' <<<"$external_freeswitch"
+grep -Fq 'channel-match=true' <<<"$external_freeswitch"
+grep -Fq 'peer-match=true' <<<"$external_freeswitch"
 grep -Fq 'destination-shape=nanp' <<<"$external_freeswitch"
 echo 'PASS: opt-in external callback validates ANI, marks the authenticated egress request, and presents the configured DID'
 echo 'PASS: callback IVR handoff bypasses the generic GG bridge-failure fallback'
