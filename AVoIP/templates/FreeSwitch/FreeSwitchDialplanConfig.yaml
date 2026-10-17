@@ -246,12 +246,19 @@ data:
         {{- range $.Values.freeswitch.ivr.extensions }}
         <extension name="silent-ivr-destination-{{ . }}">
           <condition field="destination_number" expression="^{{ . }}$">
+            {{- if eq (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension) }}
+            <action application="log" data="INFO AVoIP silent IVR playing GG audio and hanging up caller=${caller_id_number}"/>
+            <action application="answer"/>
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
+            <action application="hangup" data="NORMAL_CLEARING"/>
+            {{- else }}
             <action application="log" data="INFO AVoIP silent IVR forwarding caller=${caller_id_number} to local Asterisk destination=${destination_number}"/>
             <action application="set" data="hangup_after_bridge=true"/>
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
             {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
             <action application="hangup"/>
+            {{- end }}
           </condition>
         </extension>
         {{- end }}

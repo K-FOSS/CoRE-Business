@@ -57,10 +57,11 @@ Inbound calls over either public SIP transport follow this path:
    SIP Core endpoint `7101`. YVR's own voice DID enters the same IVR, while
    its FaxNumber DID bridges directly to Asterisk.
 5. If no DTMF input is entered, FreeSWITCH ends the answered IVR call after
-   its configured 15-second input timeout. If a selected Asterisk extension
-   does not answer, the Asterisk endpoint timeout applies. Failed inbound
-   handoffs to Asterisk then play GG in FreeSWITCH and hang up normally.
-   Unmatched public destinations are rejected.
+   its configured 15-second input timeout. Destination `66` plays the GG asset
+   directly on YVR FreeSWITCH and then hangs up normally. Other selected
+   Asterisk extensions use the configured endpoint timeout; failed inbound
+   handoffs play GG in FreeSWITCH and hang up normally. Unmatched public
+   destinations are rejected.
 
 `freeswitch.inboundBridgeFailure.enabled` defaults to `true` for the direct
 voice/FaxNumber, authenticated inter-site, and accepted IVR destination bridges.
