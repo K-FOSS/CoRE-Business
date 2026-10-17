@@ -59,6 +59,9 @@ kamailio:
     - name: 'internal'
       enabled: true
       role: 'private-sbc'
+      sipLogging:
+        diagnostics:
+          enabled: true
       topology:
         redis:
           database: 52

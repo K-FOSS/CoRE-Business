@@ -34,11 +34,15 @@ grep -Fq 'topos_result=route-restored' <<< "$internal_cfg"
 grep -Fq 'route=$hdr(Route)' <<< "$internal_cfg"
 ! grep -Fq '$du = $ru;' <<< "$internal_cfg"
 grep -Fq '<param name="tls-bind-params" value="transport=tls"/>' <<< "$flowroute_profile"
-udp_gateway="$(sed -n '/<gateway name="flowroute">/,/<\/gateway>/p' <<< "$flowroute_profile")"
-grep -Fq '<param name="register-transport" value="udp"/>' <<< "$udp_gateway"
-grep -Fq '<param name="register" value="true"/>' <<< "$udp_gateway"
-! grep -Fq '<gateway name="flowroute-tls">' <<< "$flowroute_profile"
-grep -Fq 'sofia/gateway/flowroute/' <<< "$freeswitch_dialplan"
+registration_gateway="$(sed -n '/<gateway name="flowroute">/,/<\/gateway>/p' <<< "$flowroute_profile")"
+tls_gateway="$(sed -n '/<gateway name="flowroute-tls">/,/<\/gateway>/p' <<< "$flowroute_profile")"
+grep -Fq '<param name="register-transport" value="udp"/>' <<< "$registration_gateway"
+grep -Fq '<param name="register" value="true"/>' <<< "$registration_gateway"
+grep -Fq '<param name="register-transport" value="tls"/>' <<< "$tls_gateway"
+grep -Fq '<param name="register" value="false"/>' <<< "$tls_gateway"
+grep -Fq 'gateway=flowroute-tls profile=flowroute' <<< "$freeswitch_dialplan"
+grep -Fq 'sofia/gateway/flowroute-tls/' <<< "$freeswitch_dialplan"
+! grep -Fq 'sofia/gateway/flowroute/' <<< "$freeswitch_dialplan"
 ! grep -Fq 'sip_invite_contact_params=' <<< "$freeswitch_dialplan"
 freeswitch_tls="$(sed -n '/server_name = core-home1-talos-prod-avoip-freeswitch.core-prod.svc.k8s.home1.resolvemy.host/,/certificate = \/etc\/kamailio\/mtls\/tls.crt/p' <<< "$internal_tls")"
 grep -Fq 'verify_certificate = yes' <<< "$freeswitch_tls"
@@ -48,6 +52,10 @@ grep -Fq 'certificate = /etc/kamailio/mtls/tls.crt' <<< "$freeswitch_tls"
 # TM reports its negative relay result and handles duplicate requests before
 # media/quota teardown side effects in both hops.
 grep -Fq 't_relay_result=$var(private_relay_result)' <<< "$internal_cfg"
+grep -Fq 'failure_route[PRIVATE_BYE_FAILURE]' <<< "$internal_cfg"
+grep -Fq 'SIP BYE wire attempt' <<< "$internal_cfg"
+grep -Fq 'connection_id=$conid transport=$snd(proto)' <<< "$internal_cfg"
+grep -Fq 'tls_sni=$xavp(tls=>server_name)' <<< "$internal_cfg"
 grep -Fq 'if (is_method("BYE") && t_check_trans()) {' <<< "$internal_cfg"
 grep -Fq 'if (is_method("BYE") && t_check_trans()) {' <<< "$carrier_cfg"
 grep -Fq 'rtpengine_delete=requested' <<< "$carrier_cfg"
@@ -64,6 +72,6 @@ grep -Fq '"topos", "EVAL %s 1 %s",' <<< "$clear_cfg"
 grep -Fq 'rtpengine_delete_result=$var(rtpengine_delete_result)' <<< "$carrier_cfg"
 
 printf '%s\n' 'PASS: outbound teardown route renders the carrier-to-internal mTLS path with independent TOPOS stores'
-printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; the known-working Flowroute gateway remains selected for outbound calls'
-printf '%s\n' 'PASS: FreeSWITCH outbound calls retain the UDP-registered Flowroute gateway and protected Kamailio TLS path'
+printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; outbound calls select the explicit Flowroute TLS gateway'
+printf '%s\n' 'PASS: outbound calls select one non-registering Flowroute TLS gateway; the UDP registration gateway remains available for SIP-REG inbound routing'
 printf '%s\n' 'PASS: relay results and topology decisions are logged; retransmissions exit before teardown side effects'

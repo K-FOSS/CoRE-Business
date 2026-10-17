@@ -122,12 +122,11 @@
         }
         # A remote BYE arriving through the authenticated carrier Kamailio
         # peer has already traversed the public tier. TOPOS restores this
-        # tier's FreeSWITCH Contact into the Request-URI. Use that target
-        # directly through TLS. The FreeSWITCH Flowroute profile also has a
-        # UDP registration listener, so its Contact can lack transport=tls.
-        # A forced send socket does not override that URI's UDP transport.
-        # Set only the next hop from the restored owner Contact; retain the
-        # Request-URI, Route set, and dialog identifiers unchanged.
+        # tier's FreeSWITCH Contact into the Request-URI. Older dialogs can
+        # still carry the UDP registration gateway's transport parameter, so
+        # select a TLS next hop to the validated owner/listener. New outbound
+        # calls use a separate TLS-only gateway and advertise a matching TLS
+        # Contact. Retain the Request-URI, Route set, and dialog identifiers.
         if ($var(peer_name) == "carrier") {
           if (!($rd =~ "^[0-9.]+$") ||
               $rp != {{ .Values.freeswitch.flowrouteOutbound.tlsPort }}) {
@@ -143,7 +142,7 @@
           set_send_socket_name("private_tls");
           xlog(
             "L_WARN",
-            "SIP dialog route stage=carrier-to-freeswitch pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=carrier-originated topos_result=restored-owner destination=$du socket=$fsn ruri=$ru route=$hdr(Route) rtpengine_delete=requested-upstream\n"
+            "SIP dialog route stage=carrier-to-freeswitch pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=carrier-originated topos_result=restored-owner destination=$du transport=$dP tls_sni=$xavp(tls=>server_name) socket=$fsn ruri=$ru route=$hdr(Route) rtpengine_delete=requested-upstream\n"
           );
         }
         {{- end }}
@@ -631,11 +630,12 @@
     {{- end }}
 
     route[PRIVATE_RELAY] {
+      if (is_method("BYE")) t_on_failure("PRIVATE_BYE_FAILURE");
       $var(private_relay_result) = t_relay();
       if ($var(private_relay_result) <= 0) {
         xlog(
           "L_ERR",
-          "SIP relay result=failed tier=private pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du socket=$fsn t_relay_result=$var(private_relay_result)\n"
+          "SIP relay result=failed tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn t_relay_result=$var(private_relay_result)\n"
         );
         if ($var(side) == "sipcore" && $dP == "ws") {
         {{- if .Values.kamailio.sipLogging.sipCore }}
@@ -659,10 +659,28 @@
       } else {
         xlog(
           "L_INFO",
-          "SIP relay result=queued tier=private pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du socket=$fsn t_relay_result=$var(private_relay_result)\n"
+          "SIP relay result=queued tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn t_relay_result=$var(private_relay_result)\n"
         );
       }
       exit;
+    }
+
+    {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
+    onsend_route {
+      if ($snd(buf) =~ "^BYE ") {
+        xlog(
+          "L_INFO",
+          "SIP BYE wire attempt tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=BYE from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) connection_id=$conid transport=$snd(proto) local_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n"
+        );
+      }
+    }
+    {{- end }}
+
+    failure_route[PRIVATE_BYE_FAILURE] {
+      xlog(
+        "L_ERR",
+        "SIP relay failure stage=private-bye-transaction pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn\n"
+      );
     }
 
     {{- if .Values.kamailio.registrar.enabled }}

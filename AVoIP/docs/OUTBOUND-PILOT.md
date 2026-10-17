@@ -13,7 +13,9 @@ configures this policy and the Vault-backed mTLS identities.
 
 The enabled SIP Core account dials a `+1` E.164 number in Asterisk.
 Asterisk sends the call to FreeSWITCH over their existing private TLS peer.
-FreeSWITCH bridges through its registered Flowroute gateway, using the
+FreeSWITCH bridges through the explicit non-registering `flowroute-tls`
+gateway; the separate registered `flowroute` gateway remains UDP for the
+Flowroute SIP-REG inbound route. The outbound gateway uses TLS through the
 existing internal Kamailio private listener and the carrier Kamailio SIPS
 Gateway path. The internal Kamailio validates the FreeSWITCH peer, caller
 identity, and destination; carrier Kamailio applies its quota checks and

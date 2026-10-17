@@ -14,15 +14,31 @@ authenticated `carrier` peer on the internal tier. The internal tier then
 restores its own TOPOS state and consumes its route set. That tier binds only
 `private_tls`; it does not bind the carrier tier's `public_tls` socket. The
 private route explicitly selects `private_tls` for this authenticated
-carrier-peer dialog after loose routing. A live BYE on 2026-10-17 exposed the
-remaining fault: the restored Contact pointed to the FreeSWITCH owner at
-`172.20.57.142:5081` with UDP transport. TM logged a forced TLS socket versus
-UDP destination mismatch and returned `-7`. The private tier now selects a
-TLS destination URI using the restored owner IP and port, while leaving the
-Request-URI, Route headers and dialog identifiers intact. It rejects a
-restored target that is not an owner IP on the Flowroute profile's TLS port.
-The Flowroute FreeSWITCH bridge also advertises `transport=tls` in its Contact
-for new calls. Its separate Flowroute registration remains on UDP.
+carrier-peer dialog after loose routing. An earlier 2026-10-17 BYE trace
+restored a UDP Contact and returned `t_relay()=-7` because it forced a TLS
+socket to a UDP destination. The route now validates the restored owner IP and
+listener port, retains the Request-URI, Route headers and dialog identifiers,
+and sets only the destination URI to TLS. It rejects restored targets outside
+the owner-IP/Flowroute-TLS-listener contract.
+
+The later 08:43 call still restored
+`sip:gw+flowroute@172.20.63.198:5081;transport=udp`, but the current route
+selected `sip:172.20.63.198:5081;transport=tls` and logged
+`t_relay_result=1`. The internal transaction then timed out without a
+FreeSWITCH response. This shows that the UDP Contact remains inconsistent,
+but the latest no-response cannot be attributed to a local `-7` transport
+mismatch. The missing TCP/TLS receive and Sofia timestamps remain necessary.
+
+The current source selects the non-registering `flowroute-tls` gateway for
+all outbound NANP calls, with `register-transport=tls` and the Flowroute
+profile's 5081 TLS listener. The existing `flowroute` gateway remains
+registered over UDP for Flowroute's SIP-REG inbound route. No outbound
+dialplan path selects that UDP registration gateway. Both gateway entries
+are generated from the same ExternalSecret template, and the FreeSWITCH
+controller already watches that Secret and the Flowroute client certificate
+for reloader-triggered pod rollout. This explicit selection corrects the
+Contact inconsistency; earlier calls on the same TLS-gateway pattern also
+timed out, so it is not considered a proven fix for intermittent delivery.
 
 The first live call after that transport correction reached the FreeSWITCH
 owner pod over TLS but failed certificate verification. The owner presented a
@@ -32,20 +48,26 @@ bundle. The internal tier now selects an SNI-specific client profile for that
 FreeSWITCH hostname, verifies it against the existing site peer CA, and
 presents its existing Vault-issued client identity. TLS verification stays on.
 
-The incident's `(7/TM)` is the TM response to `t_relay()=-7`. The original
-trace did not include its internal TM debug line. The later controlled call
-did: `get_send_socket2()` reported `forced tls:172.20.57.57:5062, to
-udp:172.20.57.142:5081`, followed by “no corresponding listening socket.”
-This confirms the transport mismatch. A send socket selection alone cannot
-change the destination transport inferred from the Contact URI.
+The historical incident's `(7/TM)` was the TM response to `t_relay()=-7`.
+The later controlled trace showed `get_send_socket2()` reporting `forced
+tls:172.20.57.57:5062, to udp:172.20.57.142:5081`, followed by “no
+corresponding listening socket.” That confirms the earlier local transport
+mismatch. In the 08:43 call, the later route explicitly selected a TLS
+destination and queued successfully, yet no FreeSWITCH response appeared.
+The two observations identify distinct failure modes; the first does not
+explain the second.
 
 TM retransmission matching now runs before BYE teardown effects in both tiers.
 A repeated BYE is handled by the transaction cache before quota release or
 RTPEngine deletion can run again. The private tier logs TOPOS/loose-route
-results, route direction, destination, socket and relay return value. The
-carrier tier logs the RTPEngine deletion request. These are route/render
-findings; a live carrier-originated BYE and returned 200 OK are still required
-for operational acceptance.
+results, route direction, restored target, selected destination transport,
+TLS server name, socket, immediate relay result, and a transaction-failure
+marker. When diagnostics are enabled, its `onsend_route` logs the BYE
+connection ID, protocol, local tuple and destination as a **send attempt**, not
+confirmed delivery. Carrier-side teardown logs RTPEngine deletion and its
+result. These route logs do not prove that FreeSWITCH received or parsed the
+BYE; operational acceptance still requires boundary capture and a genuine
+FreeSWITCH 200 OK reaching Flowroute.
 
 ## Local checks
 

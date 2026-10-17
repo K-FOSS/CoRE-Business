@@ -1026,7 +1026,7 @@
       {{- if .Values.kamailio.sipLogging.enabled }}
       xlog(
         "L_INFO",
-        "SIP response call_id=$ci method=$rm status=$rs direction=$var(side) recv_socket=$Ri:$Rp/$proto send_socket=$fsn source_ip=$si destination_ip=$du reason_header=$hdr(Reason) dialog_direction=$var(side) cseq=$hdr(CSeq)\n"
+        "SIP response call_id=$ci method=$rm status=$rs direction=$var(side) from_tag=$ft to_tag=$tt linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) recv_socket=$Ri:$Rp/$proto send_socket=$fsn source_ip=$si destination_ip=$du reason_header=$hdr(Reason) dialog_direction=$var(side) cseq=$hdr(CSeq)\n"
       );
       if ($dlg_var(outbound_gateway) == "flowroute") {
         xlog(
@@ -1071,6 +1071,12 @@
         xlog(
           "L_INFO",
           "SIP wire request pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) conn=$conid socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n"
+        );
+      }
+      if ($snd(buf) =~ "^BYE ") {
+        xlog(
+          "L_INFO",
+          "SIP BYE wire attempt pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=BYE from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) connection_id=$conid transport=$snd(proto) local_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n"
         );
       }
       {{- end }}

@@ -53,11 +53,12 @@ checkout.
 
 ### Remote hangup latency investigation
 
-The application-boundary findings for the observed remote-party hangup delay
-are documented in [remote hangup latency](remote-hangup-latency.md). The
-available trace places the wait before Asterisk initiates browser teardown;
-it does not establish FreeSWITCH request-receipt time or identify a
-CoRE-Business call-state handler on that path.
+The application-boundary findings and current AVoIP gateway investigation are
+documented in [remote hangup latency](remote-hangup-latency.md). The latest
+trace shows an unanswered carrier BYE followed by a separate browser BYE, and
+a five-second FreeSWITCH bridge-leg teardown gap. It does not establish
+carrier-BYE receipt time at Sofia or identify a CoRE-Business call-state
+handler on the signaling path. The issue remains intermittent and unresolved.
 
 ### Secrets
 
