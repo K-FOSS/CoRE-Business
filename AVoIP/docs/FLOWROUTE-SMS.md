@@ -33,11 +33,11 @@ receive callbacks.
 
 ## Deployment inputs
 
-`flowrouteSMS.enabled` defaults to `false`. Enabling it renders two or more
-stateless replicas, an internal Service, and a public Gateway API HTTPRoute on
-the configured hostname. The route is restricted to the configured primary
-region (YVR by default) so multiple ApplicationSet targets cannot claim the
-same public hostname. Set the immutable image repository and digest from the
+The checked-in values enable `flowrouteSMS` for its configured primary region
+(YVR). Enabling it renders two or more stateless replicas, an internal
+Service, and a public Gateway API HTTPRoute on the configured hostname. The
+primary-region guard prevents multiple ApplicationSet targets from claiming
+the same public hostname. The checked-in image tag and digest point to the
 successful [Forgejo image workflow](../../.forgejo/workflows/flowroute-sms.yaml).
 The image is built from the Go source in [`image/flowroute-sms`](../image/flowroute-sms/)
 and uses the pinned Go 1.27.2 builder image.
@@ -102,20 +102,23 @@ capacity.
 
 ## Validation and rollout
 
-The Go unit tests cover current and legacy payload decoding and callback-token
-path matching. The container build runs the tests before compiling a static,
-non-root binary. `AVoIP/tests/flowroute-sms-render.sh` checks that the stack is
-disabled by default, that enabling it renders the standalone workload and
-public route, and that a non-primary region cannot claim it.
+The Go unit tests cover current and legacy payload decoding, MMS metadata, and
+callback-token path matching. The container build runs the tests before
+compiling a static, non-root binary. The SMS renderer checks confirm that
+disabling the receiver omits its resources, enabling it renders the standalone
+workload and public callback route, and a non-primary region cannot claim it.
+The inbox renderer checks confirm its Authentik policy, number mapping and
+non-public route.
 
-The inbox is opt-in and is not enabled by the chart defaults. The receiver's
-deployment state is controlled separately through the owning AVoIP values.
-Before activation, publish the image, set the Home1/YVR image digest and
-hostname through the AVoIP ApplicationSet values, provision the Vault token,
-then reconcile only the owning AVoIP Application. Verify that Flowroute
-receives HTTP 200 for a test SMS and that the matching MDR ID appears once in
-PostgreSQL. Check the `core-home1-talos-prod` PostgreSQL ApplicationSet and
-Downstream claim conditions before relying on the generated connection Secret.
+The checked-in values enable the inbox alongside the receiver. The current
+published image is pinned in those values, and the default inbox URL is
+`https://<flowrouteSMS.hostname>/inbox`; a separate hostname can be configured
+if desired. These commits have not been synced to the cluster. After scoped
+reconciliation, verify Authentik login, message filtering, image retrieval,
+Flowroute callback HTTP 200 and a single MDR row in PostgreSQL. Check the
+[`core-home1-talos-prod` PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
+and downstream User claim conditions before relying on the generated
+connection Secret.
 
 The service uses the [Go standard library](https://go.dev/doc/),
 [`pgx`](https://github.com/jackc/pgx/),
