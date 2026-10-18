@@ -346,11 +346,11 @@ behavior.
   `from-asterisk`. A future mTLS configuration needs a separate client
   certificate issued by an approved internal CA and trusted by FreeSWITCH. The
   destination is configurable with `asterisk.sipCore.ggAudioDestination`.
-  The reserved `asterisk.sipCore.helloCallbackExtension` (default `1234`)
+  The reserved `asterisk.sipCore.helloCallbackExtension`
   plays Asterisk's `hello-world` prompt, hangs up the incoming leg, and runs a
-  hangup handler that asynchronously calls the same configured SIP Core
-  extension's registered PJSIP AOR. If that device answers, Asterisk sends the
-  call into the existing `ggAudioExtension` route (default `66`) so
+  hangup handler that asynchronously calls back the authenticated SIP Core
+  source extension's registered contacts. If a device answers, Asterisk sends the
+  call into the existing `ggAudioExtension` route so
   FreeSWITCH plays the GG audio. This service extension is not a SIP account
   and has no password; the callback target comes from the authenticated
   extension's dedicated dialplan context, not caller-supplied Caller ID. The
@@ -501,19 +501,21 @@ relays the browser media leg using its configured public media interface and
 UDP range. Keep `asterisk.sipCore.media.enabled` disabled: the chart rejects
 direct Asterisk RTP exposure while SIP Core is enabled. This change reuses the
 existing RTPEngine deployment and does not create another media topology.
-The optional Asterisk-side CoTURN credential integration is disabled by
-default because its startup generator requires `openssl` in the Asterisk
-container image. The current image does not provide that capability. When the
-image is updated and verified, it can be enabled with
-`asterisk.turn.enabled: true`; it mounts Social/Matrix's existing
-`matrix-turn-auth` Secret and generates a time-limited credential in the
-container's private `/tmp`, never in Helm values or a ConfigMap. STUN/TURN
-settings here apply only to Asterisk's media ICE agent.
+The chart now enables Asterisk-side CoTURN credentials for sites with SIP Core
+enabled and pins the image digest supplied for the new build. The runtime image
+includes the `openssl` CLI required by its startup HMAC generator. Asterisk
+mounts Social/Matrix's existing `matrix-turn-auth` Secret and derives a
+time-limited credential in the container's private `/tmp`, never in Helm
+values or a ConfigMap. The TURN hostname defaults to the site-local NATPuncher
+endpoint, with an explicit override available. Verify that
+`ExternalSecret/matrix-turn-auth` is Ready in the target namespace before
+reconciliation; that live check is not available from this workspace.
+STUN/TURN settings here apply only to Asterisk's media ICE agent.
 
 This does not provide TURN credentials to Home Assistant or alter the existing
 Kamailio→RTPEngine media path. The Home Assistant SIP endpoint continues to
-use RTPEngine for browser media. Re-enabling Asterisk-side CoTURN is optional
-and must wait for an image with the required `openssl` support. If two-way
+use RTPEngine for browser media. Asterisk-side CoTURN does not provide TURN
+credentials to Home Assistant or alter the browser's existing media path. If two-way
 audio still fails, inspect negotiated ICE candidates on both legs and
 RTPEngine's available relay ports. Registration alone does not prove media
 works.
@@ -558,11 +560,11 @@ workload policy rule. Then test an Asterisk-originated call to the extension,
 the SIP Core echo target, and confirm the selected ICE pair and bidirectional
 audio from an external browser network.
 
-When Asterisk-side TURN is explicitly enabled after the image update, verify
-`ExternalSecret/matrix-turn-auth` is Ready without printing Secret contents,
-then inspect Asterisk ICE/TURN candidate creation with PJSIP packet tracing
-disabled. Never copy the generated TURN password or SIP Authorization data
-into logs or support output. The Secret remains owned by Social/Matrix.
+After rollout, verify `ExternalSecret/matrix-turn-auth` is Ready without
+printing Secret contents, then inspect Asterisk ICE/TURN candidate creation
+with PJSIP packet tracing disabled. Never copy the generated TURN password or
+SIP Authorization data into logs or support output. The Secret remains owned
+by Social/Matrix.
 
 This static extension pilot is separate from the planned dynamic SIP registrar,
 Authentik credential broker, and first-party webphone. It does not satisfy the
