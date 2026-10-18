@@ -1,0 +1,37 @@
+{{- $authentik := .Values.avoip.authentik -}}
+{{- if and $authentik.enabled (eq .Values.region $authentik.primaryRegion) }}
+{{- $_ := required "avoip.authentik.providerConfigRef is required" $authentik.providerConfigRef -}}
+{{- $_ := required "avoip.authentik.workspaceName is required" $authentik.workspaceName -}}
+{{- $_ := required "avoip.authentik.usersGroup is required" $authentik.usersGroup -}}
+{{- $_ := required "avoip.authentik.adminsGroup is required" $authentik.adminsGroup -}}
+---
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $authentik.workspaceName }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-10'
+spec:
+  providerConfigRef:
+    name: '{{ $authentik.providerConfigRef }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      users_group: '{{ $authentik.usersGroup }}'
+      admins_group: '{{ $authentik.adminsGroup }}'
+    module: |
+      variable "users_group" { type = string }
+      variable "admins_group" { type = string }
+
+      resource "authentik_group" "avoip_users" {
+        name         = var.users_group
+        is_superuser = false
+        attributes   = jsonencode({ avoip_role = "user" })
+      }
+
+      resource "authentik_group" "avoip_admins" {
+        name         = var.admins_group
+        is_superuser = false
+        attributes   = jsonencode({ avoip_role = "admin" })
+      }
+{{- end }}

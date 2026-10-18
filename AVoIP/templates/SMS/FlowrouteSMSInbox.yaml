@@ -21,17 +21,20 @@ spec:
     varmap:
       provider_name: '{{ $name }} {{ $.Values.cluster.name }}'
       access_group: '{{ $inbox.accessGroup }}'
+      admin_group: '{{ $inbox.adminGroup }}'
       app_slug: '{{ $slug }}'
       external_host: 'https://{{ $hostname }}'
     module: |
       variable "provider_name" { type = string }
       variable "access_group" { type = string }
+      variable "admin_group" { type = string }
       variable "app_slug" { type = string }
       variable "external_host" { type = string }
 
       data "authentik_flow" "authorization" { slug = "default-provider-authorization-implicit-consent" }
       data "authentik_flow" "invalidation" { slug = "default-provider-invalidation-flow" }
-      data "authentik_group" "access" { name = var.access_group }
+      data "authentik_group" "users" { name = var.access_group }
+      data "authentik_group" "admins" { name = var.admin_group }
 
       resource "authentik_property_mapping_provider_scope" "numbers" {
         name       = "CoRE SMS inbox authorized numbers {{ $.Values.cluster.name }}"
@@ -68,9 +71,15 @@ spec:
         protocol_provider = authentik_provider_proxy.inbox.id
       }
 
-      resource "authentik_policy_binding" "access" {
+      resource "authentik_policy_binding" "users_access" {
         target = authentik_application.inbox.uuid
-        group  = data.authentik_group.access.id
+        group  = data.authentik_group.users.id
+        order  = 0
+      }
+
+      resource "authentik_policy_binding" "admins_access" {
+        target = authentik_application.inbox.uuid
+        group  = data.authentik_group.admins.id
         order  = 0
       }
 ---

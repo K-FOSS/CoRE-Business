@@ -208,7 +208,8 @@ flowrouteSMS:
     enabled: true
     hostname: ''
     providerConfigRef: 'authentik'
-    accessGroup: 'Home Users'
+    accessGroup: 'AVoIP Users'
+    adminGroup: 'AVoIP Admins'
     workspaceName: 'flowroute-sms-inbox-auth'
     displayName: 'CoRE SMS Inbox'
     authentikOutpost:
@@ -235,6 +236,13 @@ avoip:
   # Main inbound DID, supplied by the owning ApplicationSet. YVR sends this
   # number to the silent extension IVR when that feature is enabled.
   did: ''
+  authentik:
+    enabled: true
+    primaryRegion: 'yvr'
+    providerConfigRef: 'authentik'
+    workspaceName: 'avoip-authentik-groups'
+    usersGroup: 'AVoIP Users'
+    adminsGroup: 'AVoIP Admins'
 
 fax:
   # Legacy FaxNumber DID, supplied by the owning ApplicationSet and routed to

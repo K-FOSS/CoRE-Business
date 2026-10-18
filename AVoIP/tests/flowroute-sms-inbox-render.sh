@@ -22,6 +22,13 @@ for expected in \
   "name: 'sms-inbox-check-avoip-sms-inbox'" \
   "name: 'sms-inbox-check-avoip-sms-inbox-auth'" \
   "name: 'flowroute-sms-inbox-auth'" \
+  "name: 'avoip-authentik-groups'" \
+  'AVoIP Users' \
+  'AVoIP Admins' \
+  'resource "authentik_group" "avoip_users"' \
+  'resource "authentik_group" "avoip_admins"' \
+  'resource "authentik_policy_binding" "users_access"' \
+  'resource "authentik_policy_binding" "admins_access"' \
   'X-Auth-Numbers' \
   'phone_number' \
   'sms_numbers' \
@@ -31,6 +38,19 @@ for expected in \
     exit 1
   }
 done
+
+helm template sms-inbox-non-primary "$repo_root/AVoIP" --namespace core-prod \
+  --set cluster.name=core-dc1-talos-prod \
+  --set datacenter=dc1 \
+  --set region=yxl \
+  --set freeswitch.enabled=false \
+  --set flowrouteSMS.enabled=false \
+  >"$tmp_dir/non-primary.yaml"
+
+if grep -Fq "name: 'avoip-authentik-groups'" "$tmp_dir/non-primary.yaml"; then
+  echo 'AVoIP Authentik group ownership must render only in its primary region' >&2
+  exit 1
+fi
 
 if sed -n '/name: sms-inbox-check-avoip-sms-inbox$/,/^---$/p' "$tmp_dir/render.yaml" | grep -q 'wan-mode: public'; then
   echo 'The Authentik inbox route must not claim public DNS ownership' >&2

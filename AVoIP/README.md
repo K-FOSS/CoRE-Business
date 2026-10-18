@@ -11,8 +11,11 @@ for the Kamailio MIME parser caveat and live acceptance procedure.
 
 Inbound Flowroute SMS has its own Go HTTP receiver, PostgreSQL-backed message
 and MMS image storage, and public callback route. An optional Authentik proxy
-inbox filters messages by user and group number attributes. It is independent
-of FreeSWITCH. See the
+inbox filters messages by user and group number attributes. The primary-region
+Authentik workspace also manages the `AVoIP Users` and `AVoIP Admins` groups;
+assign people to those groups in Authentik. `AVoIP Admins` is an application
+access group and does not grant Authentik superuser privileges. The inbox
+allows either group. See the
 [Flowroute SMS guide](docs/FLOWROUTE-SMS.md) for scaling, data handling,
 deployment inputs and verification.
 For inbound-call ACKs or remote BYEs rejected after a retransmitted answer,
@@ -34,7 +37,7 @@ The [SIP, identity, and RTC architecture plan](docs/SIP-STATEFUL-HA.md) and its
 [phased TODO tracker](TODO.md) describe proposed stateful routing, web phone,
 directory switchboard, MatrixRTC and native calling work, with evidence gates
 and rollback. They do not change the deployed call path.
-The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The active [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 deploys it to the DC1 hub, Home1, and the `dc1-k3s-node1` spoke. DC1 and Home1
 enable the telephony workloads; `dc1-k3s-node1` does not enable Asterisk
 or FreeSWITCH. Speech recognition and synthesis are provided by the existing

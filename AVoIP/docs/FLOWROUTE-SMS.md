@@ -86,11 +86,19 @@ scope are denied. Do not bypass the authenticated Gateway route to expose the
 service directly. The web page renders message text as text and displays stored
 images without exposing Flowroute's expiring signed URLs.
 
-The inbox creates an Authentik proxy provider/application and policy binding
-for the configured access group. The inbox route has no public DNS ownership
-label or dashboard exposure annotation; when it shares the callback hostname,
-only the callback path is routed without Authentik. Authentik custom provider
-headers are implemented through property mappings; see [Authentik custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
+The primary-region [`avoip-authentik-groups` Workspace](templates/Authentik/AVoIPGroups.yaml)
+manages the `AVoIP Users` and `AVoIP Admins` groups, and runs before the inbox
+Workspace that looks them up. Assign users to these groups in Authentik; the
+chart does not provision a user roster or overwrite group membership. Both
+groups can open the inbox. The admin group is scoped to AVoIP and is not an
+Authentik superuser group. See Authentik's guide to
+[managing groups](https://docs.goauthentik.io/users-sources/groups/manage_groups).
+
+The inbox creates an Authentik proxy provider/application and policy bindings
+for both groups. The inbox route has no public DNS ownership label or dashboard
+exposure annotation; when it shares the callback hostname, only the callback
+path is routed without Authentik. Authentik custom provider headers are
+implemented through property mappings; see [Authentik custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
 and [Envoy Gateway external authorization](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/).
 
 The receiver has `/healthz` and a PostgreSQL-backed `/readyz`. Each pod uses a
