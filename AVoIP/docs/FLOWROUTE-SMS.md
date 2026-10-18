@@ -103,10 +103,16 @@ Authentik superuser group. See Authentik's guide to
 [managing groups](https://docs.goauthentik.io/users-sources/groups/manage_groups).
 
 The inbox creates an Authentik proxy provider/application and policy bindings
-for both groups. The inbox route has no public DNS ownership label or dashboard
-exposure annotation; when it shares the callback hostname, only the callback
-path is routed without Authentik. Authentik custom provider headers are
-implemented through property mappings; see [Authentik custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
+for both groups. A separate route sends `/outpost.goauthentik.io` on the same
+host directly to the Authentik outpost, as required for the proxy login callback;
+the SMS application paths remain protected by Gateway external authorization.
+The inbox routes have no public DNS ownership label or dashboard exposure
+annotation. The Flowroute webhook endpoint remains separately reachable without
+inbox authentication, and the Authentik outpost prefix bypasses Gateway external
+authorization so the outpost can complete login. Authentik custom provider
+headers are implemented through property mappings; see [Authentik's forward-auth
+route requirements](https://docs.goauthentik.io/add-secure-apps/providers/proxy/create-proxy-provider/)
+and [custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
 and [Envoy Gateway external authorization](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/).
 
 The receiver has `/healthz` and a PostgreSQL-backed `/readyz`. Each pod uses a
