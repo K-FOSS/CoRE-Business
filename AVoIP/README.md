@@ -416,6 +416,13 @@ names as `psql-<datacenter>-<region>`, and FreeSWITCH connects to
 limited to application-table creation because the pinned SQL provider manages
 PostgreSQL roles, databases, and schemas, not tables.
 
+When SMS is enabled, the chart also creates a `User.mylogin.space/v1alpha1`
+claim named `core-voice-<cluster>-<region>` with `spec.name: CoRE-Voice` and no
+fixed username. The current Backplane User Composition generates that service
+identity and provisions it through the global PostgreSQL providers `psql` and
+`psql-main`; its connection Secret is reserved for the inbound SMS persistence
+service.
+
 Sofia raw SIP tracing is enabled by default on the managed Asterisk, external,
 and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
 SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`

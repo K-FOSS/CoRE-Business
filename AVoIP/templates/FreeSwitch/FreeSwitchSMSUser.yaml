@@ -1,0 +1,24 @@
+{{- if and .Values.freeswitch.enabled .Values.freeswitch.sms.enabled }}
+{{- $fullName := include "avoip.fullname" . -}}
+{{- $claimName := printf "core-voice-%s-%s" .Values.cluster.name .Values.region | lower | replace "_" "-" -}}
+---
+apiVersion: mylogin.space/v1alpha1
+kind: User
+metadata:
+  name: '{{ $claimName }}'
+
+spec:
+  name: 'CoRE-Voice'
+  serviceAccount: true
+  psql:
+    enabled: true
+    crossplane:
+      # Global PostgreSQL resources are reconciled through the Backplane
+      # provider pair; the claim intentionally omits spec.username so the
+      # User Composition generates a random service identity.
+      terraformProvider: 'psql'
+      crossplaneProvider: 'psql-main'
+
+  writeConnectionSecretToRef:
+    name: '{{ $fullName }}-core-voice-sms'
+{{- end }}
