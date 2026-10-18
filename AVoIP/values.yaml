@@ -159,6 +159,21 @@ workloadNetworking:
       options:
         - name: ndots
           value: '0'
+  flowroute-sms-web:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: '0'
+  flowroute-sms-api:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: '0'
+  flowroute-sms-webhook:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: '0'
 
 datacenter: 'dc1'
 

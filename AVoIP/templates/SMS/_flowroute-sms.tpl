@@ -15,6 +15,9 @@ controllers:
     forceRename: '{{ $name }}'
     replicas: {{ max 2 (int $settings.replicas) }}
     strategy: RollingUpdate
+    rollingUpdate:
+      unavailable: '0'
+      surge: 1
     pod:
       automountServiceAccountToken: false
       securityContext:
@@ -56,6 +59,16 @@ controllers:
             containerPort: 8080
             protocol: TCP
         probes:
+          startup:
+            enabled: true
+            custom: true
+            spec:
+              httpGet:
+                path: /healthz
+                port: http
+              periodSeconds: 5
+              timeoutSeconds: 2
+              failureThreshold: 30
           liveness:
             enabled: true
             custom: true
@@ -73,7 +86,7 @@ controllers:
               httpGet:
                 path: /readyz
                 port: http
-              periodSeconds: 10
+              periodSeconds: 5
               timeoutSeconds: 2
               failureThreshold: 3
         securityContext:

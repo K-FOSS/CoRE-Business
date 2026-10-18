@@ -42,10 +42,27 @@ for expected in \
   }
 done
 
-yq -e 'select(.kind == "Deployment" and .metadata.name == "flowroute-check-avoip-flowroute-sms") | .spec.template.spec.dnsConfig.options | any(.name == "ndots" and .value == "0")' "$tmp_dir/enabled.yaml" >/dev/null || {
-  echo 'Flowroute SMS pod does not use ndots 0' >&2
-  exit 1
-}
+dns_rows="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("flowroute-sms"))) | [.metadata.name, ([.spec.template.spec.dnsConfig.options[]? | select(.name == "ndots") | .value] | join(","))] | @tsv' "$tmp_dir/enabled.yaml")"
+[[ -n "$dns_rows" ]] || { echo 'No Flowroute SMS deployment was rendered for DNS validation' >&2; exit 1; }
+while IFS=$'\t' read -r name ndots; do
+  [[ "$ndots" == '0' ]] || {
+    echo "Flowroute SMS deployment $name does not use ndots 0" >&2
+    exit 1
+  }
+done <<< "$dns_rows"
+
+rollout_rows="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("flowroute-sms"))) | [.metadata.name, .spec.strategy.type, (.spec.strategy.rollingUpdate.maxSurge | tostring), (.spec.strategy.rollingUpdate.maxUnavailable | tostring), .spec.template.spec.containers[0].startupProbe.httpGet.path, .spec.template.spec.containers[0].livenessProbe.httpGet.path, .spec.template.spec.containers[0].readinessProbe.httpGet.path] | @tsv' "$tmp_dir/enabled.yaml")"
+[[ -n "$rollout_rows" ]] || { echo 'No Flowroute SMS deployment was rendered' >&2; exit 1; }
+while IFS=$'\t' read -r name strategy surge unavailable startup liveness readiness; do
+  [[ "$strategy" == 'RollingUpdate' && "$surge" == '1' && "$unavailable" == '0' ]] || {
+    echo "Flowroute SMS deployment $name does not preserve availability during rollout" >&2
+    exit 1
+  }
+  [[ "$startup" == '/healthz' && "$liveness" == '/healthz' && -n "$readiness" ]] || {
+    echo "Flowroute SMS deployment $name does not render startup, liveness, and readiness checks" >&2
+    exit 1
+  }
+done <<< "$rollout_rows"
 
 if helm template flowroute-invalid "$repo_root/AVoIP" --namespace core-prod \
   --set cluster.name=core-dc1-talos-prod \

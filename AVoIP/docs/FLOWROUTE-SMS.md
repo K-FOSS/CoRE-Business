@@ -136,6 +136,12 @@ the unique MDR constraint keeps concurrent duplicate deliveries safe. Avoid
 raising the replica count without checking global PostgreSQL connection
 capacity.
 
+Each SMS pod uses `/healthz` for startup and liveness checks. Database-backed
+services use `/readyz` for readiness, so a pod is not sent traffic until its
+database connection works. Rolling updates allow one temporary surge pod and
+zero unavailable replicas; the old pod remains serving until its replacement
+passes readiness.
+
 ## Validation and rollout
 
 The Go unit tests cover current and legacy payload decoding, MMS metadata, and
