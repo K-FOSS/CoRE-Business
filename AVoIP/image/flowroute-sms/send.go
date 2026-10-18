@@ -106,11 +106,13 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 	_, err = s.pool.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_messages (message_id,sender,recipient,body,direction,is_mms,received_at) VALUES ($1,$2,$3,$4,'outbound',false,$5) ON CONFLICT (message_id) DO NOTHING`, result.Data.ID, from, to, input.Body, time.Now().UTC())
 	if err != nil {
 		s.logger.Error("sent SMS could not be stored", "message_id", result.Data.ID, "user", identity, "from", from)
-		http.Error(w, "sent but history unavailable", 502)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]any{"id": result.Data.ID, "stored": false})
 		return
 	}
 	s.logger.Info("SMS sent", "message_id", result.Data.ID, "user", identity, "from", from, "to", to)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"id": result.Data.ID})
+	json.NewEncoder(w).Encode(map[string]any{"id": result.Data.ID, "stored": true})
 }

@@ -628,7 +628,7 @@ func normalizePhoneNumber(value string) (string, bool) {
 
 func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self' "+os.Getenv("SMS_FRAME_ANCESTOR"))
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self' "+os.Getenv("SMS_FRAME_ANCESTOR"))
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -642,7 +642,7 @@ func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if name != "app.css" && name != "app.js" {
+	if name != "app.css" && name != "app.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
 		http.NotFound(w, r)
 		return
 	}
@@ -653,7 +653,9 @@ func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	if strings.HasSuffix(name, ".css") {
+	if strings.HasSuffix(name, ".ttf") {
+		w.Header().Set("Content-Type", "font/ttf")
+	} else if strings.HasSuffix(name, ".css") {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	} else {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")

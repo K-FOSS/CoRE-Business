@@ -16,6 +16,7 @@ concurrency:
 jobs:
   build-and-publish:
     strategy:
+      max-parallel: 1
       matrix:
         component: [web, api, webhook]
     runs-on: docker
