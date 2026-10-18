@@ -271,9 +271,11 @@ separate Kamailio-facing FreeSWITCH profile. New calls still use the shared
 Service; using that round-robin Service for an established dialog can send its
 BYE to a replica that does not own the call. TOPOS hides the pod address from
 Flowroute.
-Flowroute SMS is enabled by default through `mod_sms` and
-`mod_sms_flowroute`; its API credentials are sourced from the separate SMS
-External Secret and are not stored in chart values.
+Flowroute SMS is configured by default through the separate SMS External
+Secret, but the deployed FreeSWITCH image currently contains `mod_sms` and
+does not contain `mod_sms_flowroute.so`; startup therefore reports that the
+Flowroute module cannot be loaded. Kamailio only carries generic SIP
+`MESSAGE` requests and does not provide a Flowroute SMS gateway.
 
 The Asterisk and FreeSWITCH Deployments and Services are rendered through the
 pinned [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)

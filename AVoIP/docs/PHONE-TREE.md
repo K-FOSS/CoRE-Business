@@ -149,16 +149,19 @@ claim is not migrated automatically.
 
 ## SIP messaging
 
-Flowroute SMS/SIP MESSAGE handling is provided by the
-`mod_sms_flowroute` module. Its generated configuration is mounted from the
-External Secret `freeswitch-sms` at
+Flowroute SMS is configured through the External Secret `freeswitch-sms` at
 `/etc/freeswitch/autoload_configs/sms_flowroute.conf.xml`.
 
-The reduced `modules.conf.xml` loads Sofia, XML dialplan, logging, command,
+The reduced `modules.conf.xml` requests `mod_sms` and
+`mod_sms_flowroute`. In the deployed FreeSWITCH image, `mod_sms` is present
+but `mod_sms_flowroute.so` is absent, so FreeSWITCH logs a nonfatal module-load
+error and Flowroute SMS is not currently available. Kamailio carries generic
+SIP `MESSAGE` requests but has no Flowroute SMS integration.
+
+The reduced `modules.conf.xml` also loads Sofia, XML dialplan, logging, command,
 DTMF/application, and Opus support. `mod_xml_ldap` is temporarily disabled by
 default because it crashes on the dedicated Asterisk authentication lookup.
-The Flowroute SMS module remains loaded, but directory-backed user lookups are
-unavailable while LDAP is disabled.
+Directory-backed user lookups are unavailable while LDAP is disabled.
 SMS is enabled by default through `freeswitch.sms.enabled`; disabling it omits
 both the SMS modules and the External Secret-backed Flowroute SMS configuration.
 
@@ -294,8 +297,9 @@ Before enabling the hub:
 2. Confirm the Asterisk `User` claim produces its connection Secret and that
    Asterisk starts with the generated PJSIP auth object (without printing the
    Secret values).
-3. Send a SIP MESSAGE to the DID and verify delivery through
-   `mod_sms_flowroute`.
+3. Restore or provide a FreeSWITCH image containing `mod_sms_flowroute.so`,
+   then send a SIP MESSAGE to the DID and verify delivery through the
+   Flowroute API.
 4. Place an inbound voice call, enter each permitted destination and verify
    its Asterisk behavior. Call the FaxNumber DID separately and verify that
    extension `7101` rings; also confirm that an unavailable endpoint ends
