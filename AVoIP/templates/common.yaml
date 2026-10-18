@@ -1353,7 +1353,7 @@ controllers:
 {{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) }}
             --homer={{ include "avoip.fullname" . }}-homer-heplify.{{ $.Release.Namespace }}.svc.{{ default "cluster.local" $.Values.cluster.domain }}:{{ $.Values.homer.capture.hepTCPPort }}
             --homer-protocol=tcp
-            --homer-id=102
+            --homer-id=103
             --homer-enable-ng
 {{- end }}
             --foreground

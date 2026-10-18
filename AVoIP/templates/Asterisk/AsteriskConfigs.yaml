@@ -239,7 +239,8 @@ data:
     {{- end }}
     {{- end }}
     {{- else }}
-    exten => {{ . }},1,Dial(PJSIP/{{ . }},30)
+    ; Ring every registered device for this personal SIP Core extension.
+    exten => {{ . }},1,Dial(${PJSIP_DIAL_CONTACTS({{ . }})},30)
       same => n,Hangup()
     {{- end }}
     {{- end }}
