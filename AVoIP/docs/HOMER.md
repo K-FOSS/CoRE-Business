@@ -4,6 +4,23 @@ The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/
 
 ## Capture and access
 
+The SIP capture agent IDs are role-specific: Kamailio uses `101`, FreeSWITCH
+uses `102`, and RTPEngine uses `103`. Keep these values unique; Homer labels
+agents from `node_id`, so the displayed label is numeric rather than a
+human-readable pod name. Kamailio's SIP trace is a transaction-level HEP
+observation, while FreeSWITCH and RTPEngine have their own HEP sources. A
+logical SIP record and a socket-level observation are not necessarily duplicate
+network transmissions. Missing destination-port metadata (`0`) means the
+capture did not report that endpoint port; it is not evidence of a connection
+to port zero. Keep Homer deduplication disabled so distinct observations remain
+available for diagnosis.
+
+The hub and spoke Homers remain separate site-local capture stores and UIs.
+Search for a native SIP Call-ID in both sites when following an inter-site
+dialog. Separate B2BUA legs require the configured `X-Call-ID` correlation
+mapping; they retain their native SIP dialog IDs. This chart does not federate
+the two site timelines.
+
 [Kamailio SIP trace](https://www.kamailio.org/docs/modules/stable/modules/siptrace.html) sends HEPv3 SIP requests and replies from carrier and private SBC instances to the site-local Homer TCP listener on `9061`. It also sends `hlog()` HEP events correlated by Call-ID when Kamailio selects a backend, Asterisk SIP Core, the authenticated outbound carrier path, or a carrier dialog route. Those events include the decision label, SIP method and CSeq, source socket, selected destination URI, request URI, and transport; they do not copy SIP headers or message bodies. Homer can therefore show routing decisions alongside the SIP ladder. The internal FreeSWITCH Kamailio profile sends SIP messages and FreeSWITCH channel metadata over HEPv3/UDP to port `9060`, using FreeSWITCH's [Homer HEP capture agent](https://github.com/sipcapture/homer/wiki/Examples%3A-FreeSwitch); the public/Flowroute profile remains excluded. [RTPEngine Homer capture](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md) sends RTCP statistics and NG control metadata to the listener when RTPEngine is enabled. RTPEngine binds its NG listener to the pod IP so NG traces use that address instead of the unspecified `0.0.0.0` listener address; the pod IP changes when the pod is replaced. The cluster-only capture Service also exposes metrics TCP `9096`. The ingest HTTP listener uses container port `9080`; the coordinator UI and v4 API use container port `8080` behind the web Service on port `80`. The HEP and metrics ports have no public route.
 
 Kamailio's default `listeners.bindAddress: ''` selects the pod's `status.podIP` through the Downward API. Its preprocessor substitutes only the listener token, preserving SIP script variables. Concrete listeners give outbound SIP traces and [`hlog()` events](https://github.com/kamailio/kamailio/blob/6.1/src/modules/siptrace/siptrace_hep.c) the emitting pod's IP in their HEP source field. Received SIP traces retain the original peer's source address. Public and private SIP advertised identities remain configured independently. An explicit `listeners.bindAddress` overrides this default; a wildcard override can reintroduce unspecified HEP addresses. RTPEngine's UDP NG and optional HTTP/WebSocket listeners also bind to `status.podIP`. Replacement pods automatically use their new addresses. Previously stored traces retain their original metadata.
@@ -60,6 +77,7 @@ After the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/m
 2. Confirm the site Homer PVC is `Bound`, the share manager is ready, and the single Homer pod starts without catalog or filesystem errors.
 3. Confirm private and carrier Kamailio, FreeSWITCH, and RTPEngine HEP delivery to the site-local Service. Search a new internal call by Call-ID in that site's Homer UI and verify SIP messages, Kamailio routing-decision events, FreeSWITCH channel events, and the available RTCP/NG diagnostics. Compare locally emitted SIP and routing-event source IPs with the emitting pod's `status.podIP`; received SIP sources should remain the original peer. Check new traces after a rollout, since stored traces are not rewritten.
 4. Verify an unauthenticated UI or `/recordings/` request is challenged by Authentik. Verify the OIDC callback returns to the same site hostname and that Homer queries use `/api/v4`.
+5. Confirm each active HEP sender has its distinct role ID (`101`, `102`, `103`) after a chart rollout.
 
 For the DC1 hub, inspect resource status and logs without exposing Secret values:
 

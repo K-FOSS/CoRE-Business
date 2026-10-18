@@ -33,7 +33,9 @@ type `7101`, `9090`, `66`, or `1234`; the allowlist is checked in FreeSWITCH
 and each accepted destination is sent through the existing authenticated
 FreeSWITCH-to-Asterisk gateway. The IVR has no prompt files or bundled audio
 assets. It answers the call to collect DTMF, then transfers it to the selected
-service. The selected Asterisk service may play its own audio.
+service. Personal SIP Core extensions ring all of their registered devices in
+parallel; the first answered device receives the call. The selected Asterisk
+service may play its own audio.
 
 The YXL voice DID crosses the existing carrier Kamailio SIPS/mTLS link to YVR
 FreeSWITCH IVR ingress extension `7102`. The YVR carrier permits this ingress
@@ -58,8 +60,9 @@ Inbound calls over either public SIP transport follow this path:
    its FaxNumber DID bridges directly to Asterisk.
 5. If no DTMF input is entered, FreeSWITCH ends the answered IVR call after
    its configured 15-second input timeout. Destination `66` plays the GG asset
-   directly on YVR FreeSWITCH and then hangs up normally. Other selected
-   Asterisk extensions use the configured endpoint timeout; failed inbound
+   directly on YVR FreeSWITCH and then hangs up normally. Personal SIP Core
+   destinations ring all registered contacts in parallel for the configured
+   endpoint timeout; failed inbound
    handoffs play GG in FreeSWITCH and hang up normally. Unmatched public
    destinations are rejected.
 
