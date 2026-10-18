@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Bootstrap Docker Buildx prerequisites
         shell: sh
-        run: apk add --no-cache bash ca-certificates python3
+        run: apk add --no-cache bash ca-certificates nodejs python3
       - name: Check out repository
         uses: https://github.com/actions/checkout@v4
         with:
