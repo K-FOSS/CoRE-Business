@@ -21,8 +21,8 @@ and [RTPEngine NG protocol documentation](https://github.com/sipwise/rtpengine/b
 | Traffic | Path | Carrier-facing identity at the hub |
 | --- | --- | --- |
 | Inbound INVITE and its reply | Flowroute ↔ Kamailio direct Service over UDP/TCP, or Envoy TLS passthrough ↔ Kamailio over TLS | Direct Service hostname on UDP/TCP 5060, or site SIP hostname on TLS 5061 |
-| New outbound request, such as FreeSWITCH's BYE | Kamailio → VyOS WAN-GW/NAT VRRP pair → Flowroute | `66.165.222.97` observed on the BYE transaction |
-| RTP | Flowroute ↔ RTPEngine | `66.165.222.103` advertised in SDP |
+| New outbound request, such as FreeSWITCH's BYE | Kamailio → VyOS WAN-GW/NAT VRRP pair → Flowroute | Flowroute regional endpoint `us-west-or.sip.flowroute.com`; source NAT uses the WAN-GW/NAT VRRP identity |
+| RTP | Flowroute ↔ RTPEngine | RTPEngine's configured public media endpoint, advertised in SDP |
 
 The VyOS routers [source NAT](https://docs.vyos.io/en/latest/configuration/nat/nat44.html#source-nat) new outbound connections to their shared VRRP address. The observed outbound BYE and its successful response establish that this egress path works; they do not establish that the original INVITE answer reached Flowroute.
 
@@ -141,15 +141,19 @@ helm template core-home1-talos-prod-business-avoip-prod . -n core-prod -f values
   --set kamailio.instances[0].publicExposure.sip.udpEnabled=true \
   --set kamailio.instances[0].publicExposure.sip.directService.enabled=true \
   --set freeswitch.enabled=true --set asterisk.enabled=true \
-  --set rtpengine.media.address=1.1.1.1 \
+  --set-string rtpengine.media.address="$MEDIA_TEST_ADDRESS" \
   --set-string avoip.did=voice-fixture --set-string fax.did=fax-fixture \
   > /tmp/avoip-render.yaml
 python3 tests/sip_identity_render.py /tmp/avoip-render.yaml \
   --voice-did voice-fixture --fax-did fax-fixture \
   --site-host sip.core-home1-talos-prod.home1.yvr.resolvemy.host \
   --cluster-name core-home1-talos-prod \
-  --cluster-domain k8s.home1.resolvemy.host --media-address 1.1.1.1
+  --cluster-domain k8s.home1.resolvemy.host --media-address "$MEDIA_TEST_ADDRESS"
 ```
+
+Set `MEDIA_TEST_ADDRESS` to the public numeric address assigned to the test
+RTPEngine media endpoint; RTPEngine requires an address here because it places
+the value in SDP.
 
 Set `SITE_SIP_HOST` to the current site route (for example, `sip.core-home1-talos-prod.home1.yvr.resolvemy.host` or `sip.core-dc1-talos-prod.dc1.yxl.resolvemy.host`). For the carrier-side DNS and TLS checks, run:
 
@@ -179,7 +183,7 @@ ingress node or host interface:
 
 ```sh
 sudo tcpdump -ni any -tttt -vv \
-  'tcp port 5061 and (host 34.210.91.112 or host 34.210.91.114)'
+  'tcp port 5061 and host us-west-or.sip.flowroute.com'
 ```
 
 This shows TCP connection reuse or reconnection and packet direction, not SIP

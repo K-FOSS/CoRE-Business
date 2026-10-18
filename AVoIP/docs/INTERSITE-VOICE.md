@@ -1,9 +1,13 @@
 # YXL to YVR inbound voice routing
 
+See the [successful inbound signaling baseline and visibility findings](INBOUND-SIGNALING-BASELINE-2026-10-17.md)
+for a later call that completed INVITE/answer/ACK and cross-pod BYE signaling.
+
 ## 2026-10-17 inbound voice investigation
 
-The observed Flowroute call entered YXL over TLS from
-`34.210.91.112:55940`. Its Request-URI was the `flowroute` rendezvous user;
+The observed Flowroute call entered YXL over TLS from the configured
+Flowroute signaling peer (`us-west-or.sip.flowroute.com`, source port 55940).
+Its Request-URI was the `flowroute` rendezvous user;
 the `To` user held the YXL voice DID. YXL's DID transfer rule matched that
 `To` user and rewrote the Request-URI to `sips:7102@` the YVR carrier
 Kamailio Service hostname. This is an INVITE route, with no observed REFER.
@@ -24,8 +28,8 @@ and pod metadata confirmed the first four during this investigation; the
 FreeSWITCH pod had already been replaced. The YXL ingress capture address
 `172.20.48.42` still needs its Gateway or capture-agent identity checked.
 
-The carrier offered PCMU, PCMA and telephone-event payload 112 with media at
-`162.252.184.24:46016`. YXL's SDP advertised
+The carrier offered PCMU, PCMA and telephone-event payload 112 with media on
+port 46016. YXL's SDP advertised
 `172.20.49.211:11062` and RTCP `11063`; YVR's advertised
 `172.20.57.236:11134` and RTCP `11135`. These are offer rewrites, with no
 answer or demonstrated RTP on this attempt. The configured next route for
