@@ -12,8 +12,6 @@ helm template sms-inbox-check "$repo_root/AVoIP" --namespace core-prod \
   --set freeswitch.enabled=false \
   --set flowrouteSMS.enabled=true \
   --set flowrouteSMS.hostname=sms.mylogin.space \
-  --set flowrouteSMS.image.repository=forge.example/core/flowroute-sms \
-  --set flowrouteSMS.image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --set flowrouteSMS.callbackSecret.name=sms-inbox-check-token \
   --set flowrouteSMS.inbox.enabled=true \
   >"$tmp_dir/render.yaml"
@@ -37,6 +35,13 @@ for expected in \
   'sms.mylogin.space'; do
   grep -Fq "$expected" "$tmp_dir/render.yaml" || {
     echo "Missing expected SMS inbox render value: $expected" >&2
+    exit 1
+  }
+done
+
+for component in web api webhook; do
+  component="$component" yq -e 'select(.kind == "Deployment" and .metadata.name == "sms-inbox-check-avoip-flowroute-sms-" + env.component)' "$tmp_dir/render.yaml" >/dev/null || {
+    echo "Missing $component deployment" >&2
     exit 1
   }
 done

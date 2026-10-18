@@ -214,10 +214,20 @@ flowrouteSMS:
   hostname: 'sms.resolvemy.host'
   primaryRegion: 'yvr'
   image:
-    repository: slop.writemy.codes/core/core-business/flowroute-sms
-    tag: '1-218235a0bab0eba82e72f26d34e210fc8015bf08'
-    digest: 'sha256:fc15b04a7e60458e8dde72b43af06755f33bb4a59462f0501cfa6495d20434e9'
     pullPolicy: 'IfNotPresent'
+  images:
+    web:
+      repository: 'slop.writemy.codes/core/core-business/flowroute-sms-web'
+      tag: '1-26c2251c658e4f541c4b3b2dbbf1037b5b285306'
+      digest: 'sha256:2129e19f369b00b8863bf996afe2b45f3c2aa603c6361f010c561e8a1d6e0ccb'
+    api:
+      repository: 'slop.writemy.codes/core/core-business/flowroute-sms-api'
+      tag: '1-26c2251c658e4f541c4b3b2dbbf1037b5b285306'
+      digest: 'sha256:a9f18c04ce9f28796db22521d686c3d57e52a8cf0123d8e6e4f53b8da2c23c0e'
+    webhook:
+      repository: 'slop.writemy.codes/core/core-business/flowroute-sms-webhook'
+      tag: '1-26c2251c658e4f541c4b3b2dbbf1037b5b285306'
+      digest: 'sha256:3eed0b0b80087903bf731750988e029c6a82969b1f06e45220f0991aa4bf2a99'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
@@ -228,6 +238,7 @@ flowrouteSMS:
     enabled: true
   inbox:
     enabled: true
+    frameAncestor: 'https://office.mylogin.space'
     hostname: ''
     providerConfigRef: 'authentik'
     accessGroup: 'AVoIP Users'

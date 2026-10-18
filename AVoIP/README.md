@@ -435,6 +435,17 @@ global PostgreSQL providers `psql` and `psql-main`; its connection Secret is
 used by the standalone SMS persistence service. The same claim is retained
 while the legacy `freeswitch.sms.enabled` path remains active.
 
+The [Flowroute SMS messaging stack](docs/FLOWROUTE-SMS.md) now runs separate
+web, API, and webhook Deployments and Services in `core-prod` on the primary
+YVR cluster. The web route serves the responsive conversation UI, the API
+checks Authentik number entitlements for reads and sends, and the public
+`/flowroute/` route remains callback-token protected. The API receives Flowroute
+send keys from an ExternalSecret backed by the existing SMS Vault record.
+The web response allows framing only by `https://office.mylogin.space` and
+itself; configure `flowrouteSMS.inbox.frameAncestor` for another trusted
+Nextcloud origin. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+injects the YVR site values.
+
 Sofia raw SIP tracing is enabled by default on the managed Asterisk, external,
 and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
 SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`

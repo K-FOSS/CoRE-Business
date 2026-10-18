@@ -183,6 +183,15 @@ spec:
             value: '/inbox'
         - path:
             type: 'PathPrefix'
+            value: '/assets/'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms-web") }}'
+          port: 8080
+    - matches:
+        - path:
+            type: 'PathPrefix'
             value: '/api/'
         - path:
             type: 'PathPrefix'
@@ -190,6 +199,6 @@ spec:
       backendRefs:
         - group: ''
           kind: 'Service'
-          name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms") }}'
+          name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms-api") }}'
           port: 8080
 {{- end }}

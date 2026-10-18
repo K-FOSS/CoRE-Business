@@ -1,7 +1,7 @@
-# Flowroute SMS receiver
+# Flowroute SMS messaging
 
-AVoIP includes an independent Go HTTP service for Flowroute inbound messaging.
-It runs separately from Asterisk and FreeSWITCH, accepts Flowroute's current
+AVoIP runs separate web, API, and webhook deployments for Flowroute SMS.
+The webhook runs separately from Asterisk and FreeSWITCH, accepts Flowroute's current
 JSON:API callback envelope and the older flat callback format, then writes
 messages to a PostgreSQL database provisioned by the cluster-scoped
 `CoRE-Voice` User claim. The User Composition generates the database role and
@@ -14,9 +14,11 @@ grants the database owner access to the `public` schema. See Backplane's
 [storage base ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml),
 and [User implementation](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User).
 
-The receiver is a standalone AVoIP stack and does not depend on FreeSWITCH's
-`mod_sms` or the unavailable Flowroute FreeSWITCH module. It does not send
-messages. For each callback it validates the content type and required fields,
+The messaging stack does not depend on FreeSWITCH's `mod_sms` or the
+unavailable Flowroute FreeSWITCH module. The authenticated API sends SMS using
+[Flowroute Messages v2.2](https://developer.flowroute.com/api/messages/v2.2/send-an-sms/)
+with the existing Vault `AccessKey` and `SecretKey`; the webhook only receives
+callbacks. For each callback it validates the content type and required fields,
 then inserts by Flowroute's MDR ID. A PostgreSQL primary key makes retries
 idempotent across replicas: a committed message gets HTTP 200, including on a
 duplicate delivery; a database failure gets HTTP 503 so Flowroute can retry.
@@ -34,13 +36,17 @@ receive callbacks.
 ## Deployment inputs
 
 The checked-in values enable `flowrouteSMS` for its configured primary region
-(YVR). Enabling it renders two or more stateless replicas, an internal
-Service, and a public Gateway API HTTPRoute on the configured hostname. The
+(YVR). Enabling it renders separate web, API, and webhook Deployments and Services,
+each with at least two replicas. The public Gateway API HTTPRoute sends only
+`/flowroute/` to the webhook; the Authentik protected route sends `/inbox` and
+`/assets/` to the web UI and `/api/` and `/media/` to the API. The
 primary-region guard prevents multiple ApplicationSet targets from claiming
-the same public hostname. The checked-in image tag and digest point to the
-successful [Forgejo image workflow](../../.forgejo/workflows/flowroute-sms.yaml).
-The image is built from the Go source in [`image/flowroute-sms`](../image/flowroute-sms/)
-and uses the pinned Go 1.27.2 builder image.
+the same public hostname. Each pinned image is published by the
+[Forgejo image workflow](../../.forgejo/workflows/flowroute-sms.yaml).
+The three images are built from the Go source in [`image/flowroute-sms`](../image/flowroute-sms/)
+with the pinned Go 1.27.2 builder image.
+The web image serves self-hosted [Roboto](https://fonts.google.com/specimen/Roboto)
+under the bundled Open Font License; it does not call a third-party font CDN.
 
 Provision a random URL-safe callback token with at least 32 bytes in Vault at
 `AVoIP/SIP/FlowRoute/SMS`, property `CallbackToken`. External Secrets publishes
@@ -100,10 +106,12 @@ as well as strings and removes a leading `+` before putting values in
 codes are preserved. The receiver
 normalizes inbound sender and recipient numbers to E.164 (`+` plus digits) when
 storing them, and checks both prefixed and bare-digit forms for existing rows.
-It filters messages by recipient for both the message list and media download;
-requests without a valid number scope are denied. Do not bypass the authenticated
-Gateway route to expose the service directly. The web page renders message text
-as text and displays stored images without exposing Flowroute's expiring signed
+The API filters inbound messages by recipient and outbound messages by sender;
+media downloads require an authorized recipient. The API checks the Authentik
+number allowlist on each read and send, and requires the Authentik username for
+send auditing. Requests without a valid number scope are denied. Do not bypass the authenticated
+Gateway route to expose the service directly. The responsive conversation UI renders message text as text, uses 15 second
+polling and paginated history, and displays stored images without exposing Flowroute's expiring signed
 URLs.
 
 The primary-region [`avoip-authentik-groups` Workspace](templates/Authentik/AVoIPGroups.yaml)
@@ -129,9 +137,10 @@ route requirements](https://docs.goauthentik.io/add-secure-apps/providers/proxy/
 and [custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
 and [Envoy Gateway external authorization](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/).
 
-The receiver has `/healthz` and a PostgreSQL-backed `/readyz`. Each pod uses a
-maximum of five PostgreSQL connections, so two replicas cap this service at ten
-connections. Additional replicas can be added through `flowrouteSMS.replicas`;
+Each deployment has `/healthz`; the API and webhook have PostgreSQL-backed
+`/readyz`. Each database pod uses at most five PostgreSQL connections, so two
+replicas of each database workload can use up to twenty connections.
+Additional replicas can be added through `flowrouteSMS.replicas`;
 the unique MDR constraint keeps concurrent duplicate deliveries safe. Avoid
 raising the replica count without checking global PostgreSQL connection
 capacity.
@@ -152,15 +161,20 @@ workload and public callback route, and a non-primary region cannot claim it.
 The inbox renderer checks confirm its Authentik policy, number mapping and
 non-public route.
 
-The checked-in values enable the inbox alongside the receiver. The current
-published image is pinned in those values, and the default inbox URL is
+The checked-in values enable the inbox alongside the webhook. All three
+published images are pinned in those values, and the default inbox URL is
 `https://<flowrouteSMS.hostname>/inbox`; a separate hostname can be configured
-if desired. These commits have not been synced to the cluster. After scoped
-reconciliation, verify Authentik login, message filtering, image retrieval,
+if desired. After scoped reconciliation, verify Authentik login, message
+filtering, image retrieval, authorized sending,
 Flowroute callback HTTP 200 and a single MDR row in PostgreSQL. Check the
 [`core-home1-talos-prod` PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
 and downstream User claim conditions before relying on the generated
 connection Secret.
+
+The current database has no contact names, unread state, delivery receipts,
+or outbound MMS attachments. The UI displays phone numbers and accepted
+outbound SMS records without inventing those fields. Drafts live only in page
+memory, and a page reload clears them.
 
 The service uses the [Go standard library](https://go.dev/doc/),
 [`pgx`](https://github.com/jackc/pgx/),

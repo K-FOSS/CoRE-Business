@@ -25,6 +25,6 @@ spec:
       backendRefs:
         - group: ''
           kind: 'Service'
-          name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms") }}'
+          name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms-webhook") }}'
           port: 8080
 {{- end }}

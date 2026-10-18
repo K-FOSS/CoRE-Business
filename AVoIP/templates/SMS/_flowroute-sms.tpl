@@ -1,17 +1,18 @@
 {{- define "avoip.flowrouteSMS.commonValues" -}}
-{{- if and .Values.flowrouteSMS.enabled -}}
+{{- if .Values.flowrouteSMS.enabled -}}
 {{- $settings := .Values.flowrouteSMS -}}
 {{- if ne .Values.region $settings.primaryRegion -}}
-  {{- fail (printf "flowrouteSMS may only run in primaryRegion %q to keep the public callback hostname uniquely owned" $settings.primaryRegion) -}}
+  {{- fail (printf "flowrouteSMS may only run in primaryRegion %q" $settings.primaryRegion) -}}
 {{- end -}}
-{{- $_ := required "flowrouteSMS.hostname is required when enabled" $settings.hostname -}}
-{{- $_ := required "flowrouteSMS.image.repository is required when enabled" $settings.image.repository -}}
-{{- $_ := required "flowrouteSMS.image.digest is required when enabled" $settings.image.digest -}}
+{{- $_ := required "flowrouteSMS.hostname is required" $settings.hostname -}}
 {{- $fullName := include "avoip.fullname" . -}}
-{{- $name := include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms") -}}
 {{- $callbackSecretName := default (include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sms-callback")) $settings.callbackSecret.name -}}
 controllers:
-  flowroute-sms:
+  {{- range $mode := list "web" "api" "webhook" }}
+  {{- if or (ne $mode "web") $settings.inbox.enabled }}
+  {{- $suffix := printf "flowroute-sms-%s" $mode }}
+  {{- $name := include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" $suffix) }}
+  {{ $suffix }}:
     forceRename: '{{ $name }}'
     replicas: {{ max 2 (int $settings.replicas) }}
     strategy: RollingUpdate
@@ -20,6 +21,10 @@ controllers:
       surge: 1
     pod:
       automountServiceAccountToken: false
+      dnsConfig:
+        options:
+          - name: 'ndots'
+            value: '0'
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -28,34 +33,56 @@ controllers:
           type: RuntimeDefault
       topologySpreadConstraints:
         - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
+          topologyKey: 'kubernetes.io/hostname'
+          whenUnsatisfiable: 'ScheduleAnyway'
           labelSelector:
             matchLabels:
-              app.kubernetes.io/controller: flowroute-sms
+              app.kubernetes.io/controller: '{{ $suffix }}'
               app.kubernetes.io/instance: '{{ $.Release.Name }}'
     containers:
-      flowroute-sms:
+      {{ $suffix }}:
         image:
-          repository: '{{ $settings.image.repository }}'
-          tag: '{{ $settings.image.tag }}'
-          digest: '{{ $settings.image.digest }}'
+          repository: '{{ required (printf "flowrouteSMS.images.%s.repository is required" $mode) (index $settings.images $mode).repository }}'
+          tag: '{{ (index $settings.images $mode).tag }}'
+          digest: '{{ (index $settings.images $mode).digest }}'
           pullPolicy: '{{ $settings.image.pullPolicy }}'
         env:
-          - name: DATABASE_URL
+          - name: 'SMS_SERVICE_MODE'
+            value: '{{ $mode }}'
+          {{- if eq $mode "web" }}
+          - name: 'SMS_FRAME_ANCESTOR'
+            value: '{{ $settings.inbox.frameAncestor }}'
+          {{- end }}
+          {{- if ne $mode "web" }}
+          - name: 'DATABASE_URL'
             valueFrom:
               secretKeyRef:
                 name: '{{ default (printf "%s-core-voice-sms" $fullName) $settings.databaseSecret.name }}'
                 key: '{{ $settings.databaseSecret.key }}'
-          - name: FLOWROUTE_CALLBACK_TOKEN
+          {{- end }}
+          {{- if eq $mode "webhook" }}
+          - name: 'FLOWROUTE_CALLBACK_TOKEN'
             valueFrom:
               secretKeyRef:
                 name: '{{ $callbackSecretName }}'
                 key: '{{ $settings.callbackSecret.key }}'
-          - name: FLOWROUTE_SMS_DIAGNOSTICS
+          - name: 'FLOWROUTE_SMS_DIAGNOSTICS'
             value: '{{ $settings.diagnostics.enabled }}'
+          {{- end }}
+          {{- if eq $mode "api" }}
+          - name: 'FLOWROUTE_SMS_ACCESS_KEY'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $fullName }}-flowroute-sms-send'
+                key: 'AccessKey'
+          - name: 'FLOWROUTE_SMS_SECRET_KEY'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $fullName }}-flowroute-sms-send'
+                key: 'SecretKey'
+          {{- end }}
         ports:
-          - name: http
+          - name: 'http'
             containerPort: 8080
             protocol: TCP
         probes:
@@ -64,8 +91,8 @@ controllers:
             custom: true
             spec:
               httpGet:
-                path: /healthz
-                port: http
+                path: '/healthz'
+                port: 'http'
               periodSeconds: 5
               timeoutSeconds: 2
               failureThreshold: 30
@@ -74,8 +101,8 @@ controllers:
             custom: true
             spec:
               httpGet:
-                path: /healthz
-                port: http
+                path: '/healthz'
+                port: 'http'
               periodSeconds: 10
               timeoutSeconds: 2
               failureThreshold: 3
@@ -84,8 +111,8 @@ controllers:
             custom: true
             spec:
               httpGet:
-                path: /readyz
-                port: http
+                path: {{ if eq $mode "web" }}'/healthz'{{ else }}'/readyz'{{ end }}
+                port: 'http'
               periodSeconds: 5
               timeoutSeconds: 2
               failureThreshold: 3
@@ -94,14 +121,21 @@ controllers:
           readOnlyRootFilesystem: true
           capabilities:
             drop: ['ALL']
+  {{- end }}
+  {{- end }}
 service:
-  flowroute-sms:
-    forceRename: '{{ $name }}'
-    controller: flowroute-sms
+  {{- range $mode := list "web" "api" "webhook" }}
+  {{- if or (ne $mode "web") $settings.inbox.enabled }}
+  {{- $suffix := printf "flowroute-sms-%s" $mode }}
+  {{ $suffix }}:
+    forceRename: '{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" $suffix) }}'
+    controller: '{{ $suffix }}'
     ports:
       http:
         port: 8080
-        targetPort: http
+        targetPort: 'http'
         protocol: TCP
+  {{- end }}
+  {{- end }}
 {{- end -}}
 {{- end -}}

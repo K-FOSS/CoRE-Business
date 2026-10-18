@@ -125,12 +125,13 @@ S3-compatible object storage. Review database ownership, credentials, bucket
 policy, persistence, backup coverage and deletion semantics before changing a
 connection or resource identity.
 
-AVoIP's optional [Flowroute SMS receiver](../AVoIP/docs/FLOWROUTE-SMS.md) is a
-standalone Go callback service that stores inbound message records in its
+AVoIP's [Flowroute SMS stack](../AVoIP/docs/FLOWROUTE-SMS.md) has separate web,
+API, and webhook workloads. The webhook stores inbound message records in its
 `CoRE-Voice` User claim database. Its two-or-more stateless replicas deduplicate
-Flowroute retries by message ID. The public callback route is disabled by
-default and owned by the YVR primary region; activation also requires a
-provisioned callback token and immutable image digest. The service uses the
+Flowroute retries by message ID. The public callback route is owned by the YVR primary region and requires
+a provisioned callback token and immutable webhook image digest. The protected
+API uses the same PostgreSQL records for conversations and sends through
+Flowroute with separate Vault sourced credentials. The service uses the
 current global PSQL provider through the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
 [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),

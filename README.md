@@ -3,9 +3,10 @@
 AVoIP's [SIP Core INFO routing guide](AVoIP/docs/SIPCORE-DTMF.md) documents
 DTMF delivery to Asterisk, the separate RTPEngine trickle ICE path, and safe
 live verification of voicemail navigation and ACK routing.
-The independent [Flowroute SMS receiver](AVoIP/docs/FLOWROUTE-SMS.md) stores
-inbound callbacks in the shared PostgreSQL service and remains disabled until
-its public callback inputs and immutable image are provisioned.
+The [Flowroute SMS messaging stack](AVoIP/docs/FLOWROUTE-SMS.md) provides a
+responsive conversation inbox, authenticated send API, and independent inbound
+webhook. Its three workloads use the shared PostgreSQL service on the YVR
+primary cluster.
 The [SIP Core remote hangup guide](AVoIP/docs/SIPCORE-REMOTE-HANGUP.md)
 describes the separate Contact-alias loss caused by retransmitted answers.
 
