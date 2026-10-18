@@ -5,7 +5,8 @@ It runs separately from Asterisk and FreeSWITCH, accepts Flowroute's current
 JSON:API callback envelope and the older flat callback format, then writes
 messages to a PostgreSQL database provisioned by the cluster-scoped
 `CoRE-Voice` User claim. The User Composition generates the database role and
-its per-user database; the service creates its table and index when it starts.
+its per-user database; the service creates its message, attachment, and index
+tables when it starts.
 The current global database provider is `psql-main`, and the User Composition
 grants the database owner access to the `public` schema. See Backplane's
 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml),
@@ -54,16 +55,41 @@ or the callback token. Review Gateway access-log policy before enabling the
 public route so it does not record full request paths.
 
 The database credential is read from the `psqlURI` key in the `CoRE-Voice`
-connection Secret. The table is `public.flowroute_inbound_messages`, keyed by
-`message_id`, with sender, recipient, body, message type and timestamps. SMS
-body text is personal data and is retained in PostgreSQL backups with the
-cluster's normal database lifecycle. This initial service has no automatic
-retention deletion; define an explicit retention policy before using it for
-long-term message archiving. The current User Composition orphans its
-PostgreSQL database on claim deletion, so removing the chart or claim does not
-erase stored messages; review the retained database separately during
-decommissioning. MMS callbacks are acknowledged and store their
-sender/recipient/time and MMS flag, but do not download attachments.
+connection Secret. Messages are stored in `public.flowroute_inbound_messages`;
+MMS image bytes are stored as PostgreSQL `bytea` rows in
+`public.flowroute_inbound_media`, linked to their message. The receiver fetches
+only HTTPS signed media URLs from Flowroute's documented media host, accepts
+image MIME types, limits attachments to ten per message and 750 KiB total, and
+commits message and media rows together. Flowroute's signed download links
+expire, so attachments are copied into PostgreSQL on receipt. See the
+[Flowroute inbound MMS callback format](https://developer.flowroute.com/api/messages/v2.2/receive-an-mms/).
+Messages and pictures are personal data and are retained in PostgreSQL backups
+with the cluster's normal database lifecycle. There is no automatic retention
+deletion; define a retention policy before using this for long-term archiving.
+The current User Composition orphans its PostgreSQL database on claim deletion,
+so removing the chart or claim does not erase stored messages; review the
+retained database separately during decommissioning.
+
+## Authenticated inbox
+
+An optional private inbox is rendered when `flowrouteSMS.inbox.enabled` is
+true. Set its hostname and use an Authentik proxy outpost. The Envoy Gateway
+`SecurityPolicy` protects the entire inbox route and forwards Authentik's
+`X-Auth-Numbers` response header. The chart manages an Authentik provider scope
+mapping that builds this comma-separated allowlist from the user's Authentik
+`phone_number` user attribute and `sms_numbers` group attribute. Put E.164
+numbers in those attributes. The receiver filters messages by recipient number
+for both the message list and media download; requests without a valid number
+scope are denied. Do not bypass the authenticated Gateway route to expose the
+service directly. The web page renders message text as text and displays stored
+images without exposing Flowroute's expiring signed URLs.
+
+The inbox is disabled unless explicitly enabled and configured. It creates an
+Authentik proxy provider/application and policy binding for the configured
+access group. Keep the inbox hostname private; it has no public DNS ownership
+label or dashboard exposure annotation. Authentik custom provider headers are
+implemented through property mappings; see [Authentik custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
+and [Envoy Gateway external authorization](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/).
 
 The receiver has `/healthz` and a PostgreSQL-backed `/readyz`. Each pod uses a
 maximum of five PostgreSQL connections, so two replicas cap this service at ten
@@ -80,7 +106,8 @@ non-root binary. `AVoIP/tests/flowroute-sms-render.sh` checks that the stack is
 disabled by default, that enabling it renders the standalone workload and
 public route, and that a non-primary region cannot claim it.
 
-The service is not enabled by the chart defaults and has not been deployed.
+The inbox is opt-in and is not enabled by the chart defaults. The receiver's
+deployment state is controlled separately through the owning AVoIP values.
 Before activation, publish the image, set the Home1/YVR image digest and
 hostname through the AVoIP ApplicationSet values, provision the Vault token,
 then reconcile only the owning AVoIP Application. Verify that Flowroute

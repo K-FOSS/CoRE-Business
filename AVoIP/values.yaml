@@ -204,6 +204,17 @@ flowrouteSMS:
   databaseSecret:
     name: ''
     key: 'psqlURI'
+  inbox:
+    enabled: false
+    hostname: ''
+    providerConfigRef: 'authentik'
+    accessGroup: 'Home Users'
+    workspaceName: 'flowroute-sms-inbox-auth'
+    displayName: 'CoRE SMS Inbox'
+    authentikOutpost:
+      name: 'aaa-myloginspace-proxy'
+      namespace: 'core-prod'
+      port: 80
 
 sip:
   globalHost: 'sip.resolvemy.host'

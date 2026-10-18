@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -33,6 +34,27 @@ func TestParseMessageRejectsMissingSMSBody(t *testing.T) {
 	_, err := parseMessage([]byte(`{"data":{"id":"mdr2-test-redacted","attributes":{"direction":"inbound","from":"sender-test","to":"recipient-test","is_mms":false}}}`))
 	if err == nil || !strings.Contains(err.Error(), "body") {
 		t.Fatalf("expected missing SMS body error, got %v", err)
+	}
+}
+
+func TestParseMessageMMSIncludesMediaMetadata(t *testing.T) {
+	payload := `{"data":{"id":"mdr2-test-redacted","attributes":{"body":"photo","direction":"inbound","from":"sender-test","to":"recipient-test","is_mms":true},"relationships":{"media":{"data":[{"id":"media-test-redacted","type":"media"}]}}},"included":[{"id":"media-test-redacted","type":"media","attributes":{"file_name":"image.jpg","file_size":12,"mime_type":"image/jpeg","url":"https://mms-media-prod.s3.amazonaws.com/object?signature=redacted"}}]}`
+	message, err := parseMessage([]byte(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !message.IsMMS || len(message.Media) != 1 || message.Media[0].ID != "media-test-redacted" || message.Media[0].Attributes.MIMEType != "image/jpeg" {
+		t.Fatalf("MMS media metadata was not parsed: %#v", message)
+	}
+}
+
+func TestAllowedNumbersRejectsInvalidValues(t *testing.T) {
+	app := &server{}
+	r := httptest.NewRequest("GET", "/api/messages", nil)
+	r.Header.Set("X-Auth-Numbers", "+12065550100,not-a-number,+1206-555-0101")
+	numbers := app.allowedNumbers(r)
+	if len(numbers) != 1 || numbers[0] != "+12065550100" {
+		t.Fatalf("unexpected authorized number set: %#v", numbers)
 	}
 }
 

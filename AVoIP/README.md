@@ -9,9 +9,10 @@ only an exact trickle ICE media type enters RTPEngine's fragment handler. See
 [DTMF routing, regression checks and ACK verification](docs/SIPCORE-DTMF.md)
 for the Kamailio MIME parser caveat and live acceptance procedure.
 
-Inbound Flowroute SMS has its own optional Go HTTP receiver, PostgreSQL-backed
-storage and public callback route. It is independent of FreeSWITCH and disabled
-until its image, hostname and callback token are provisioned. See the
+Inbound Flowroute SMS has its own Go HTTP receiver, PostgreSQL-backed message
+and MMS image storage, and public callback route. An optional Authentik proxy
+inbox filters messages by user and group number attributes. It is independent
+of FreeSWITCH. See the
 [Flowroute SMS guide](docs/FLOWROUTE-SMS.md) for scaling, data handling,
 deployment inputs and verification.
 For inbound-call ACKs or remote BYEs rejected after a retransmitted answer,

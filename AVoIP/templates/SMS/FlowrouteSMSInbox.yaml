@@ -1,0 +1,123 @@
+{{- if and .Values.flowrouteSMS.enabled .Values.flowrouteSMS.inbox.enabled }}
+{{- $inbox := .Values.flowrouteSMS.inbox -}}
+{{- $hostname := required "flowrouteSMS.inbox.hostname is required when inbox is enabled" $inbox.hostname -}}
+{{- $_ := required "flowrouteSMS.inbox.providerConfigRef is required when inbox is enabled" $inbox.providerConfigRef -}}
+{{- $workspace := $inbox.workspaceName -}}
+{{- $slug := printf "core-sms-inbox-%s-%s-%s-managed" $.Values.region $.Values.datacenter $.Values.cluster.name -}}
+{{- $name := default "CoRE SMS Inbox" $inbox.displayName -}}
+---
+apiVersion: tf.upbound.io/v1beta1
+kind: Workspace
+metadata:
+  name: '{{ $workspace }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  providerConfigRef:
+    name: '{{ $inbox.providerConfigRef }}'
+  forProvider:
+    source: 'Inline'
+    varmap:
+      provider_name: '{{ $name }} {{ $.Values.cluster.name }}'
+      access_group: '{{ $inbox.accessGroup }}'
+      app_slug: '{{ $slug }}'
+      external_host: 'https://{{ $hostname }}'
+    module: |
+      variable "provider_name" { type = string }
+      variable "access_group" { type = string }
+      variable "app_slug" { type = string }
+      variable "external_host" { type = string }
+
+      data "authentik_flow" "authorization" { slug = "default-provider-authorization-implicit-consent" }
+      data "authentik_flow" "invalidation" { slug = "default-provider-invalidation-flow" }
+      data "authentik_group" "access" { name = var.access_group }
+
+      resource "authentik_property_mapping_provider_scope" "numbers" {
+        name       = "CoRE SMS inbox authorized numbers {{ $.Values.cluster.name }}"
+        scope_name = "core-sms-authorized-numbers-{{ $.Values.cluster.name }}"
+        expression = <<-PY
+          numbers = []
+          phone = request.user.attributes.get("phone_number", "")
+          if isinstance(phone, str) and phone.strip():
+              numbers.append(phone.strip())
+          group_values = request.user.group_attributes(request.http_request).get("sms_numbers", [])
+          if isinstance(group_values, str):
+              group_values = [group_values]
+          if isinstance(group_values, (list, tuple, set)):
+              numbers.extend(value.strip() for value in group_values if isinstance(value, str) and value.strip())
+          return {"ak_proxy": {"user_attributes": {"additionalHeaders": {"X-Auth-Numbers": ",".join(sorted(set(numbers)))}}}}
+        PY
+      }
+
+      resource "authentik_provider_proxy" "inbox" {
+        name                   = var.provider_name
+        mode                   = "forward_single"
+        external_host          = var.external_host
+        access_token_validity  = "hours=3"
+        authorization_flow     = data.authentik_flow.authorization.id
+        invalidation_flow      = data.authentik_flow.invalidation.id
+        property_mappings      = [authentik_property_mapping_provider_scope.numbers.id]
+      }
+
+      resource "authentik_application" "inbox" {
+        name              = var.provider_name
+        slug              = var.app_slug
+        meta_launch_url   = var.external_host
+        group             = "{{ $.Values.datacenter }}-{{ $.Values.cluster.name }}"
+        protocol_provider = authentik_provider_proxy.inbox.id
+      }
+
+      resource "authentik_policy_binding" "access" {
+        target = authentik_application.inbox.uuid
+        group  = data.authentik_group.access.id
+        order  = 0
+      }
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: '{{ include "avoip.fullname" . }}-sms-inbox-auth'
+spec:
+  targetRefs:
+    - group: 'gateway.networking.k8s.io'
+      kind: 'HTTPRoute'
+      name: '{{ include "avoip.fullname" . }}-sms-inbox'
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - 'cookie'
+      - 'x-forwarded-host'
+      - 'x-forwarded-method'
+      - 'x-forwarded-proto'
+      - 'x-forwarded-uri'
+    http:
+      headersToBackend:
+        - 'x-authentik-*'
+        - 'x-auth-numbers'
+      backendRefs:
+        - group: ''
+          kind: 'Service'
+          namespace: '{{ $inbox.authentikOutpost.namespace }}'
+          name: '{{ $inbox.authentikOutpost.name }}'
+          port: {{ $inbox.authentikOutpost.port }}
+      path: '/outpost.goauthentik.io/auth/envoy'
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: '{{ include "avoip.fullname" . }}-sms-inbox'
+spec:
+  parentRefs:
+    - kind: 'Gateway'
+      name: '{{ .Values.gateway.name }}'
+      namespace: '{{ .Values.gateway.namespace }}'
+      sectionName: '{{ .Values.gateway.sectionName }}'
+  hostnames:
+    - '{{ $hostname }}'
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms") }}'
+          port: 8080
+{{- end }}

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT
+
+helm template sms-inbox-check "$repo_root/AVoIP" --namespace core-prod \
+  --set cluster.name=core-home1-talos-prod \
+  --set datacenter=home1 \
+  --set region=yvr \
+  --set freeswitch.enabled=false \
+  --set flowrouteSMS.enabled=true \
+  --set flowrouteSMS.hostname=sms.mylogin.space \
+  --set flowrouteSMS.image.repository=forge.example/core/flowroute-sms \
+  --set flowrouteSMS.image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  --set flowrouteSMS.callbackSecret.name=sms-inbox-check-token \
+  --set flowrouteSMS.inbox.enabled=true \
+  --set flowrouteSMS.inbox.hostname=messages.mylogin.space \
+  >"$tmp_dir/render.yaml"
+
+for expected in \
+  "name: 'sms-inbox-check-avoip-sms-inbox'" \
+  "name: 'sms-inbox-check-avoip-sms-inbox-auth'" \
+  "name: 'flowroute-sms-inbox-auth'" \
+  'X-Auth-Numbers' \
+  'phone_number' \
+  'sms_numbers' \
+  'messages.mylogin.space'; do
+  grep -Fq "$expected" "$tmp_dir/render.yaml" || {
+    echo "Missing expected SMS inbox render value: $expected" >&2
+    exit 1
+  }
+done
+
+if sed -n '/name: sms-inbox-check-avoip-sms-inbox$/,/^---$/p' "$tmp_dir/render.yaml" | grep -q 'wan-mode: public'; then
+  echo 'The Authentik inbox route must not claim public DNS ownership' >&2
+  exit 1
+fi
+
+echo 'Flowroute SMS inbox rendering checks passed.'
