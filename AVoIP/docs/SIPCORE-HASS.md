@@ -1,5 +1,10 @@
 # Home Assistant SIP Core with static Asterisk extensions
 
+AVoIP uses [TECH7Fox/sipcore-hass-integration](https://github.com/TECH7Fox/sipcore-hass-integration)
+for Home Assistant SIP. The currently running integration version is **v5.1.2**,
+as confirmed by the operator on 2026-10-18. Use this version as the baseline
+for client compatibility investigations.
+
 The current Home1 Envoy Gateway resources, TLS termination, Host/Origin
 contract, timeout layers, and WSS instance are recorded in the [SIP HA gateway
 baseline](SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-09).

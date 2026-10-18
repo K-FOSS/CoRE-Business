@@ -509,6 +509,8 @@ been provisioned.
 
 The chart also includes a disabled-by-default SIP Core WebRTC path for the
 [SIP Core Home Assistant integration](https://github.com/TECH7Fox/sipcore-hass-integration).
+The currently running Home Assistant integration version is **v5.1.2**
+(operator-confirmed on 2026-10-18).
 It provisions static PJSIP extensions from External Secrets, serves WSS through
 Envoy to a separate named Kamailio WSS instance, and allows only exact
 configured internal destinations. Carrier and FreeSWITCH fax signaling stays
