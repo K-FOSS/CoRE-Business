@@ -636,17 +636,14 @@
       set_send_socket_name("private_tls");
     }
 
-    onreply_route[SIPCORE_ASTERISK_REPLY] {
-      {{- if .Values.kamailio.sipLogging.sipCore }}
-      xlog(
-        "L_WARN",
-        "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) content_type=$cT branch=dialog-response\n"
-      );
-      {{- end }}
-      # The callback INVITE is sent from Asterisk to a WebSocket contact. Alias
-      # the WebSocket Contact in its reply so Asterisk's later ACK/BYE can use
-      # the same live connection instead of routing to the browser's Contact.
-      if (nat_uac_test(64) && is_present_hf("Contact")) {
+    # TM's transaction reply route is not invoked for retransmitted 2xx.
+    # TOPOS still stores their Contact, so alias every browser response here
+    # before TM can take that path. Otherwise a later unaliased 200 overwrites
+    # the saved Contact and subsequent ACK/BYE requests cannot find the flow.
+    # Keep this restricted to the established SIP Core WebSocket listener.
+    reply_route {
+      if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }} &&
+          !is_method("REGISTER") && is_present_hf("Contact")) {
         if (add_contact_alias()) {
           {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
@@ -663,6 +660,16 @@
           {{- end }}
         }
       }
+      return;
+    }
+
+    onreply_route[SIPCORE_ASTERISK_REPLY] {
+      {{- if .Values.kamailio.sipLogging.sipCore }}
+      xlog(
+        "L_WARN",
+        "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) content_type=$cT branch=dialog-response\n"
+      );
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
@@ -698,7 +705,6 @@
       # host (and can produce the invalid URI sip:user@.invalid). Keep the
       # registrar's owner Contact URIs intact so each binding retains its own
       # routable owner and alias.
-      if (!is_method("REGISTER") && nat_uac_test(64) && is_present_hf("Contact")) add_contact_alias();
     }
     {{- end }}
 

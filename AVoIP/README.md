@@ -4,6 +4,8 @@ SIP Core relays SIP INFO DTMF to Asterisk through the validated dialog path;
 only an exact trickle ICE media type enters RTPEngine's fragment handler. See
 [DTMF routing, regression checks and ACK verification](docs/SIPCORE-DTMF.md)
 for the Kamailio MIME parser caveat and live acceptance procedure.
+For inbound-call ACKs or remote BYEs rejected after a retransmitted answer,
+see the [SIP Core Contact alias repair](docs/SIPCORE-REMOTE-HANGUP.md).
 
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the

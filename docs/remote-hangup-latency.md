@@ -1,5 +1,11 @@
 # Remote hangup latency investigation
 
+The separate Home Assistant inbound-call failure confirmed on 2026-10-18 is
+documented in the [SIP Core remote hangup repair](../AVoIP/docs/SIPCORE-REMOTE-HANGUP.md).
+That defect loses the browser Contact alias after a retransmitted answer and
+rejects Asterisk's BYE at the WebSocket owner. It does not establish a cause
+for the carrier-to-FreeSWITCH delay recorded below.
+
 ## Scope and result
 
 This note records an application-boundary investigation, the Flowroute

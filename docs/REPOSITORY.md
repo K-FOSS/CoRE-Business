@@ -3,6 +3,8 @@
 For SIP Core keypad failures, use the [INFO routing and ACK verification
 guide](../AVoIP/docs/SIPCORE-DTMF.md). It explains MIME classification,
 scoped Kamailio reconciliation and verification without logging PINs or digits.
+For remote hangups, also check the [retransmitted-answer Contact alias
+repair](../AVoIP/docs/SIPCORE-REMOTE-HANGUP.md).
 
 CoRE Business is organized by application domain. Most top-level deployment
 directories are Helm charts, but some also include Kustomize input or raw
