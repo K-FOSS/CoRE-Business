@@ -27,11 +27,19 @@ spec:
         name         = var.users_group
         is_superuser = false
         attributes   = jsonencode({ avoip_role = "user" })
+
+        lifecycle {
+          ignore_changes = [attributes]
+        }
       }
 
       resource "authentik_group" "avoip_admins" {
         name         = var.admins_group
         is_superuser = false
         attributes   = jsonencode({ avoip_role = "admin" })
+
+        lifecycle {
+          ignore_changes = [attributes]
+        }
       }
 {{- end }}

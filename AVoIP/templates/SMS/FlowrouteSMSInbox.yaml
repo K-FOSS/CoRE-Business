@@ -40,17 +40,44 @@ spec:
         name       = "CoRE SMS inbox authorized numbers {{ $.Values.cluster.name }}"
         scope_name = "core-sms-authorized-numbers-{{ $.Values.cluster.name }}"
         expression = <<-PY
+          def normalize_number(value):
+              if isinstance(value, bool):
+                  return None
+              if isinstance(value, int):
+                  value = str(value)
+              if not isinstance(value, str):
+                  return None
+              value = value.strip()
+              if value.startswith("+"):
+                  digits = value[1:]
+              elif value.isdigit():
+                  digits = value
+                  value = "+" + value
+              else:
+                  return None
+              if not digits or any(digit < "0" or digit > "9" for digit in digits):
+                  return None
+              if len(digits) < 8 or len(digits) > 15:
+                  return None
+              return value
+
           numbers = []
           phone_values = request.user.attributes.get("phone_number", [])
           if isinstance(phone_values, str):
               phone_values = [phone_values]
           if isinstance(phone_values, (list, tuple, set)):
-              numbers.extend(value.strip() for value in phone_values if isinstance(value, str) and value.strip())
+              for value in phone_values:
+                  number = normalize_number(value)
+                  if number:
+                      numbers.append(number)
           group_values = request.user.group_attributes(request.http_request).get("sms_numbers", [])
           if isinstance(group_values, str):
               group_values = [group_values]
           if isinstance(group_values, (list, tuple, set)):
-              numbers.extend(value.strip() for value in group_values if isinstance(value, str) and value.strip())
+              for value in group_values:
+                  number = normalize_number(value)
+                  if number:
+                      numbers.append(number)
           return {"ak_proxy": {"user_attributes": {"additionalHeaders": {"X-Auth-Numbers": ",".join(sorted(set(numbers)))}}}}
         PY
       }

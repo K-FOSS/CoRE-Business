@@ -88,7 +88,9 @@ an Authentik proxy outpost. The Envoy Gateway
 mapping that builds this comma-separated allowlist from the user's Authentik
 `phone_number` user attribute and `sms_numbers` group attribute. `phone_number`
 may be a single string or a list of strings; `sms_numbers` accepts the same
-forms. Put E.164 numbers in those attributes. The receiver filters messages by
+forms. The mapping accepts integer values as well as strings and adds a leading
+`+` to digit-only values; prefer strings in E.164 form (including `+`) so
+leading zeros and country codes are preserved. The receiver filters messages by
 recipient number for both the message list and media download; requests without
 a valid number scope are denied. Do not bypass the authenticated Gateway route
 to expose the service directly. The web page renders message text as text and
@@ -97,9 +99,11 @@ displays stored images without exposing Flowroute's expiring signed URLs.
 The primary-region [`avoip-authentik-groups` Workspace](templates/Authentik/AVoIPGroups.yaml)
 manages the `AVoIP Users` and `AVoIP Admins` groups, and runs before the inbox
 Workspace that looks them up. Assign users to these groups in Authentik; the
-chart does not provision a user roster or overwrite group membership. Both
-groups can open the inbox. The admin group is scoped to AVoIP and is not an
-Authentik superuser group. See Authentik's guide to
+chart does not provision a user roster or overwrite group membership or group
+attributes. The AVoIP Workspace preserves manually managed attributes such as
+`sms_numbers` during Terraform reconciliation. Both groups can open the inbox.
+The admin group is scoped to AVoIP and is not an Authentik superuser group. See
+Authentik's guide to
 [managing groups](https://docs.goauthentik.io/users-sources/groups/manage_groups).
 
 The inbox creates an Authentik proxy provider/application and policy bindings
