@@ -1,6 +1,6 @@
 # AVoIP
 
-YXL voice/IVR calls wait five seconds before answer without sending ringing
+YXL voice/IVR calls ring for five seconds before entering the answering IVR
 on their authenticated YVR ingress. See the [phone tree](docs/PHONE-TREE.md)
 for the scoped timing value and verification procedure.
 

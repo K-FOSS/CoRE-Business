@@ -53,8 +53,8 @@ grep -Fq 'field="${sip_h_X-Core-InterSite}" expression="^yxl$"' <<< "$home1_fs"
 [[ "$(grep -Fc 'field="${sip_h_X-Core-InterSite}" expression="^yxl$"' <<< "$home1_fs")" -eq 2 ]]
 grep -Fq 'inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip}' <<< "$home1_fs"
 
-# Only YXL's authenticated IVR ingress waits before entering the answering
-# extension. Neither ringing nor early media may be emitted during the wait.
+# Only YXL's authenticated IVR ingress rings while waiting before entering the
+# answering extension. It must not pre-answer before the shared IVR handoff.
 python3 - "$home1" <<'PY'
 import json
 import subprocess
@@ -69,8 +69,7 @@ context = root.find("context[@name='public']")
 ingress = context.find("extension[@name='authorized-inter-site-ivr']")
 actions = ingress.findall('.//action')
 assert [(a.get('application'), a.get('data')) for a in actions if a.get('application') != 'log'] == [
-    ('sleep', '5000'), ('transfer', 'silent-ivr-entry XML public')]
-assert not ingress.findall(".//action[@application='ring_ready']")
+    ('ring_ready', None), ('sleep', '5000'), ('transfer', 'silent-ivr-entry XML public')]
 assert not ingress.findall(".//action[@application='pre_answer']")
 entry = context.find("extension[@name='silent-ivr-entry']")
 assert entry.find('.//action').get('application') == 'answer'
@@ -80,7 +79,7 @@ assert not voice.findall(".//action[@application='sleep']")
 fax = context.find("extension[@name='authorized-inter-site-extension']")
 assert fax.find(".//action[@application='ring_ready']") is not None
 assert not fax.findall(".//action[@application='sleep']")
-print('PASS: YXL IVR waits five seconds unanswered without ringing; local YVR voice and fax timing remain unchanged')
+print('PASS: YXL IVR rings for five seconds before answering; local YVR voice and fax timing remain unchanged')
 PY
 
 # A trusted initial CANCEL must reach TM before the new-request-only 405.

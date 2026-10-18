@@ -211,7 +211,7 @@ documents the Authentik group, WAV format, PBX file paths and retained-volume
 behavior; the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 selects the production clusters and existing StorageClass values.
 The active YXL voice DID crosses the authenticated inter-site link to YVR's
-IVR ingress `7102`, which waits five seconds before answering without ringing.
+IVR ingress `7102`, which rings for five seconds before answering.
 YVR's own voice DID answers immediately. Both FaxNumber DIDs route to YVR's
 Asterisk SIP Core endpoint `7101`; see the [phone tree](../AVoIP/docs/PHONE-TREE.md).
 Kamailio and RTPEngine default listeners use each pod's Downward API address for
