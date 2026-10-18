@@ -16,7 +16,6 @@ helm template sms-inbox-check "$repo_root/AVoIP" --namespace core-prod \
   --set flowrouteSMS.image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --set flowrouteSMS.callbackSecret.name=sms-inbox-check-token \
   --set flowrouteSMS.inbox.enabled=true \
-  --set flowrouteSMS.inbox.hostname=messages.mylogin.space \
   >"$tmp_dir/render.yaml"
 
 for expected in \
@@ -26,7 +25,7 @@ for expected in \
   'X-Auth-Numbers' \
   'phone_number' \
   'sms_numbers' \
-  'messages.mylogin.space'; do
+  'sms.mylogin.space'; do
   grep -Fq "$expected" "$tmp_dir/render.yaml" || {
     echo "Missing expected SMS inbox render value: $expected" >&2
     exit 1
