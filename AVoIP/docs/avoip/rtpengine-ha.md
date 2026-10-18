@@ -38,18 +38,30 @@ This verifies the restore-marker readiness gate, Deployment strategy and
 60-second Ready interval. It does not inject a Valkey outage or establish media
 continuity for an active call.
 
-Kamailio currently controls RTPEngine over its private NG UDP Service port.
-The [Kamailio RTPEngine module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
-uses short disable and ping intervals to recover after an endpoint change.
-An earlier UDP socket failed to recover after Service endpoint replacement;
-verify new calls after each RTPEngine rollout. WebSocket control is temporarily
+Kamailio controls RTPEngine through the stable internal Service DNS name and
+UDP NG port; its configuration does not pin a pod IP. The [Kamailio RTPEngine
+module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html) uses
+`rtpengine_disable_tout=5`, `aggressive_redetection=1`, and
+`ping_interval=5` to recover quickly after an endpoint becomes unreachable.
+The restore-marker readiness probe keeps a replacement out of Service
+endpoints until Redis state restoration completes; the 60-second minimum-ready
+interval then retains the previous endpoint while the new pod settles. During
+that overlap, either Ready endpoint may receive a control request, so the
+Redis-backed active-switchover path and actual call behavior still need a
+controlled inbound-call test. The earlier rollout window contained Kamailio
+initial-SDP control failures before the restore gate was deployed; after the
+gated rollout, the active Kamailio replicas had no recent RTPEngine-control
+errors. This is evidence for the startup readiness gap, not proof of audio or
+end-to-end call continuity. WebSocket control is temporarily
 disabled because the live RTPEngine process exited with signal 11 after its
 first offer on that path. The crash cause still needs a core backtrace.
 The chart hashes RTPEngine values into Kamailio's pod template so an RTPEngine
-configuration rollout also replaces Kamailio pods and their UDP control sockets.
-An unplanned RTPengine pod replacement can still leave the old socket unusable;
-the module has returned `Destination address required` even with short recovery
-timers, so verify calls and restart Kamailio if that occurs.
+configuration change can also replace Kamailio pods and their UDP control
+sockets. An unplanned RTPEngine endpoint failure can still leave a Kamailio
+worker unable to send control traffic; the module has returned
+`Destination address required` despite the short recovery timers. Monitor the
+active replicas and verify a new call after an unplanned failure; restart only
+the affected Kamailio pod if the socket does not recover.
 RTPEngine's optional [WebSocket NG interface](https://rtpengine.readthedocs.io/en/latest/http_websocket_support.html)
 uses the same NG control commands. The selected control port is reachable
 through the cluster-internal Service and the Kamailio egress rules rendered by
