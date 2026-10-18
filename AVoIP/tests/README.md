@@ -34,6 +34,29 @@ Follow the [outbound teardown live acceptance](../docs/avoip/runbooks/outbound-f
 for both BYE directions, cross-replica routing, UPDATE, RTPEngine cleanup,
 CDR, and Homer checks.
 
+The Homer capture-ID and SIP-dialog correlation render check is:
+
+```sh
+AVoIP/tests/homer-correlation-render.sh
+```
+
+It verifies distinct role IDs for Kamailio, FreeSWITCH, and RTPEngine while
+retaining the native SIP dialog identifiers and configured Homer correlation.
+
+The RTPEngine Redis restore and rolling-replacement guard is checked with:
+
+```sh
+AVoIP/tests/rtpengine-redis-rollout-render.sh
+```
+
+This renders the full chart through the post-Helm Kustomize patch and confirms
+the old pod remains available until the replacement has stayed Ready for the
+configured interval. It also checks Kamailio's explicit RTPEngine control
+timeout, retry, startup ping, and redetection parameters plus safe trickle-ICE
+failure metadata. It does not inject a Valkey or RTPEngine endpoint failure,
+prove runtime reconnection, or establish that live RTP sessions survive a node
+loss.
+
 The optional Routr Connect integration has a separate rendering check:
 
 ```sh
@@ -52,6 +75,13 @@ Run the WSS edge rendering checks from the repository root:
 ```sh
 helm lint AVoIP
 AVoIP/tests/wss-ha-render.sh
+```
+
+Verify DNS resolver options across Asterisk, FreeSWITCH, and every Kamailio
+instance, including the per-instance profile override, with:
+
+```sh
+AVoIP/tests/dns-ndots-render.sh
 ```
 
 Verify Asterisk's RTP engine/STUN configuration and the IPv4-only SIP/RTP

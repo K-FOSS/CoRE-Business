@@ -15,7 +15,10 @@ trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$legacy" "$invalid" "$comp
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
-  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" > "$rendered"
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set-string avoip.did=5550100 \
+  --set-string fax.did=5550101 \
+  --set-string asterisk.sipCore.inboundVoiceExtension=7101 > "$rendered"
 
 assert_yq() {
   local query="$1"
@@ -58,6 +61,8 @@ grep -Fq 'SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-ow
 grep -Fq 't_on_reply("SIPCORE_WS_REPLY")' <<<"$config"
 grep -Fq 'onreply_route[SIPCORE_WS_REPLY]' <<<"$config"
 grep -Fq 'rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")' <<<"$config"
+grep -Fq 'Unsupported WebSocket Contact' <<<"$config"
+grep -Fq '@SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-owner.core-prod.svc.cluster.local:5063;transport=tls' <<<"$config"
 ! grep -Fq '@.invalid;transport=ws' <<<"$config"
 ! grep -Fq '@.invalid;transport=ws/ig' <<<"$config"
 grep -Fq 'sipcore.mylogin.space' <<<"$config"
@@ -157,6 +162,10 @@ grep -Fq 'destination-format=plus-national-nanp' <<<"$external_freeswitch"
 grep -Fq 'sofia/gateway/flowroute-tls/+1${destination_number:1}' <<<"$external_freeswitch"
 echo 'PASS: opt-in external callback validates ANI, marks the authenticated egress request, and presents the configured DID'
 echo 'PASS: callback IVR handoff bypasses the generic GG bridge-failure fallback'
+grep -Fq 'exten => 5550100,1,Dial(${PJSIP_DIAL_CONTACTS(7101)},30)' "$rendered"
+grep -Fq 'exten => 5550101,1,Dial(${PJSIP_DIAL_CONTACTS(7101)},30)' "$rendered"
+sed -n '/\[sipcore-callback-contact-7101\]/,/^    \[/p' "$rendered" | grep -Fq 'Dial(${PJSIP_DIAL_CONTACTS(7101)},30)'
+echo 'PASS: inbound and callback routes fan out to all registered SIP Core contacts'
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
@@ -208,6 +217,7 @@ grep -Fq 'stage=asterisk-return-in' <<<"$split_config"
 grep -Fq 'stage=asterisk-invite-owner-uri-fallback' <<<"$split_config"
 grep -Fq '$(ru{uri.host}) == "SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-owner.core-prod.svc.cluster.local"' <<<"$split_config"
 grep -Fq 'if (is_method("INVITE") &&' <<<"$split_config"
+! grep -Fq 'ruri_host=$rd route_present=$hdr(Route)' <<<"$split_config"
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
