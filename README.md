@@ -37,12 +37,12 @@ and periodic endpoint redetection after transient errors; see
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-The AVoIP desired state routes both regional voice DIDs to a silent FreeSWITCH
-digit collector. YVR offers its configured Asterisk destinations; YXL routes
-`7101` to its local voicemail mailbox, seeded from the same CoreVault PIN
-property as YVR. Callers can press `0` during the mailbox greeting to open the
-mailbox and PIN prompts. Both sites' FaxNumber DIDs route to Asterisk rather
-than the fax receiver. See the
+The active AVoIP Application values send YXL's voice DID over the existing
+inter-site link to YVR's FreeSWITCH digit collector. Its authenticated ingress
+waits five seconds before answer without sending ringing; YVR's own voice DID
+enters the collector immediately. Both sites' FaxNumber DIDs route to YVR
+Asterisk rather than the fax receiver. Callers can press `0` during a mailbox
+greeting to open the mailbox and PIN prompts. See the
 [inbound routing guide](AVoIP/docs/PHONE-TREE.md).
 Failed inbound FreeSWITCH handoffs to Asterisk answer the caller, play GG,
 and hang up normally; the same guide documents verification and rollback.

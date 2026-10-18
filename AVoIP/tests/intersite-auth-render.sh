@@ -53,6 +53,36 @@ grep -Fq 'field="${sip_h_X-Core-InterSite}" expression="^yxl$"' <<< "$home1_fs"
 [[ "$(grep -Fc 'field="${sip_h_X-Core-InterSite}" expression="^yxl$"' <<< "$home1_fs")" -eq 2 ]]
 grep -Fq 'inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip}' <<< "$home1_fs"
 
+# Only YXL's authenticated IVR ingress waits before entering the answering
+# extension. Neither ringing nor early media may be emitted during the wait.
+python3 - "$home1" <<'PY'
+import json
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+resources = json.loads(subprocess.check_output(['yq', '-s', '.', sys.argv[1]]))
+dialplan = next(r['data']['public.xml'] for r in resources if r and r.get('kind') == 'ConfigMap'
+                and r['metadata']['name'].endswith('-freeswitch-dialplan-configs'))
+root = ET.fromstring(dialplan)
+context = root.find("context[@name='public']")
+ingress = context.find("extension[@name='authorized-inter-site-ivr']")
+actions = ingress.findall('.//action')
+assert [(a.get('application'), a.get('data')) for a in actions if a.get('application') != 'log'] == [
+    ('sleep', '5000'), ('transfer', 'silent-ivr-entry XML public')]
+assert not ingress.findall(".//action[@application='ring_ready']")
+assert not ingress.findall(".//action[@application='pre_answer']")
+entry = context.find("extension[@name='silent-ivr-entry']")
+assert entry.find('.//action').get('application') == 'answer'
+assert not entry.findall(".//action[@application='sleep']")
+voice = context.find("extension[@name='flowroute-did']")
+assert not voice.findall(".//action[@application='sleep']")
+fax = context.find("extension[@name='authorized-inter-site-extension']")
+assert fax.find(".//action[@application='ring_ready']") is not None
+assert not fax.findall(".//action[@application='sleep']")
+print('PASS: YXL IVR waits five seconds unanswered without ringing; local YVR voice and fax timing remain unchanged')
+PY
+
 # A trusted initial CANCEL must reach TM before the new-request-only 405.
 cancel_lookup_line="$(grep -nF 'if (!t_lookup_cancel())' <<< "$home1_cfg" | head -1 | cut -d: -f1)"
 method_deny_line="$(grep -nF 'Inter-site Method Not Allowed' <<< "$home1_cfg" | head -1 | cut -d: -f1)"

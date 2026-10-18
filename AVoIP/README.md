@@ -1,5 +1,9 @@
 # AVoIP
 
+YXL voice/IVR calls wait five seconds before answer without sending ringing
+on their authenticated YVR ingress. See the [phone tree](docs/PHONE-TREE.md)
+for the scoped timing value and verification procedure.
+
 SIP Core relays SIP INFO DTMF to Asterisk through the validated dialog path;
 only an exact trickle ICE media type enters RTPEngine's fragment handler. See
 [DTMF routing, regression checks and ACK verification](docs/SIPCORE-DTMF.md)

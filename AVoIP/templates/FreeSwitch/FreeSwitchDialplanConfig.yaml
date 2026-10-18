@@ -20,6 +20,11 @@
 {{- if and .Values.freeswitch.ivr.enabled (or (not (regexMatch "^[0-9]{2,8}$" (toString .Values.freeswitch.interSite.ivrExtension))) (eq (toString .Values.freeswitch.interSite.ivrExtension) (toString .Values.freeswitch.interSite.extension))) }}
 {{- fail "freeswitch.interSite.ivrExtension must be a distinct numeric ingress extension when inter-site IVR routing is enabled" }}
 {{- end }}
+{{- if and $.Values.freeswitch.ivr.enabled $.Values.freeswitch.interSite.ivrExtension }}
+{{- if or (not (regexMatch "^[0-9]+$" (toString $.Values.freeswitch.interSite.ivrAnswerDelayMs))) (gt (int $.Values.freeswitch.interSite.ivrAnswerDelayMs) 60000) }}
+{{- fail "freeswitch.interSite.ivrAnswerDelayMs must be an integer from 0 through 60000" }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- if .Values.freeswitch.ivr.enabled }}
 {{- if or (not .Values.asterisk.enabled) (and (not .Values.asterisk.sipCore.enabled) (not .Values.asterisk.voicemail.enabled)) (eq (len .Values.freeswitch.ivr.extensions) 0) (lt (int .Values.freeswitch.ivr.timeoutMs) 1000) (gt (int .Values.freeswitch.ivr.timeoutMs) 60000) (lt (int .Values.freeswitch.ivr.digitTimeoutMs) 500) (gt (int .Values.freeswitch.ivr.digitTimeoutMs) 5000) }}
@@ -74,7 +79,12 @@ data:
         <extension name="authorized-inter-site-ivr">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.ivrExtension }}$"/>
           <condition field="${sip_h_X-Core-InterSite}" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
-            <action application="log" data="INFO AVoIP authorized inter-site IVR peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number} uuid=${uuid} call_id=${sip_call_id} backend=silent-ivr-entry"/>
+            <action application="log" data="INFO AVoIP authorized inter-site IVR peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number} uuid=${uuid} call_id=${sip_call_id} backend=silent-ivr-entry answer_delay_ms={{ $.Values.freeswitch.interSite.ivrAnswerDelayMs }}"/>
+            {{- if gt (int $.Values.freeswitch.interSite.ivrAnswerDelayMs) 0 }}
+            <!-- sleep supports an unanswered channel; do not send ring_ready
+                 or pre_answer before entering the shared IVR's answer. -->
+            <action application="sleep" data="{{ $.Values.freeswitch.interSite.ivrAnswerDelayMs }}"/>
+            {{- end }}
             <action application="transfer" data="silent-ivr-entry XML public"/>
           </condition>
         </extension>

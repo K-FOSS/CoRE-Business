@@ -1010,6 +1010,9 @@ freeswitch:
     extension: ''
     # Optional second ingress extension that enters the local IVR.
     ivrExtension: ''
+    # Wait unanswered, without ringing/early media, on the authenticated
+    # inter-site IVR ingress only. The active consumer is YXL's voice DID.
+    ivrAnswerDelayMs: 5000
   ivr:
     # Extension dialer, enabled only where a local Asterisk SIP Core is
     # configured to accept the selected internal destinations.
