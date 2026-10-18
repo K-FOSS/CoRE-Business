@@ -116,6 +116,23 @@ frontend event telemetry plus correlated internal SIP logs/HEP.
 
 ### Latest outbound-call sample
 
+### Live outbound and remote-hangup verification (2026-10-18)
+
+An operator-initiated YVR outbound call was observed through the internal
+FreeSWITCH callback route and the Flowroute TLS leg. FreeSWITCH selected the
+authorized NANP route, offered the configured PCMU/PCMA codec policy, and the
+carrier returned `183 Session Progress` followed by `200 OK`; ACKs were
+relayed through the owning Kamailio instance. After approximately two minutes,
+the remote side sent BYE. Kamailio accepted it, deleted the RTPEngine media
+session successfully, relayed the BYE to the internal side, and received
+`200 OK`. FreeSWITCH closed both legs with `NORMAL_CLEARING`, and Home
+Assistant disconnected at the same time. This verifies carrier-leg teardown
+propagation for this call without exposing the destination or call identity.
+
+This sample verifies signaling and media-session cleanup. It does not replace
+the separate RTP packet and codec evidence required for the complete voice
+baseline, and it does not enable the opt-in outbound service-peer pilot.
+
 The browser HAR for a Call-ID shows a successful
 authenticated outbound call to `[EXTERNAL-DESTINATION]`. The initial INVITE
 received the expected Digest challenge; the authenticated retry received 100
