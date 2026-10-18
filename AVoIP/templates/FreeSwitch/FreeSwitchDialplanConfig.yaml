@@ -80,10 +80,10 @@ data:
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.ivrExtension }}$"/>
           <condition field="${sip_h_X-Core-InterSite}" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
             <action application="log" data="INFO AVoIP authorized inter-site IVR peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number} uuid=${uuid} call_id=${sip_call_id} backend=silent-ivr-entry answer_delay_ms={{ $.Values.freeswitch.interSite.ivrAnswerDelayMs }}"/>
+            <action application="ring_ready"/>
             {{- if gt (int $.Values.freeswitch.interSite.ivrAnswerDelayMs) 0 }}
             <!-- Signal ringing while the channel waits; the shared IVR answers
                  after the delay. Do not pre_answer before that handoff. -->
-            <action application="ring_ready"/>
             <action application="sleep" data="{{ $.Values.freeswitch.interSite.ivrAnswerDelayMs }}"/>
             {{- end }}
             <action application="transfer" data="silent-ivr-entry XML public"/>

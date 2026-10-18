@@ -44,11 +44,12 @@ DID enters that same local IVR. YXL's FaxNumber DID and YVR's FaxNumber DID
 route to the YVR Asterisk SIP Core endpoint `7101`; the YXL transfer uses the
 same existing carrier link, targeting extension `7101` directly.
 
-YXL voice calls now ring for five seconds at the authenticated `7102`
-ingress before entering the answering IVR. The delay is controlled by
+YXL voice calls now ring and immediately enter the answering IVR at the
+authenticated `7102` ingress. The delay is controlled by
 `freeswitch.interSite.ivrAnswerDelayMs` (default `5000`, integer `0`–`60000`);
 it uses [FreeSWITCH's sleep application](https://developer.signalwire.com/freeswitch/dialplan/dptools/)
-on the ringing channel, followed by the existing transfer and answer.
+on the ringing channel, followed by the existing transfer and answer. The
+current site value is `0`.
 Caller cancellation can end the call during the wait. YVR's own voice DID
 still enters the shared IVR immediately; the fax routes retain their timing.
 
@@ -56,8 +57,8 @@ The implementation lives in YVR's dialplan even though it serves the YXL DID.
 Reconcile only the Home1 FreeSWITCH dialplan ConfigMap through its owning
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
 Application. Its existing Reloader watches that ConfigMap and rolls the
-FreeSWITCH replicas. Verify an INVITE followed by ringing and a final answer
-after at least five seconds; also cancel a call
+FreeSWITCH replicas. Verify an INVITE followed by ringing and an immediate
+answer; also cancel a call
 during the wait. The configured digit-input timeout begins after answer.
 Setting the delay to `0` restores immediate answer on that ingress. This
 change adds no storage, identity or voicemail provisioning.

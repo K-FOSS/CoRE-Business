@@ -142,8 +142,8 @@ inter-site route uses the ordinary YVR carrier ClusterIP Service at
    YVR's existing FreeSWITCH backend.
 4. FreeSWITCH requires the marker. Extension `7101` bridges to the existing
    authenticated Asterisk gateway. Extension `7102` enters the silent digit
-   collector after ringing for five seconds. `freeswitch.interSite.ivrAnswerDelayMs`
-   controls this delay.
+   collector after ringing, with no configured wait. `freeswitch.interSite.ivrAnswerDelayMs`
+   controls this delay and is currently `0`.
    YVR's local voice DID enters that same collector directly, with no wait.
    Callers can type only `7101`, `9090`, `66`, or `1234`; FreeSWITCH validates
    the exact allowlist before passing the selected destination through its

@@ -39,7 +39,7 @@ Kamailio as named instances; its active site lists are supplied by the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
 The active AVoIP Application values send YXL's voice DID over the existing
 inter-site link to YVR's FreeSWITCH digit collector. Its authenticated ingress
-rings for five seconds before answer; YVR's own voice DID
+rings and answers immediately; YVR's own voice DID
 enters the collector immediately. Both sites' FaxNumber DIDs route to YVR
 Asterisk rather than the fax receiver. Callers can press `0` during a mailbox
 greeting to open the mailbox and PIN prompts. See the

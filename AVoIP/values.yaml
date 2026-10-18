@@ -1012,7 +1012,7 @@ freeswitch:
     ivrExtension: ''
     # Ring while waiting before answering on the authenticated inter-site IVR
     # ingress only. The active consumer is YXL's voice DID.
-    ivrAnswerDelayMs: 5000
+    ivrAnswerDelayMs: 0
   ivr:
     # Extension dialer, enabled only where a local Asterisk SIP Core is
     # configured to accept the selected internal destinations.
