@@ -53,6 +53,26 @@ FreeSWITCH. Do not use a production prompt name for the first save.
 The active owner is the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
 which renders this chart through Lovely for the selected production clusters.
 
-The FreeSWITCH IVR greeting reads `IVRGreet.wav` from this library at each site.
-The chart stores the filename reference but does not package the audio asset;
-upload the same file to both site-local libraries before enabling the IVR.
+## YVR and YXL deployments
+
+YVR/Home1 and YXL/DC1 each run their own audio-library editor and have a
+separate site-local PVC. As of 2026-10-17 22:57 UTC, both editor pods were
+ready (`1/1`) with zero restarts, and both 5 GiB PVCs were `Bound` with
+`ReadWriteMany` access on `avoip-homer-rwx`. The pod readiness probe requests
+the trailing-slash editor path, so this confirms the NGINX health check is
+passing at both sites.
+
+`IVRGreet.wav` was present in both mounted libraries at that check. The
+observed files had different SHA-256 checksums, confirming that the site-local
+volumes held different versions then. The YVR and YXL libraries do not
+replicate or synchronize files automatically. Upload or replace prompts at
+each site separately; when a prompt is intended to be identical, compare its
+checksum after uploading it to both libraries. The chart references the
+FreeSWITCH greeting by filename and does not package or distribute its audio
+bytes.
+
+The YVR `IVRGreet.wav` prompt was subsequently loaded from the sound library
+and played successfully through FreeSWITCH. This verifies the YVR FreeSWITCH
+mount and playback path. The sound editor and library have also been confirmed
+to authenticate through Authentik only. Playback through Asterisk and playback
+at YXL have not been verified here.

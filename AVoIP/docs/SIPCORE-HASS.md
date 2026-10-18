@@ -116,7 +116,7 @@ frontend event telemetry plus correlated internal SIP logs/HEP.
 
 ### Latest outbound-call sample
 
-The browser HAR for Call-ID `ktgiuhspo8fer42ob1g5` shows a successful
+The browser HAR for a Call-ID shows a successful
 authenticated outbound call to `[EXTERNAL-DESTINATION]`. The initial INVITE
 received the expected Digest challenge; the authenticated retry received 100
 Trying, 183 Session Progress with SDP, then 200 OK with SDP. The 183 and final
