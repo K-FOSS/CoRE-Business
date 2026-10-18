@@ -17,5 +17,17 @@ yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod
 rtpengine_args="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | .args[0]' "$temp_dir/final-render.yaml")"
 grep -Fq -- '--redis=' <<< "$rtpengine_args"
 ! grep -Fq -- '--no-redis-required' <<< "$rtpengine_args"
+yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | .readinessProbe.exec.command[-1] == "test -f /tmp/rtpengine-redis-restored"' "$temp_dir/final-render.yaml" >/dev/null
+yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | any(.volumeMounts[]; .mountPath == "/usr/local/bin/rtpengine-redis-restore-entrypoint.sh" and .readOnly == true)' "$temp_dir/final-render.yaml" >/dev/null
+restore_entrypoint="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine-redis-restore-gate") | .data["redis-restore-entrypoint.sh"]' "$temp_dir/final-render.yaml")"
+grep -Fq "Redis restore time =" <<< "$restore_entrypoint"
+grep -Fq 'rtpengine-redis-restored' <<< "$restore_entrypoint"
+mkdir -p "$temp_dir/restore-gate-test"
+RTPENGINE_REDIS_RESTORE_REQUIRED=true \
+RTPENGINE_RESTORE_MARKER="$temp_dir/restore-gate-test/restored" \
+RTPENGINE_RESTORE_OUTPUT_PIPE="$temp_dir/restore-gate-test/output" \
+  /bin/sh "$repo_root/AVoIP/files/rtpengine/redis-restore-entrypoint.sh" \
+    /bin/sh -c 'printf "%s\n" "Redis restore time = 25 ms"'
+test -f "$temp_dir/restore-gate-test/restored"
 
-echo 'PASS: RTPEngine replacement retains the prior pod until Redis-backed startup is Ready for 60 seconds'
+echo 'PASS: RTPEngine replacement waits for Redis restoration and 60 seconds of Ready status before advancing'

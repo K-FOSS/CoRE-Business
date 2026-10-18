@@ -37,12 +37,13 @@ enabled). During a rolling update, Kubernetes waits until a replacement has
 remained Ready for that interval before advancing to the next replica (see
 the [Deployment rolling-update behavior](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#min-ready-seconds)).
 RTPEngine uses required Redis persistence and restores saved sessions during
-startup; with `maxUnavailable: 0`, the previous pod remains until its
-replacement is Ready and has stayed Ready for 60 seconds. This is a startup
-rollout safeguard, not proof that a surviving RTPEngine pod can take over an
-existing media socket or that media survives a node failure. Readiness and
-graceful termination still determine whether a replacement is safe to serve
-traffic.
+startup. Its entrypoint gates readiness on the restore-completion message
+(`Redis restore time = … ms`), and the Deployment then requires the replacement
+to remain Ready for 60 seconds. With `maxUnavailable: 0`, Kubernetes retains
+the previous pod until both conditions are met. If Redis restoration does not
+complete, the rollout stalls with the previous pod still running. This is a
+startup rollout safeguard, not proof that a surviving RTPEngine pod can take
+over an existing media socket or that media survives a node failure.
 
 ## HA progression
 

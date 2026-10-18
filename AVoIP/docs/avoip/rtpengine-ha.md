@@ -19,11 +19,14 @@ the SIP workloads. RTPEngine is configured with required Redis persistence
 (the chart does not pass `--no-redis-required`); it waits for a Redis primary
 and restores stored calls during startup, as described in the upstream
 [Redis persistence options](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md#redis).
-Kubernetes therefore keeps the old pod until the new process completes startup
-and remains Ready for 60 seconds. This delay does not prove that a second pod
-can own the old UDP media socket; avoid scaling RTPEngine beyond its current
-replica count until media-address ownership and live-call recovery are
-separately tested.
+Its entrypoint forwards RTPEngine output and creates a readiness marker only
+after its `Redis restore time = … ms` completion line. If Redis is unavailable
+or restore does not complete, the replacement stays unready and the rollout
+stalls while the old pod remains. Once the marker makes it Ready,
+`minReadySeconds: 60` requires another full minute of Ready status before the
+Deployment can advance. This delay does not prove that a second pod can own the
+old UDP media socket; avoid scaling RTPEngine beyond its current replica count
+until media-address ownership and live-call recovery are separately tested.
 
 Render the post-Helm rollout patch and check the Redis startup requirement with:
 
@@ -31,8 +34,9 @@ Render the post-Helm rollout patch and check the Redis startup requirement with:
 AVoIP/tests/rtpengine-redis-rollout-render.sh
 ```
 
-This verifies the Deployment strategy and 60-second Ready interval. It does not
-inject a Valkey outage or establish media continuity for an active call.
+This verifies the restore-marker readiness gate, Deployment strategy and
+60-second Ready interval. It does not inject a Valkey outage or establish media
+continuity for an active call.
 
 Kamailio currently controls RTPEngine over its private NG UDP Service port.
 The [Kamailio RTPEngine module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
