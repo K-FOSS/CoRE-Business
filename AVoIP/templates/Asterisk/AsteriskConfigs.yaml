@@ -221,12 +221,12 @@ data:
       same => n,GotoIf($[${REGEX("^1[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})}]?valid)
       same => n,GotoIf($[${REGEX("^[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})}]?national:reject)
       same => n(national),Set(AVOIP_CALLBACK_DIGITS=1${AVOIP_CALLBACK_DIGITS})
-      same => n(valid),Set(__AVOIP_CALLBACK_TARGET=+${AVOIP_CALLBACK_DIGITS})
-      same => n,Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1)
+      ; Pass the validated target as a hangup-handler argument. Do not rely on
+      ; channel-variable inheritance through Originate's paired Local channels.
+      same => n(valid),Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1(+${AVOIP_CALLBACK_DIGITS}))
       same => n,Hangup()
       {{- range $.Values.asterisk.sipCore.extensions }}
-      same => n(internal-{{ .number }}),Set(__AVOIP_CALLBACK_INTERNAL_TARGET={{ .number }})
-      same => n,Set(CHANNEL(hangup_handler_push)=sipcore-external-callback-internal,s,1)
+      same => n(internal-{{ .number }}),Set(CHANNEL(hangup_handler_push)=sipcore-external-callback-internal,s,1({{ .number }}))
       same => n,Hangup()
       {{- end }}
       same => n(reject),NoOp(AVoIP external callback rejected: caller identity is not a valid NANP number)
@@ -322,24 +322,26 @@ data:
     ; The hangup handler outlives the inbound IVR leg. Once the external
     ; caller answers, Originate enters the GG-audio bridge context.
     [sipcore-external-callback]
-    exten => s,1,Originate(Local/s@sipcore-external-callback-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
+    exten => s,1,Originate(Local/${ARG1}@sipcore-external-callback-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
       same => n,Return()
     [sipcore-external-callback-internal]
-    exten => s,1,Originate(Local/s@sipcore-external-callback-internal-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
+    exten => s,1,Originate(Local/${ARG1}@sipcore-external-callback-internal-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
       same => n,Return()
     [sipcore-external-callback-contact]
-    exten => s,1,Set(CALLERID(num)={{ .Values.avoip.did }})
+    exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .Values.avoip.did }})
       same => n,Set(CALLERID(name)=Callback)
-      same => n,Dial(PJSIP/${AVOIP_CALLBACK_TARGET}@freeswitch,{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }},gb(sipcore-external-callback-headers^s^1))
+      same => n,Dial(PJSIP/${EXTEN}@freeswitch,{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }},gb(sipcore-external-callback-headers^s^1))
       same => n,Hangup()
     [sipcore-external-callback-headers]
     exten => s,1,Set(PJSIP_HEADER(add,X-AVOIP-External-Callback)=true)
       same => n,Return()
     [sipcore-external-callback-internal-contact]
-    exten => s,1,Set(CALLERID(num)={{ .Values.avoip.did }})
+    {{- range .Values.asterisk.sipCore.extensions }}
+    exten => {{ .number }},1,Set(CALLERID(num)={{ $.Values.avoip.did }})
       same => n,Set(CALLERID(name)=Callback)
-      same => n,Dial(${PJSIP_DIAL_CONTACTS(${AVOIP_CALLBACK_INTERNAL_TARGET})},{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }})
+      same => n,Dial(${PJSIP_DIAL_CONTACTS({{ .number }})},{{ $.Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }})
       same => n,Hangup()
+    {{- end }}
     [from-external-callback]
     exten => {{ .Values.asterisk.sipCore.ggAudioExtension }},1,Dial(PJSIP/{{ .Values.asterisk.sipCore.ggAudioDestination }}@freeswitch,30,g)
       same => n,Hangup()
