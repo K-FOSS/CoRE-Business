@@ -194,7 +194,7 @@ flowrouteSMS:
   hostname: 'sms.resolvemy.host'
   primaryRegion: 'yvr'
   image:
-    repository: docker pull slop.writemy.codes/core/core-business/flowroute-sms
+    repository: slop.writemy.codes/core/core-business/flowroute-sms
     tag: 1-f21e70cc265a1144151e551934209988798c550c
     digest: 'sha256:14c8f7931c5627173b2f87e7e00253c0a31a59649cabb4d735fdc0513b9a0369'
     pullPolicy: 'IfNotPresent'
