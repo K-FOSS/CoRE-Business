@@ -123,6 +123,8 @@ type server struct {
 type mediaFetchError struct {
 	stage         string
 	httpStatus    int
+	mediaScheme   string
+	mediaHost     string
 	expectedMIME  string
 	actualMIME    string
 	expectedBytes int64
@@ -336,6 +338,12 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 				if fetchErr.httpStatus != 0 {
 					fields = append(fields, "media_http_status", fetchErr.httpStatus)
 				}
+				if fetchErr.mediaScheme != "" {
+					fields = append(fields, "media_url_scheme", fetchErr.mediaScheme)
+				}
+				if fetchErr.mediaHost != "" {
+					fields = append(fields, "media_url_host", fetchErr.mediaHost)
+				}
 				if fetchErr.expectedMIME != "" {
 					fields = append(fields, "expected_mime_type", fetchErr.expectedMIME)
 				}
@@ -487,7 +495,7 @@ func (s *server) downloadMedia(ctx context.Context, media mediaAttachment) ([]by
 		return nil, &mediaFetchError{stage: "parse_url"}
 	}
 	if parsed.Scheme != "https" || parsed.Hostname() != "mms-media-prod.s3.amazonaws.com" || parsed.User != nil {
-		return nil, &mediaFetchError{stage: "validate_url_policy"}
+		return nil, &mediaFetchError{stage: "validate_url_policy", mediaScheme: parsed.Scheme, mediaHost: parsed.Hostname()}
 	}
 	if media.ID == "" || !strings.HasPrefix(media.Attributes.MIMEType, "image/") || media.Attributes.FileSize < 0 || media.Attributes.FileSize > maxMediaBytes {
 		return nil, &mediaFetchError{stage: "validate_metadata", expectedMIME: media.Attributes.MIMEType, expectedBytes: media.Attributes.FileSize}

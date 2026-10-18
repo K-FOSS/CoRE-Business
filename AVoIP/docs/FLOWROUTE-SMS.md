@@ -58,9 +58,10 @@ public route so it does not record full request paths.
 handling. It enables structured debug logs for callback parsing and media
 relationship counts, attachment validation/download, persistence, inbox listing,
 and image retrieval. Logs include stage, message/media IDs, attachment counts,
-MIME types, byte counts, HTTP status, and response status, but never message
-bodies, phone numbers, signed media URLs, callback tokens, credentials, or
-attachment contents. Turn diagnostics off after the investigation. An internal
+MIME types, byte counts, the parsed media URL scheme and host, HTTP status, and
+response status, but never message bodies, phone numbers, signed media URLs or
+their query tokens, callback tokens, credentials, or attachment contents. Turn
+diagnostics off after the investigation. An internal
 database error while loading image bytes now returns `503`; an absent or
 unauthorized image remains `404`, making storage failures distinguishable from
 missing media.

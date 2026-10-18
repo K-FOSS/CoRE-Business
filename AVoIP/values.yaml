@@ -195,8 +195,8 @@ flowrouteSMS:
   primaryRegion: 'yvr'
   image:
     repository: slop.writemy.codes/core/core-business/flowroute-sms
-    tag: '1-46da7d8084bcd94cefc9afffa6d06e3c8b294893'
-    digest: 'sha256:ffa45a359faf54192be84c667305d7be23f9fa0bc7a2e1430ff0d4aabc1e4047'
+    tag: '1-6240a88d61c56a4fbc627fe1eab5bf21adf85de3'
+    digest: 'sha256:e6225eac07352a9cb5082053413cf85277bf58246ffb94f15892573eebe7dbec'
     pullPolicy: 'IfNotPresent'
   callbackSecret:
     name: ''
