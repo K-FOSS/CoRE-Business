@@ -49,6 +49,8 @@ controllers:
               secretKeyRef:
                 name: '{{ $callbackSecretName }}'
                 key: '{{ $settings.callbackSecret.key }}'
+          - name: FLOWROUTE_SMS_DIAGNOSTICS
+            value: '{{ $settings.diagnostics.enabled }}'
         ports:
           - name: http
             containerPort: 8080

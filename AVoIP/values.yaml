@@ -204,6 +204,8 @@ flowrouteSMS:
   databaseSecret:
     name: ''
     key: 'psqlURI'
+  diagnostics:
+    enabled: false
   inbox:
     enabled: true
     hostname: ''

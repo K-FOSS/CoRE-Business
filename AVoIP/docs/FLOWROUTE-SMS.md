@@ -54,6 +54,13 @@ The receiver does not log SMS text, phone numbers, PINs, authorization values,
 or the callback token. Review Gateway access-log policy before enabling the
 public route so it does not record full request paths.
 
+Set `flowrouteSMS.diagnostics.enabled: true` to enable structured debug logs for
+callback parsing, MMS attachment validation/download, database persistence,
+inbox listing, and image retrieval. Logs include stage, attachment index, MIME
+type, byte counts, and response status, but never message bodies, phone
+numbers, media URLs, or attachment contents. Turn diagnostics back off after
+the investigation; the default is disabled.
+
 The database credential is read from the `psqlURI` key in the `CoRE-Voice`
 connection Secret. Messages are stored in `public.flowroute_inbound_messages`;
 MMS image bytes are stored as PostgreSQL `bytea` rows in
