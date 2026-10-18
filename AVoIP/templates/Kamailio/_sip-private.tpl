@@ -317,7 +317,7 @@
           exit;
         }
         if (!rtpengine_info()) {
-          xlog("L_ERR", "RTPEngine SIP Core trickle ICE update failed callid=$ci method=$rm\n");
+          xlog("L_ERR", "RTPEngine SIP Core trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
           sl_send_reply("503", "Media Relay Unavailable");
           exit;
         }
@@ -568,7 +568,7 @@
           exit;
         }
         if (!rtpengine_info()) {
-          xlog("L_ERR", "RTPEngine SIP Core Asterisk trickle ICE update failed callid=$ci method=$rm\n");
+          xlog("L_ERR", "RTPEngine SIP Core Asterisk trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
           sl_send_reply("503", "Media Relay Unavailable");
           exit;
         }

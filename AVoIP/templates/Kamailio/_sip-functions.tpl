@@ -33,6 +33,21 @@
     )
     modparam(
       "rtpengine",
+      "rtpengine_tout_ms",
+      {{ .Values.rtpengine.recovery.controlTimeoutMilliseconds }}
+    )
+    modparam(
+      "rtpengine",
+      "rtpengine_retr",
+      {{ .Values.rtpengine.recovery.commandRetries }}
+    )
+    modparam(
+      "rtpengine",
+      "ping_mode",
+      {{ if .Values.rtpengine.recovery.pingOnStartup }}1{{ else }}0{{ end }}
+    )
+    modparam(
+      "rtpengine",
       "ping_interval",
       {{ .Values.rtpengine.recovery.pingIntervalSeconds }}
     )

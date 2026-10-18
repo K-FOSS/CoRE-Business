@@ -564,6 +564,12 @@ rtpengine:
     # timeout marks it unavailable during an RTPEngine rollout or outage.
     disableTimeoutSeconds: 5
     aggressiveRedetection: true
+    # Keep these explicit rather than depending on Kamailio module defaults:
+    # retry NG commands after timeouts and probe the configured node at startup
+    # and periodically so a transiently disabled Service endpoint is rediscovered.
+    controlTimeoutMilliseconds: 1000
+    commandRetries: 5
+    pingOnStartup: true
     pingIntervalSeconds: 5
   valkey:
     # The ValkeyCluster is watched by the Backplane-installed operator in
