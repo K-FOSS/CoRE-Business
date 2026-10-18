@@ -31,11 +31,18 @@ one pod or node failure, but does not migrate an in-flight TCP/TLS connection,
 Kamailio transaction, FreeSWITCH channel, or RTPEngine UDP session.
 
 The pinned common-library version does not render `minReadySeconds`, so the
-Lovely Kustomize layer applies a 60-second minimum-ready interval to Kamailio
-and FreeSWITCH Deployments (and the Kamailio StatefulSet when enabled). During
-a rolling update, Kubernetes waits until a replacement has remained Ready for
-that interval before advancing to the next replica. Readiness and graceful
-termination still determine whether a replacement is safe to serve traffic.
+Lovely Kustomize layer applies a 60-second minimum-ready interval to Kamailio,
+FreeSWITCH, and RTPEngine Deployments (and the Kamailio StatefulSet when
+enabled). During a rolling update, Kubernetes waits until a replacement has
+remained Ready for that interval before advancing to the next replica (see
+the [Deployment rolling-update behavior](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#min-ready-seconds)).
+RTPEngine uses required Redis persistence and restores saved sessions during
+startup; with `maxUnavailable: 0`, the previous pod remains until its
+replacement is Ready and has stayed Ready for 60 seconds. This is a startup
+rollout safeguard, not proof that a surviving RTPEngine pod can take over an
+existing media socket or that media survives a node failure. Readiness and
+graceful termination still determine whether a replacement is safe to serve
+traffic.
 
 ## HA progression
 

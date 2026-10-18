@@ -13,6 +13,27 @@ or port. Before increasing replicas, choose deterministic public media
 ownership (unique addresses, node-bound addresses, proven ECMP, or controlled
 active/standby takeover).
 
+Rolling replacement keeps `maxUnavailable: 0` and permits one surge pod. The
+post-Helm Kustomize layer applies `minReadySeconds: 60` to RTPEngine as well as
+the SIP workloads. RTPEngine is configured with required Redis persistence
+(the chart does not pass `--no-redis-required`); it waits for a Redis primary
+and restores stored calls during startup, as described in the upstream
+[Redis persistence options](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md#redis).
+Kubernetes therefore keeps the old pod until the new process completes startup
+and remains Ready for 60 seconds. This delay does not prove that a second pod
+can own the old UDP media socket; avoid scaling RTPEngine beyond its current
+replica count until media-address ownership and live-call recovery are
+separately tested.
+
+Render the post-Helm rollout patch and check the Redis startup requirement with:
+
+```sh
+AVoIP/tests/rtpengine-redis-rollout-render.sh
+```
+
+This verifies the Deployment strategy and 60-second Ready interval. It does not
+inject a Valkey outage or establish media continuity for an active call.
+
 Kamailio currently controls RTPEngine over its private NG UDP Service port.
 The [Kamailio RTPEngine module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
 uses short disable and ping intervals to recover after an endpoint change.
