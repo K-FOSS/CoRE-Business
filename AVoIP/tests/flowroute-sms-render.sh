@@ -42,6 +42,11 @@ for expected in \
   }
 done
 
+yq -e 'select(.kind == "Deployment" and .metadata.name == "flowroute-check-avoip-flowroute-sms") | .spec.template.spec.dnsConfig.options | any(.name == "ndots" and .value == "0")' "$tmp_dir/enabled.yaml" >/dev/null || {
+  echo 'Flowroute SMS pod does not use ndots 0' >&2
+  exit 1
+}
+
 if helm template flowroute-invalid "$repo_root/AVoIP" --namespace core-prod \
   --set cluster.name=core-dc1-talos-prod \
   --set datacenter=dc1 \

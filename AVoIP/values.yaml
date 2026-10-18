@@ -154,6 +154,11 @@ workloadNetworking:
       options:
         - name: ndots
           value: '0'
+  flowroute-sms:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: '0'
 
 datacenter: 'dc1'
 

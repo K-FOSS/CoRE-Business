@@ -12,7 +12,7 @@ uses the site's VyOS WAN-GW/NAT VRRP source address. See
 its distinction from the public RTP address.
 
 `workloadNetworking` supports `asterisk`, `freeswitch`, `kamailio`,
-`rtpengine`, `homer-web`, and controllers added by the `functions` array. The
+`rtpengine`, `homer-web`, `flowroute-sms`, and controllers added by the `functions` array. The
 generic `kamailio` profile applies to every Kamailio instance; an instance
 profile such as `kamailio-internal` overrides its matching settings. Each
 profile supports placement (`nodeSelector`,
@@ -20,7 +20,8 @@ profile supports placement (`nodeSelector`,
 and BJW-S `initContainers` for NIC configuration. An explicit affinity override
 replaces the chart defaults, including RTPEngine replica spreading.
 
-Asterisk, FreeSWITCH, and all Kamailio instances use `ndots: 0` by default.
+Asterisk, FreeSWITCH, all Kamailio instances, and the Flowroute SMS processor
+use `ndots: 0` by default.
 This makes the resolver try each queried name as-is before adding Kubernetes
 search suffixes; suffix search can still occur if that lookup fails. Override
 or remove the corresponding `dnsConfig.options` in the owning site's
