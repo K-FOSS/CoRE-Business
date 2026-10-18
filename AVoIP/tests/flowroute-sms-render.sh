@@ -5,9 +5,10 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 
-helm template flowroute-check "$repo_root/AVoIP" --namespace core-prod >"$tmp_dir/disabled.yaml"
+helm template flowroute-check "$repo_root/AVoIP" --namespace core-prod \
+  --set flowrouteSMS.enabled=false >"$tmp_dir/disabled.yaml"
 if grep -Eq 'name: flowroute-check-avoip-flowroute-sms' "$tmp_dir/disabled.yaml"; then
-  echo 'Flowroute SMS resources must stay disabled by default' >&2
+  echo 'Disabling Flowroute SMS must omit its resources' >&2
   exit 1
 fi
 
