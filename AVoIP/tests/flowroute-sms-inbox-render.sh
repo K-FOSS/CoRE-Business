@@ -31,6 +31,8 @@ for expected in \
   'resource "authentik_policy_binding" "admins_access"' \
   'X-Auth-Numbers' \
   'phone_number' \
+  'if isinstance(phone_values, str):' \
+  'if isinstance(phone_values, (list, tuple, set)):' \
   'sms_numbers' \
   'sms.mylogin.space'; do
   grep -Fq "$expected" "$tmp_dir/render.yaml" || {

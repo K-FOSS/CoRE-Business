@@ -41,9 +41,11 @@ spec:
         scope_name = "core-sms-authorized-numbers-{{ $.Values.cluster.name }}"
         expression = <<-PY
           numbers = []
-          phone = request.user.attributes.get("phone_number", "")
-          if isinstance(phone, str) and phone.strip():
-              numbers.append(phone.strip())
+          phone_values = request.user.attributes.get("phone_number", [])
+          if isinstance(phone_values, str):
+              phone_values = [phone_values]
+          if isinstance(phone_values, (list, tuple, set)):
+              numbers.extend(value.strip() for value in phone_values if isinstance(value, str) and value.strip())
           group_values = request.user.group_attributes(request.http_request).get("sms_numbers", [])
           if isinstance(group_values, str):
               group_values = [group_values]
