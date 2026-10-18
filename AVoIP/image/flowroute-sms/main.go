@@ -494,7 +494,7 @@ func (s *server) downloadMedia(ctx context.Context, media mediaAttachment) ([]by
 	if err != nil {
 		return nil, &mediaFetchError{stage: "parse_url"}
 	}
-	if parsed.Scheme != "https" || parsed.Hostname() != "mms-media-prod.s3.amazonaws.com" || parsed.User != nil {
+	if !allowedFlowrouteMediaURL(parsed) {
 		return nil, &mediaFetchError{stage: "validate_url_policy", mediaScheme: parsed.Scheme, mediaHost: parsed.Hostname()}
 	}
 	if media.ID == "" || !strings.HasPrefix(media.Attributes.MIMEType, "image/") || media.Attributes.FileSize < 0 || media.Attributes.FileSize > maxMediaBytes {
@@ -531,6 +531,17 @@ func (s *server) downloadMedia(ctx context.Context, media mediaAttachment) ([]by
 		return nil, &mediaFetchError{stage: "validate_image_content", expectedMIME: media.Attributes.MIMEType, actualMIME: detectedType, expectedBytes: media.Attributes.FileSize, actualBytes: len(content)}
 	}
 	return content, nil
+}
+
+func allowedFlowrouteMediaURL(parsed *url.URL) bool {
+	if parsed == nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.User != nil {
+		return false
+	}
+	if port := parsed.Port(); port != "" && port != "443" {
+		return false
+	}
+	host := strings.ToLower(parsed.Hostname())
+	return host == "mms-media-prod.s3.amazonaws.com" || host == "s3.us-west-2.amazonaws.com"
 }
 
 func bodyLength(body *string) int {

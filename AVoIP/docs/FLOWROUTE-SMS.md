@@ -70,7 +70,9 @@ The database credential is read from the `psqlURI` key in the `CoRE-Voice`
 connection Secret. Messages are stored in `public.flowroute_inbound_messages`;
 MMS image bytes are stored as PostgreSQL `bytea` rows in
 `public.flowroute_inbound_media`, linked to their message. The receiver fetches
-only HTTPS signed media URLs from Flowroute's documented media host, accepts
+only HTTPS signed media URLs from Flowroute's documented media host
+(`mms-media-prod.s3.amazonaws.com`) or its observed regional S3 endpoint
+(`s3.us-west-2.amazonaws.com`), accepts
 image MIME types, limits attachments to ten per message and 750 KiB total, and
 commits message and media rows together. Flowroute's signed download links
 expire, so attachments are copied into PostgreSQL on receipt. See the

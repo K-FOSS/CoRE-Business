@@ -2,9 +2,39 @@ package main
 
 import (
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
+
+func TestAllowedFlowrouteMediaURL(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{name: "documented media host", url: "https://mms-media-prod.s3.amazonaws.com/object?signature=redacted", want: true},
+		{name: "regional S3 media host", url: "https://s3.us-west-2.amazonaws.com/bucket/object?signature=redacted", want: true},
+		{name: "host is case insensitive", url: "HTTPS://S3.US-WEST-2.AMAZONAWS.COM/object", want: true},
+		{name: "explicit HTTPS port", url: "https://s3.us-west-2.amazonaws.com:443/object", want: true},
+		{name: "other region rejected", url: "https://s3.us-east-1.amazonaws.com/bucket/object", want: false},
+		{name: "suffix spoof rejected", url: "https://s3.us-west-2.amazonaws.com.attacker.example/object", want: false},
+		{name: "HTTP rejected", url: "http://s3.us-west-2.amazonaws.com/object", want: false},
+		{name: "nonstandard port rejected", url: "https://s3.us-west-2.amazonaws.com:8443/object", want: false},
+		{name: "userinfo rejected", url: "https://user@s3.us-west-2.amazonaws.com/object", want: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			parsed, err := url.Parse(test.url)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := allowedFlowrouteMediaURL(parsed); got != test.want {
+				t.Fatalf("allowedFlowrouteMediaURL(%q) = %t, want %t", test.url, got, test.want)
+			}
+		})
+	}
+}
 
 func TestParseMessageFlowrouteEnvelope(t *testing.T) {
 	payload := `{"data":{"id":"mdr2-test-redacted","type":"message","attributes":{"body":"test message","direction":"inbound","from":"sender-test","to":"recipient-test","timestamp":"2026-10-18T12:34:56Z","is_mms":false}}}`
