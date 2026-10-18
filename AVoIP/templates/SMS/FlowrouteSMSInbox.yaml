@@ -52,14 +52,13 @@ spec:
                   digits = value[1:]
               elif value.isdigit():
                   digits = value
-                  value = "+" + value
               else:
                   return None
               if not digits or any(digit < "0" or digit > "9" for digit in digits):
                   return None
               if len(digits) < 8 or len(digits) > 15:
                   return None
-              return value
+              return digits
 
           numbers = []
           phone_values = request.user.attributes.get("phone_number", [])

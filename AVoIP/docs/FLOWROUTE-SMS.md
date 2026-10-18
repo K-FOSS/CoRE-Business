@@ -54,12 +54,16 @@ The receiver does not log SMS text, phone numbers, PINs, authorization values,
 or the callback token. Review Gateway access-log policy before enabling the
 public route so it does not record full request paths.
 
-Set `flowrouteSMS.diagnostics.enabled: true` to enable structured debug logs for
-callback parsing, MMS attachment validation/download, database persistence,
-inbox listing, and image retrieval. Logs include stage, attachment index, MIME
-type, byte counts, and response status, but never message bodies, phone
-numbers, media URLs, or attachment contents. Turn diagnostics back off after
-the investigation; the default is disabled.
+`flowrouteSMS.diagnostics.enabled` is currently `true` to troubleshoot MMS
+handling. It enables structured debug logs for callback parsing and media
+relationship counts, attachment validation/download, persistence, inbox listing,
+and image retrieval. Logs include stage, message/media IDs, attachment counts,
+MIME types, byte counts, HTTP status, and response status, but never message
+bodies, phone numbers, signed media URLs, callback tokens, credentials, or
+attachment contents. Turn diagnostics off after the investigation. An internal
+database error while loading image bytes now returns `503`; an absent or
+unauthorized image remains `404`, making storage failures distinguishable from
+missing media.
 
 The database credential is read from the `psqlURI` key in the `CoRE-Voice`
 connection Secret. Messages are stored in `public.flowroute_inbound_messages`;
@@ -86,15 +90,18 @@ an Authentik proxy outpost. The Envoy Gateway
 `SecurityPolicy` protects the entire inbox route and forwards Authentik's
 `X-Auth-Numbers` response header. The chart manages an Authentik provider scope
 mapping that builds this comma-separated allowlist from the user's Authentik
-`phone_number` user attribute and `sms_numbers` group attribute. `phone_number`
-may be a single string or a list of strings; `sms_numbers` accepts the same
-forms. The mapping accepts integer values as well as strings and adds a leading
-`+` to digit-only values; prefer strings in E.164 form (including `+`) so
-leading zeros and country codes are preserved. The receiver filters messages by
-recipient number for both the message list and media download; requests without
-a valid number scope are denied. Do not bypass the authenticated Gateway route
-to expose the service directly. The web page renders message text as text and
-displays stored images without exposing Flowroute's expiring signed URLs.
+`phone_number` user attribute and `sms_numbers` group attribute. Each attribute
+may be a single value or a list of values. The mapping accepts integer values
+as well as strings and removes a leading `+` before putting values in
+`X-Auth-Numbers`. Prefer strings in E.164 form so leading zeros and country
+codes are preserved. The receiver
+normalizes inbound sender and recipient numbers to E.164 (`+` plus digits) when
+storing them, and checks both prefixed and bare-digit forms for existing rows.
+It filters messages by recipient for both the message list and media download;
+requests without a valid number scope are denied. Do not bypass the authenticated
+Gateway route to expose the service directly. The web page renders message text
+as text and displays stored images without exposing Flowroute's expiring signed
+URLs.
 
 The primary-region [`avoip-authentik-groups` Workspace](templates/Authentik/AVoIPGroups.yaml)
 manages the `AVoIP Users` and `AVoIP Admins` groups, and runs before the inbox

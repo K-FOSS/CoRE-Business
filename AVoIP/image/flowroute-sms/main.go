@@ -31,14 +31,15 @@ const (
 )
 
 type inboundMessage struct {
-	ID        string
-	From      string
-	To        string
-	Body      *string
-	Direction string
-	Timestamp time.Time
-	IsMMS     bool
-	Media     []mediaAttachment
+	ID              string
+	From            string
+	To              string
+	Body            *string
+	Direction       string
+	Timestamp       time.Time
+	IsMMS           bool
+	Media           []mediaAttachment
+	MediaReferences int
 }
 
 type mediaAttachment struct {
@@ -54,7 +55,15 @@ type mediaAttachment struct {
 
 type callbackEnvelope struct {
 	Data struct {
-		ID         string `json:"id"`
+		ID            string `json:"id"`
+		Relationships struct {
+			Media struct {
+				Data []struct {
+					ID   string `json:"id"`
+					Type string `json:"type"`
+				} `json:"data"`
+			} `json:"media"`
+		} `json:"relationships"`
 		Attributes struct {
 			Body      *string `json:"body"`
 			Direction string  `json:"direction"`
@@ -112,8 +121,12 @@ type server struct {
 }
 
 type mediaFetchError struct {
-	stage      string
-	httpStatus int
+	stage         string
+	httpStatus    int
+	expectedMIME  string
+	actualMIME    string
+	expectedBytes int64
+	actualBytes   int
 }
 
 func (e *mediaFetchError) Error() string {
@@ -242,31 +255,50 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	jsonMediaType := mediaType == "application/json" || (strings.HasPrefix(mediaType, "application/") && strings.HasSuffix(mediaType, "+json"))
 	if err != nil || !jsonMediaType {
+		s.logger.Debug("callback rejected", "failure_stage", "content_type", "content_type", mediaType, "response_status", http.StatusUnsupportedMediaType)
 		s.reply(w, r, "", "invalid_content_type", http.StatusUnsupportedMediaType)
 		return
 	}
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequestBytes))
 	if err != nil {
+		s.logger.Debug("callback rejected", "failure_stage", "read_payload", "response_status", http.StatusRequestEntityTooLarge)
 		s.reply(w, r, "", "invalid_payload", http.StatusRequestEntityTooLarge)
 		return
 	}
 	message, err := parseMessage(body)
 	if err != nil {
-		s.logger.Debug("callback payload rejected", "failure_stage", "parse_payload", "response_status", http.StatusBadRequest)
+		s.logger.Debug("callback payload rejected", "failure_stage", "parse_payload", "error_class", fmt.Sprintf("%T", err), "response_status", http.StatusBadRequest)
 		s.reply(w, r, "", "invalid_payload", http.StatusBadRequest)
 		return
 	}
-	s.logger.Debug("callback payload parsed", "message_id", message.ID, "is_mms", message.IsMMS, "attachment_count", len(message.Media), "message_body_bytes", bodyLength(message.Body))
+	s.logger.Debug("callback payload parsed", "message_id", message.ID, "is_mms", message.IsMMS, "attachment_reference_count", message.MediaReferences, "included_attachment_count", len(message.Media), "message_body_bytes", bodyLength(message.Body), "content_type", mediaType)
+	if message.MediaReferences != len(message.Media) {
+		s.logger.Warn("MMS attachment references do not match included media", "message_id", message.ID, "failure_stage", "compare_media_references", "attachment_reference_count", message.MediaReferences, "included_attachment_count", len(message.Media))
+	}
+	if message.IsMMS && message.MediaReferences == 0 && len(message.Media) == 0 {
+		s.logger.Warn("MMS callback has no media attachments", "message_id", message.ID, "failure_stage", "missing_media")
+	}
 	if message.Direction != "" && !strings.EqualFold(message.Direction, "inbound") {
 		s.reply(w, r, message.ID, "ignored_non_inbound", http.StatusOK)
 		return
 	}
+	from, fromOK := normalizePhoneNumber(message.From)
+	to, toOK := normalizePhoneNumber(message.To)
+	if !fromOK || !toOK {
+		s.logger.Debug("callback payload rejected", "message_id", message.ID, "failure_stage", "normalize_phone_numbers", "response_status", http.StatusBadRequest)
+		s.reply(w, r, message.ID, "invalid_payload", http.StatusBadRequest)
+		return
+	}
+	message.From = from
+	message.To = to
 	var alreadyStored bool
 	if err := s.pool.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM public.flowroute_inbound_messages WHERE message_id=$1)`, message.ID).Scan(&alreadyStored); err != nil {
+		s.logger.Warn("callback duplicate check failed", "message_id", message.ID, "failure_stage", "check_duplicate", "response_status", http.StatusServiceUnavailable)
 		s.reply(w, r, message.ID, "database_error", http.StatusServiceUnavailable)
 		return
 	}
 	if alreadyStored {
+		s.logger.Debug("callback duplicate ignored", "message_id", message.ID, "attachment_count", len(message.Media), "response_status", http.StatusOK)
 		s.reply(w, r, message.ID, "duplicate", http.StatusOK)
 		return
 	}
@@ -275,6 +307,7 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 		maxTextBytes = maxMediaBytes
 	}
 	if len(message.ID) > 200 || len(message.From) > 64 || len(message.To) > 64 || (message.Body != nil && len(*message.Body) > maxTextBytes) || len(message.Media) > 10 {
+		s.logger.Debug("callback payload rejected", "message_id", message.ID, "failure_stage", "payload_limits", "is_mms", message.IsMMS, "attachment_count", len(message.Media), "message_body_bytes", bodyLength(message.Body), "response_status", http.StatusBadRequest)
 		s.reply(w, r, message.ID, "invalid_payload", http.StatusBadRequest)
 		return
 	}
@@ -303,21 +336,35 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 				if fetchErr.httpStatus != 0 {
 					fields = append(fields, "media_http_status", fetchErr.httpStatus)
 				}
+				if fetchErr.expectedMIME != "" {
+					fields = append(fields, "expected_mime_type", fetchErr.expectedMIME)
+				}
+				if fetchErr.actualMIME != "" {
+					fields = append(fields, "actual_mime_type", fetchErr.actualMIME)
+				}
+				if fetchErr.expectedBytes != 0 || fetchErr.stage == "validate_metadata" {
+					fields = append(fields, "declared_bytes", fetchErr.expectedBytes)
+				}
+				if fetchErr.actualBytes != 0 || fetchErr.stage == "read_or_size_limit" || fetchErr.stage == "validate_image_content" {
+					fields = append(fields, "actual_bytes", fetchErr.actualBytes)
+				}
 			} else {
 				fields = append(fields, "failure_stage", "unknown")
 			}
+			fields = append(fields, "message_id", message.ID, "is_mms", message.IsMMS)
 			s.logger.Warn("MMS attachment fetch failed", fields...)
 			s.reply(w, r, message.ID, "media_fetch_failed", http.StatusBadGateway)
 			return
 		}
 		mediaContent[result.index] = result.content
-		s.logger.Debug("MMS attachment fetched", "attachment_index", result.index, "mime_type", message.Media[result.index].Attributes.MIMEType, "declared_bytes", message.Media[result.index].Attributes.FileSize, "downloaded_bytes", len(result.content))
+		s.logger.Debug("MMS attachment fetched", "message_id", message.ID, "attachment_index", result.index, "media_id", message.Media[result.index].ID, "mime_type", message.Media[result.index].Attributes.MIMEType, "declared_bytes", message.Media[result.index].Attributes.FileSize, "downloaded_bytes", len(result.content))
 	}
 	mediaTotal := 0
 	for _, content := range mediaContent {
 		mediaTotal += len(content)
 	}
 	if message.Body != nil && len(*message.Body)+mediaTotal > maxMediaBytes {
+		s.logger.Debug("callback payload rejected", "message_id", message.ID, "failure_stage", "combined_media_size_limit", "attachment_count", len(message.Media), "attachment_bytes", mediaTotal, "message_body_bytes", bodyLength(message.Body), "response_status", http.StatusBadRequest)
 		s.reply(w, r, message.ID, "invalid_payload", http.StatusBadRequest)
 		return
 	}
@@ -328,6 +375,7 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 	var inserted bool
 	tx, err := s.pool.Begin(r.Context())
 	if err != nil {
+		s.logger.Warn("message persistence failed", "message_id", message.ID, "failure_stage", "begin_transaction", "response_status", http.StatusServiceUnavailable)
 		s.reply(w, r, message.ID, "database_error", http.StatusServiceUnavailable)
 		return
 	}
@@ -341,18 +389,21 @@ RETURNING true`, message.ID, message.From, message.To, nullableBody(message.Body
 	if errors.Is(err, pgx.ErrNoRows) {
 		inserted, err = false, nil
 	}
+	persistStage := "insert_message"
 	if err == nil && inserted {
 		for i, media := range message.Media {
+			persistStage = "insert_media"
 			if _, err = tx.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_media (media_id,message_id,file_name,mime_type,content) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (media_id) DO NOTHING`, media.ID, message.ID, safeFileName(media.Attributes.FileName), media.Attributes.MIMEType, mediaContent[i]); err != nil {
 				break
 			}
 		}
 	}
 	if err == nil {
+		persistStage = "commit_transaction"
 		err = tx.Commit(r.Context())
 	}
 	if err != nil {
-		s.logger.Error("message persistence failed", "message_id", message.ID, "is_mms", message.IsMMS, "attachment_count", len(message.Media), "response_status", http.StatusServiceUnavailable)
+		s.logger.Error("message persistence failed", "message_id", message.ID, "failure_stage", persistStage, "is_mms", message.IsMMS, "attachment_count", len(message.Media), "attachment_bytes", mediaTotal, "response_status", http.StatusServiceUnavailable)
 		s.reply(w, r, message.ID, "database_error", http.StatusServiceUnavailable)
 		return
 	}
@@ -404,6 +455,7 @@ func parseMessage(raw []byte) (inboundMessage, error) {
 		message.Direction = payload.Data.Attributes.Direction
 		message.IsMMS = payload.Data.Attributes.IsMMS
 		message.Media = payload.Included
+		message.MediaReferences = len(payload.Data.Relationships.Media.Data)
 		if payload.Data.Attributes.Timestamp != "" {
 			parsed, err := time.Parse(time.RFC3339Nano, payload.Data.Attributes.Timestamp)
 			if err != nil {
@@ -418,6 +470,7 @@ func parseMessage(raw []byte) (inboundMessage, error) {
 		message.Body = payload.Body
 		message.Direction = payload.Direction
 		message.IsMMS = payload.IsMMS
+		message.MediaReferences = len(payload.Included)
 	}
 	if strings.TrimSpace(message.ID) == "" || strings.TrimSpace(message.From) == "" || strings.TrimSpace(message.To) == "" {
 		return inboundMessage{}, errors.New("required callback fields are missing")
@@ -430,35 +483,44 @@ func parseMessage(raw []byte) (inboundMessage, error) {
 
 func (s *server) downloadMedia(ctx context.Context, media mediaAttachment) ([]byte, error) {
 	parsed, err := url.Parse(media.Attributes.URL)
-	if err != nil || parsed.Scheme != "https" || parsed.Hostname() != "mms-media-prod.s3.amazonaws.com" || parsed.User != nil {
-		return nil, &mediaFetchError{stage: "validate_url"}
+	if err != nil {
+		return nil, &mediaFetchError{stage: "parse_url"}
+	}
+	if parsed.Scheme != "https" || parsed.Hostname() != "mms-media-prod.s3.amazonaws.com" || parsed.User != nil {
+		return nil, &mediaFetchError{stage: "validate_url_policy"}
 	}
 	if media.ID == "" || !strings.HasPrefix(media.Attributes.MIMEType, "image/") || media.Attributes.FileSize < 0 || media.Attributes.FileSize > maxMediaBytes {
-		return nil, &mediaFetchError{stage: "validate_metadata"}
+		return nil, &mediaFetchError{stage: "validate_metadata", expectedMIME: media.Attributes.MIMEType, expectedBytes: media.Attributes.FileSize}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
 	if err != nil {
-		return nil, &mediaFetchError{stage: "build_request"}
+		return nil, &mediaFetchError{stage: "build_request", expectedMIME: media.Attributes.MIMEType, expectedBytes: media.Attributes.FileSize}
 	}
 	resp, err := s.mediaClient.Do(req)
 	if err != nil {
-		return nil, &mediaFetchError{stage: "request_media"}
+		return nil, &mediaFetchError{stage: "request_media", expectedMIME: media.Attributes.MIMEType, expectedBytes: media.Attributes.FileSize}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, &mediaFetchError{stage: "media_http_status", httpStatus: resp.StatusCode}
+		return nil, &mediaFetchError{stage: "media_http_status", httpStatus: resp.StatusCode, expectedMIME: media.Attributes.MIMEType, expectedBytes: media.Attributes.FileSize}
 	}
 	contentType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
 	if err != nil || !strings.EqualFold(contentType, media.Attributes.MIMEType) {
-		return nil, &mediaFetchError{stage: "validate_response_content_type"}
+		if err != nil {
+			contentType = "invalid"
+		}
+		return nil, &mediaFetchError{stage: "validate_response_content_type", expectedMIME: media.Attributes.MIMEType, actualMIME: contentType, expectedBytes: media.Attributes.FileSize}
 	}
 	content, err := io.ReadAll(io.LimitReader(resp.Body, maxMediaBytes+1))
 	if err != nil || len(content) > maxMediaBytes {
-		return nil, &mediaFetchError{stage: "read_or_size_limit"}
+		return nil, &mediaFetchError{stage: "read_or_size_limit", expectedMIME: media.Attributes.MIMEType, actualMIME: contentType, expectedBytes: media.Attributes.FileSize, actualBytes: len(content)}
 	}
 	detectedType, _, err := mime.ParseMediaType(http.DetectContentType(content))
 	if err != nil || !strings.HasPrefix(detectedType, "image/") {
-		return nil, &mediaFetchError{stage: "validate_image_content"}
+		if err != nil {
+			detectedType = "invalid"
+		}
+		return nil, &mediaFetchError{stage: "validate_image_content", expectedMIME: media.Attributes.MIMEType, actualMIME: detectedType, expectedBytes: media.Attributes.FileSize, actualBytes: len(content)}
 	}
 	return content, nil
 }
@@ -483,27 +545,41 @@ func (s *server) allowedNumbers(r *http.Request) []string {
 	// This header is populated by the Authentik-backed gateway policy. Direct
 	// pod access is disabled by the chart; never trust an unprotected route.
 	parts := strings.Split(r.Header.Get("X-Auth-Numbers"), ",")
-	allowed := make([]string, 0, len(parts))
+	allowed := make([]string, 0, len(parts)*2)
+	seen := make(map[string]struct{}, len(parts)*2)
 	for _, number := range parts {
-		number = strings.TrimSpace(number)
-		if len(number) > 2 && number[0] == '+' {
-			valid := true
-			for _, ch := range number[1:] {
-				if ch < '0' || ch > '9' {
-					valid = false
-					break
-				}
+		canonical, valid := normalizePhoneNumber(number)
+		if !valid {
+			continue
+		}
+		for _, lookupValue := range []string{canonical, strings.TrimPrefix(canonical, "+")} {
+			if _, exists := seen[lookupValue]; exists {
+				continue
 			}
-			if valid {
-				allowed = append(allowed, number)
-			}
+			seen[lookupValue] = struct{}{}
+			allowed = append(allowed, lookupValue)
 		}
 	}
 	return allowed
 }
 
+func normalizePhoneNumber(value string) (string, bool) {
+	value = strings.TrimSpace(value)
+	digits := strings.TrimPrefix(value, "+")
+	if len(digits) < 8 || len(digits) > 15 {
+		return "", false
+	}
+	for _, digit := range digits {
+		if digit < '0' || digit > '9' {
+			return "", false
+		}
+	}
+	return "+" + digits, true
+}
+
 func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 	if len(s.allowedNumbers(r)) == 0 {
+		s.logger.Debug("inbox page denied", "failure_stage", "missing_authorized_numbers", "response_status", http.StatusForbidden)
 		http.Error(w, "no authorized numbers", http.StatusForbidden)
 		return
 	}
@@ -546,14 +622,22 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var item inboxMessage
 		if err := rows.Scan(&item.ID, &item.Sender, &item.Recipient, &item.Body, &item.ReceivedAt, &item.IsMMS); err != nil {
-			http.Error(w, "database error", 500)
+			s.logger.Warn("inbox message list failed", "failure_stage", "scan_message", "response_status", http.StatusInternalServerError)
+			http.Error(w, "database error", http.StatusInternalServerError)
 			return
+		}
+		if normalized, ok := normalizePhoneNumber(item.Sender); ok {
+			item.Sender = normalized
+		}
+		if normalized, ok := normalizePhoneNumber(item.Recipient); ok {
+			item.Recipient = normalized
 		}
 		item.Media = []mediaInfo{}
 		result = append(result, item)
 	}
 	if rows.Err() != nil {
-		http.Error(w, "database error", 500)
+		s.logger.Warn("inbox message list failed", "failure_stage", "read_messages", "response_status", http.StatusInternalServerError)
+		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 	messageIndexes := make(map[string]int, len(result))
@@ -565,7 +649,8 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 	if len(messageIDs) > 0 {
 		mediaRows, err := s.pool.Query(r.Context(), `SELECT message_id,media_id,file_name,mime_type FROM public.flowroute_inbound_media WHERE message_id=ANY($1) ORDER BY media_id`, messageIDs)
 		if err != nil {
-			http.Error(w, "database error", 500)
+			s.logger.Warn("inbox message list failed", "failure_stage", "query_media_metadata", "message_count", len(messageIDs), "response_status", http.StatusInternalServerError)
+			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
 		defer mediaRows.Close()
@@ -573,7 +658,8 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 			var messageID string
 			var item mediaInfo
 			if err := mediaRows.Scan(&messageID, &item.ID, &item.FileName, &item.MIMEType); err != nil {
-				http.Error(w, "database error", 500)
+				s.logger.Warn("inbox message list failed", "failure_stage", "scan_media_metadata", "message_count", len(messageIDs), "response_status", http.StatusInternalServerError)
+				http.Error(w, "database error", http.StatusInternalServerError)
 				return
 			}
 			if i, ok := messageIndexes[messageID]; ok {
@@ -581,14 +667,18 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if mediaRows.Err() != nil {
-			http.Error(w, "database error", 500)
+			s.logger.Warn("inbox message list failed", "failure_stage", "read_media_metadata", "message_count", len(messageIDs), "response_status", http.StatusInternalServerError)
+			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		s.logger.Warn("inbox message list response failed", "failure_stage", "encode_response", "message_count", len(result), "response_status", http.StatusOK)
+		return
+	}
 	s.logger.Debug("inbox message list served", "message_count", len(result), "response_status", http.StatusOK)
-	json.NewEncoder(w).Encode(result)
 }
 
 func (s *server) getMedia(w http.ResponseWriter, r *http.Request) {
@@ -602,20 +692,25 @@ func (s *server) getMedia(w http.ResponseWriter, r *http.Request) {
 	var content []byte
 	err := s.pool.QueryRow(r.Context(), `SELECT m.mime_type,m.file_name,m.content FROM public.flowroute_inbound_media m JOIN public.flowroute_inbound_messages msg USING(message_id) WHERE m.media_id=$1 AND msg.recipient=ANY($2)`, r.PathValue("id"), numbers).Scan(&mimeType, &fileName, &content)
 	if err != nil {
-		if !errors.Is(err, pgx.ErrNoRows) {
-			s.logger.Warn("MMS media lookup failed", "failure_stage", "query_media", "response_status", http.StatusNotFound)
-		} else {
+		if errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Debug("MMS media not found or unauthorized", "response_status", http.StatusNotFound)
+			http.NotFound(w, r)
+			return
 		}
-		http.NotFound(w, r)
+		s.logger.Warn("MMS media lookup failed", "failure_stage", "query_media", "response_status", http.StatusServiceUnavailable)
+		http.Error(w, "media unavailable", http.StatusServiceUnavailable)
 		return
 	}
 	w.Header().Set("Content-Type", mimeType)
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("inline", map[string]string{"filename": safeFileName(fileName)}))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	io.Copy(w, bytes.NewReader(content))
-	s.logger.Debug("MMS media served", "mime_type", mimeType, "content_bytes", len(content), "response_status", http.StatusOK)
+	written, err := io.Copy(w, bytes.NewReader(content))
+	if err != nil {
+		s.logger.Warn("MMS media response failed", "media_id", r.PathValue("id"), "failure_stage", "stream_media", "mime_type", mimeType, "content_bytes", len(content), "bytes_written", written, "response_status", http.StatusOK)
+		return
+	}
+	s.logger.Debug("MMS media served", "media_id", r.PathValue("id"), "mime_type", mimeType, "content_bytes", len(content), "bytes_written", written, "response_status", http.StatusOK)
 }
 
 func nullableBody(body *string) any {

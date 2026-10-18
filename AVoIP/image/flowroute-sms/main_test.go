@@ -51,9 +51,9 @@ func TestParseMessageMMSIncludesMediaMetadata(t *testing.T) {
 func TestAllowedNumbersRejectsInvalidValues(t *testing.T) {
 	app := &server{}
 	r := httptest.NewRequest("GET", "/api/messages", nil)
-	r.Header.Set("X-Auth-Numbers", "+12065550100,not-a-number,+1206-555-0101")
+	r.Header.Set("X-Auth-Numbers", "12065550100,not-a-number,+1206-555-0101")
 	numbers := app.allowedNumbers(r)
-	if len(numbers) != 1 || numbers[0] != "+12065550100" {
+	if len(numbers) != 2 || numbers[0] != "+12065550100" || numbers[1] != "12065550100" {
 		t.Fatalf("unexpected authorized number set: %#v", numbers)
 	}
 }
