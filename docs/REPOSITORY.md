@@ -211,6 +211,9 @@ without a SIP Core browser endpoint.
 Kamailio and RTPEngine default listeners use each pod's Downward API address for
 concrete local HEP source metadata; [Homer verification](../AVoIP/docs/HOMER.md#verification)
 distinguishes locally emitted traces from received SIP peer addresses.
+Kamailio's private UDP NG control uses explicit request timeout/retries and
+periodic RTPEngine redetection after transient errors; see [AVoIP RTPEngine
+recovery](../AVoIP/docs/avoip/rtpengine-ha.md).
 
 The active [Vaultwarden chart](../Passwords/VaultWarden/README.md), owned by the
 [VaultWarden ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml),

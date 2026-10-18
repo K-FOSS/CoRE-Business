@@ -365,8 +365,10 @@ site-local dialogs from proposed cross-site failover.
 
 The [Sipwise RTPEngine](https://github.com/sipwise/rtpengine) anchors public
 RTP independently of SIP signaling. Kamailio sends NG control over the private
-WebSocket control Service so its client reconnects after an RTPEngine pod
-replacement. Its
+UDP control Service; its explicit timeout/retry, short disable interval, and
+periodic redetection settings recover the node after transient control errors.
+The separate RTPEngine WebSocket control path remains disabled following the
+observed process crash during an offer. Its
 [RTPEngine configuration](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md)
 uses the site-specific media address and UDP range supplied by the owning
 ApplicationSet. Kamailio fails closed if RTPEngine cannot handle a media-bearing
@@ -648,6 +650,10 @@ from session SDP. A fragment with content type
 RTPEngine through `rtpengine_info()`; incomplete `application/sdp` bodies are
 rejected before they reach RTPEngine. This prevents fragment or empty SDP
 bodies from being processed as a new media offer and restarting the relay.
+When the trickle handler fails, Kamailio logs only the parsed Content-Type and
+body length in addition to the dialog correlation ID; it does not log the
+fragment body. RTPEngine parser failures are distinct from NG-control timeout
+and redetection events.
 See the [Kamailio RTPengine module documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
 and the [RTPEngine NG protocol documentation](https://github.com/sipwise/rtpengine/blob/master/docs/ng_protocol.md).
 

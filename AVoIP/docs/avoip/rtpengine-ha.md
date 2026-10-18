@@ -40,9 +40,13 @@ continuity for an active call.
 
 Kamailio controls RTPEngine through the stable internal Service DNS name and
 UDP NG port; its configuration does not pin a pod IP. The [Kamailio RTPEngine
-module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html) uses
-`rtpengine_disable_tout=5`, `aggressive_redetection=1`, and
-`ping_interval=5` to recover quickly after an endpoint becomes unreachable.
+module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html) is
+configured explicitly with `rtpengine_tout_ms=1000`, `rtpengine_retr=5`,
+`rtpengine_disable_tout=5`, `aggressive_redetection=1`, `ping_mode=1`, and
+`ping_interval=5`. A command timeout is retried; an unavailable node is
+periodically probed and becomes eligible again when it responds. This is
+control-plane recovery, not active-call migration: a media session pinned to a
+failed RTPEngine still requires the Redis-backed restoration/takeover path.
 The restore-marker readiness probe keeps a replacement out of Service
 endpoints until Redis state restoration completes; the 60-second minimum-ready
 interval then retains the previous endpoint while the new pod settles. During
@@ -56,12 +60,18 @@ end-to-end call continuity. WebSocket control is temporarily
 disabled because the live RTPEngine process exited with signal 11 after its
 first offer on that path. The crash cause still needs a core backtrace.
 The chart hashes RTPEngine values into Kamailio's pod template so an RTPEngine
-configuration change can also replace Kamailio pods and their UDP control
-sockets. An unplanned RTPEngine endpoint failure can still leave a Kamailio
-worker unable to send control traffic; the module has returned
-`Destination address required` despite the short recovery timers. Monitor the
-active replicas and verify a new call after an unplanned failure; restart only
-the affected Kamailio pod if the socket does not recover.
+configuration change also replaces Kamailio pods and their UDP control
+sockets. Recent live errors from `rtpengine_info()` were `invalid type for a
+message` / `content type mismatching` while handling trickle-ICE INFO. These
+are message-body/content-type parsing failures, not evidence that the NG
+control socket disconnected; command retries and endpoint probes cannot fix
+those requests. Inspect the Content-Type and body in an access-controlled,
+redacted capture when diagnosing this separately; do not copy trickle bodies
+to logs or persistent documentation because they can contain ICE passwords
+and network candidates. Distinguish these parser errors from control timeout,
+no-reply, or `Destination address required` messages. The render regression
+checks the recovery parameters, but only an induced endpoint-outage test can
+prove recovery on the deployed runtime.
 RTPEngine's optional [WebSocket NG interface](https://rtpengine.readthedocs.io/en/latest/http_websocket_support.html)
 uses the same NG control commands. The selected control port is reachable
 through the cluster-internal Service and the Kamailio egress rules rendered by
