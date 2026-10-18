@@ -8,10 +8,10 @@ messages to a PostgreSQL database provisioned by the cluster-scoped
 its per-user database; the service creates its table and index when it starts.
 The current global database provider is `psql-main`, and the User Composition
 grants the database owner access to the `public` schema. See Backplane's
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
-[PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
-[storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml),
-and [User implementation](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Operations/SSO/User).
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml),
+[PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml),
+[storage base ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml),
+and [User implementation](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User).
 
 The receiver is a standalone AVoIP stack and does not depend on FreeSWITCH's
 `mod_sms` or the unavailable Flowroute FreeSWITCH module. It does not send

@@ -3,8 +3,8 @@
 This file applies to the entire repository. A more specific `AGENTS.md` may add
 rules for its subtree but must not weaken these repository-wide requirements.
 
-The shared workflow is adapted from [CoRE Backplane agent guidance](https://github.com/K-FOSS/CoRE-Backplane/blob/main/AGENTS.md)
-and its [Git and Argo CD operating procedure](https://github.com/K-FOSS/CoRE-Backplane/blob/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
+The shared workflow is adapted from [CoRE Backplane agent guidance](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/AGENTS.md)
+and its [Git and Argo CD operating procedure](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
 The combined rules below retain CoRE Business's application-specific requirements.
 Refresh the upstream guidance before changing this policy; the source reviewed
 for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
@@ -17,12 +17,12 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   chart, find the owning ApplicationSet under `Apps/Business/`, then inspect its
   path, cluster selector, destination namespace, injected values and renderer.
 - Fetch the current site-local configuration from the CoRE-Backplane
-  [storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
-  and [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
+  [storage ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml)
+  and [PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
   before changing persistence or database behavior; do not infer site
   configuration from this repository's defaults.
 - Fetch the current SSO `User` resource definition from the CoRE-Backplane
-  [`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+  [`mylogin.space` User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
   before changing identity, access or entitlement behavior, and review it
   together with the application configuration.
 - An implementation directory may combine Helm, Kustomize, raw YAML, remote
@@ -102,7 +102,7 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 - Report the published commit, affected targets, actual verification results,
   material limitations, and any remaining blockers. Documentation-only changes
   do not require a cluster sync. Follow the detailed
-  [Git and Argo CD operating procedure](https://github.com/K-FOSS/CoRE-Backplane/blob/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
+  [Git and Argo CD operating procedure](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
 
 ## Commit message conventions
 
@@ -143,10 +143,15 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 - Keep `README.md`, `docs/REPOSITORY.md`, and the nearest component README in
   sync when a change alters deployment, prerequisites, access, recovery,
   storage, public endpoints, secrets, or operator workflow.
+- For internal CoRE repositories, link to `slop.writemy.codes` rather than the
+  GitHub mirror. Use Forgejo file links in the form
+  `https://slop.writemy.codes/<owner>/<repo>/src/branch/<branch>/<path>`;
+  use a commit-specific route when the reference must stay pinned to a revision.
 - Every reference to a specific Backplane ApplicationSet must be a Markdown
-  link to that exact file in `K-FOSS/CoRE-Backplane` (normally its `blob/main`
-  GitHub URL). Do not leave ApplicationSet paths as unlinked code text, even in
-  tables or lists. If two ApplicationSets own one chart, link both files.
+  link to that exact file in `K-FOSS/CoRE-Backplane` using the Forgejo URL on
+  `slop.writemy.codes`. Do not leave ApplicationSet paths as unlinked code
+  text, even in tables or lists. If two ApplicationSets own one chart, link
+  both files.
 - Link external charts, images, controllers, APIs and remote manifests to their
   authoritative upstream documentation. Put links beside the behavior they
   explain and prefer component-specific documentation.
@@ -177,13 +182,13 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 - Treat the infrastructure PostgreSQL, MySQL, MongoDB, and site-local
   `dragonfly-core` deployments as shared platform services used by deployed
   applications, not as chart-private dependencies. Start changes at their
-  fleet owners in [PostgreSQL](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
-  [MySQL](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Database/MySQL.yaml),
-  [MongoDB](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Database/MongoDB.yaml), and
-  [Dragonfly](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml) ApplicationSets, then trace every application consumer.
+  fleet owners in [PostgreSQL](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml),
+  [MySQL](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Database/MySQL.yaml),
+  [MongoDB](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Database/MongoDB.yaml), and
+  [Dragonfly](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Dragonfly/CoRE.yaml) ApplicationSets, then trace every application consumer.
 - Every deployed application service identity must be declared with the
   namespaced `User.mylogin.space/v1alpha1` claim provided by the `sso-user`
-  Composition in [Backplane’s SSO User implementation](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Operations/SSO/User); do not create an unrelated database
+  Composition in [Backplane’s SSO User implementation](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User); do not create an unrelated database
   password or parallel identity path in an application chart. Keep the claim
   beside the consuming application, use its stable connection Secret, and
   review identity, database grants, buckets, and secret publication as one
@@ -194,7 +199,7 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   currently schema-only. Extend and validate the Composition before relying
   on it to provision MySQL or MongoDB resources, and document current behavior
   separately from the intended shared model.
-- Treat the [Backplane Dragonfly allocation registry](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Storage/Dragonfly/CoRE/README.md) as the allocation registry for
+- Treat the [Backplane Dragonfly allocation registry](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Storage/Dragonfly/CoRE/README.md) as the allocation registry for
   shared Dragonfly logical databases. Every application that uses
   `dragonfly-core` must declare an explicit, unused database number where the
   client supports one and add or update the registry in the same change.
