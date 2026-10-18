@@ -184,6 +184,27 @@ flowroute:
     - '34.210.91.112/28'
     - '34.226.36.32/28'
 
+# Independent HTTP callback stack for inbound Flowroute messages. It shares
+# AVoIP's global PostgreSQL identity but does not require FreeSWITCH.
+flowrouteSMS:
+  # Enable only after the callback token, image digest, and public hostname
+  # have been provisioned. The service is owned by primaryRegion only.
+  enabled: false
+  replicas: 2
+  hostname: ''
+  primaryRegion: 'yvr'
+  image:
+    repository: ''
+    tag: ''
+    digest: ''
+    pullPolicy: 'IfNotPresent'
+  callbackSecret:
+    name: ''
+    key: 'CallbackToken'
+  databaseSecret:
+    name: ''
+    key: 'psqlURI'
+
 sip:
   globalHost: 'sip.resolvemy.host'
   # Empty derives sip.<cluster>.<datacenter>.<region>.resolvemy.host.

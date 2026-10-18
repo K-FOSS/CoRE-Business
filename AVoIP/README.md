@@ -8,6 +8,12 @@ SIP Core relays SIP INFO DTMF to Asterisk through the validated dialog path;
 only an exact trickle ICE media type enters RTPEngine's fragment handler. See
 [DTMF routing, regression checks and ACK verification](docs/SIPCORE-DTMF.md)
 for the Kamailio MIME parser caveat and live acceptance procedure.
+
+Inbound Flowroute SMS has its own optional Go HTTP receiver, PostgreSQL-backed
+storage and public callback route. It is independent of FreeSWITCH and disabled
+until its image, hostname and callback token are provisioned. See the
+[Flowroute SMS guide](docs/FLOWROUTE-SMS.md) for scaling, data handling,
+deployment inputs and verification.
 For inbound-call ACKs or remote BYEs rejected after a retransmitted answer,
 see the [SIP Core Contact alias repair](docs/SIPCORE-REMOTE-HANGUP.md).
 
@@ -271,11 +277,12 @@ separate Kamailio-facing FreeSWITCH profile. New calls still use the shared
 Service; using that round-robin Service for an established dialog can send its
 BYE to a replica that does not own the call. TOPOS hides the pod address from
 Flowroute.
-Flowroute SMS is configured by default through the separate SMS External
-Secret, but the deployed FreeSWITCH image currently contains `mod_sms` and
-does not contain `mod_sms_flowroute.so`; startup therefore reports that the
-Flowroute module cannot be loaded. Kamailio only carries generic SIP
-`MESSAGE` requests and does not provide a Flowroute SMS gateway.
+The legacy FreeSWITCH SMS module configuration still follows
+`freeswitch.sms.enabled`, but the deployed image contains `mod_sms` and lacks
+`mod_sms_flowroute.so`; it does not provide a working Flowroute SMS service.
+The standalone `flowrouteSMS` receiver described in the
+[SMS guide](docs/FLOWROUTE-SMS.md) is independent of this legacy FreeSWITCH
+configuration and is disabled until its callback inputs are provisioned.
 
 The Asterisk and FreeSWITCH Deployments and Services are rendered through the
 pinned [BJW-S common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/)
@@ -416,12 +423,13 @@ names as `psql-<datacenter>-<region>`, and FreeSWITCH connects to
 limited to application-table creation because the pinned SQL provider manages
 PostgreSQL roles, databases, and schemas, not tables.
 
-When SMS is enabled, the chart also creates a `User.mylogin.space/v1alpha1`
-claim named `core-voice-<cluster>-<region>` with `spec.name: CoRE-Voice` and no
-fixed username. The current Backplane User Composition generates that service
-identity and provisions it through the global PostgreSQL providers `psql` and
-`psql-main`; its connection Secret is reserved for the inbound SMS persistence
-service.
+When `flowrouteSMS.enabled` is true, the chart creates a
+`User.mylogin.space/v1alpha1` claim named `core-voice-<cluster>-<region>` with
+`spec.name: CoRE-Voice` and no fixed username. The current Backplane User
+Composition generates that service identity and provisions it through the
+global PostgreSQL providers `psql` and `psql-main`; its connection Secret is
+used by the standalone SMS persistence service. The same claim is retained
+while the legacy `freeswitch.sms.enabled` path remains active.
 
 Sofia raw SIP tracing is enabled by default on the managed Asterisk, external,
 and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
