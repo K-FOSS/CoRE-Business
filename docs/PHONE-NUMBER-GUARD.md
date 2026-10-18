@@ -13,10 +13,13 @@ git config --local core.hooksPath .githooks
 ```
 
 The guard checks E.164-style numbers and common North American formats,
-including compact, spaced, dashed, dotted, and parenthesized forms. It scans
-staged additions rather than the full repository, so existing unrelated text
-does not prevent a commit. Review a reported line and remove or redact the
-number before committing.
+including compact, spaced, dashed, dotted, and parenthesized forms. It permits
+the reserved fictitious NANPA range 555-0100 through 555-0199 for examples;
+NANPA documents these as non-working numbers reserved for entertainment and
+advertising. See [NANPA's 555 line number guidance](https://nanpa.com/numbering/555-line-numbers).
+The guard scans staged additions rather than the full repository, so existing
+unrelated text does not prevent a commit. Review a reported line and remove or
+redact the number before committing.
 
 This is a local safeguard, not an absolute repository policy: Git permits
 `--no-verify`, and another checkout does not inherit this checkout's local Git

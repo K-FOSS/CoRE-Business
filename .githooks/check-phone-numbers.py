@@ -17,10 +17,26 @@ NANP_PATTERN = re.compile(
 )
 
 
+def is_reserved_example_number(value: str) -> bool:
+    digits = re.sub(r"\D", "", value)
+    if len(digits) == 11 and digits.startswith("1"):
+        national_number = digits[1:]
+    elif len(digits) == 10:
+        national_number = digits
+    else:
+        return False
+
+    # NANPA reserves 555-0100 through 555-0199 as fictitious numbers.
+    return national_number[3:6] == "555" and national_number[6:8] == "01"
+
+
 def phone_format(line: str) -> str | None:
-    if E164_PATTERN.search(line):
+    e164_match = E164_PATTERN.search(line)
+    if e164_match and not is_reserved_example_number(e164_match.group()):
         return "E.164-style number"
-    if NANP_PATTERN.search(line):
+
+    nanp_match = NANP_PATTERN.search(line)
+    if nanp_match and not is_reserved_example_number(nanp_match.group()):
         return "North American number"
     return None
 
