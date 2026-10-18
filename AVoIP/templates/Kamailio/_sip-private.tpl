@@ -15,7 +15,7 @@
         {{- if .Values.kamailio.sipLogging.sipCore }}
         xlog(
           "L_WARN",
-          "SIPCORE FLOW stage=websocket-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+          "SIPCORE FLOW stage=websocket-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt\n"
         );
         {{- end }}
         route(FROM_SIPCORE);
@@ -310,17 +310,19 @@
         if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
-      if (has_body("application/trickle-ice-sdpfrag")) {
+      route(SIPCORE_CONTENT_TYPE);
+      if ($var(sipcore_content_type) == "application/trickle-ice-sdpfrag" && has_body()) {
         if (!is_method("INFO")) {
           xlog("L_ERR", "SIPCORE FLOW stage=reject-trickle-fragment pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
           if (!is_method("ACK")) sl_send_reply("488", "Trickle ICE Requires INFO");
           exit;
         }
         if (!rtpengine_info()) {
-          xlog("L_ERR", "RTPEngine SIP Core trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
+          xlog("L_ERR", "RTPEngine SIP Core trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl cseq=$hdr(CSeq) branch=trickle-ice status=503\n");
           sl_send_reply("503", "Media Relay Unavailable");
           exit;
         }
+        xlog("L_INFO", "SIPCORE INFO callid=$ci cseq=$hdr(CSeq) method=$rm content_type=$cT branch=trickle-ice relay_result=consumed status=200\n");
         sl_send_reply("200", "OK");
         exit;
       }
@@ -373,7 +375,7 @@
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
-        "SIPCORE FLOW stage=forward-to-asterisk pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp cseq=$hdr(CSeq)\n"
+        "SIPCORE FLOW stage=forward-to-asterisk pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT\n"
       );
       {{- end }}
       route(PRIVATE_RELAY);
@@ -561,17 +563,19 @@
           {{- end }}
         }
       }
-      if (has_body("application/trickle-ice-sdpfrag")) {
+      route(SIPCORE_CONTENT_TYPE);
+      if ($var(sipcore_content_type) == "application/trickle-ice-sdpfrag" && has_body()) {
         if (!is_method("INFO")) {
           xlog("L_ERR", "SIPCORE FLOW stage=reject-trickle-fragment pod=$env(POD_NAME) callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
           if (!is_method("ACK")) sl_send_reply("488", "Trickle ICE Requires INFO");
           exit;
         }
         if (!rtpengine_info()) {
-          xlog("L_ERR", "RTPEngine SIP Core Asterisk trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl\n");
+          xlog("L_ERR", "RTPEngine SIP Core Asterisk trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl cseq=$hdr(CSeq) branch=trickle-ice status=503\n");
           sl_send_reply("503", "Media Relay Unavailable");
           exit;
         }
+        xlog("L_INFO", "SIPCORE INFO callid=$ci cseq=$hdr(CSeq) method=$rm content_type=$cT branch=trickle-ice relay_result=consumed status=200\n");
         sl_send_reply("200", "OK");
         exit;
       }
@@ -605,6 +609,27 @@
       route(PRIVATE_RELAY);
     }
 
+    # has_body(type) compares MIME enum values in Kamailio 6.1.4: unknown
+    # application subtypes (including DTMF and trickle ICE) compare equal.
+    # Read the parsed header through $cT, strip MIME parameters and normalize
+    # the media type as a string. Never use the MIME enum to identify ICE.
+    # Call only after the listener and dialog/owner route checks above.
+    route[SIPCORE_CONTENT_TYPE] {
+      $var(sipcore_content_type) = "";
+      if ($cT != $null) {
+        $var(sipcore_content_type) = $(cT{s.select,0,;}{s.trim}{s.tolower});
+      }
+      $var(sipcore_info_branch) = "dialog";
+      if (is_method("INFO")) {
+        if ($var(sipcore_content_type) == "application/trickle-ice-sdpfrag" && has_body()) {
+          $var(sipcore_info_branch) = "trickle-ice";
+        } else if ($var(sipcore_content_type) == "application/dtmf-relay") {
+          $var(sipcore_info_branch) = "dtmf-dialog";
+        }
+        xlog("L_INFO", "SIPCORE INFO callid=$ci cseq=$hdr(CSeq) method=$rm content_type=$cT branch=$var(sipcore_info_branch) from_tag=$ft to_tag=$tt\n");
+      }
+    }
+
     route[TO_SIPCORE_ASTERISK] {
       $du = "sip:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}:5061;transport=tls";
       $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk") }}";
@@ -615,7 +640,7 @@
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
-        "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+        "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) content_type=$cT branch=dialog-response\n"
       );
       {{- end }}
       # The callback INVITE is sent from Asterisk to a WebSocket contact. Alias
@@ -658,7 +683,7 @@
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
-        "SIPCORE FLOW stage=websocket-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq)\n"
+        "SIPCORE FLOW stage=websocket-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT branch=dialog-response\n"
       );
       {{- end }}
       if (has_body("application/sdp")) {
@@ -680,6 +705,9 @@
     route[PRIVATE_RELAY] {
       if (is_method("BYE")) t_on_failure("PRIVATE_BYE_FAILURE");
       $var(private_relay_result) = t_relay();
+      if ($var(side) == "sipcore" && is_method("INFO")) {
+        xlog("L_INFO", "SIPCORE INFO relay callid=$ci cseq=$hdr(CSeq) method=$rm content_type=$cT branch=$var(sipcore_info_branch) relay_result=$var(private_relay_result)\n");
+      }
       if ($var(private_relay_result) <= 0) {
         xlog(
           "L_ERR",
@@ -715,6 +743,9 @@
 
     {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
     onsend_route {
+      if ($var(side) == "sipcore" && is_method("ACK|INFO")) {
+        xlog("L_INFO", "SIPCORE wire callid=$ci cseq=$hdr(CSeq) method=$rm from_tag=$ft to_tag=$tt content_type=$cT destination=$snd(ip):$snd(port) transport=$snd(proto)\n");
+      }
       if ($snd(buf) =~ "^BYE ") {
         xlog(
           "L_INFO",

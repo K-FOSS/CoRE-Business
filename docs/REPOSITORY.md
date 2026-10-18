@@ -1,5 +1,9 @@
 # Repository and deployment guide
 
+For SIP Core keypad failures, use the [INFO routing and ACK verification
+guide](../AVoIP/docs/SIPCORE-DTMF.md). It explains MIME classification,
+scoped Kamailio reconciliation and verification without logging PINs or digits.
+
 CoRE Business is organized by application domain. Most top-level deployment
 directories are Helm charts, but some also include Kustomize input or raw
 Kubernetes resources. The corresponding Argo CD ApplicationSets live in the

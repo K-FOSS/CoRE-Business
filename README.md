@@ -1,5 +1,9 @@
 # CoRE Business
 
+AVoIP's [SIP Core INFO routing guide](AVoIP/docs/SIPCORE-DTMF.md) documents
+DTMF delivery to Asterisk, the separate RTPEngine trickle ICE path, and safe
+live verification of voicemail navigation and ACK routing.
+
 CoRE Business contains the application charts and manifests for the business
 and personal-service layer of the CoRE platform. It includes AI services,
 automation, communications, office and collaboration tools, mail, ERP,
