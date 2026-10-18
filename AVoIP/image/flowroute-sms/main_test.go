@@ -1,11 +1,50 @@
 package main
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 )
+
+func TestAuthorizedNumber(t *testing.T) {
+	allowed := []string{"+12065550100", "12065550100", "+12065550101", "12065550101"}
+	if !authorizedNumber("12065550100", allowed) || !authorizedNumber("+12065550101", allowed) {
+		t.Fatal("personal and group numbers should be authorized")
+	}
+	if authorizedNumber("+12065550102", allowed) || authorizedNumber("+1206-555-0100", allowed) {
+		t.Fatal("unassigned or malformed numbers must be rejected")
+	}
+}
+
+func TestSameOrigin(t *testing.T) {
+	r := httptest.NewRequest(http.MethodPost, "https://sms.resolvemy.host/api/messages", nil)
+	r.Header.Set("Origin", "https://sms.resolvemy.host")
+	if !sameOrigin(r) {
+		t.Fatal("same origin send should pass")
+	}
+	r.Header.Set("Origin", "https://evil.example")
+	if sameOrigin(r) {
+		t.Fatal("cross origin send should fail")
+	}
+}
+
+func TestInboxEscapesBodiesInClient(t *testing.T) {
+	app := &server{}
+	w := httptest.NewRecorder()
+	app.inbox(w, httptest.NewRequest(http.MethodGet, "/inbox", nil))
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "/assets/app.js") {
+		t.Fatal("inbox shell unavailable")
+	}
+	asset := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/assets/app.js", nil)
+	r.SetPathValue("name", "app.js")
+	app.asset(asset, r)
+	if asset.Code != http.StatusOK || !strings.Contains(asset.Body.String(), "textContent=text") {
+		t.Fatal("message client must render untrusted text through textContent")
+	}
+}
 
 func TestAllowedFlowrouteMediaURL(t *testing.T) {
 	tests := []struct {

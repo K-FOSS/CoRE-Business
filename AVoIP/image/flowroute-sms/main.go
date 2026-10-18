@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+//go:embed web/*
+var webFiles embed.FS
+var builtMode = "all"
 
 const (
 	maxRequestBytes = 1 << 20
@@ -118,6 +123,11 @@ type server struct {
 	token       []byte
 	logger      *slog.Logger
 	mediaClient *http.Client
+	sendKey     string
+	sendSecret  string
+	sendClient  *http.Client
+	sendMu      sync.Mutex
+	lastSend    map[string]time.Time
 }
 
 type mediaFetchError struct {
@@ -154,12 +164,27 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
+	mode := strings.TrimSpace(os.Getenv("SMS_SERVICE_MODE"))
+	if builtMode != "all" && mode != builtMode {
+		return errors.New("image mode does not match SMS_SERVICE_MODE")
+	}
+	if mode == "web" {
+		mux := http.NewServeMux()
+		app := &server{}
+		mux.HandleFunc("GET /inbox", app.inbox)
+		mux.HandleFunc("GET /assets/{name}", app.asset)
+		mux.HandleFunc("GET /healthz", app.health)
+		return http.ListenAndServe(":8080", mux)
+	}
 	databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	callbackToken := os.Getenv("FLOWROUTE_CALLBACK_TOKEN")
-	if databaseURL == "" || callbackToken == "" {
-		return errors.New("DATABASE_URL and FLOWROUTE_CALLBACK_TOKEN are required")
+	if mode != "api" && mode != "webhook" {
+		return errors.New("SMS_SERVICE_MODE must be api, web, or webhook")
 	}
-	if len(callbackToken) < 32 {
+	if databaseURL == "" || (mode == "webhook" && callbackToken == "") {
+		return errors.New("DATABASE_URL and webhook callback token are required for the selected mode")
+	}
+	if mode == "webhook" && len(callbackToken) < 32 {
 		return errors.New("FLOWROUTE_CALLBACK_TOKEN must contain at least 32 bytes")
 	}
 
@@ -194,14 +219,19 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("initialize inbound media index: %w", err)
 	}
 
-	app := &server{pool: pool, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}}
+	app := &server{pool: pool, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendClient: &http.Client{Timeout: 15 * time.Second}, sendKey: os.Getenv("FLOWROUTE_SMS_ACCESS_KEY"), sendSecret: os.Getenv("FLOWROUTE_SMS_SECRET_KEY"), lastSend: make(map[string]time.Time)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", app.health)
 	mux.HandleFunc("GET /readyz", app.ready)
-	mux.HandleFunc("POST /flowroute/", app.receive)
-	mux.HandleFunc("GET /inbox", app.inbox)
-	mux.HandleFunc("GET /api/messages", app.listMessages)
-	mux.HandleFunc("GET /media/{id}", app.getMedia)
+	if mode == "webhook" {
+		mux.HandleFunc("POST /flowroute/", app.receive)
+	}
+	if mode == "api" {
+		mux.HandleFunc("GET /api/messages", app.listMessages)
+		mux.HandleFunc("GET /api/numbers", app.listNumbers)
+		mux.HandleFunc("POST /api/messages", app.sendMessage)
+		mux.HandleFunc("GET /media/{id}", app.getMedia)
+	}
 
 	address := os.Getenv("LISTEN_ADDRESS")
 	if address == "" {
@@ -597,16 +627,51 @@ func normalizePhoneNumber(value string) (string, bool) {
 }
 
 func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
-	if len(s.allowedNumbers(r)) == 0 {
-		s.logger.Debug("inbox page denied", "failure_stage", "missing_authorized_numbers", "response_status", http.StatusForbidden)
-		http.Error(w, "no authorized numbers", http.StatusForbidden)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self' "+os.Getenv("SMS_FRAME_ANCESTOR"))
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	data, err := webFiles.ReadFile("web/index.html")
+	if err != nil {
+		http.Error(w, "page unavailable", 500)
+		return
+	}
+	w.Write(data)
+}
+
+func (s *server) asset(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name != "app.css" && name != "app.js" {
+		http.NotFound(w, r)
+		return
+	}
+	data, err := webFiles.ReadFile("web/" + name)
+	if err != nil {
+		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	io.WriteString(w, `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>SMS Inbox</title><main><h1>Messages</h1><div id="messages">Loading…</div></main><script>
-fetch('/api/messages').then(r=>{if(!r.ok)throw Error('Unable to load messages');return r.json()}).then(rows=>{const root=document.querySelector('#messages');root.replaceChildren();for(const m of rows){const article=document.createElement('article'),h=document.createElement('h2'),p=document.createElement('p'),time=document.createElement('time');h.textContent=m.sender+' → '+m.recipient;p.textContent=m.body||'';time.textContent=new Date(m.received_at).toLocaleString();article.append(h,time,p);for(const a of m.media||[]){if(a.mime_type.startsWith('image/')){const img=document.createElement('img');img.src='/media/'+encodeURIComponent(a.id);img.alt=a.file_name;img.loading='lazy';img.style.maxWidth='100%';article.append(img)}else{const link=document.createElement('a');link.href='/media/'+encodeURIComponent(a.id);link.textContent=a.file_name;article.append(link)}}root.append(article)}}).catch(e=>document.querySelector('#messages').textContent=e.message)
-</script>`)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if strings.HasSuffix(name, ".css") {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	} else {
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	}
+	w.Write(data)
+}
+
+func (s *server) listNumbers(w http.ResponseWriter, r *http.Request) {
+	values := s.allowedNumbers(r)
+	numbers := make([]string, 0, len(values)/2)
+	for _, value := range values {
+		if strings.HasPrefix(value, "+") {
+			numbers = append(numbers, value)
+		}
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"numbers": numbers, "can_send": s.sendKey != "" && s.sendSecret != ""})
 }
 
 func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
@@ -616,7 +681,16 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	rows, err := s.pool.Query(r.Context(), `SELECT message_id,sender,recipient,body,received_at,is_mms FROM public.flowroute_inbound_messages WHERE recipient = ANY($1) ORDER BY received_at DESC LIMIT 200`, numbers)
+	var before time.Time
+	if raw := r.URL.Query().Get("before"); raw != "" {
+		var err error
+		before, err = time.Parse(time.RFC3339Nano, raw)
+		if err != nil || r.URL.Query().Get("before_id") == "" {
+			http.Error(w, "invalid cursor", 400)
+			return
+		}
+	}
+	rows, err := s.pool.Query(r.Context(), `SELECT message_id,sender,recipient,body,received_at,is_mms,direction FROM public.flowroute_inbound_messages WHERE ((direction='inbound' AND recipient = ANY($1)) OR (direction='outbound' AND sender = ANY($1))) AND ($2::timestamptz IS NULL OR (received_at, message_id) < ($2::timestamptz, $3)) ORDER BY received_at DESC, message_id DESC LIMIT 200`, numbers, nullableTime(before), r.URL.Query().Get("before_id"))
 	if err != nil {
 		s.logger.Warn("inbox message list failed", "failure_stage", "query_messages", "response_status", http.StatusServiceUnavailable)
 		http.Error(w, "database unavailable", http.StatusServiceUnavailable)
@@ -635,12 +709,13 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 		Body       *string     `json:"body"`
 		ReceivedAt time.Time   `json:"received_at"`
 		IsMMS      bool        `json:"is_mms"`
+		Direction  string      `json:"direction"`
 		Media      []mediaInfo `json:"media"`
 	}
 	result := make([]inboxMessage, 0)
 	for rows.Next() {
 		var item inboxMessage
-		if err := rows.Scan(&item.ID, &item.Sender, &item.Recipient, &item.Body, &item.ReceivedAt, &item.IsMMS); err != nil {
+		if err := rows.Scan(&item.ID, &item.Sender, &item.Recipient, &item.Body, &item.ReceivedAt, &item.IsMMS, &item.Direction); err != nil {
 			s.logger.Warn("inbox message list failed", "failure_stage", "scan_message", "response_status", http.StatusInternalServerError)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
@@ -737,4 +812,11 @@ func nullableBody(body *string) any {
 		return nil
 	}
 	return *body
+}
+
+func nullableTime(value time.Time) any {
+	if value.IsZero() {
+		return nil
+	}
+	return value
 }
