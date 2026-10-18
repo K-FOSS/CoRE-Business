@@ -137,5 +137,29 @@ service:
         protocol: TCP
   {{- end }}
   {{- end }}
+networkpolicies:
+  {{- range $mode := list "web" "api" "webhook" }}
+  {{- if or (ne $mode "web") $settings.inbox.enabled }}
+  {{- $suffix := printf "flowroute-sms-%s" $mode }}
+  {{ $suffix }}-ingress:
+    controller: '{{ $suffix }}'
+    policyTypes:
+      - 'Ingress'
+    rules:
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: '{{ $settings.gatewayPods.namespace }}'
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: 'envoy'
+                  gateway.envoyproxy.io/owning-gateway-name: '{{ $.Values.gateway.name }}'
+                  gateway.envoyproxy.io/owning-gateway-namespace: '{{ $.Values.gateway.namespace }}'
+          ports:
+            - protocol: 'TCP'
+              port: 8080
+  {{- end }}
+  {{- end }}
 {{- end -}}
 {{- end -}}

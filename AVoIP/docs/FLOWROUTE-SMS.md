@@ -114,6 +114,12 @@ Gateway route to expose the service directly. The responsive conversation UI ren
 polling and paginated history, and displays stored images without exposing Flowroute's expiring signed
 URLs.
 
+Each SMS workload has an ingress NetworkPolicy allowing port 8080 only from
+the main Envoy Gateway pods in `flowrouteSMS.gatewayPods.namespace`. The
+selector checks the owning Gateway name and namespace supplied by the site
+values. Keep this selector aligned with the installed Envoy data plane; it
+protects the API's trusted Authentik headers from direct in-cluster requests.
+
 The primary-region [`avoip-authentik-groups` Workspace](templates/Authentik/AVoIPGroups.yaml)
 manages the `AVoIP Users` and `AVoIP Admins` groups, and runs before the inbox
 Workspace that looks them up. Assign users to these groups in Authentik; the

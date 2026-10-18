@@ -213,6 +213,8 @@ flowrouteSMS:
   replicas: 2
   hostname: 'sms.resolvemy.host'
   primaryRegion: 'yvr'
+  gatewayPods:
+    namespace: 'kube-system'
   image:
     pullPolicy: 'IfNotPresent'
   images:

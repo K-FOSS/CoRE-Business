@@ -2601,6 +2601,9 @@ persistence:
 {{- if $flowrouteSMSValues.service }}
   {{- $_ := set $commonValues "service" (mergeOverwrite (deepCopy ($commonValues.service | default dict)) $flowrouteSMSValues.service) -}}
 {{- end }}
+{{- if $flowrouteSMSValues.networkpolicies }}
+  {{- $_ := set $commonValues "networkpolicies" (mergeOverwrite (deepCopy ($commonValues.networkpolicies | default dict)) $flowrouteSMSValues.networkpolicies) -}}
+{{- end }}
 {{- $_ := set .Values "controllers" $commonValues.controllers -}}
 {{- $_ := set .Values "service" $commonValues.service -}}
 {{- $_ := set .Values "persistence" $commonValues.persistence -}}

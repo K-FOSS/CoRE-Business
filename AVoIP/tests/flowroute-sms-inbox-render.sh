@@ -46,6 +46,12 @@ for component in web api webhook; do
   }
 done
 
+policy_count="$(yq -r 'select(.kind == "NetworkPolicy" and (.metadata.name | contains("flowroute-sms"))) | .metadata.name' "$tmp_dir/render.yaml" | wc -l)"
+[[ "$policy_count" == '3' ]] || {
+  echo 'Expected one Envoy-only ingress policy per SMS workload' >&2
+  exit 1
+}
+
 helm template sms-inbox-non-primary "$repo_root/AVoIP" --namespace core-prod \
   --set cluster.name=core-dc1-talos-prod \
   --set datacenter=dc1 \
