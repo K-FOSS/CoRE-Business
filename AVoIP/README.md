@@ -137,7 +137,6 @@ The SIP Core callback targets the authenticated source extension and rings all
 of its registered contacts in parallel, like inbound DID fan-out. When one
 contact answers, Asterisk cancels the other attempts. See the
 [SIP Core configuration and behavior](docs/SIPCORE-HASS.md).
-
 The public-IVR callback is a separate, opt-in route. When enabled, it returns
 the call to an exact configured internal account identity or a valid NANP
 caller identity received over the authenticated FreeSWITCH-to-Asterisk leg.
@@ -574,8 +573,19 @@ service. Its
 is mounted directly from the existing `matrix-turn-auth` Secret created by
 Social/Matrix. Asterisk derives a time-limited TURN username/password at
 startup and stores the generated include only in its runtime `/tmp`; no
-credential is rendered into a ConfigMap or Helm values. The credential lifetime
-is configurable up to one year, so restart Asterisk before the expiry.
+credential is rendered into a ConfigMap or Helm values. The Asterisk runtime
+image includes the OpenSSL CLI needed for HMAC derivation. The chart pins the
+newly built image digest and enables TURN for sites where Asterisk SIP Core is
+enabled; verify the Matrix-managed Secret is Ready before rollout. The
+credential lifetime is configurable up to one year, so restart Asterisk
+before the expiry.
+
+Asterisk's `stunaddr` is a single server setting, not a multi-server list. The
+operator confirms that both `nat-home1.mylogin.space` and `nat.mylogin.space`
+work as STUN endpoints. The chart selects the site-local endpoint by region:
+Home1/YVR uses `nat-home1.mylogin.space:3478`, while DC1/YXL uses
+`nat.mylogin.space:3478`. Home1/YVR CoTURN is enabled; see the [site and TURN
+notes](docs/SIP-STATEFUL-HA.md#existing-turn-dependency-and-consumer-integration).
 
 This provides server-reflexive ICE candidates for Asterisk's media socket;
 STUN does not provide a TURN relay. The Home Assistant
