@@ -72,8 +72,10 @@ retained database separately during decommissioning.
 
 ## Authenticated inbox
 
-An optional private inbox is rendered when `flowrouteSMS.inbox.enabled` is
-true. Set its hostname and use an Authentik proxy outpost. The Envoy Gateway
+The Authentik-protected inbox is rendered when the receiver is enabled. It
+defaults to the callback hostname at `/inbox`; set
+`flowrouteSMS.inbox.hostname` only when a separate hostname is desired, and use
+an Authentik proxy outpost. The Envoy Gateway
 `SecurityPolicy` protects the entire inbox route and forwards Authentik's
 `X-Auth-Numbers` response header. The chart manages an Authentik provider scope
 mapping that builds this comma-separated allowlist from the user's Authentik
@@ -84,11 +86,11 @@ scope are denied. Do not bypass the authenticated Gateway route to expose the
 service directly. The web page renders message text as text and displays stored
 images without exposing Flowroute's expiring signed URLs.
 
-The inbox is disabled unless explicitly enabled and configured. It creates an
-Authentik proxy provider/application and policy binding for the configured
-access group. Keep the inbox hostname private; it has no public DNS ownership
-label or dashboard exposure annotation. Authentik custom provider headers are
-implemented through property mappings; see [Authentik custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
+The inbox creates an Authentik proxy provider/application and policy binding
+for the configured access group. The inbox route has no public DNS ownership
+label or dashboard exposure annotation; when it shares the callback hostname,
+only the callback path is routed without Authentik. Authentik custom provider
+headers are implemented through property mappings; see [Authentik custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
 and [Envoy Gateway external authorization](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/).
 
 The receiver has `/healthz` and a PostgreSQL-backed `/readyz`. Each pod uses a

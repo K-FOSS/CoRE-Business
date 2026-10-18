@@ -1,6 +1,7 @@
 {{- if and .Values.flowrouteSMS.enabled .Values.flowrouteSMS.inbox.enabled }}
 {{- $inbox := .Values.flowrouteSMS.inbox -}}
-{{- $hostname := required "flowrouteSMS.inbox.hostname is required when inbox is enabled" $inbox.hostname -}}
+{{- $hostname := default $.Values.flowrouteSMS.hostname $inbox.hostname -}}
+{{- $_ := required "flowrouteSMS.hostname is required when inbox is enabled" $hostname -}}
 {{- $_ := required "flowrouteSMS.inbox.providerConfigRef is required when inbox is enabled" $inbox.providerConfigRef -}}
 {{- $workspace := $inbox.workspaceName -}}
 {{- $slug := printf "core-sms-inbox-%s-%s-%s-managed" $.Values.region $.Values.datacenter $.Values.cluster.name -}}
@@ -62,7 +63,7 @@ spec:
       resource "authentik_application" "inbox" {
         name              = var.provider_name
         slug              = var.app_slug
-        meta_launch_url   = var.external_host
+        meta_launch_url   = "${var.external_host}/inbox"
         group             = "{{ $.Values.datacenter }}-{{ $.Values.cluster.name }}"
         protocol_provider = authentik_provider_proxy.inbox.id
       }
@@ -115,7 +116,17 @@ spec:
   hostnames:
     - '{{ $hostname }}'
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: 'PathPrefix'
+            value: '/inbox'
+        - path:
+            type: 'PathPrefix'
+            value: '/api/'
+        - path:
+            type: 'PathPrefix'
+            value: '/media/'
+      backendRefs:
         - group: ''
           kind: 'Service'
           name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms") }}'

@@ -195,8 +195,8 @@ flowrouteSMS:
   primaryRegion: 'yvr'
   image:
     repository: slop.writemy.codes/core/core-business/flowroute-sms
-    tag: 1-f21e70cc265a1144151e551934209988798c550c
-    digest: 'sha256:14c8f7931c5627173b2f87e7e00253c0a31a59649cabb4d735fdc0513b9a0369'
+    tag: '1-0f151f764b79d6bc73b34ab882383253742b2836'
+    digest: 'sha256:6ef9af799b755640b51459a8a2b5fdc9da20b1b0075baf0c3921e09c0de4c6e5'
     pullPolicy: 'IfNotPresent'
   callbackSecret:
     name: ''
@@ -205,7 +205,7 @@ flowrouteSMS:
     name: ''
     key: 'psqlURI'
   inbox:
-    enabled: false
+    enabled: true
     hostname: ''
     providerConfigRef: 'authentik'
     accessGroup: 'Home Users'
