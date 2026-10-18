@@ -309,6 +309,10 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 
 ## Live application investigations
 
+- For live Kubernetes inspection, the configured `kubectl` context `logged-user`
+  targets the YVR/Home1 cluster. Use it for YVR application checks; do not
+  substitute the DC1 context when investigating a YVR incident.
+
 - When a live reproduction is useful and authorized log access is available,
   inspect and monitor the relevant service logs directly; do not ask the user
   to run console commands or collect and paste log output.
