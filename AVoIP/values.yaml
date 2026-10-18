@@ -866,6 +866,10 @@ asterisk:
     # on 5062; this port is restricted to the Asterisk workload.
     privateEgressPort: 5063
     echoExtension: '9090'
+    # Authenticated SIP Core and IVR destination that plays a remote clip
+    # through the authenticated FreeSWITCH peer.
+    soundClipExtension: '67'
+    soundClipDestination: 'clang-audio'
     # Optional SIP Core endpoint to ring for inbound calls to the voice DID.
     inboundVoiceExtension: ''
     outboundNANP:
@@ -912,9 +916,9 @@ asterisk:
     # not the SIP/WSS hostname (for example: ['https://ha.example.net']).
     #
     # Endpoint secrets must be random 32+ character hexadecimal passwords.
-    # The chart reserves `echoExtension` and `ggAudioExtension` as local test
-    # destinations. `allowCallsTo` may name another configured extension; it
-    # can never match a PSTN dial.
+    # The chart reserves `echoExtension`, `ggAudioExtension`, and
+    # `soundClipExtension` as local service destinations. `allowCallsTo` may
+    # name another configured extension; it can never match a PSTN dial.
   # Stable locally administered Asterisk Entity ID; do not derive it from the
   # pod network interface because pod MAC addresses are not deployment state.
   entityID: '02:dc:1a:22:2a:01'
@@ -1042,6 +1046,9 @@ freeswitch:
     # sound asset. Enable explicitly only when a post-answer prompt is wanted.
     enabled: false
     url: 'http://10.1.1.84/Sounds/gg-sound-effect.mp3'
+  soundClip:
+    # FreeSWITCH mod_shout streams the reserved SIP Core and IVR destination.
+    url: 'http://10.1.1.84/Sounds/clang.mp3'
   inboundBridgeFailure:
     # Answer failed inbound Asterisk handoffs, play the GG asset above, and
     # hang up normally. Successful bridges terminate without this fallback.

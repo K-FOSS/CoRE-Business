@@ -38,7 +38,7 @@
 {{- fail "freeswitch.ivr.extensions must be unique" }}
 {{- end }}
 {{- $_ := set $ivrExtensions $extension true }}
-{{- $authorized := or (eq $extension (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) (and $.Values.asterisk.voicemail.enabled (eq $extension (toString (default $.Values.asterisk.sipCore.inboundVoiceExtension $.Values.asterisk.voicemail.mailbox)))) (eq $extension (toString $.Values.asterisk.sipCore.echoExtension)) (eq $extension (toString $.Values.asterisk.sipCore.ggAudioExtension)) (eq $extension (toString $.Values.asterisk.sipCore.helloCallbackExtension)) -}}
+{{- $authorized := or (eq $extension (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) (and $.Values.asterisk.voicemail.enabled (eq $extension (toString (default $.Values.asterisk.sipCore.inboundVoiceExtension $.Values.asterisk.voicemail.mailbox)))) (eq $extension (toString $.Values.asterisk.sipCore.echoExtension)) (eq $extension (toString $.Values.asterisk.sipCore.ggAudioExtension)) (and $.Values.asterisk.sipCore.enabled (eq $extension (toString $.Values.asterisk.sipCore.soundClipExtension))) (eq $extension (toString $.Values.asterisk.sipCore.helloCallbackExtension)) -}}
 {{- range $.Values.asterisk.sipCore.extensions }}
 {{- if eq $extension (toString .number) }}{{- $authorized = true }}{{- end }}
 {{- end }}
@@ -149,7 +149,11 @@ data:
           <condition field="destination_number" expression="^silent-ivr-entry$">
             <action application="answer"/>
             <action application="log" data="INFO AVoIP silent extension IVR ready caller=${caller_id_number}"/>
-            {{- $ivrPattern := join "|" $.Values.freeswitch.ivr.extensions -}}
+            {{- $ivrDestinations := $.Values.freeswitch.ivr.extensions -}}
+            {{- if $.Values.asterisk.sipCore.enabled }}
+            {{- $ivrDestinations = uniq (append $ivrDestinations (toString $.Values.asterisk.sipCore.soundClipExtension)) -}}
+            {{- end }}
+            {{- $ivrPattern := join "|" $ivrDestinations -}}
             {{- if $voicemailEnabled }}
             {{- $voicemailDigits := trimPrefix "*" $voicemailAccessCode -}}
             {{- $ivrPattern = printf "%s|%s|\\%s" $ivrPattern $voicemailDigits $voicemailAccessCode -}}
@@ -251,6 +255,11 @@ data:
             <action application="answer"/>
             <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
             <action application="hangup" data="NORMAL_CLEARING"/>
+            {{- else if and $.Values.asterisk.sipCore.enabled (eq (toString .) (toString $.Values.asterisk.sipCore.soundClipExtension)) }}
+            <action application="log" data="INFO AVoIP silent IVR playing sound clip caller=${caller_id_number}"/>
+            <action application="answer"/>
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.soundClip.url) }}"/>
+            <action application="hangup" data="NORMAL_CLEARING"/>
             {{- else if eq (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension) }}
             <!-- Asterisk intentionally clears this inbound leg after it has
                  accepted the callback request and started the return call.
@@ -268,6 +277,16 @@ data:
             {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
             <action application="hangup"/>
             {{- end }}
+          </condition>
+        </extension>
+        {{- end }}
+        {{- if and $.Values.asterisk.sipCore.enabled (not (has (toString $.Values.asterisk.sipCore.soundClipExtension) $.Values.freeswitch.ivr.extensions)) }}
+        <extension name="silent-ivr-sound-clip">
+          <condition field="destination_number" expression="^{{ $.Values.asterisk.sipCore.soundClipExtension }}$">
+            <action application="log" data="INFO AVoIP silent IVR playing sound clip caller=${caller_id_number}"/>
+            <action application="answer"/>
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.soundClip.url) }}"/>
+            <action application="hangup" data="NORMAL_CLEARING"/>
           </condition>
         </extension>
         {{- end }}
@@ -425,6 +444,17 @@ data:
             <action application="log" data="INFO AVoIP callback GG stream complete uuid=${uuid} call_id=${sip_call_id} read_codec=${read_codec} write_codec=${write_codec} out_packets=${rtp_audio_out_packet_count} out_bytes=${rtp_audio_out_media_bytes}"/>
             {{- end }}
             <action application="hangup"/>
+          </condition>
+        </extension>
+        <extension name="clang-audio">
+          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
+          <condition field="${sip_authorized}" expression="^true$"/>
+          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
+          <condition field="destination_number" expression="^{{ $.Values.asterisk.sipCore.soundClipDestination }}$">
+            <action application="log" data="INFO AVoIP authenticated sound clip playback start uuid=${uuid} call_id=${sip_call_id}"/>
+            <action application="answer"/>
+            <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.soundClip.url) }}"/>
+            <action application="hangup" data="NORMAL_CLEARING"/>
           </condition>
         </extension>
         {{- end }}

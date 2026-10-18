@@ -44,6 +44,9 @@
   {{- if not (or (hasPrefix "http://" .Values.freeswitch.preBridgeAudio.url) (hasPrefix "https://" .Values.freeswitch.preBridgeAudio.url)) -}}
     {{- fail "freeswitch.preBridgeAudio.url must be an HTTP(S) URL when SIP Core is enabled for GG audio" -}}
   {{- end -}}
+  {{- if not (or (hasPrefix "http://" .Values.freeswitch.soundClip.url) (hasPrefix "https://" .Values.freeswitch.soundClip.url)) -}}
+    {{- fail "freeswitch.soundClip.url must be an HTTP(S) URL when SIP Core is enabled" -}}
+  {{- end -}}
   {{- if .Values.asterisk.sipCore.media.enabled -}}
     {{- fail "Asterisk SIP Core media must use RTPEngine; disable asterisk.sipCore.media direct Asterisk exposure" -}}
   {{- end -}}
@@ -73,6 +76,9 @@
   {{- if not (regexMatch "^[0-9]{2,8}$" (toString .Values.asterisk.sipCore.echoExtension)) -}}
     {{- fail "asterisk.sipCore.echoExtension must be 2-8 digits when SIP Core is enabled" -}}
   {{- end -}}
+  {{- if not (regexMatch "^[0-9]{2,8}$" (toString .Values.asterisk.sipCore.soundClipExtension)) -}}
+    {{- fail "asterisk.sipCore.soundClipExtension must be 2-8 digits when SIP Core is enabled" -}}
+  {{- end -}}
   {{- if not (regexMatch "^[0-9]{2,8}$" (toString .Values.asterisk.sipCore.ggAudioExtension)) -}}
     {{- fail "asterisk.sipCore.ggAudioExtension must be 2-8 digits when SIP Core is enabled" -}}
   {{- end -}}
@@ -81,6 +87,12 @@
   {{- end -}}
   {{- if not (regexMatch "^[a-zA-Z0-9_.-]+$" (toString .Values.asterisk.sipCore.ggAudioDestination)) -}}
     {{- fail "asterisk.sipCore.ggAudioDestination must be a valid SIP user when SIP Core is enabled" -}}
+  {{- end -}}
+  {{- if not (regexMatch "^[a-zA-Z0-9_.-]+$" (toString .Values.asterisk.sipCore.soundClipDestination)) -}}
+    {{- fail "asterisk.sipCore.soundClipDestination must be a valid SIP user when SIP Core is enabled" -}}
+  {{- end -}}
+  {{- if eq (toString .Values.asterisk.sipCore.soundClipDestination) (toString .Values.asterisk.sipCore.ggAudioDestination) -}}
+    {{- fail "asterisk.sipCore.soundClipDestination must differ from ggAudioDestination" -}}
   {{- end -}}
   {{- if not (regexMatch "^[A-Za-z0-9 ._-]{1,40}$" (toString .Values.asterisk.sipCore.ggCallbackCallerIdName)) -}}
     {{- fail "asterisk.sipCore.ggCallbackCallerIdName must be 1-40 letters, numbers, spaces, periods, underscores, or hyphens" -}}
@@ -99,6 +111,9 @@
   {{- end -}}
   {{- if eq (toString .Values.asterisk.sipCore.ggAudioExtension) (toString .Values.asterisk.sipCore.echoExtension) -}}
     {{- fail "asterisk.sipCore.ggAudioExtension must differ from echoExtension" -}}
+  {{- end -}}
+  {{- if or (eq (toString .Values.asterisk.sipCore.soundClipExtension) (toString .Values.asterisk.sipCore.echoExtension)) (eq (toString .Values.asterisk.sipCore.soundClipExtension) (toString .Values.asterisk.sipCore.ggAudioExtension)) (eq (toString .Values.asterisk.sipCore.soundClipExtension) (toString .Values.asterisk.sipCore.helloCallbackExtension)) (and .Values.asterisk.sipCore.inboundVoiceExtension (eq (toString .Values.asterisk.sipCore.soundClipExtension) (toString .Values.asterisk.sipCore.inboundVoiceExtension))) -}}
+    {{- fail "asterisk.sipCore.soundClipExtension must differ from echoExtension, ggAudioExtension, helloCallbackExtension, and inboundVoiceExtension" -}}
   {{- end -}}
   {{- if or (eq (toString .Values.asterisk.sipCore.helloCallbackExtension) (toString .Values.asterisk.sipCore.echoExtension)) (eq (toString .Values.asterisk.sipCore.helloCallbackExtension) (toString .Values.asterisk.sipCore.ggAudioExtension)) -}}
     {{- fail "asterisk.sipCore.helloCallbackExtension must differ from echoExtension and ggAudioExtension" -}}
@@ -122,6 +137,9 @@
     {{- if eq (toString $extension.number) (toString $.Values.asterisk.sipCore.ggAudioExtension) -}}
       {{- fail "asterisk.sipCore.ggAudioExtension must not be assigned to a SIP Core user" -}}
     {{- end -}}
+    {{- if eq (toString $extension.number) (toString $.Values.asterisk.sipCore.soundClipExtension) -}}
+      {{- fail "asterisk.sipCore.soundClipExtension must not be assigned to a SIP Core user" -}}
+    {{- end -}}
     {{- if eq (toString $extension.number) (toString $.Values.asterisk.sipCore.helloCallbackExtension) -}}
       {{- fail "asterisk.sipCore.helloCallbackExtension must not be assigned to a SIP Core user" -}}
     {{- end -}}
@@ -134,8 +152,8 @@
   {{- end -}}
   {{- range $extension := .Values.asterisk.sipCore.extensions -}}
     {{- range $target := $extension.allowCallsTo -}}
-      {{- if and (ne (toString $target) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString $target) (toString $.Values.asterisk.sipCore.ggAudioExtension)) (ne (toString $target) (toString $.Values.asterisk.sipCore.helloCallbackExtension)) (not (hasKey $sipExtensions (toString $target))) -}}
-        {{- fail (printf "Asterisk SIP Core extension %s may call only configured extensions or reserved test destinations; invalid target %s" $extension.number $target) -}}
+      {{- if and (ne (toString $target) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString $target) (toString $.Values.asterisk.sipCore.ggAudioExtension)) (ne (toString $target) (toString $.Values.asterisk.sipCore.soundClipExtension)) (ne (toString $target) (toString $.Values.asterisk.sipCore.helloCallbackExtension)) (not (hasKey $sipExtensions (toString $target))) -}}
+        {{- fail (printf "Asterisk SIP Core extension %s may call only configured extensions or reserved service destinations; invalid target %s" $extension.number $target) -}}
       {{- end -}}
       {{- if not (regexMatch "^[0-9]{2,8}$" (toString $target)) -}}
         {{- fail (printf "Asterisk SIP Core target %s must be 2-8 digits" $target) -}}

@@ -257,11 +257,14 @@ data:
       same => n,Hangup()
     {{- end }}
     {{- range .allowCallsTo }}
-    {{- if and (ne (toString .) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension)) }}
+    {{- if and (ne (toString .) (toString $.Values.asterisk.sipCore.echoExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.ggAudioExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.soundClipExtension)) (ne (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension)) }}
     exten => {{ . }},1,Dial(PJSIP/{{ . }},30)
       same => n,Hangup()
     {{- end }}
     {{- end }}
+    ; Ask the authenticated FreeSWITCH peer to stream the configured sound clip.
+    exten => {{ $.Values.asterisk.sipCore.soundClipExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.soundClipDestination }}@freeswitch,30,g)
+      same => n,Hangup()
     {{- if and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions) }}
     ; PSTN egress is limited to the configured NANP-enabled account.
     exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .number }})

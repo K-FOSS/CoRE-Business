@@ -29,7 +29,7 @@ Secret value in this page.
 
 The desired routing sends the voice DID to a silent digit collector in YVR
 FreeSWITCH. Callers can
-type `7101`, `9090`, `66`, or `1234`; the allowlist is checked in FreeSWITCH
+type `7101`, `9090`, `66`, `67`, or `1234`; the allowlist is checked in FreeSWITCH
 and each accepted destination is sent through the existing authenticated
 FreeSWITCH-to-Asterisk gateway. The IVR has no prompt files or bundled audio
 assets. It answers the call to collect DTMF, then transfers it to the selected
@@ -60,10 +60,13 @@ Inbound calls over either public SIP transport follow this path:
    its FaxNumber DID bridges directly to Asterisk.
 5. If no DTMF input is entered, FreeSWITCH ends the answered IVR call after
    its configured 15-second input timeout. Destination `66` plays the GG asset
-   directly on YVR FreeSWITCH and then hangs up normally. Personal SIP Core
+   directly on YVR FreeSWITCH and then hangs up normally. Destination `67`
+   plays the configured clip on FreeSWITCH using `mod_shout`. Authenticated
+   SIP Core endpoints can also dial `67` directly; Asterisk sends that call
+   through its authenticated FreeSWITCH peer. Personal SIP Core
    destinations ring all registered contacts in parallel for the configured
-   endpoint timeout; failed inbound
-   handoffs play GG in FreeSWITCH and hang up normally. Unmatched public
+   endpoint timeout; failed inbound handoffs play GG in FreeSWITCH and hang up
+   normally. Unmatched public
    destinations are rejected.
 
 `freeswitch.inboundBridgeFailure.enabled` defaults to `true` for the direct
