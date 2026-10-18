@@ -83,6 +83,33 @@ Secret-backed environment. This is a parser check, not a configuration reload.
 
 ## Live acceptance and diagnostics
 
+### Home1 result, 2026-10-18
+
+Commit `f945004` was reconciled through Argo CD for exactly the legacy internal
+and internal-websocket Kamailio ConfigMaps. Reloader completed the existing
+rolling update; all three WebSocket owners and the private SBC loaded the new
+guard. No Asterisk or RTPEngine configuration was changed.
+The scoped operation succeeded at that exact revision. The Application remains
+Healthy with unrelated preexisting OutOfSync resources; no full application or
+fleet sync was performed.
+
+The user confirmed successful voicemail login, menu navigation, one digit
+accepted per keypress, and working audio. The correlated dialog contained five
+DTMF INFO requests, each taking `dtmf-dialog`, forwarding once to Asterisk,
+and receiving its downstream 200 response. No related RTPEngine Content-Type
+errors appeared in the test window. The fresh call had one observed INVITE
+200, an ACK with matching INVITE CSeq and dialog tags on browser ingress and
+owner wire egress, and a successful BYE/200 exchange. This did not reproduce
+the earlier ACK symptom or establish its historical cause.
+
+Static/render checks, the deployed 6.1.4 checker, and the isolated runtime
+regression passed. Genuine trickle ICE was exercised with the real Kamailio
+module and a fake NG peer; live RTPEngine fragment processing, a separate
+RTP telephone-event client, and inbound/outbound calling were not exercised
+in this acceptance call and remain compatibility checks to perform.
+
+### Procedure
+
 Reconcile the published revision through the owning Application. Only the
 affected Kamailio ConfigMaps need syncing; their existing Reloader annotations
 trigger the configured rolling update. Inspect the unchanged schema hooks
