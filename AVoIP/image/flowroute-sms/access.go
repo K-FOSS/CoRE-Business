@@ -10,11 +10,21 @@ import (
 
 func (s *server) groups(r *http.Request) []string {
 	var groups []string
-	// Always emitted by the Authentik property mapping, overwriting client input.
-	if json.Unmarshal([]byte(r.Header.Get("X-Auth-Groups")), &groups) != nil {
-		return nil
+	// Both headers are supplied by the trusted Authentik authorization response.
+	// The standard header also works for sessions issued before custom mappings.
+	_ = json.Unmarshal([]byte(r.Header.Get("X-Auth-Groups")), &groups)
+	if raw := r.Header.Get("X-Authentik-Groups"); raw != "" {
+		groups = append(groups, strings.Split(raw, "|")...)
 	}
-	return groups
+	seen := map[string]bool{}
+	result := []string{}
+	for _, group := range groups {
+		if group != "" && !seen[group] {
+			seen[group] = true
+			result = append(result, group)
+		}
+	}
+	return result
 }
 func (s *server) isAdmin(r *http.Request) bool {
 	if r.Header.Get("X-Authentik-Username") == "" {

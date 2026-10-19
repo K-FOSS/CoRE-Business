@@ -350,3 +350,18 @@ func TestCanonicalNumberCountryPrefix(t *testing.T) {
 		t.Fatal("valid canonical fixture rejected")
 	}
 }
+
+func TestStandardAuthentikGroups(t *testing.T) {
+	s := &server{}
+	for _, tc := range []struct {
+		groups string
+		admin  bool
+	}{{"AVoIP Users|AVoIP Admins", true}, {"AVoIP Admins extra|AVoIP Users", false}, {"", false}} {
+		r := httptest.NewRequest("GET", "https://sms.example/api/numbers", nil)
+		r.Header.Set("X-Authentik-Username", "fixture-user")
+		r.Header.Set("X-Authentik-Groups", tc.groups)
+		if s.isAdmin(r) != tc.admin {
+			t.Fatal("incorrect standard group authorization")
+		}
+	}
+}

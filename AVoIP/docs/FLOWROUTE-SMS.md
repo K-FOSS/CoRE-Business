@@ -294,3 +294,9 @@ API/webhook/admin replicas. Keep the old tables during rollback. Each database
 pod still has a five-connection maximum; the two-replica API/webhook pair totals
 up to twenty, and two admin replicas per telephony site add up to ten per site.
 The inbox and admin UI share the documented [Material Design 2 spec](UI-DESIGN.md).
+
+The API accepts Authentik's standard pipe-separated `X-Authentik-Groups` header
+as well as the JSON custom group header, both supplied by the trusted external
+authorization response. This preserves admin number visibility for existing
+sessions while custom property mappings roll out. Exact group names and an
+authenticated username are still required; no access is inferred from UI state.
