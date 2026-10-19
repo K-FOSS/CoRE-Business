@@ -484,10 +484,9 @@ kamailio:
       minAvailable: 2
 
     interSite:
-      # Explicit cross-site SIP peers and inbound DID transfers. Peer traffic
+      # Explicit cross-site SIP peers. Peer traffic
       # continues to use the carrier listener and its Vault client identity.
       peers: []
-      transfers: []
 
     topology:
       enabled: true

@@ -51,16 +51,13 @@ and periodic endpoint redetection after transient errors; see
 [RTPEngine recovery](AVoIP/docs/avoip/rtpengine-ha.md).
 The [AVoIP chart](AVoIP/README.md#named-kamailio-instances) now declares
 Kamailio as named instances; its active site lists are supplied by the
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-The active AVoIP Application values send YXL's voice DID over the existing
-inter-site link to YVR's FreeSWITCH digit collector. Its authenticated ingress
-rings and answers immediately; YVR's own voice DID
-enters the collector immediately. Both sites' FaxNumber DIDs route to YVR
-Asterisk rather than the fax receiver. Callers can press `0` during a mailbox
-greeting to open the mailbox and PIN prompts. See the
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
+The Admin catalog selects inbound DID destinations. Both sites currently send
+the voice DID to YVR extension `67` and the other DID to extension `66`;
+YXL uses the authenticated inter-site link. Each DID has a post-answer fax
+detection switch, with existing records enabled by default. See the
 [inbound routing guide](AVoIP/docs/PHONE-TREE.md).
-Failed inbound FreeSWITCH handoffs to Asterisk answer the caller, play GG,
-and hang up normally; the same guide documents verification and rollback.
+same guide for the managed call path and verification.
 The chart also has an [opt-in private Kamailio route](AVoIP/docs/KAMAILIO-VALUES.md)
 and [YVR Asterisk-to-carrier NANP calling](AVoIP/docs/OUTBOUND-PILOT.md)
 through the authenticated service path. A new desired-state change moves
@@ -260,6 +257,6 @@ Where documentation and manifests differ, the manifests, owning Backplane
 ApplicationSet and observed controller state are authoritative.
 
 AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
-SMS hosted in YVR and managed SIP routing disabled. DNS-only admin aliases
+SMS hosted in YVR and managed SIP routing enabled. DNS-only admin aliases
 use the existing site HTTPS gateway names; the routes require Authentik. See
 [deployment and rollback](AVoIP/docs/ADMIN.md).

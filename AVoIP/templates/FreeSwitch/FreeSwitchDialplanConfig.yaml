@@ -102,23 +102,9 @@ data:
         </extension>
         {{- end }}
         {{- end }}
-        {{- if $.Values.fax.did }}
-        <extension name="fax-did-to-asterisk">
-          <condition field="destination_number" expression="^{{ $.Values.fax.did }}$">
-            <action application="set" data="outside_call=true"/>
-            <action application="log" data="INFO AVoIP FaxNumber DID: bridging to local Asterisk caller=${caller_id_number}"/>
-            <action application="ring_ready"/>
-            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
-            <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
-            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
-          </condition>
-        </extension>
-        {{- end }}
-        {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
         <extension name="did-post-answer">
           <condition field="destination_number" expression="^did-post-answer$">
             {{- if $.Values.freeswitch.media.diagnostics.enabled }}
-            <!-- Capture the answered inbound voice leg. -->
             <action application="set" data="log_audio_stats_on_hangup=true"/>
             <action application="set_media_stats"/>
             <action application="log" data="INFO AVoIP inbound media answer uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>
@@ -129,40 +115,9 @@ data:
             {{- if $.Values.freeswitch.preBridgeAudio.enabled }}
             <action application="playback" data="shout://{{ trimPrefix "http://" (trimPrefix "https://" $.Values.freeswitch.preBridgeAudio.url) }}"/>
             {{- end }}
-
-            {{- if $.Values.freeswitch.fax.autoDetect }}
-            <!-- Monitor inbound fax CNG while the
-                Asterisk voice call continues. -->
-
-            <action application="log"
-                    data="INFO AVoIP main DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/>
-
-            <action application="spandsp_start_fax_detect"
-                    data="transfer 'fax-receive XML public' 20"/>
-            {{- end }}
-          </condition>
-        </extension>
-        {{- end }}
-        <extension name="flowroute-did">
-          <condition field="destination_number" expression="^{{ $.Values.avoip.did }}$">
-            <action application="set" data="outside_call=true"/>
-            <action application="log" data="INFO AVoIP DID ${destination_number}: received call"/>
-            {{- if $.Values.freeswitch.ivr.enabled }}
-            <action application="transfer" data="silent-ivr-entry XML public"/>
-            {{- else }}
-            {{- if $.Values.freeswitch.media.diagnostics.enabled }}
-            <action application="set" data="log_audio_stats_on_hangup=true"/>
-            <action application="set" data="execute_on_media=log INFO AVoIP inbound media established uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec}"/>
-            {{- end }}
-            {{- if or $.Values.freeswitch.media.diagnostics.enabled $.Values.freeswitch.preBridgeAudio.enabled $.Values.freeswitch.media.diagnostics.callRecording.enabled }}
-            <action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>
-            {{- end }}
-            <!-- Keep the carrier leg ringing until Asterisk returns 200 OK. -->
-            <action application="ring_ready"/>
-            <action application="log" data="INFO AVoIP DID ${destination_number}: bridging to Asterisk"/>
-            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
-            <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
-            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
+            {{- if and $.Values.freeswitch.fax.enabled $.Values.freeswitch.fax.autoDetect }}
+            <action application="log" data="INFO AVoIP managed DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/>
+            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML public' 20"/>
             {{- end }}
           </condition>
         </extension>

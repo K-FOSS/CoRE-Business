@@ -3,7 +3,8 @@
 Implementation source is in this repository. Runtime activation is separate:
 `avoipAdmin.enabled` creates administration resources on telephony sites;
 `avoipAdmin.routing.enabled` independently opts into managed SIP routing. Existing
-SIP routes remain the fallback for destinations outside the managed catalog.
+When managed SIP routing is enabled, inbound DIDs must exist in the Admin
+catalog. Missing or expired snapshots and unknown DIDs fail closed.
 Do not enable routing merely to obtain the management interface.
 
 The owner is the existing
@@ -89,6 +90,13 @@ verification, and a destination site plus one of:
 - `sip`: an explicit `sips:user@host[:port]` endpoint without arbitrary headers,
   URI parameters or dialplan expressions.
 
+Each DID also has **Detect fax after answer**. It is enabled for existing
+records that lack the field, preserving their post-answer fax detection.
+Disable it on a DID to skip SpanDSP detection. The site-wide
+`freeswitch.fax.enabled` and `freeswitch.fax.autoDetect` settings must also be
+enabled for detection to run. Detected faxes transfer to the existing
+`fax-receive` processing path; the DID destination still controls the voice call.
+
 An extension assignment selects its verified caller-ID number, upstream provider
 and YVR/YXL egress site. It is evaluated only from the existing authenticated
 Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never
@@ -96,7 +104,7 @@ authorization to select a caller ID. The existing outbound NANP and premium-rate
 restrictions and carrier quota remain; this change does not authorize unrestricted
 international calling. Emergency/service dialing stays on the existing routes.
 
-### Move the existing IVR and direct numbers into Admin
+### Configure the current inbound numbers in Admin
 
 In **SIP providers**, keep the inbound carrier's signaling CIDRs, site gateway,
 and a current ownership verification record for each DID. In **DIDs**, add one
@@ -105,16 +113,18 @@ record per inbound number, using canonical `+1…` format and the provider ID in
 
 | Number | Destination site | Destination type | Destination |
 | --- | --- | --- | --- |
-| Main voice DID | `yvr` | `ivr` | Empty; enters `silent-ivr-entry` |
-| Each direct DID | `yvr` | `extension` | `7101` (or its intended extension) |
+| Voice DID | `yvr` | `extension` | `67` |
+| Other DID | `yvr` | `extension` | `66` |
 
-The IVR site must have `freeswitch.ivr.enabled`; its digit choices still come
-from the site's FreeSWITCH IVR configuration. The direct extension must exist
-in Asterisk SIP Core. Add or verify the **Caller ID assignments** record for
-`7101` separately: select its outbound provider, verified caller-ID number,
+To send a DID to the IVR, change its destination type to `ivr`, leave the
+destination empty, and choose a site with `freeswitch.ivr.enabled`. Its digit
+choices still come from the site's FreeSWITCH IVR configuration. An extension
+destination must exist in Asterisk SIP Core. Add or verify the **Caller ID
+assignments** record for `7101` separately: select its outbound provider,
+verified caller-ID number,
 and egress site. An inbound DID route does not grant outbound caller-ID use.
-The catalog is administered per site; confirm both sites have the required
-records before removing the static cross-site or carrier fallback.
+The catalog is shared across sites; confirm both sites have fresh routing
+snapshots before changing a destination.
 
 Additional upstream gateways use the established FreeSWITCH carrier profile and
 private-to-carrier Kamailio proxy, preserving the public signaling border and

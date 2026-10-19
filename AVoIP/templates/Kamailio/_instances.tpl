@@ -119,18 +119,7 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- range $transfer := ($interSite.transfers | default list) -}}
-    {{- $transferDIDRole := default "avoip" $transfer.destinationDID -}}
-    {{- $transferDID := $.Values.avoip.did -}}
-    {{- if eq $transferDIDRole "fax" -}}
-      {{- $transferDID = $.Values.fax.did -}}
-    {{- end -}}
-    {{- $transferDIDConfigured := or (regexMatch "^\\+?[0-9]{10,15}$" (toString $transferDID)) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" (toString $transferDID)) -}}
-    {{- if or (ne $role "carrier-sbc") (not $effective.carrierOutbound.clientIdentity.enabled) (not (has $transferDIDRole (list "avoip" "fax"))) (not $transferDIDConfigured) (not (regexMatch "^[0-9]{2,8}$" (toString $transfer.destinationExtension))) (not (hasKey $interSitePeerNames $transfer.peerName)) -}}
-      {{- fail (printf "Kamailio %s interSite transfer requires a carrier-sbc with Vault client identity, a configured DID role, an exact extension and a configured peer" $name) -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if and (or ($interSite.peers | default list) ($interSite.transfers | default list)) (or (ne $role "carrier-sbc") (not $effective.carrierOutbound.enabled) (not $effective.carrierOutbound.clientIdentity.enabled)) -}}
+  {{- if and ($interSite.peers | default list) (or (ne $role "carrier-sbc") (not $effective.carrierOutbound.enabled) (not $effective.carrierOutbound.clientIdentity.enabled)) -}}
     {{- fail (printf "Kamailio %s interSite routing requires the carrier-sbc's existing Vault mTLS configuration" $name) -}}
   {{- end -}}
   {{- if and ($interSite.peers | default list) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $effective.carrierOutbound.sniHost))) -}}

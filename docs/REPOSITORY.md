@@ -194,13 +194,14 @@ Secret consumed by Nextcloud. The Workspace uses an `Orphan` deletion policy,
 so permanent removal requires explicit service-account revocation.
 
 Nextcloud Talk's high-performance backend is deployed from the AVoIP chart on
-Home1/YVR, alongside Office. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+Home1/YVR, alongside Office. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 owns the signaling Gateway route and public TURN/media LoadBalancer. The
 same ApplicationSet supplies the complete
 [named Kamailio instance list](../AVoIP/README.md#named-kamailio-instances)
-for each AVoIP site. The voice DID now enters a silent YVR FreeSWITCH IVR with
-an exact Asterisk destination allowlist; both sites' FaxNumber DIDs route to
-YVR SIP Core extension `7101` instead of the fax receiver. The
+for each AVoIP site. The Admin catalog currently routes the voice DID to YVR
+extension `67` and the other DID to extension `66` at both sites. Each DID's
+post-answer fax detection setting can transfer detected faxes to the existing
+receiver. The
 [AVoIP inbound call path](../AVoIP/docs/PHONE-TREE.md) records the DID routes,
 IVR behavior, GG playback after failed inbound Asterisk handoffs, and retained
 fax spool. The [inter-site voice investigation](../AVoIP/docs/INTERSITE-VOICE.md)
@@ -217,9 +218,8 @@ and keeps inbound DIDs on Kamailio; the existing carrier path continues to ancho
 RTPEngine. FreeSWITCH includes its configured outbound codec preferences on
 the Flowroute leg so G.711 can be negotiated when the SIP Core leg uses a
 different codec. The private registrar remains disabled in the
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
-The YXL voice and FaxNumber DIDs now use that same carrier link to reach the
-YVR IVR and Asterisk SIP Core extension `7101`, respectively. The exact peer
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
+YXL uses that carrier link for Admin-managed YVR DID destinations. The exact peer
 allowlist and rollback are documented in the
 [inter-site voice guide](../AVoIP/docs/INTERSITE-VOICE.md).
 The registrar pilot requires a site-local `User` database claim and migration
@@ -236,12 +236,10 @@ The AVoIP chart also mounts a retained, cluster-local RWX sound library into
 enabled Asterisk and FreeSWITCH workloads and serves a browser recorder/editor
 under Homer's hostname. The [sound library guide](../AVoIP/docs/avoip/sound-library.md)
 documents the Authentik group, WAV format, PBX file paths and retained-volume
-behavior; the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+behavior; the [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 selects the production clusters and existing StorageClass values.
-The active YXL voice DID crosses the authenticated inter-site link to YVR's
-IVR ingress `7102`, which rings and answers immediately.
-YVR's own voice DID answers immediately. Both FaxNumber DIDs route to YVR's
-Asterisk SIP Core endpoint `7101`; see the [phone tree](../AVoIP/docs/PHONE-TREE.md).
+The active YXL DIDs cross the authenticated inter-site link to their
+Admin-selected YVR destinations; see the [phone tree](../AVoIP/docs/PHONE-TREE.md).
 Kamailio and RTPEngine default listeners use each pod's Downward API address for
 concrete local HEP source metadata; [Homer verification](../AVoIP/docs/HOMER.md#verification)
 distinguishes locally emitted traces from received SIP peer addresses.
@@ -507,6 +505,6 @@ Removal requires checking external resources and orphan/deletion policies; delet
 a claim does not establish that its data or grants were removed.
 
 AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
-SMS hosted in YVR and managed SIP routing disabled. DNS-only admin aliases
+SMS hosted in YVR and managed SIP routing enabled. DNS-only admin aliases
 use the existing site HTTPS gateway names; the routes require Authentik. See
 [deployment and rollback](../AVoIP/docs/ADMIN.md).

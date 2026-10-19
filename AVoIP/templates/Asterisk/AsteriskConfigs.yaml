@@ -154,46 +154,22 @@ data:
     exten => o,1,VoiceMailMain()
       same => n,Hangup()
     {{- end }}
-    {{- range (list .Values.avoip.did .Values.fax.did) }}
-    {{- if . }}
-    ; Ring every registered SIP Core contact in parallel until one answers.
-    {{- if $.Values.asterisk.sipCore.inboundVoiceExtension }}
-    exten => {{ . }},1,Dial(${PJSIP_DIAL_CONTACTS({{ $.Values.asterisk.sipCore.inboundVoiceExtension }})},30)
-      {{- if and (or $.Values.asterisk.voicemail.enabled $.Values.freeswitch.voicemail.enabled) (eq (toString .) (toString $.Values.fax.did)) }}
-      same => n,GotoIf($["${DIALSTATUS}" = "CANCEL"]?done)
-      same => n,NoOp(AVoIP voicemail fallback dialstatus=${DIALSTATUS} mailbox={{ $.Values.asterisk.sipCore.inboundVoiceExtension }} cause=${HANGUPCAUSE})
-      same => n,VoiceMail({{ $.Values.asterisk.sipCore.inboundVoiceExtension }}@default,u)
-      same => n(done),Hangup()
-      {{- else }}
-      same => n,Hangup()
-      {{- end }}
-    {{- else }}
-    {{- if and (or $.Values.asterisk.voicemail.enabled $.Values.freeswitch.voicemail.enabled) (eq (toString .) (toString $.Values.fax.did)) }}
-    exten => {{ . }},1,Answer()
-      same => n,VoiceMail({{ default $.Values.asterisk.sipCore.inboundVoiceExtension $.Values.asterisk.voicemail.mailbox }}@default,u)
-      same => n,Hangup()
-    {{- else }}
-    exten => {{ . }},1,Answer()
-      same => n,Echo()
-      same => n,Playback(hello-world)
-      same => n,Playback(hello-world)
-      same => n,Playback(hello-world)
-      same => n,Playback(hello-world)
-      same => n,Hangup()
-    {{- end }}
-    {{- end }}
-    {{- end }}
-    {{- end }}
     {{- if and .Values.asterisk.voicemail.enabled (not .Values.asterisk.sipCore.enabled) .Values.freeswitch.ivr.enabled }}
     ; Voicemail-only sites use the local mailbox as the IVR destination.
     exten => {{ default .Values.asterisk.sipCore.inboundVoiceExtension .Values.asterisk.voicemail.mailbox }},1,VoiceMail({{ default .Values.asterisk.sipCore.inboundVoiceExtension .Values.asterisk.voicemail.mailbox }}@default,u)
       same => n,Hangup()
     {{- end }}
       {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.inboundVoiceExtension }}
-    ; The authenticated YVR FreeSWITCH peer may deliver this exact transfer
-    ; extension after the carrier mTLS route has authorized it.
-    exten => {{ .Values.asterisk.sipCore.inboundVoiceExtension }},1,Dial(PJSIP/{{ .Values.asterisk.sipCore.inboundVoiceExtension }},30)
+    ; The managed FreeSWITCH route may deliver this configured extension.
+    ; Ring all registered contacts in parallel.
+    exten => {{ .Values.asterisk.sipCore.inboundVoiceExtension }},1,Dial(${PJSIP_DIAL_CONTACTS({{ .Values.asterisk.sipCore.inboundVoiceExtension }})},30)
+      {{- if .Values.asterisk.voicemail.enabled }}
+      same => n,GotoIf($["${DIALSTATUS}" = "CANCEL"]?done)
+      same => n,VoiceMail({{ .Values.asterisk.sipCore.inboundVoiceExtension }}@default,u)
+      same => n(done),Hangup()
+      {{- else }}
       same => n,Hangup()
+      {{- end }}
       {{- end }}
     {{- if and .Values.freeswitch.ivr.enabled .Values.asterisk.sipCore.enabled }}
     ; These exact destinations are reachable only after FreeSWITCH validates
@@ -245,6 +221,11 @@ data:
     {{- end }}
     {{- end }}
     {{- end }}
+    {{- end }}
+    {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.soundClipExtension (not (has (toString .Values.asterisk.sipCore.soundClipExtension) .Values.freeswitch.ivr.extensions)) }}
+    ; The Admin catalog may target the configured sound-clip extension directly.
+    exten => {{ .Values.asterisk.sipCore.soundClipExtension }},1,Dial(PJSIP/{{ .Values.asterisk.sipCore.soundClipDestination }}@freeswitch,30,g)
+      same => n,Hangup()
     {{- end }}
     {{- if .Values.asterisk.sipCore.enabled }}
 

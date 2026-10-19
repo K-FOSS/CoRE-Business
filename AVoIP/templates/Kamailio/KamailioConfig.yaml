@@ -140,7 +140,7 @@ data:
     loadmodule "textops.so"
     loadmodule "xlog.so"
     loadmodule "tls.so"
-    {{- if or .Values.kamailio.carrierOutbound.enabled $sipCoreEnabled (and (eq .Values.kamailio.role "private-sbc") (or .Values.kamailio.interSite.peers .Values.kamailio.interSite.transfers)) }}
+    {{- if or .Values.kamailio.carrierOutbound.enabled $sipCoreEnabled (and (eq .Values.kamailio.role "private-sbc") .Values.kamailio.interSite.peers) }}
     loadmodule "dialog.so"
     {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}
     modparam("dialog", "default_timeout", {{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }})

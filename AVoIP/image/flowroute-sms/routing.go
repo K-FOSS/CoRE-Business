@@ -31,14 +31,18 @@ type sipProvider struct {
 	CallerIDs []verifiedCallerID `json:"verified_caller_ids"`
 }
 type didRoute struct {
-	Number           string   `json:"number"`
-	Providers        []string `json:"allowed_providers"`
-	Site             string   `json:"site"`
-	Kind             string   `json:"kind"`
-	Destination      string   `json:"destination"`
-	OutboundProvider string   `json:"outbound_provider,omitempty"`
-	CallerID         string   `json:"caller_id,omitempty"`
+	Number              string   `json:"number"`
+	Providers           []string `json:"allowed_providers"`
+	Site                string   `json:"site"`
+	Kind                string   `json:"kind"`
+	Destination         string   `json:"destination"`
+	OutboundProvider    string   `json:"outbound_provider,omitempty"`
+	CallerID            string   `json:"caller_id,omitempty"`
+	FaxDetectionEnabled *bool    `json:"fax_detection_enabled,omitempty"`
 }
+
+func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
+
 type extensionRoute struct {
 	Extension string `json:"extension"`
 	CallerID  string `json:"caller_id"`
@@ -420,6 +424,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	extension := r.Form.Get("variable_sip_h_X-Core-Extension")
 	bridge := ""
 	transfer := ""
+	detectFax := false
 	callerID := ""
 	gateway := ""
 	if context == "core-managed-outbound" && extensionID.MatchString(extension) {
@@ -441,6 +446,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		did, _ := normalizePhoneNumber(r.Form.Get("variable_sip_h_X-Core-Original-DID"))
 		for _, d := range c.DIDs {
 			if d.Number == did && d.Site == site {
+				detectFax = d.detectFax()
 				switch d.Kind {
 				case "ivr":
 					transfer = "silent-ivr-entry XML public"
@@ -469,6 +475,12 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	text := `<document type="freeswitch/xml"><section name="dialplan"><context name="` + escape(context) + `"><extension name="managed"><condition field="destination_number" expression="^.+$">`
 	if callerID != "" {
 		text += `<action application="set" data="effective_caller_id_number=` + escape(callerID) + `"/>`
+	}
+	if context == "core-managed-inbound" {
+		text += `<action application="set" data="fax_original_destination=` + escape(destination) + `"/>`
+		if detectFax {
+			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>`
+		}
 	}
 	if transfer != "" {
 		text += `<action application="transfer" data="` + escape(transfer) + `"/>`

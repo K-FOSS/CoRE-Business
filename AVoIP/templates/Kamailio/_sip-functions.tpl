@@ -220,6 +220,13 @@
           }
           {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
           route(MANAGED_HANDOFF);
+          if ($var(managed_handoff) == 1) {
+            dlg_manage();
+            $dlg_var(interSitePeer) = "{{ $peer.name }}";
+            $dlg_var(interSiteDirection) = "terminating";
+            route(FROM_CARRIER);
+            exit;
+          }
           {{- end }}
           if (is_method("INVITE") && !has_totag()) {
             $var(interSiteAllowed) = 0;
@@ -553,36 +560,12 @@
 
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       route(MANAGED_DID);
+      if (is_method("INVITE") && $var(side) != "inter-site") {
+        sl_send_reply("404", "DID Not Configured"); exit;
+      }
       {{- end }}
 
       if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
-        {{- range .Values.kamailio.interSite.transfers }}
-        {{- $transfer := . }}
-        {{- $transferDIDRole := default "avoip" $transfer.destinationDID -}}
-        {{- $transferDID := $.Values.avoip.did -}}
-        {{- if eq $transferDIDRole "fax" -}}
-        {{- $transferDID = $.Values.fax.did -}}
-        {{- end }}
-        if (is_method("INVITE") && !has_totag() &&
-            ($tU == "{{ $transferDID }}" || $tU == "+{{ $transferDID }}")) {
-          $var(interSitePeer) = "{{ $transfer.peerName }}";
-          dlg_manage();
-          $dlg_var(interSitePeer) = "{{ $transfer.peerName }}";
-          $dlg_var(interSiteDirection) = "origin";
-          route(RR_CARRIER_TO_BACKEND);
-          {{- if and $.Values.kamailio.functions.media (include "avoip.rtpengine.enabled" $ | trim) $.Values.freeswitch.enabled }}
-          route(MEDIA_INITIAL);
-          {{- end }}
-          {{- range $.Values.kamailio.interSite.peers }}
-          {{- if eq .name $transfer.peerName }}
-          $ru = "sips:{{ $transfer.destinationExtension }}@{{ .serviceHost }}";
-          {{- end }}
-          {{- end }}
-          route(INTERSITE_TO_PEER);
-          route(RELAY);
-          exit;
-        }
-        {{- end }}
         route(INITIAL_BACKEND);
         exit;
       }

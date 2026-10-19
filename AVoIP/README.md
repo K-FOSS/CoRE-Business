@@ -98,21 +98,18 @@ AVoIP Admin database supplies that extension's caller ID, and the provider's
 Asterisk-to-FreeSWITCH route only when Admin routing is disabled.
 YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
-outbound SIPS TLSRoute stays enabled. The desired YXL voice route transfers
-over that existing carrier path to the silent YVR FreeSWITCH IVR ingress; its
-FaxNumber DID routes directly to YVR Asterisk SIP Core extension `7101`; Asterisk
-dials all currently registered AOR contacts in parallel, so every registered
-device rings until one answers or the 30-second timeout expires. The IVR
-accepts only configured Asterisk destinations and uses the existing local
-FreeSWITCH-to-Asterisk gateway. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
+outbound SIPS TLSRoute stays enabled. The Admin catalog currently sends both
+sites' inbound DIDs to YVR: the voice DID to extension `67` and the other DID
+to extension `66`. YXL uses the existing authenticated carrier inter-site link
+for that handoff. Admin can instead select the silent YVR FreeSWITCH IVR or
+another configured destination. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
 for the Asterisk-to-FreeSWITCH-to-Flowroute path, codec negotiation, trust
 boundaries, destination filters and quotas, and the
 [inter-site voice guide](docs/INTERSITE-VOICE.md) for transfer and rollout
 verification. The [Flowroute teardown runbook](docs/avoip/runbooks/outbound-flowroute-teardown.md)
 covers the internal Kamailio BYE route, replica-safe TOPOS restoration,
 render regression and live SIP/media acceptance.
-The new DID and outbound call paths still require publish, reconciliation,
-and a live call check.
+Confirm the deployed catalog and snapshots before changing an inbound route.
 
 ## Deployment ownership
 
@@ -201,17 +198,13 @@ databases 155 (Location) and 156 (Registry). Location and Registry require
 patched images built from the pinned Routr source to select those databases.
 See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
-The Home1/YVR voice DID enters the silent FreeSWITCH IVR, which accepts the
-configured Asterisk destinations `7101`, `9090`, and `1234`; destination `66`
-plays the GG asset directly on YVR FreeSWITCH and hangs up normally. The IVR
-also accepts `97` or `*97` for the YVR Asterisk voicemail login; both voicemail
-entries bridge to Asterisk as `*97`. The
-YXL voice DID reaches that same IVR through the existing carrier mTLS path at
-ingress extension `7102`. Both sites' FaxNumber DIDs route to YVR Asterisk
-extension `7101`. The DID routes no longer select the `rxfax` receiver or
-automatic fax detection; the retained fax spool and explicit `fax-receive`
-extension remain available for future routing. SpanDSP color fax negotiation
-remains enabled through `freeswitch.fax.colour.enabled`. See the
+The Admin catalog currently routes the voice DID to YVR extension `67` and
+the other DID to YVR extension `66` at both sites. It can select the silent
+FreeSWITCH IVR instead; that IVR accepts configured Asterisk destinations and
+voicemail access. Managed inbound calls preserve the post-answer fax detector
+when the DID's **Detect fax after answer** switch and the site-wide fax settings
+are enabled. Detected faxes enter the existing `fax-receive` path. SpanDSP
+color fax negotiation remains enabled through `freeswitch.fax.colour.enabled`. See the
 [current inbound call path](docs/PHONE-TREE.md).
 
 Inter-site voice uses the carrier Service on TLS/5061 and its public TLS
@@ -258,7 +251,7 @@ The [SIP security probes](tests/README.md#authorization-and-outbound-call-probes
 exercise denied sources, registration, unmatched outbound destinations, and
 bad private-peer credentials on an isolated deployment. Carrier DID calls use
 the source ACL rather than SIP digest authentication.
-FreeSWITCH public inbound DID routing remains on Kamailio. YVR's managed
+FreeSWITCH public inbound DID routing is selected by Admin through Kamailio. YVR's managed
 Asterisk NANP route sends calls directly through private Kamailio using the
 SIP Core `carrier-outbound` PJSIP endpoint. The Admin database maps each
 permitted extension to its caller ID and provider route; the carrier verifies
@@ -267,9 +260,8 @@ disabled. The former Asterisk-to-FreeSWITCH route remains available only while
 Admin routing is disabled. FreeSWITCH still registers to the regional
 Flowroute SIP endpoint using the existing Vault record
 `AVoIP/SIP/FlowRoute` (`Username` and `Password`) for its separate inbound
-role. The managed DID catalog supports an IVR destination for the main voice
-number and direct extension destinations for other numbers; see the
-[Admin configuration steps](docs/ADMIN.md#move-the-existing-ivr-and-direct-numbers-into-admin).
+role. The managed DID catalog supports IVR and direct extension destinations
+for each number; see the [Admin configuration steps](docs/ADMIN.md#configure-the-current-inbound-numbers-in-admin).
 YXL uses the US-East-VA PoP and YVR uses US-West-OR. The existing
 carrier path and RTPEngine continue to handle signaling and media. The legacy
 Flowroute gateway uses its `outbound-proxy` for the Kamailio INVITE hop,
@@ -782,8 +774,9 @@ The replacement speech path is the deployed AI stack:
 - The [AI chart documentation](https://github.com/K-FOSS/CoRE-Business/blob/main/AI/README.md)
   describes the current GPUStack, Speaches, Gateway, and Wyoming deployment.
 
-The voice DID now uses a silent DTMF extension collector; it does not use the
-shared prompt library or a speech bridge. If voice TTS/STT is needed later, the
+The silent DTMF extension collector remains available as an Admin-selected
+IVR destination; it does not use the shared prompt library or a speech bridge.
+If voice TTS/STT is needed later, the
 existing Wyoming endpoint or an OpenAI-compatible speech bridge can be
 integrated without recreating Vosk or Mycroft resources.
 
@@ -799,8 +792,8 @@ recovery decisions about any remnants.
 
 ## Verification and activation
 
-The chart is deployed. The voice and FaxNumber DID routes now target the
-silent YVR IVR and Asterisk extension `7101`, respectively. The
+The chart is deployed. The Admin catalog currently sends the voice and other
+DIDs to YVR extensions `67` and `66`, respectively. The
 five-second audio relay interruption is also reported resolved after the
 FreeSWITCH SIP profile RTP timer changes. Call-correlated traces and the
 end-to-end failover paths still need live verification; see
@@ -811,11 +804,10 @@ end-to-end failover paths still need live verification; see
    is reported resolved; one [operator-correlated 129-second call](docs/SIP-IDENTITY.md)
    had a complete recording. Retain a Call-ID-correlated ACK and clean BYE/200
    trace as acceptance evidence. See [SIP identity and call verification](docs/SIP-IDENTITY.md).
-2. Verify the voice DID accepts each allowlisted DTMF destination and that the
-   FaxNumber DID rings every registered `7101` device. Confirm one answering
-   device cancels the other branches, voicemail fallback remains correct, and
-   no registered contact does not leave a live answered call after the
-   30-second dial timeout.
+2. Verify each DID reaches its Admin destination at both sites. Where a DID is
+   configured for the IVR, verify its allowed DTMF choices. Verify fax detection
+   and `fax-receive` on a DID with its switch enabled; confirm a disabled DID
+   skips detection.
 3. Exercise site failover and the RTPEngine/Valkey recovery path before treating
    either as production verified.
 
@@ -871,6 +863,6 @@ for this workflow: [User platform APIs](https://slop.writemy.codes/CoRE/CoRE-Bac
   and [Nextcloud Talk quick install and administration settings](https://nextcloud-talk.readthedocs.io/en/latest/quick-install/)
 
 AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
-SMS hosted in YVR and managed SIP routing disabled. DNS-only admin aliases
+SMS hosted in YVR and managed SIP routing enabled. DNS-only admin aliases
 use the existing site HTTPS gateway names; the routes require Authentik. See
 [deployment and rollback](docs/ADMIN.md).

@@ -46,15 +46,18 @@
     {{- if ne .Values.kamailio.role "private-sbc" }}
     route[MANAGED_DID] {
       if (!is_method("INVITE") || has_totag()) return;
-      if (!($rU =~ "^\\+?[1-9][0-9]{7,14}$")) return;
-      $var(managed_number) = $(rU{re.subst,/^\+//});
-      if ($var(managed_json) == $null) return;
+      # Flowroute uses a rendezvous Request-URI; the called DID is in To.
+      # A verified inter-site handoff uses the canonical DID in Request-URI.
+      if ($var(side) == "inter-site") $var(managed_did_user) = $rU;
+      else $var(managed_did_user) = $tU;
+      if (!($var(managed_did_user) =~ "^\\+?[1-9][0-9]{7,14}$")) return;
+      $var(managed_number) = $(var(managed_did_user){re.subst,/^\+//});
+      if ($var(managed_json) == $null) {
+        sl_send_reply("503", "Routing Snapshot Unavailable"); exit;
+      }
       $var(managed_path) = "dids." + $var(managed_number);
       if (!jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)") || $var(managed_route) == $null) {
-        if ($var(managed_provider) != "" && $var(managed_provider) != "flowroute") {
-          sl_send_reply("404", "DID Not Configured"); exit;
-        }
-        return;
+        sl_send_reply("404", "DID Not Configured"); exit;
       }
       jansson_get("valid_until", "$var(managed_json)", "$var(managed_deadline)");
       if ($Ts > $var(managed_deadline)) { sl_send_reply("503", "Routing Snapshot Expired"); exit; }
@@ -167,7 +170,13 @@
     route[MANAGED_HANDOFF] {
       # Called only inside the existing verified inter-site SAN/CIDR branch.
       if (!is_method("INVITE") || has_totag()) return;
-      if ($var(managed_json) == $null) return;
+      $var(managed_handoff) = 0;
+      if ($var(managed_json) == $null) {
+        if ($hdr(X-Core-Original-DID) != $null || $hdr(X-Core-Extension) != $null) {
+          sl_send_reply("503", "Routing Snapshot Unavailable"); exit;
+        }
+        return;
+      }
       if ($hdr(X-Core-Extension) =~ "^[0-9]{2,12}$") {
         $var(managed_path) = "extensions." + $hdr(X-Core-Extension);
         if (jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)")) {
@@ -182,6 +191,10 @@
       }
       if ($rU =~ "^\\+?[1-9][0-9]{7,14}$" && $hdr(X-Core-Original-DID) != $null) {
         $var(managed_number) = $(rU{re.subst,/^\+//});
+        $var(expected_did) = "+" + $var(managed_number);
+        if ($hdr(X-Core-Original-DID) != $var(expected_did)) {
+          sl_send_reply("403", "Managed DID Mismatch"); exit;
+        }
         $var(managed_path) = "dids." + $var(managed_number);
         if (jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)")) {
           jansson_get("site", "$var(managed_route)", "$var(managed_site)");
@@ -191,6 +204,7 @@
             if ($var(managed_provider) == "" || !in_list("$var(managed_provider)", "$var(managed_allowed)", ",")) {
               sl_send_reply("403", "DID Provider Not Authorized"); exit;
             }
+            $var(managed_handoff) = 1;
             return;
           }
         }

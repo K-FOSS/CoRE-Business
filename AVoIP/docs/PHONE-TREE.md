@@ -8,7 +8,7 @@ unless a site enables it and provisions a mailbox PIN. See
 [voicemail](VOICEMAIL.md) for its routing and storage requirements.
 
 The chart defaults Asterisk and FreeSWITCH to disabled. The active
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 enables both at DC1/YXL and Home1/YVR and supplies a separate voice and fax
 DID at each site. The `dc1-k3s-node1` spoke does not enable either workload.
 
@@ -27,41 +27,24 @@ The owning ApplicationSet supplies the voice `avoip.did` and legacy FaxNumber
 `fax.did` from site-specific Vault references. Do not put a resolved number or
 Secret value in this page.
 
-The desired routing sends the voice DID to a silent digit collector in YVR
-FreeSWITCH. Callers can
-type `7101`, `9090`, `66`, `67`, or `1234`; the allowlist is checked in FreeSWITCH
-and each accepted destination is sent through the existing authenticated
-FreeSWITCH-to-Asterisk gateway. The IVR has no prompt files or bundled audio
-assets. It answers the call to collect DTMF, then transfers it to the selected
-service. Personal SIP Core extensions ring all of their registered devices in
-parallel; the first answered device receives the call. The selected Asterisk
-service may play its own audio.
+The Admin catalog currently sends the voice DID to YVR extension `67` and the
+other DID to YVR extension `66` at both sites. To use the silent IVR, set a
+DID's Admin destination type to `ivr`. That IVR accepts only its configured
+DTMF extensions and transfers the caller to the selected service. Personal
+SIP Core extensions ring all registered contacts in parallel.
 
-The YXL voice DID crosses the existing carrier Kamailio SIPS/mTLS link to YVR
-FreeSWITCH IVR ingress extension `7102`. The YVR carrier permits this ingress
-only from the YXL carrier certificate identity and pod CIDR. YVR's own voice
-DID enters that same local IVR. YXL's FaxNumber DID and YVR's FaxNumber DID
-route to the YVR Asterisk SIP Core endpoint `7101`; the YXL transfer uses the
-same existing carrier link, targeting extension `7101` directly.
+YXL sends Admin-selected YVR DIDs across the existing carrier Kamailio
+SIPS/mTLS link. YVR validates the peer certificate identity, pod CIDR,
+original DID, allowed provider, and local destination site before routing the
+call. The old inter-site extension links remain for explicit extension calls.
+Each DID's Admin **Detect fax after answer** switch controls whether the
+existing post-answer detector can transfer a detected fax to `fax-receive`.
 
-YXL voice calls now ring and immediately enter the answering IVR at the
-authenticated `7102` ingress. The delay is controlled by
-`freeswitch.interSite.ivrAnswerDelayMs` (default `5000`, integer `0`–`60000`);
-it uses [FreeSWITCH's sleep application](https://developer.signalwire.com/freeswitch/dialplan/dptools/)
-on the ringing channel, followed by the existing transfer and answer. The
-current site value is `0`.
-Caller cancellation can end the call during the wait. YVR's own voice DID
-still enters the shared IVR immediately; the fax routes retain their timing.
-
-The implementation lives in YVR's dialplan even though it serves the YXL DID.
-Reconcile only the Home1 FreeSWITCH dialplan ConfigMap through its owning
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
-Application. Its existing Reloader watches that ConfigMap and rolls the
-FreeSWITCH replicas. Verify an INVITE followed by ringing and an immediate
-answer; also cancel a call
-during the wait. The configured digit-input timeout begins after answer.
-Setting the delay to `0` restores immediate answer on that ingress. This
-change adds no storage, identity or voicemail provisioning.
+The explicit inter-site IVR extension `7102` remains available for authorized
+extension transfers. Its answer delay is controlled by
+`freeswitch.interSite.ivrAnswerDelayMs`; it does not choose a DID destination.
+The Admin catalog chooses that destination on both sites. Changes to the
+managed destination are available after the routing snapshots refresh.
 
 Inbound calls over either public SIP transport follow this path:
 
@@ -69,27 +52,18 @@ Inbound calls over either public SIP transport follow this path:
    listener passes TLS through to Kamailio with a PROXY v2 header.
 2. Kamailio validates the source against the configured Flowroute
    signaling CIDRs and rejects all other sources.
-3. YXL carrier Kamailio sends the voice DID to YVR extension `7102` and its
-   FaxNumber DID to extension `7101` over the existing carrier SIPS/mTLS link.
-   The YVR carrier validates the YXL certificate SAN and pod CIDR, then
-   permits only those two exact ingress extensions.
-4. YVR FreeSWITCH requires the authenticated inter-site marker. Extension
-   `7102` enters the silent IVR; extension `7101` bridges directly to Asterisk
-   SIP Core endpoint `7101`. YVR's own voice DID enters the same IVR, while
-   its FaxNumber DID bridges directly to Asterisk.
-5. If no DTMF input is entered, FreeSWITCH ends the answered IVR call after
-   its configured 15-second input timeout. Destination `66` plays the GG asset
-   directly on YVR FreeSWITCH and then hangs up normally. Destination `67`
-   plays the configured clip on FreeSWITCH using `mod_shout`. Authenticated
-   SIP Core endpoints can also dial `67` directly; Asterisk sends that call
-   through its authenticated FreeSWITCH peer. Personal SIP Core
-   destinations ring all registered contacts in parallel for the configured
-   endpoint timeout; failed inbound handoffs play GG in FreeSWITCH and hang up
-   normally. Unmatched public
-   destinations are rejected.
+3. Kamailio matches the called DID from the SIP `To` user against its Admin
+   snapshot. YXL hands YVR-bound DIDs to YVR over the authenticated SIPS/mTLS
+   peer. YVR validates the original DID and provider against its snapshot.
+4. Kamailio hands the DID to FreeSWITCH's managed inbound context. The
+   authenticated Admin service selects its IVR, extension, SIP, or DID route.
+5. FreeSWITCH applies the DID's post-answer fax detection setting. If the
+   caller sends fax CNG and detection is enabled, SpanDSP transfers it to
+   `fax-receive`. Unknown public DIDs fail closed at Kamailio.
 
-`freeswitch.inboundBridgeFailure.enabled` defaults to `true` for the direct
-voice/FaxNumber, authenticated inter-site, and accepted IVR destination bridges.
+`freeswitch.inboundBridgeFailure.enabled` defaults to `true` for authenticated
+inter-site extension and accepted IVR destination bridges. Managed DID bridge
+behavior is generated by the Admin service.
 FreeSWITCH uses [`continue_on_fail` and `hangup_after_bridge`](https://developer.signalwire.com/freeswitch/dialplan/xml/)
 to continue a failed handoff while ending successful bridges normally. It ignores
 early media until the destination answers, answers the caller on failure, plays
@@ -111,7 +85,7 @@ existing fallback behavior.
 Verify a new inbound bridge failure by its `AVoIP inbound bridge failed` log,
 carrier `200 OK`/ACK, GG RTP playback, and normal BYE. Also verify a successful
 handoff ends without GG. Reconcile the dialplan ConfigMap through the
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 and allow the existing Reloader rollout to finish on both FreeSWITCH replicas.
 Setting the flag to `false` restores the earlier failure handling after the
 same reconciliation; no persistent data or external resources are removed.
@@ -285,7 +259,7 @@ The following are no longer configured by this chart:
 - Vosk and Mycroft/OVOS speech services.
 
 Speech integration remains a separate planned connection to the shared
-[AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml),
+[AI ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/AI.yaml),
 where Wyoming, GPUStack, and Speaches are deployed.
 
 ## Validation checklist
@@ -300,10 +274,9 @@ Before enabling the hub:
 3. Restore or provide a FreeSWITCH image containing `mod_sms_flowroute.so`,
    then send a SIP MESSAGE to the DID and verify delivery through the
    Flowroute API.
-4. Place an inbound voice call, enter each permitted destination and verify
-   its Asterisk behavior. Call the FaxNumber DID separately and verify that
-   extension `7101` rings; also confirm that an unavailable endpoint ends
-   cleanly after the dial timeout.
+4. Place an inbound call to each DID and verify its current Admin destination.
+   Where a DID selects the IVR, check its permitted digit choices. Verify a
+   fax CNG call reaches `fax-receive` when detection is enabled for that DID.
 5. Place an outbound call through Asterisk and verify FreeSWITCH rejects an
    invalid credential or non-internal source.
    Run the [negative SIP probes](../tests/README.md#authorization-and-outbound-call-probes)
