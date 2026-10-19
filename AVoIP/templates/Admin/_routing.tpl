@@ -94,20 +94,23 @@
     }
     {{- end }}
     route[MANAGED_EXTENSION] {
-      if (!is_method("INVITE") || has_totag() || !($fU =~ "^[0-9]{2,12}$")) return;
+      # managed_extension_id is populated only by the Asterisk-only TLS
+      # listener from its dialplan-stamped identity header, or by a verified
+      # inter-site handoff below. SIP From is caller ID, not extension identity.
+      if (!is_method("INVITE") || has_totag() || !($var(managed_extension_id) =~ "^[0-9]{2,12}$")) return;
       if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") || $rU =~ "^\\+1900" || $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") return;
       if ($var(managed_json) == $null) {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_missing call_id=$ci extension=$fU destination_format=nanp\n");
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_missing call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
         return;
       }
-      $var(managed_path) = "extensions." + $fU;
+      $var(managed_path) = "extensions." + $var(managed_extension_id);
       if (!jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)") || $var(managed_route) == $null) {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_missing call_id=$ci extension=$fU destination_format=nanp\n");
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_missing call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
         return;
       }
       jansson_get("valid_until", "$var(managed_json)", "$var(managed_deadline)");
       if ($Ts > $var(managed_deadline)) {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_expired call_id=$ci extension=$fU destination_format=nanp\n");
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_expired call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
         sl_send_reply("503", "Routing Snapshot Expired"); exit;
       }
       if (t_check_trans()) exit;
@@ -116,7 +119,7 @@
       jansson_get("site", "$var(managed_route)", "$var(managed_site)");
       jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");
       remove_hf("Route"); remove_hf("P-Asserted-Identity"); remove_hf("X-Core-Extension"); remove_hf("X-Core-Original-DID");
-      append_hf("X-Core-Extension: $fU\r\n");
+      append_hf("X-Core-Extension: $var(managed_extension_id)\r\n");
       $fU = $var(managed_caller_id);
       append_hf("P-Asserted-Identity: <sip:$var(managed_caller_id)@{{ include "avoip.sip.siteHost" . }}>\r\n");
       $ru = "sips:" + $rU + "@" + $var(managed_host);
@@ -178,7 +181,8 @@
         return;
       }
       if ($hdr(X-Core-Extension) =~ "^[0-9]{2,12}$") {
-        $var(managed_path) = "extensions." + $hdr(X-Core-Extension);
+        $var(managed_extension_id) = $hdr(X-Core-Extension);
+        $var(managed_path) = "extensions." + $var(managed_extension_id);
         if (jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)")) {
           jansson_get("site", "$var(managed_route)", "$var(managed_site)");
           jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");

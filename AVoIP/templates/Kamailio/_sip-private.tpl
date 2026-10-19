@@ -418,13 +418,24 @@
         if (!loose_route()) { if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist"); exit; }
         route(PRIVATE_RELAY); exit;
       }
+      if (!has_totag() && is_method("INVITE") &&
+          $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") {
+        # This listener is reachable only from the Asterisk workload under
+        # Cilium policy. Asterisk creates this header in its locked extension
+        # context; never derive the extension from the caller-ID From user.
+        if (!($hdr(X-Core-Extension) =~ "^[0-9]{2,12}$")) {
+          xlog("L_WARN", "AVOIP_POLICY reject=trusted_extension_missing call_id=$ci source=asterisk-tls destination_format=nanp\n");
+          sl_send_reply("403", "Managed Extension Identity Missing"); exit;
+        }
+        $var(managed_extension_id) = $hdr(X-Core-Extension);
+      }
       route(MANAGED_EXTENSION);
       # Database routing is authoritative for new NANP calls. A missing,
       # expired, or unauthorized extension mapping must not fall through to
       # the older static extension/caller-ID allowlist below.
       if (!has_totag() && is_method("INVITE") &&
           $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_unmatched call_id=$ci extension=$fU destination_format=nanp\n");
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_unmatched call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
         sl_send_reply("403", "Managed Extension Not Authorized");
         exit;
       }

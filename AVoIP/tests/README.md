@@ -34,6 +34,18 @@ Follow the [outbound teardown live acceptance](../docs/avoip/runbooks/outbound-f
 for both BYE directions, cross-replica routing, UPDATE, RTPEngine cleanup,
 CDR, and Homer checks.
 
+The managed 7101 outbound identity handoff has a separate render regression:
+
+```sh
+AVoIP/tests/managed-outbound-identity-render.sh
+```
+
+It confirms that the locked Asterisk extension context stamps its identity on
+the new outbound channel, Admin routing does not replace that identity with
+the caller ID before authorization, and Kamailio uses the trusted marker for
+the policy lookup before applying the authorized caller ID. It does not place
+a live call or validate provider account acceptance.
+
 The Homer capture-ID and SIP-dialog correlation render check is:
 
 ```sh

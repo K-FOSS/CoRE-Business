@@ -247,15 +247,14 @@ data:
     exten => {{ $.Values.asterisk.sipCore.soundClipExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.soundClipDestination }}@freeswitch,30,g)
       same => n,Hangup()
     {{- if or (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled) (and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions)) }}
-    ; With Admin routing active, Kamailio resolves this extension and caller ID
-    ; from the managed database. Keep the static FreeSWITCH route only as the
-    ; compatibility path for sites not yet using managed routing.
-    exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .number }})
+    ; Admin mode sends the authenticated extension in a fresh, dialplan-stamped
+    ; header. Kamailio selects and applies the authorized caller ID from policy.
+    exten => _+1NXXNXXXXXX,1,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination=${EXTEN})
     {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
-      same => n,NoOp(AVoIP managed outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination=${EXTEN})
-      same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120)
-      same => n,NoOp(AVoIP managed outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
+      same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120,b(sipcore-managed-outbound-headers^s^1({{ .number }})))
+      same => n,NoOp(AVoIP managed outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
     {{- else }}
+      same => n,Set(CALLERID(num)={{ .number }})
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-outbound-hangup,s,1)
       same => n,Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,X-Call-ID)})
       same => n,ExecIf($["${AVOIP_HOMER_CORRELATION_ID}" = ""]?Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,Call-ID)}))
@@ -306,6 +305,13 @@ data:
     exten => s,1,Set(PJSIP_HEADER(add,X-Core-Call-Linkedid)=${CHANNEL(linkedid)})
       same => n,Set(PJSIP_HEADER(add,X-Call-ID)=${AVOIP_HOMER_CORRELATION_ID})
       same => n,Set(PJSIP_HEADER(add,X-Core-Origin-Uniqueid)=${CHANNEL(uniqueid)})
+      same => n,Return()
+    [sipcore-managed-outbound-headers]
+    ; This pre-dial handler runs on the new carrier-outbound channel. Clear
+    ; any inherited value before stamping the extension from its locked
+    ; from-sipcore-<extension> dialplan context.
+    exten => s,1,Set(PJSIP_HEADER(remove,X-Core-Extension)=)
+      same => n,Set(PJSIP_HEADER(add,X-Core-Extension)=${ARG1})
       same => n,Return()
     {{- if .Values.asterisk.sipCore.externalCallback.enabled }}
     ; The hangup handler outlives the inbound IVR leg. Once the external

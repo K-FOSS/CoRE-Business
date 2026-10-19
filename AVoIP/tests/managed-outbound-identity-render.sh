@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+chart_dir="$repo_root/AVoIP"
+render="$(mktemp)"
+trap 'rm -f "$render"' EXIT
+
+helm template core-home1-talos-prod "$chart_dir" --namespace core-prod \
+  -f "$chart_dir/tests/fixtures/outbound-teardown.yaml" \
+  --set avoipAdmin.enabled=true \
+  --set avoipAdmin.routing.enabled=true > "$render"
+
+asterisk_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$render")"
+internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
+
+# The locked per-extension Asterisk dialplan stamps the trusted identity on a
+# new outbound PJSIP channel; Admin mode does not turn the extension into the
+# From caller ID before Kamailio has applied policy.
+grep -Fq 'Dial(PJSIP/${EXTEN}@carrier-outbound,120,b(sipcore-managed-outbound-headers^s^1(7101)))' <<< "$asterisk_cfg"
+grep -Fq 'PJSIP_HEADER(remove,X-Core-Extension)=' <<< "$asterisk_cfg"
+grep -Fq 'PJSIP_HEADER(add,X-Core-Extension)=${ARG1}' <<< "$asterisk_cfg"
+! grep -Fq 'Set(CALLERID(num)=7101)' <<< "$asterisk_cfg"
+
+# Only the Asterisk-only TLS path promotes the stamped extension into the
+# policy variable. The route looks up that identity and then overwrites From
+# and P-Asserted-Identity with the Admin-authorized caller ID.
+grep -Fq '$var(managed_extension_id) = $hdr(X-Core-Extension);' <<< "$internal_cfg"
+grep -Fq '$var(managed_path) = "extensions." + $var(managed_extension_id);' <<< "$internal_cfg"
+grep -Fq 'X-Core-Extension: $var(managed_extension_id)' <<< "$internal_cfg"
+grep -Fq '$fU = $var(managed_caller_id);' <<< "$internal_cfg"
+grep -Fq 'reject=trusted_extension_missing' <<< "$internal_cfg"
+
+printf '%s\n' 'PASS: Admin outbound identity is derived from the locked Asterisk extension context'
+printf '%s\n' 'PASS: Kamailio looks up the trusted extension and applies the policy caller ID'
