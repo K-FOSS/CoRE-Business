@@ -233,3 +233,29 @@ routing remains disabled in the owning ApplicationSet during this deployment.
 The upgrade flag refreshes the cached dependency lock to the exact admin provider
 version pinned in values; it does not relax the version constraint or upgrade the
 global Authentik ProviderConfig.
+
+### Initial rollout status
+
+The YVR rollout of commit `8f4beeed4f7f1d2e32835734bc0b3a016b8138e5`
+completed through a resource-selected Argo sync. The webhook receivers were
+updated first; the inbox API, web frontend and admin service followed. All four
+Deployments have two updated, available replicas. The SMS and admin Authentik
+Workspaces report both Ready and Synced. Anonymous requests, including requests
+carrying forged identity headers, redirect to Authentik for `/inbox`,
+`/api/numbers`, and the admin page/API. The signed-in user confirmed that their
+numbers appeared after explicit identity-header forwarding was deployed.
+
+The YVR management URL is
+<https://avoip-admin.core-home1-talos-prod.home1.yvr.resolvemy.host/>.
+The inbox remains <https://sms.resolvemy.host/inbox>.
+
+YXL has two available admin replicas, but its earlier authentication sync is
+still waiting for the Workspace to become healthy. Its DNS and proxy attachment
+have not been verified complete. Finish that scoped reconciliation with the
+same reviewed commit after the active operation ends or an authorized termination;
+do not claim the YXL management URL is ready based on pod readiness alone.
+
+The owning ApplicationSet keeps managed SIP routing disabled. No SIP/media
+resources were selected in these rollout operations, and verification did not
+send paid SMS or delete stored messages. Enabling managed voice routing still
+requires the controlled call, fax, voicemail, failover and rollback checks above.
