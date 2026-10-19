@@ -237,6 +237,17 @@ Use Asterisk's lowercase codec names and FreeSWITCH's uppercase names. The
 fax receive dialplan keeps its separately scoped G.711 selection because fax
 modem audio and T.38 negotiation have different requirements.
 
+Administrators can declare each carrier's supported codec set and set its
+ordered preference in the AVoIP Admin provider form. A DID can override that
+order; the override must be included in every authorized provider's declared
+supported set. Choices are OPUS, G722, PCMU and PCMA, and telephone-event
+remains enabled for DTMF. Empty provider preferences leave negotiation
+unchanged. The versioned
+Kamailio snapshot carries the preferences to RTPEngine, which filters only the
+managed call offer; the fax receive path and other calls keep their existing
+codec policy. See the [Kamailio RTPengine module documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
+and [RTPEngine NG protocol documentation](https://github.com/sipwise/rtpengine/blob/master/docs/ng_protocol.md).
+
 ## Components and security
 
 The complete current DID flow, SIP messaging path, registration behavior, and

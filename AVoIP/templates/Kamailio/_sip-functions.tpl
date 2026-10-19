@@ -57,7 +57,11 @@
         return;
       }
 
-      if (!rtpengine_manage("replace-origin external internal address-family=IP4")) {
+      $var(media_flags) = "replace-origin external internal address-family=IP4";
+      if ($dlg_var(managed_codec_flags) != $null && $dlg_var(managed_codec_flags) != "") {
+        $var(media_flags) = $var(media_flags) + " " + $dlg_var(managed_codec_flags);
+      }
+      if (!rtpengine_manage("$var(media_flags)")) {
         xlog(
           "L_ERR",
           "RTPEngine initial SDP handling failed callid=$ci method=$rm source=$si:$sp\n"

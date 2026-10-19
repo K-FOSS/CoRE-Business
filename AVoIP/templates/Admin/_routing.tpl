@@ -71,12 +71,20 @@
       jansson_get("host", "$var(managed_route)", "$var(managed_host)");
       jansson_get("port", "$var(managed_route)", "$var(managed_port)");
       jansson_get("site", "$var(managed_route)", "$var(managed_site)");
+      jansson_get("codec_flags_by_provider", "$var(managed_route)", "$var(managed_provider_codec_flags)");
+      jansson_get("$var(managed_provider)", "$var(managed_provider_codec_flags)", "$var(managed_codec_flags)");
       remove_hf("X-Core-Original-DID"); remove_hf("X-Core-Extension"); remove_hf("X-Core-Provider");
       append_hf("X-Core-Provider: $var(managed_provider)\r\n");
       append_hf("X-Core-Original-DID: +$var(managed_number)\r\n");
       $ru = "sips:" + $var(managed_number) + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";
       dlg_manage(); $dlg_var(managed_target) = $var(managed_host);
+      if ($var(managed_codec_flags) != $null && $var(managed_codec_flags) != "") {
+        $dlg_var(managed_codec_flags) = $var(managed_codec_flags);
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=inbound did=+$var(managed_number) provider=$var(managed_provider) flags=$var(managed_codec_flags) call_id=$ci");
+        {{- end }}
+      }
       route(RR_CARRIER_TO_BACKEND);
       {{ if and .Values.kamailio.functions.media (include "avoip.rtpengine.enabled" . | trim) }}
       route(MEDIA_INITIAL);
@@ -143,6 +151,7 @@
       jansson_get("site", "$var(managed_route)", "$var(managed_site)");
       jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");
       jansson_get("egress_prefix", "$var(managed_route)", "$var(managed_egress_prefix)");
+      jansson_get("codec_flags", "$var(managed_route)", "$var(managed_codec_flags)");
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider=$var(managed_host) call_id=$ci method=$rm destination_class=nanp");
       {{- end }}
@@ -159,6 +168,12 @@
       record_route();
       {{ end }}
       dlg_manage(); $dlg_var(managed_outbound) = "yes"; $dlg_var(managed_target) = $var(managed_host);
+      if ($var(managed_codec_flags) != $null && $var(managed_codec_flags) != "") {
+        $dlg_var(managed_codec_flags) = $var(managed_codec_flags);
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=outbound extension=$var(managed_extension_id) provider=$var(managed_host) flags=$var(managed_codec_flags) call_id=$ci");
+        {{- end }}
+      }
       $xavp(tls=>server_name) = $var(managed_host); set_send_socket_name("private_tls");
       {{ if eq .Values.kamailio.role "private-sbc" }}
       $ru = "sips:" + $rU + "@{{ include "avoip.sip.siteHost" . }}";

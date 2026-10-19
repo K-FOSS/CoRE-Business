@@ -102,6 +102,36 @@ func TestProviderEgressPrefix(t *testing.T) {
 	}
 }
 
+func TestProviderAndDIDCodecOrder(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "G722"}
+	catalog.Providers[0].CodecOrder = []string{"PCMU", "G722"}
+	catalog.DIDs[0].CodecOrder = []string{"G722", "PCMU"}
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("valid codec preferences rejected: %v", err)
+	}
+	if got := codecRTPEngineFlags(catalog.DIDs[0].CodecOrder); got != "codec-strip-all codec-offer-G722 codec-offer-PCMU codec-offer-telephone-event" {
+		t.Fatalf("unexpected ordered RTPEngine flags: %q", got)
+	}
+	catalog.DIDs[0].CodecOrder = []string{"OPUS"}
+	if catalog.validate() == nil {
+		t.Fatal("DID override outside provider codec set accepted")
+	}
+	catalog = fixtureCatalog()
+	catalog.DIDs[0].CodecOrder = []string{"PCMU"}
+	if catalog.validate() == nil {
+		t.Fatal("DID codec override accepted without an explicit provider capability set")
+	}
+	for _, invalid := range [][]string{{"PCMU", "PCMU"}, {"PCMU;codec-offer-PCMA"}, {"G729"}} {
+		catalog := fixtureCatalog()
+		catalog.Providers[0].SupportedCodecs = []string{"PCMU", "PCMA"}
+		catalog.Providers[0].CodecOrder = invalid
+		if catalog.validate() == nil {
+			t.Errorf("invalid provider codec order accepted: %#v", invalid)
+		}
+	}
+}
+
 func TestExtensionOutboundEnablement(t *testing.T) {
 	legacy := extensionRoute{Extension: "7101", CallerID: "+12065550100", Provider: "carrier", Site: "yvr"}
 	if !legacy.outboundAllowed() || legacy.outboundDisabledReason() != "" {
@@ -369,6 +399,44 @@ func TestRoutingCacheFailsClosedWithoutDatabase(t *testing.T) {
 	s.adminPage(w, r)
 	if w.Code != 403 {
 		t.Fatal("machine token must not grant UI administration")
+	}
+}
+
+func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
+	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
+	t.Setenv("AVOIP_SITE", "yvr")
+	t.Setenv("AVOIP_SITES_JSON", `{"yvr":{"host":"yvr.example","port":5061},"yxl":{"host":"yxl.example","port":5061}}`)
+	catalog := fixtureCatalog()
+	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "G722"}
+	catalog.Providers[0].CodecOrder = []string{"PCMU", "G722"}
+	catalog.DIDs[0].CodecOrder = []string{"G722", "PCMU"}
+	s := &server{}
+	s.cacheCatalog(catalog)
+	r := httptest.NewRequest("GET", "http://local/routing/snapshot", nil)
+	r.Header.Set("Authorization", "Bearer "+os.Getenv("AVOIP_ROUTING_TOKEN"))
+	w := httptest.NewRecorder()
+	s.routingSnapshot(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("snapshot status %d: %s", w.Code, w.Body.String())
+	}
+	var snapshot struct {
+		Providers  []map[string]string       `json:"providers"`
+		DIDs       map[string]map[string]any `json:"dids"`
+		Extensions map[string]map[string]any `json:"extensions"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Providers[0]["codec_flags"] != "codec-strip-all codec-offer-PCMU codec-offer-G722 codec-offer-telephone-event" {
+		t.Fatalf("provider codec order missing from snapshot: %#v", snapshot.Providers[0])
+	}
+	didFlags := snapshot.DIDs["12065550100"]["codec_flags_by_provider"].(map[string]any)["carrier"]
+	if didFlags != "codec-strip-all codec-offer-G722 codec-offer-PCMU codec-offer-telephone-event" {
+		t.Fatalf("DID codec override missing from snapshot: %#v", didFlags)
+	}
+	extensionFlags := snapshot.Extensions["7101"]["codec_flags"]
+	if extensionFlags != didFlags {
+		t.Fatalf("extension should inherit the caller-ID DID order: %#v", extensionFlags)
 	}
 }
 

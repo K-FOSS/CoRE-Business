@@ -23,13 +23,15 @@ type verifiedCallerID struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 }
 type sipProvider struct {
-	ID           string             `json:"id"`
-	Host         string             `json:"host"`
-	Name         string             `json:"name"`
-	EgressPrefix string             `json:"egress_prefix,omitempty"`
-	CIDRs        []string           `json:"cidrs"`
-	Gateways     map[string]string  `json:"gateways"`
-	CallerIDs    []verifiedCallerID `json:"verified_caller_ids"`
+	ID              string             `json:"id"`
+	Host            string             `json:"host"`
+	Name            string             `json:"name"`
+	EgressPrefix    string             `json:"egress_prefix,omitempty"`
+	SupportedCodecs []string           `json:"supported_codecs,omitempty"`
+	CodecOrder      []string           `json:"codec_order,omitempty"`
+	CIDRs           []string           `json:"cidrs"`
+	Gateways        map[string]string  `json:"gateways"`
+	CallerIDs       []verifiedCallerID `json:"verified_caller_ids"`
 }
 type didRoute struct {
 	Number              string   `json:"number"`
@@ -40,6 +42,7 @@ type didRoute struct {
 	OutboundProvider    string   `json:"outbound_provider,omitempty"`
 	CallerID            string   `json:"caller_id,omitempty"`
 	FaxDetectionEnabled *bool    `json:"fax_detection_enabled,omitempty"`
+	CodecOrder          []string `json:"codec_order,omitempty"`
 }
 
 func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
@@ -85,6 +88,33 @@ type siteTarget struct {
 
 var extensionID = regexp.MustCompile(`^[0-9]{2,12}$`)
 var sipHost = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,252}$`)
+var upstreamCodecs = map[string]bool{"OPUS": true, "G722": true, "PCMU": true, "PCMA": true}
+
+func validateCodecOrder(codecs []string) error {
+	if len(codecs) > len(upstreamCodecs) {
+		return errors.New("codec order has too many entries")
+	}
+	seen := make(map[string]bool, len(codecs))
+	for _, codec := range codecs {
+		if !upstreamCodecs[codec] || seen[codec] {
+			return errors.New("codec order contains an unsupported or duplicate codec")
+		}
+		seen[codec] = true
+	}
+	return nil
+}
+
+func codecRTPEngineFlags(codecs []string) string {
+	if len(codecs) == 0 {
+		return ""
+	}
+	flags := []string{"codec-strip-all"}
+	for _, codec := range codecs {
+		flags = append(flags, "codec-offer-"+codec)
+	}
+	flags = append(flags, "codec-offer-telephone-event")
+	return strings.Join(flags, " ")
+}
 
 func (c sipCatalog) validate() error {
 	if len(c.Providers) > 50 || len(c.DIDs) > 1000 || len(c.Extensions) > 1000 {
@@ -93,7 +123,7 @@ func (c sipCatalog) validate() error {
 	providers := map[string]sipProvider{}
 	prefixes := map[string][]netip.Prefix{}
 	for _, p := range c.Providers {
-		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.EgressPrefix) > 32 || (p.EgressPrefix != "" && !regexp.MustCompile(`^[0-9]+$`).MatchString(p.EgressPrefix)) || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 {
+		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.EgressPrefix) > 32 || (p.EgressPrefix != "" && !regexp.MustCompile(`^[0-9]+$`).MatchString(p.EgressPrefix)) || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 || validateCodecOrder(p.SupportedCodecs) != nil || validateCodecOrder(p.CodecOrder) != nil || (len(p.CodecOrder) > 0 && !codecOrderSubset(p.CodecOrder, p.SupportedCodecs)) {
 			return errors.New("invalid SIP provider")
 		}
 		if _, ok := providers[p.ID]; ok {
@@ -140,7 +170,7 @@ func (c sipCatalog) validate() error {
 	dids := map[string]bool{}
 	for _, d := range c.DIDs {
 		number, ok := normalizePhoneNumber(d.Number)
-		if !ok || number != d.Number || dids[number] || len(d.Providers) == 0 || len(d.Providers) > 50 {
+		if !ok || number != d.Number || dids[number] || len(d.Providers) == 0 || len(d.Providers) > 50 || validateCodecOrder(d.CodecOrder) != nil {
 			return errors.New("invalid/duplicate DID or missing allowed providers")
 		}
 		dids[number] = true
@@ -160,6 +190,15 @@ func (c sipCatalog) validate() error {
 			}
 			if !verified {
 				return errors.New("allowed DID provider needs current number-ownership verification evidence")
+			}
+		}
+		if len(d.CodecOrder) > 0 {
+			for _, provider := range providers {
+				for _, callerID := range provider.CallerIDs {
+					if callerID.Number == d.Number && (len(provider.SupportedCodecs) == 0 || !codecOrderSubset(d.CodecOrder, provider.SupportedCodecs)) {
+						return errors.New("DID codec order must be supported by each outbound provider that verifies the DID")
+					}
+				}
 			}
 		}
 		switch d.Kind {
@@ -195,6 +234,19 @@ func (c sipCatalog) validate() error {
 		seen[e.Extension] = true
 	}
 	return nil
+}
+
+func codecOrderSubset(requested, supported []string) bool {
+	allowed := make(map[string]bool, len(supported))
+	for _, codec := range supported {
+		allowed[codec] = true
+	}
+	for _, codec := range requested {
+		if !allowed[codec] {
+			return false
+		}
+	}
+	return true
 }
 func loadConfiguredCatalog() (sipCatalog, error) {
 	c := sipCatalog{Providers: []sipProvider{}, DIDs: []didRoute{}, Extensions: []extensionRoute{}}
@@ -332,13 +384,17 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 	extensions := map[string]any{}
 	targets := map[string]siteTarget{}
 	providerPrefixes := make(map[string]string, len(c.Providers))
+	providerCodecs := make(map[string][]string, len(c.Providers))
+	providerCodecFlags := make(map[string]string, len(c.Providers))
 	if json.Unmarshal([]byte(os.Getenv("AVOIP_SITES_JSON")), &targets) != nil {
 		http.Error(w, "site targets unavailable", 503)
 		return
 	}
 	for _, p := range c.Providers {
-		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix})
+		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix, "codec_flags": codecRTPEngineFlags(p.CodecOrder)})
 		providerPrefixes[p.ID] = p.EgressPrefix
+		providerCodecs[p.ID] = p.CodecOrder
+		providerCodecFlags[p.ID] = codecRTPEngineFlags(p.CodecOrder)
 	}
 	for _, d := range c.DIDs {
 		t, ok := targets[d.Site]
@@ -346,7 +402,15 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "site target unavailable", 503)
 			return
 		}
-		dids[strings.TrimPrefix(d.Number, "+")] = map[string]any{"providers": "," + strings.Join(d.Providers, ",") + ",", "site": d.Site, "kind": d.Kind, "destination": d.Destination, "host": t.Host, "port": t.Port}
+		providerFlags := make(map[string]string, len(d.Providers))
+		for _, providerID := range d.Providers {
+			flags := providerCodecFlags[providerID]
+			if len(d.CodecOrder) > 0 {
+				flags = codecRTPEngineFlags(d.CodecOrder)
+			}
+			providerFlags[providerID] = flags
+		}
+		dids[strings.TrimPrefix(d.Number, "+")] = map[string]any{"providers": "," + strings.Join(d.Providers, ",") + ",", "site": d.Site, "kind": d.Kind, "destination": d.Destination, "host": t.Host, "port": t.Port, "codec_flags_by_provider": providerFlags}
 	}
 	for _, e := range c.Extensions {
 		t, ok := targets[e.Site]
@@ -354,7 +418,14 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "site target unavailable", 503)
 			return
 		}
-		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": providerPrefixes[e.Provider]}
+		codecOrder := providerCodecs[e.Provider]
+		for _, did := range c.DIDs {
+			if did.Number == e.CallerID && containsString(did.Providers, e.Provider) && len(did.CodecOrder) > 0 {
+				codecOrder = did.CodecOrder
+				break
+			}
+		}
+		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": providerPrefixes[e.Provider], "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder)}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}
@@ -368,6 +439,15 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, map[string]any{"providers": providers, "dids": dids, "extensions": extensions, "version": c.Version, "valid_until": deadline.Unix(), "generated_at": time.Now().UTC(), "site": os.Getenv("AVOIP_SITE")})
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 func (s *server) audit(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r, false) {
