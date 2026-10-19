@@ -14,5 +14,6 @@
 .composer{flex-wrap:wrap}.composer .media-label{width:100%;font-size:12px;color:var(--muted)}.composer .media-urls{width:100%;resize:vertical;min-height:54px;border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--bg);color:var(--text)}
 
 .admin-search{display:block;max-width:480px;margin:16px 0;color:var(--muted);font-size:12px}.admin-search input{display:block;width:100%;min-height:48px;margin-top:4px;padding:12px;border:1px solid var(--divider);border-radius:4px;background:var(--surface);color:var(--text);font:16px Roboto,sans-serif}
+.admin-card .extension-readiness{font-size:13px;color:#137333}.admin-card .extension-readiness.warning{color:var(--danger)}
 @media(max-width:600px){.admin-search{max-width:none}}
 #active-site{color:var(--muted);font-size:12px;white-space:nowrap}@media(max-width:600px){.admin-bar{gap:8px}#active-site,#routing-mode{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}}

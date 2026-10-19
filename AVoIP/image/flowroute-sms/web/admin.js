@@ -13,6 +13,19 @@ const fields={
 };
 function rowsFor(tab){return tab==='sms'?state.sms:tab==='audit'?state.audit:state.catalog[tab]||[]}
 function recordText(tab,record){return tab==='sms'?`${record.id} ${record.name} ${record.type} ${(record.numbers||[]).join(' ')}`:tab==='providers'?`${record.id} ${record.name} ${record.host} ${(record.cidrs||[]).join(' ')}`:tab==='dids'?`${record.number} ${record.site} ${record.kind} ${record.destination} ${(record.allowed_providers||[]).join(' ')}`:tab==='extensions'?`${record.extension} ${record.display_name||''} ${record.site} ${record.provider} ${record.caller_id}`:`${record.actor} ${record.action} ${record.object_id}`}
+function extensionReadiness(record){
+ const problems=[];
+ const provider=state.catalog.providers.find(item=>item.id===record.provider);
+ const enabled=record.enabled!==false,outbound=record.outbound_enabled!==false;
+ if(!enabled)problems.push('Extension is disabled');
+ if(enabled&&!outbound)problems.push('Outbound calling is disabled');
+ if(!provider)problems.push('Provider is missing from the SIP catalog');
+ else if(!provider.gateways?.[record.site])problems.push(`Provider has no ${String(record.site||'unknown').toUpperCase()} gateway`);
+ const approval=provider?.verified_caller_ids?.find(item=>item.number===record.caller_id);
+ if(!approval)problems.push('Caller ID is not verified for this provider');
+ else if(approval.expires_at&&(!Number.isFinite(Date.parse(approval.expires_at))||Date.parse(approval.expires_at)<=Date.now()))problems.push('Caller ID verification expiry is invalid or expired');
+ return problems;
+}
 function render(){
  const tab=state.tab,root=$('records'),query=$('record-search').value.trim().toLowerCase();
  $('routing-mode').textContent=state.info.routing_enabled?(state.info.snapshot_ready?'Routing enabled':'Routing snapshot unavailable'):'Routing not activated';
@@ -35,7 +48,11 @@ function render(){
   else if(tab==='extensions')summary=`${record.extension} · ${record.enabled===false?'Disabled':'Enabled'} · Outbound ${record.outbound_enabled===false?'disabled':'enabled'}`;
   else summary=`${record.actor} · ${new Date(record.at).toLocaleString()}`;
   card.append(node('p','',summary));
-  if(tab==='extensions')card.append(node('p','',`Caller ID ${record.caller_id} · Provider ${record.provider} · Egress ${record.site.toUpperCase()}`));
+  if(tab==='extensions'){
+   card.append(node('p','',`Caller ID ${record.caller_id} · Provider ${record.provider} · Egress ${String(record.site||'unknown').toUpperCase()}`));
+   const problems=extensionReadiness(record);
+   card.append(node('p',problems.length?'extension-readiness warning':'extension-readiness',problems.length?`Configuration needs attention: ${problems.join('; ')}`:'Catalog authorization is configured. Live provider availability and registration are reported by SIP runtime events.'));
+  }
   if(record.numbers?.length)card.append(node('p','',record.numbers.join(', ')));
   if((tab==='sms'&&record.source!=='admin')||(tab!=='sms'&&state.catalog.source==='config'))card.append(node('small','',`Managed by ${record.source||'configuration'}`));
   else if(tab!=='audit'){const actions=node('div','dialog-actions'),edit=node('button','text-button','Edit'),remove=node('button','text-button danger','Delete');edit.onclick=()=>editRecord(record,index);remove.onclick=()=>removeRecord(record,index);actions.append(edit,remove);card.append(actions)}

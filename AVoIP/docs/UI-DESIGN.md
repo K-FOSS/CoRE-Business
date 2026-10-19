@@ -41,6 +41,9 @@ extension list includes display name, enabled and outbound-enabled controls,
 verified caller ID, provider, and egress site. Configuration-managed records
 are clearly read only. Edits use optimistic concurrency and show conflicts
 rather than silently overwriting another administrator's work.
+Extension cards check the selected provider's site gateway and caller-ID
+verification record, including expiry. This is catalog validation only;
+provider registration and live availability remain runtime events in Homer.
 
 Layouts collapse to a single column on narrow screens. Content has a 1200 px
 maximum width, 24 px desktop and 16 px mobile gutters. Tabs scroll horizontally;
