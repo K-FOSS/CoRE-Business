@@ -69,6 +69,11 @@
         sl_send_reply("503", "Media Relay Unavailable");
         exit;
       }
+      if ($dlg_var(managed_codec_flags) != $null && $dlg_var(managed_codec_flags) != "") {
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=managed stage=initial_offer flags=$dlg_var(managed_codec_flags) call_id=$ci");
+        {{- end }}
+      }
     }
 
     route[MEDIA_DIALOG] {

@@ -82,7 +82,7 @@
       if ($var(managed_codec_flags) != $null && $var(managed_codec_flags) != "") {
         $dlg_var(managed_codec_flags) = $var(managed_codec_flags);
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=inbound did=+$var(managed_number) provider=$var(managed_provider) flags=$var(managed_codec_flags) call_id=$ci");
+        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=selected direction=inbound did=+$var(managed_number) provider=$var(managed_provider) flags=$var(managed_codec_flags) call_id=$ci");
         {{- end }}
       }
       route(RR_CARRIER_TO_BACKEND);
@@ -171,7 +171,7 @@
       if ($var(managed_codec_flags) != $null && $var(managed_codec_flags) != "") {
         $dlg_var(managed_codec_flags) = $var(managed_codec_flags);
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=outbound extension=$var(managed_extension_id) provider=$var(managed_host) flags=$var(managed_codec_flags) call_id=$ci");
+        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=selected direction=outbound extension=$var(managed_extension_id) provider=$var(managed_host) flags=$var(managed_codec_flags) call_id=$ci");
         {{- end }}
       }
       $xavp(tls=>server_name) = $var(managed_host); set_send_socket_name("private_tls");

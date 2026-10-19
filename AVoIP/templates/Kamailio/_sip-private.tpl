@@ -339,13 +339,18 @@
         if ($var(sipcore_managed_codec_flags) != $null && $var(sipcore_managed_codec_flags) != "") {
           $var(sipcore_media_flags) = $var(sipcore_media_flags) + " " + $var(sipcore_managed_codec_flags);
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-          hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=outbound extension=$hdr(X-Core-Extension) stage=asterisk_sdp_offer flags=$var(sipcore_managed_codec_flags) call_id=$ci");
+          hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=selected direction=outbound extension=$hdr(X-Core-Extension) stage=asterisk_sdp_offer flags=$var(sipcore_managed_codec_flags) call_id=$ci");
           {{- end }}
         }
         if (!rtpengine_manage("$var(sipcore_media_flags)")) {
           xlog("L_ERR", "RTPEngine SIP Core SDP handling failed callid=$ci method=$rm\n");
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
+        }
+        if ($var(sipcore_managed_codec_flags) != $null && $var(sipcore_managed_codec_flags) != "") {
+          {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+          hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=outbound extension=$hdr(X-Core-Extension) stage=asterisk_sdp_offer flags=$var(sipcore_managed_codec_flags) call_id=$ci");
+          {{- end }}
         }
       } else if (is_method("BYE")) {
         rtpengine_manage();
