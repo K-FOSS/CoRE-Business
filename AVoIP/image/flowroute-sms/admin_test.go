@@ -112,7 +112,7 @@ func TestSMSProviderProtocols(t *testing.T) {
 				return &http.Response{StatusCode: 201, Body: io.NopCloser(strings.NewReader(`{"sid":"SMfixture","data":{"id":"fixture-id"}}`))}, nil
 			})}}
 			p := smsProvider{ID: kind + "-test", Type: kind, KeyEnv: "SMS_PROVIDER_KEY", SecretEnv: "SMS_PROVIDER_SECRET"}
-			id, err := s.transmit(context.Background(), p, "+12065550100", "+12065550101", "fixture-message")
+			id, err := s.transmit(context.Background(), p, "+12065550100", "+12065550101", "fixture-message", nil)
 			if err != nil || !strings.HasPrefix(id, p.ID+":") {
 				t.Fatal("adapter failed", err)
 			}

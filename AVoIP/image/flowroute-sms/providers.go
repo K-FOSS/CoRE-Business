@@ -304,7 +304,7 @@ func chooseProvider(providers []smsProvider, from, requested string) (smsProvide
 	}
 	return smsProvider{}, errors.New("provider unavailable for this number")
 }
-func (s *server) transmit(ctx context.Context, p smsProvider, from, to, body string) (string, error) {
+func (s *server) transmit(ctx context.Context, p smsProvider, from, to, body string, mediaURLs []string) (string, error) {
 	key, secret := p.credentials()
 	if key == "" || p.Type != "telnyx" && secret == "" {
 		return "", errors.New("provider credentials unavailable")
@@ -321,7 +321,14 @@ func (s *server) transmit(ctx context.Context, p smsProvider, from, to, body str
 		}
 		endpoint = "https://api.twilio.com/2010-04-01/Accounts/" + key + "/Messages.json"
 		contentType = "application/x-www-form-urlencoded"
-		payload = []byte(url.Values{"From": {from}, "To": {to}, "Body": {body}}.Encode())
+		form := url.Values{"From": {from}, "To": {to}}
+		if body != "" {
+			form.Set("Body", body)
+		}
+		for _, mediaURL := range mediaURLs {
+			form.Add("MediaUrl", mediaURL)
+		}
+		payload = []byte(form.Encode())
 	case "telnyx":
 		endpoint = "https://api.telnyx.com/v2/messages"
 		contentType = "application/json"

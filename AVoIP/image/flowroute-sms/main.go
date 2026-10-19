@@ -815,7 +815,7 @@ func (s *server) listNumbers(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, p := range providers {
 			if p.CanSend && (authorizedNumber(number, p.Numbers) || p.ID == "flowroute" && !specific) {
-				senders = append(senders, map[string]string{"number": number, "provider_id": p.ID})
+				senders = append(senders, map[string]string{"number": number, "provider_id": p.ID, "provider_type": p.Type})
 				canSend = true
 			}
 		}

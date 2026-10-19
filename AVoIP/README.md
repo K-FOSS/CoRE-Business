@@ -81,7 +81,7 @@ compatibility notes](docs/SIPCORE-HASS.md#home-assistant-lf-only-heartbeat-compa
 and [test instructions](tests/README.md#home-assistant-lf-only-heartbeat-regression).
 
 The private Kamailio registrar supports a database-only provisioning mode.
-The Home1 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The Home1 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 now selects its PostgreSQL role, database, schema and stable connection Secret
 without enabling SIP registration; live provisioning is pending reconciliation. See the
 [registrar integration contract](docs/INTERNAL-REGISTRAR.md#database-only-provisioning)
@@ -92,8 +92,10 @@ YXL's and YVR's `internal` and `carrier` Kamailio instances are configured
 for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
-`7101` to place
-standard NANP calls through that route, with the configured Asterisk DID as caller ID.
+`7101` to place standard NANP calls through the managed extension route. The
+AVoIP Admin database supplies that extension's caller ID, and the provider's
+`caller_ids` policy must authorize it. The chart retains the older
+Asterisk-to-FreeSWITCH route only when Admin routing is disabled.
 YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
 outbound SIPS TLSRoute stays enabled. The desired YXL voice route transfers
@@ -118,7 +120,7 @@ Optional interface profiles for every enabled workload and the named YAML
 `functions` array are documented in [NETWORKING.md](docs/NETWORKING.md).
 They support Multus/CNI configuration, placement, DNS, and NIC init containers.
 
-The owner is the [AVoIP ApplicationSet in CoRE-Backplane](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+The owner is the [AVoIP ApplicationSet in CoRE-Backplane](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
 Its current desired state uses a merged generator for three production
 clusters: `core-dc1-talos-prod`, `core-home1-talos-prod`, and
 `dc1-k3s-node1`. It deploys the `AVoIP` path from the
@@ -126,7 +128,7 @@ clusters: `core-dc1-talos-prod`, `core-home1-talos-prod`, and
 `core-prod`, and renders through the
 [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
 
-The [owning ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The [owning ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 uses `targetRevision: HEAD`, enables `CreateNamespace=true` and
 `ServerSideApply=true`, and injects the following Helm merge values:
 
@@ -188,7 +190,7 @@ E.164, country-code digits without a leading plus, or national form with an
 optional plus, and normalizes them to E.164 for the carrier gateway. The caller
 identity is not independently verified by this route, so carrier-side ANI
 validation remains an operational trust assumption.
-The YVR opt-in is owned by the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+The YVR opt-in is owned by the [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
 
 Routr Connect 2.13.6 is integrated as optional workloads in this chart's
 BJW-S common-library render, based on the [upstream Connect chart](https://github.com/fonoster/routr/tree/v2.13.6/ops/charts/connect)
@@ -230,7 +232,7 @@ dedicated FreeSWITCH-to-Asterisk profile. For example, set
 `codecs.freeswitch.outbound: ['G722', 'PCMU']` in a Helm values layer to
 change the global outbound preference order. A site can provide these keys in
 the `LOVELY_HELM_MERGE` values of the owning
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
 The Flowroute outbound bridge has a separate `freeswitch.flowrouteOutbound.codecs`
 policy, defaulting to `['PCMU', 'PCMA']`; it requires PCMU and only changes the
 FreeSWITCH-to-carrier B-leg. Internal and WebRTC codec preferences remain
@@ -256,17 +258,19 @@ The [SIP security probes](tests/README.md#authorization-and-outbound-call-probes
 exercise denied sources, registration, unmatched outbound destinations, and
 bad private-peer credentials on an isolated deployment. Carrier DID calls use
 the source ACL rather than SIP digest authentication.
-FreeSWITCH public inbound DID routing remains on Kamailio. YVR's opt-in
-Asterisk NANP route now sends authorized calls through FreeSWITCH, which
-registers to the regional Flowroute SIP endpoint using the existing Vault
-record `AVoIP/SIP/FlowRoute` (`Username` and `Password`). YXL uses the
-US-East-VA PoP and YVR uses US-West-OR. FreeSWITCH sends outbound INVITEs
-through its private Kamailio mTLS listener using a dedicated Vault-issued
-client identity. Kamailio authorizes the exact FreeSWITCH SAN and pod range,
-then permits only configured NANP destinations from authorized Asterisk
-extensions. The existing carrier path and RTPEngine continue to handle
-signaling and media. FreeSWITCH uses the Flowroute regional proxy for REGISTER
-and its gateway `outbound-proxy` for the Kamailio INVITE hop, following the
+FreeSWITCH public inbound DID routing remains on Kamailio. YVR's managed
+Asterisk NANP route sends calls directly through private Kamailio using the
+SIP Core `carrier-outbound` PJSIP endpoint. The Admin database maps each
+permitted extension to its caller ID and provider route; the carrier verifies
+the caller ID against that provider's allowlist. YXL keeps PSTN origination
+disabled. The former Asterisk-to-FreeSWITCH route remains available only while
+Admin routing is disabled. FreeSWITCH still registers to the regional
+Flowroute SIP endpoint using the existing Vault record
+`AVoIP/SIP/FlowRoute` (`Username` and `Password`) for its separate inbound
+role. YXL uses the US-East-VA PoP and YVR uses US-West-OR. The existing
+carrier path and RTPEngine continue to handle signaling and media. The legacy
+Flowroute gateway uses its `outbound-proxy` for the Kamailio INVITE hop,
+following the
 [FreeSWITCH gateway configuration](https://developer.signalwire.com/freeswitch/users-and-endpoints/gateways/)
 and [Flowroute regional PoP configuration](https://developer.flowroute.com/docs/inbound-and-outbound-calling-with-flowroute-new-pops/).
 The outbound `flowroute-tls` gateway sets `from-domain` to the configured or
@@ -341,8 +345,8 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 
 The Asterisk and FreeSWITCH `User` claims set `spec.name`, `spec.groups`,
 `spec.serviceAccount`, and `spec.writeConnectionSecretToRef`. Review the
-[User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
-and [Composition](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserComposition.yaml)
+[User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+and [Composition](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserComposition.yaml)
 together before changing identity or database behavior; this chart also uses
 the supported PostgreSQL claim fields.
 
@@ -375,7 +379,7 @@ The deployed FreeSWITCH image comes from the site-local
 and is pinned to an immutable Forgejo build tag. The carrier border uses the
 [Kamailio SIP server](https://www.kamailio.org/) from its
 [official container images](https://github.com/kamailio/kamailio-docker).
-The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The active [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 sets the site identity, carrier transport exposure, and media address.
 
 Public TLS/5061 passes through Envoy Gateway to Kamailio's native TLS socket;
@@ -393,7 +397,7 @@ A 2xx ACK follows the restored dialog route, including when it reaches a
 different Kamailio replica. This routing still needs live verification.
 
 The public TLS gateway depends on the
-[Ingress ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/Ingress.yaml).
+[Ingress ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Network/Ingress.yaml).
 Its SIPS fallback supports clients without SNI. New outbound carrier requests
 use the site's VyOS NAT egress. See [SIP identity and call verification](docs/SIP-IDENTITY.md)
 for the exact Contact, Record-Route, ACK, TLS, Gateway, and egress behavior.
@@ -428,7 +432,7 @@ Established dialogs keep the accepting site's Contact and route set; UDP/TCP
 signaling continues through the site's direct Service.
 
 FreeSWITCH requests PostgreSQL credentials through its `User` claim. The current
-[CoRE-Backplane PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
+[CoRE-Backplane PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
 provisions the service-account role and database; the chart uses the generated
 Secret's username and password through
 [mod_cdr_pg_csv](https://developer.signalwire.com/freeswitch/module-reference/event-handlers/mod_cdr_pg_csv/)
@@ -456,6 +460,13 @@ YVR cluster. The web route serves the responsive conversation UI, the API
 checks Authentik number entitlements for reads and sends, and the public
 `/flowroute/` route remains callback-token protected. The API receives Flowroute
 send keys from an ExternalSecret backed by the existing SMS Vault record.
+Twilio provider accounts can also send MMS from the inbox using publicly
+reachable HTTPS media URLs; the service does not retain those outbound files.
+Signed inbound Twilio MMS callbacks download and store image attachments under
+the same size cap as the Flowroute inbox; video and other non-image media are
+rejected.
+See the [SMS provider and MMS guide](docs/FLOWROUTE-SMS.md#groups-administrative-access-and-providers)
+for provider limits and the current inbound MMS support boundary.
 The web response allows framing only by `https://office.mylogin.space` and
 itself; configure `flowrouteSMS.inbox.frameAncestor` for another trusted
 Nextcloud origin. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
@@ -503,7 +514,7 @@ metadata until its templates are changed.
 
 The [Kamailio values reference](docs/KAMAILIO-VALUES.md) lists every supported
 option, default, role constraint, and site override. The active
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 provides a complete `kamailio.instances` array at each site. The three
 sites retain the named `carrier` instance with three replicas. This is the
 current public SIP service and provides same-site Kamailio pod redundancy;
@@ -534,7 +545,7 @@ connections do not require an Envoy PROXY header. The ordinary `internal`
 private-SBC remains one replica; SIP Core HA uses the distinct `internal-wss`
 instance and Path-based ownership described in the [Kamailio values](docs/KAMAILIO-VALUES.md).
 
-The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 now enables one `private-sbc` instance in YVR beside the existing carrier
 instance; the operator reports that the first pieces are live. Its rollout and
 SIP behavior have not yet been independently verified here. The carrier's
@@ -614,7 +625,7 @@ and owning ApplicationSet values if a site instance change must be reverted.
 
 ## LiveKit Server
 
-The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The active [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 enables LiveKit for Home1/YVR. It has its own HTTPS signaling route and
 public UDP/TCP media Service; it does not share Kamailio or RTPEngine media.
 The rendered configuration uses site-local TLS Dragonfly, Secret-backed API
@@ -678,7 +689,7 @@ pod starts so the bundled media services can advertise the public address;
 TLS TURN on port 5349 is not exposed.
 
 The backend reads the existing site TURN REST secret from the
-[NATPuncher Vault path](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Network/NATPuncher.yaml).
+[NATPuncher Vault path](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Network/NATPuncher.yaml).
 ESO generates stable signaling and internal secrets in the `avoip-talk-hpb-bootstrap`
 Secret; the TURN secret is mirrored into `avoip-talk-hpb-turn`. The credentials
 are never rendered into manifests. The Nextcloud Talk admin settings still
@@ -694,7 +705,7 @@ The signaling and internal credentials are pushed to the Vault key
 removed. Delete or rotate them only after updating the Nextcloud Talk settings;
 rotation restarts HPB and ends active calls.
 
-After the [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+After the [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 reconciles, verify both public DNS records, the Home1 Gateway route, the media
 LoadBalancer address, ExternalSecret readiness, and the HPB health check. In
 Nextcloud, confirm the HPB check is green and test a multi-participant call from
@@ -756,7 +767,7 @@ The chart-level identity assertions can be run with
 
 The replacement speech path is the deployed AI stack:
 
-- The [AI ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/AI.yaml)
+- The [AI ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/AI.yaml)
   renders the shared AI services, including Wyoming, GPUStack, and Speaches.
 - Wyoming is the protocol adapter on TCP `10300`. Its TTS OpenAI-compatible
   endpoint is GPUStack at `https://gpustack.mylogin.space/v1`, using
@@ -776,9 +787,9 @@ integrated without recreating Vosk or Mycroft resources.
 ## Historical `dc1-k3s` state
 
 A 2026-06-11 inventory showed scaled-to-zero Vosk and Mycroft resources from
-an older [legacy AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Legacy/AVoIP.yaml).
+an older [legacy AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Legacy/AVoIP.yaml).
 That inventory predates the active multi-cluster
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 and must not be treated as current controller state. The current chart does not
 render those speech workloads; check Argo CD before making deletion or
 recovery decisions about any remnants.
@@ -821,7 +832,7 @@ Secret contains runtime credentials. Do not put credentials or generated
 Secret data in this repository. Verify the resulting `User`, its `XUser`, the
 claim connection Secret key names, and downstream provider conditions. The
 current SSO platform documentation is the authoritative guide
-for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/README.md).
+for this workflow: [User platform APIs](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/README.md).
 
 ## Upstream projects
 

@@ -12,6 +12,8 @@ helm template sms-inbox-check "$repo_root/AVoIP" --namespace core-prod \
   --set freeswitch.enabled=false \
   --set flowrouteSMS.enabled=true \
   --set flowrouteSMS.hostname=sms.mylogin.space \
+  --set flowrouteSMS.image.repository=forge.example/core/flowroute-sms \
+  --set flowrouteSMS.image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --set flowrouteSMS.callbackSecret.name=sms-inbox-check-token \
   --set flowrouteSMS.inbox.enabled=true \
   >"$tmp_dir/render.yaml"

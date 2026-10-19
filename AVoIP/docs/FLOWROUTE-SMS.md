@@ -17,8 +17,7 @@ and [User implementation](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/bra
 The messaging stack does not depend on FreeSWITCH's `mod_sms` or the
 unavailable Flowroute FreeSWITCH module. The authenticated API sends SMS using
 [Flowroute Messages v2.2](https://developer.flowroute.com/api/messages/v2.2/send-an-sms/)
-with the existing Vault `AccessKey` and `SecretKey`; the webhook only receives
-callbacks. For each callback it validates the content type and required fields,
+with the existing Vault `AccessKey` and `SecretKey`; the webhook only receives callbacks. For each callback it validates the content type and required fields,
 then inserts by Flowroute's MDR ID. A PostgreSQL primary key makes retries
 idempotent across replicas: a committed message gets HTTP 200, including on a
 duplicate delivery; a database failure gets HTTP 503 so Flowroute can retry.
@@ -143,10 +142,9 @@ route requirements](https://docs.goauthentik.io/add-secure-apps/providers/proxy/
 and [custom headers](https://docs.goauthentik.io/add-secure-apps/providers/proxy/custom_headers/)
 and [Envoy Gateway external authorization](https://gateway.envoyproxy.io/docs/tasks/security/ext-auth/).
 
-Each deployment has `/healthz`; the API and webhook have PostgreSQL-backed
-`/readyz`. Each database pod uses at most five PostgreSQL connections, so two
-replicas of each database workload can use up to twenty connections.
-Additional replicas can be added through `flowrouteSMS.replicas`;
+Each deployment has `/healthz`; the API and webhook have PostgreSQL-backed `/readyz`. Each pod uses a
+maximum of five PostgreSQL connections, so two replicas cap this service at ten
+connections. Additional replicas can be added through `flowrouteSMS.replicas`;
 the unique MDR constraint keeps concurrent duplicate deliveries safe. Avoid
 raising the replica count without checking global PostgreSQL connection
 capacity.
@@ -167,20 +165,15 @@ workload and public callback route, and a non-primary region cannot claim it.
 The inbox renderer checks confirm its Authentik policy, number mapping and
 non-public route.
 
-The checked-in values enable the inbox alongside the webhook. All three
-published images are pinned in those values, and the default inbox URL is
+The checked-in values enable the inbox alongside the webhook. The current
+published image is pinned in those values, and the default inbox URL is
 `https://<flowrouteSMS.hostname>/inbox`; a separate hostname can be configured
-if desired. After scoped reconciliation, verify Authentik login, message
-filtering, image retrieval, authorized sending,
+if desired. These commits have not been synced to the cluster. After scoped
+reconciliation, verify Authentik login, message filtering, image retrieval,
 Flowroute callback HTTP 200 and a single MDR row in PostgreSQL. Check the
 [`core-home1-talos-prod` PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
 and downstream User claim conditions before relying on the generated
 connection Secret.
-
-The current database has no contact names, unread state, delivery receipts,
-or outbound MMS attachments. The UI displays phone numbers and accepted
-outbound SMS records without inventing those fields. Drafts live only in page
-memory, and a page reload clears them.
 
 The service uses the [Go standard library](https://go.dev/doc/),
 [`pgx`](https://github.com/jackc/pgx/),
@@ -211,13 +204,29 @@ The stack now supports multiple configured accounts using these adapters:
 | Provider | Sending | Inbound authentication and scope |
 | --- | --- | --- |
 | [Flowroute](https://www.flowroute.com/), [Messages v2.2](https://developer.flowroute.com/api/messages/v2.2/send-an-sms/) | JSON:API SMS; legacy account remains compatible | Existing token callback and MMS/image persistence; additional named accounts currently support outbound SMS only |
-| [Twilio](https://www.twilio.com/), [Messages resource](https://www.twilio.com/docs/messaging/api/message-resource) | Form-encoded SMS using account SID and Auth Token | [Signed form webhook](https://www.twilio.com/docs/usage/webhooks/webhooks-security), exact configured URL, account and destination validation; SMS text only |
+| [Twilio](https://www.twilio.com/), [Messages resource](https://www.twilio.com/docs/messaging/api/message-resource) | Form-encoded SMS and MMS using account SID and Auth Token | [Signed form webhook](https://www.twilio.com/docs/usage/webhooks/webhooks-security), exact configured URL, account and destination validation; inbound images are downloaded with account authentication and stored in PostgreSQL |
 | [Telnyx](https://telnyx.com/), [messaging API](https://developers.telnyx.com/docs/messaging/messages/send-message) | JSON SMS with bearer API key | [Ed25519 webhook](https://developers.telnyx.com/docs/messaging/messages/receiving-webhooks), five-minute timestamp bound and destination validation; SMS text only |
 
 Twilio/Telnyx callbacks use `/providers/{id}/inbound`. Configure that exact HTTPS
-URL without query parameters. Unsupported MMS returns 415 and is not silently
-acknowledged or discarded; use the existing Flowroute MMS path until additional
-media adapters are implemented. Additional providers' IDs are namespaced in
+URL without query parameters. Twilio outbound MMS is available in the inbox by
+selecting the Twilio provider and entering one or more publicly accessible
+HTTPS media URLs (up to ten). Twilio fetches and stores those media resources;
+the inbox stores the outbound message record and MMS flag, but does not copy or
+retain those outbound files. Twilio requires media URLs to be reachable without
+authentication and applies file type, size, geography, and carrier limits; see
+its [MMS sending guide](https://www.twilio.com/docs/messaging/tutorials/how-to-send-sms-messages)
+and [accepted media types](https://www.twilio.com/docs/messaging/guides/accepted-mime-types).
+Do not use private URLs or URLs containing credentials. Inbound Twilio MMS
+supports up to ten image attachments, fetched from Twilio's authenticated media
+resource and stored with the message in PostgreSQL. The existing 750 KiB total
+message-plus-media cap applies; non-image media types are rejected. Twilio's
+webhook signature, account, Message SID, Media SIDs, and exact media resource
+paths are checked before fetching. Inbound Telnyx MMS remains unsupported and
+returns 415 rather than being acknowledged and discarded; inbound Flowroute
+MMS remains supported by its existing adapter. See Twilio's
+[incoming media webhook fields](https://www.twilio.com/docs/messaging/guides/webhook-request)
+and [authenticated media resource](https://www.twilio.com/docs/messaging/api/media-resource).
+Additional providers' IDs are namespaced in
 stored message IDs. Retries deduplicate in PostgreSQL and honor deletion
 tombstones. No real provider request is used by default tests.
 

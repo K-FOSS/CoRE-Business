@@ -6,15 +6,20 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"mime"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type providerWebhookStatusWriter struct {
@@ -74,6 +79,90 @@ func validTwilioSignature(p smsProvider, r *http.Request, body []byte) bool {
 	supplied, err := base64.StdEncoding.DecodeString(r.Header.Get("X-Twilio-Signature"))
 	return err == nil && hmac.Equal(supplied, mac.Sum(nil))
 }
+
+type twilioInboundMedia struct {
+	sid         string
+	contentType string
+	fileName    string
+	content     []byte
+}
+
+func validTwilioSID(value, prefix string) bool {
+	if len(value) != 34 || !strings.HasPrefix(value, prefix) {
+		return false
+	}
+	for _, char := range value[2:] {
+		if !(char >= '0' && char <= '9' || char >= 'a' && char <= 'f' || char >= 'A' && char <= 'F') {
+			return false
+		}
+	}
+	return true
+}
+
+func twilioMediaFromWebhook(values url.Values, accountSID, messageSID string, count int) ([]twilioInboundMedia, error) {
+	if count < 0 || count > 10 || count > 0 && (!validTwilioSID(accountSID, "AC") || !(validTwilioSID(messageSID, "SM") || validTwilioSID(messageSID, "MM"))) {
+		return nil, errors.New("invalid Twilio media identifiers")
+	}
+	result := make([]twilioInboundMedia, 0, count)
+	for index := 0; index < count; index++ {
+		urlValues := values["MediaUrl"+strconv.Itoa(index)]
+		typeValues := values["MediaContentType"+strconv.Itoa(index)]
+		if len(urlValues) != 1 || len(typeValues) != 1 {
+			return nil, errors.New("missing or repeated Twilio media fields")
+		}
+		mediaURL := urlValues[0]
+		contentType, _, err := mime.ParseMediaType(typeValues[0])
+		parsed, parseErr := url.Parse(mediaURL)
+		if err != nil || parseErr != nil || !strings.HasPrefix(strings.ToLower(contentType), "image/") || parsed == nil ||
+			!strings.EqualFold(parsed.Scheme, "https") || !strings.EqualFold(parsed.Hostname(), "api.twilio.com") ||
+			parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Port() != "" && parsed.Port() != "443") {
+			return nil, errors.New("invalid Twilio media URL or content type")
+		}
+		parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+		if len(parts) != 7 || parts[0] != "2010-04-01" || parts[1] != "Accounts" || parts[2] != accountSID || parts[3] != "Messages" || parts[4] != messageSID || parts[5] != "Media" || !validTwilioSID(parts[6], "ME") {
+			return nil, errors.New("Twilio media URL does not match message")
+		}
+		result = append(result, twilioInboundMedia{sid: parts[6], contentType: contentType})
+	}
+	return result, nil
+}
+
+func (s *server) downloadTwilioMedia(ctx context.Context, accountSID, authToken, messageSID string, media *twilioInboundMedia) error {
+	mediaURL := "https://api.twilio.com/2010-04-01/Accounts/" + accountSID + "/Messages/" + messageSID + "/Media/" + media.sid
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, mediaURL, nil)
+	if err != nil {
+		return errors.New("could not build Twilio media request")
+	}
+	req.SetBasicAuth(accountSID, authToken)
+	resp, err := s.mediaClient.Do(req)
+	if err != nil {
+		return errors.New("Twilio media request failed")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("Twilio media request returned an error")
+	}
+	responseType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil || !strings.EqualFold(responseType, media.contentType) {
+		return errors.New("Twilio media content type did not match webhook")
+	}
+	content, err := io.ReadAll(io.LimitReader(resp.Body, maxMediaBytes+1))
+	if err != nil || len(content) == 0 || len(content) > maxMediaBytes {
+		return errors.New("Twilio media exceeded the size limit")
+	}
+	detectedType, _, err := mime.ParseMediaType(http.DetectContentType(content))
+	if err != nil || !strings.HasPrefix(detectedType, "image/") || !strings.EqualFold(detectedType, media.contentType) {
+		return errors.New("Twilio media was not an image")
+	}
+	media.content = content
+	if extensions, err := mime.ExtensionsByType(media.contentType); err == nil && len(extensions) > 0 {
+		media.fileName = "twilio-" + media.sid + filepath.Ext(extensions[0])
+	} else {
+		media.fileName = "twilio-" + media.sid
+	}
+	return nil
+}
+
 func validTelnyxSignature(p smsProvider, r *http.Request, body []byte) bool {
 	publicKey, err := base64.StdEncoding.DecodeString(os.Getenv(p.PublicKeyEnv))
 	if err != nil || len(publicKey) != ed25519.PublicKeySize {
@@ -145,6 +234,8 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 	contentType, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	var id, from, to, text string
 	var isMMS bool
+	var media []twilioInboundMedia
+	var accountSID, authToken string
 	occurred := time.Now().UTC()
 	if p.Type == "twilio" {
 		stage = "twilio_signature"
@@ -158,8 +249,8 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid request", 400)
 			return
 		}
-		key, _ := p.credentials()
-		if values.Get("AccountSid") != key {
+		accountSID, authToken = p.credentials()
+		if values.Get("AccountSid") != accountSID {
 			http.Error(w, "invalid account", 403)
 			return
 		}
@@ -167,7 +258,22 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 		from = values.Get("From")
 		to = values.Get("To")
 		text = values.Get("Body")
-		isMMS = values.Get("NumMedia") != "" && values.Get("NumMedia") != "0"
+		mediaCount := 0
+		if rawCount := values.Get("NumMedia"); rawCount != "" {
+			mediaCount, err = strconv.Atoi(rawCount)
+			if err != nil {
+				stage = "validate_media_count"
+				http.Error(w, "invalid media count", 422)
+				return
+			}
+		}
+		media, err = twilioMediaFromWebhook(values, accountSID, id, mediaCount)
+		if err != nil {
+			stage = "validate_media_metadata"
+			http.Error(w, "invalid media metadata", 422)
+			return
+		}
+		isMMS = mediaCount > 0
 	} else {
 		stage = "telnyx_signature"
 		if contentType != "application/json" || !validTelnyxSignature(p, r, body) {
@@ -217,8 +323,9 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 			occurred = event.Data.OccurredAt
 		}
 	}
-	// Additional adapters explicitly support SMS; never acknowledge and discard MMS.
-	if isMMS {
+	// Telnyx currently has no inbound media downloader. Never acknowledge and
+	// discard its MMS payload.
+	if isMMS && p.Type != "twilio" {
 		stage = "unsupported_mms"
 		http.Error(w, "MMS is not supported for this provider", 415)
 		return
@@ -231,10 +338,38 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	to, ok = normalizePhoneNumber(to)
-	if !ok || !authorizedNumber(to, p.Numbers) || id == "" || len(id) > 140 || len(text) > 65536 {
+	if !ok || !authorizedNumber(to, p.Numbers) || id == "" || len(id) > 140 || len(text) > 65536 || (!isMMS && strings.TrimSpace(text) == "") || len(media) > 10 {
 		stage = "validate_message"
 		http.Error(w, "invalid message or destination", 422)
 		return
+	}
+	if p.Type == "twilio" && len(media) > 0 {
+		stage = "download_twilio_media"
+		type mediaResult struct {
+			index int
+			err   error
+		}
+		results := make(chan mediaResult, len(media))
+		for index := range media {
+			go func(index int) {
+				results <- mediaResult{index: index, err: s.downloadTwilioMedia(r.Context(), accountSID, authToken, id, &media[index])}
+			}(index)
+		}
+		mediaTotal := 0
+		for range media {
+			result := <-results
+			if result.err != nil {
+				stage = "download_twilio_media_failed"
+				http.Error(w, "media unavailable", 502)
+				return
+			}
+			mediaTotal += len(media[result.index].content)
+		}
+		if mediaTotal+len(text) > maxMediaBytes {
+			stage = "validate_media_total_size"
+			http.Error(w, "media exceeds size limit", 413)
+			return
+		}
 	}
 	id = p.ID + ":" + id
 	stage = "database_begin"
@@ -247,7 +382,20 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(r.Context(), `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, id)
 	if err == nil {
 		stage = "database_insert"
-		_, err = tx.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_messages(message_id,sender,recipient,body,direction,is_mms,received_at,provider_id) SELECT $1,$2,$3,$4,'inbound',false,$5,$6 WHERE NOT EXISTS(SELECT 1 FROM public.sms_deleted_messages WHERE message_id=$1) ON CONFLICT DO NOTHING`, id, from, to, text, occurred, p.ID)
+		var inserted bool
+		err = tx.QueryRow(r.Context(), `INSERT INTO public.flowroute_inbound_messages(message_id,sender,recipient,body,direction,is_mms,received_at,provider_id) SELECT $1,$2,$3,$4,'inbound',$5,$6,$7 WHERE NOT EXISTS(SELECT 1 FROM public.sms_deleted_messages WHERE message_id=$1) ON CONFLICT DO NOTHING RETURNING true`, id, from, to, text, isMMS, occurred, p.ID).Scan(&inserted)
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = nil
+		}
+		if err == nil && inserted {
+			for _, attachment := range media {
+				stage = "database_insert_media"
+				mediaID := id + ":" + attachment.sid
+				if _, err = tx.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_media(media_id,message_id,file_name,mime_type,content) VALUES($1,$2,$3,$4,$5)`, mediaID, id, attachment.fileName, attachment.contentType, attachment.content); err != nil {
+					break
+				}
+			}
+		}
 	}
 	if err == nil {
 		stage = "database_commit"
