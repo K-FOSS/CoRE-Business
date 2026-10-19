@@ -66,7 +66,7 @@ type extensionRoute struct {
 // Legacy records carry one caller ID and provider. New records can authorize
 // several, with list order defining deterministic preference and failover.
 func (e extensionRoute) callerIDs() []string {
-	if len(e.AuthorizedCallerIDs) > 0 {
+	if e.AuthorizedCallerIDs != nil {
 		return e.AuthorizedCallerIDs
 	}
 	if e.CallerID != "" {
@@ -76,7 +76,7 @@ func (e extensionRoute) callerIDs() []string {
 }
 
 func (e extensionRoute) providers() []string {
-	if len(e.AuthorizedProviders) > 0 {
+	if e.AuthorizedProviders != nil {
 		return e.AuthorizedProviders
 	}
 	if e.Provider != "" {

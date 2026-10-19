@@ -143,6 +143,19 @@ func TestOutboundRoutePreviewOrdersAuthorizedProviderFailover(t *testing.T) {
 	}
 }
 
+func TestExplicitlyEmptyExtensionAuthorizationDoesNotFallBackToLegacyFields(t *testing.T) {
+	catalog := fixtureCatalog()
+	legacy := catalog.Extensions[0]
+	if len(legacy.callerIDs()) != 1 || len(legacy.providers()) != 1 {
+		t.Fatal("legacy single-value authorization should remain supported")
+	}
+	catalog.Extensions[0].AuthorizedCallerIDs = []string{}
+	catalog.Extensions[0].AuthorizedProviders = []string{}
+	if err := catalog.validate(); err == nil {
+		t.Fatal("explicitly empty authorization lists must not reactivate legacy values")
+	}
+}
+
 func TestOutboundRoutePreviewRequiresAdmin(t *testing.T) {
 	server := &server{}
 	mux := http.NewServeMux()
