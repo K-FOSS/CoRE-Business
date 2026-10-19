@@ -13,17 +13,19 @@ metadata:
     argocd.argoproj.io/sync-wave: '-5'
 spec:
   providerConfigRef:
-    name: '{{ $inbox.providerConfigRef }}'
+    name: '{{ $.Values.avoipAdmin.auth.providerConfigRef }}'
   forProvider:
     source: 'Inline'
     varmap:
       provider_name: '{{ $name }} {{ $.Values.cluster.name }}'
+      outpost_name: '{{ $.Values.avoipAdmin.auth.outpostName }}'
       access_group: '{{ $inbox.accessGroup }}'
       admin_group: '{{ $inbox.adminGroup }}'
       app_slug: '{{ $slug }}'
       external_host: 'https://{{ $hostname }}'
     module: |
       variable "provider_name" { type = string }
+      variable "outpost_name" { type = string }
       variable "access_group" { type = string }
       variable "admin_group" { type = string }
       variable "app_slug" { type = string }
@@ -97,6 +99,14 @@ spec:
         authorization_flow     = data.authentik_flow.authorization.id
         invalidation_flow      = data.authentik_flow.invalidation.id
         property_mappings      = concat(data.authentik_property_mapping_provider_scope.identity.ids, [authentik_property_mapping_provider_scope.numbers.id])
+      }
+
+      data "authentik_outpost" "proxy" {
+        name = var.outpost_name
+      }
+      resource "authentik_outpost_provider_attachment" "proxy" {
+        outpost = data.authentik_outpost.proxy.id
+        protocol_provider = authentik_provider_proxy.inbox.id
       }
 
       resource "authentik_application" "inbox" {

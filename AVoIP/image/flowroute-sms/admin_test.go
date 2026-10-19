@@ -32,6 +32,7 @@ func TestAdminGroupsAndOrigin(t *testing.T) {
 		{`["AVoIP Users"]`, "alice", "https://sms.example", false},
 		{`["AVoIP Admins extra"]`, "alice", "https://sms.example", false},
 		{`AVoIP Admins`, "alice", "https://sms.example", false},
+		{`["AVoIP Admins", 1]`, "alice", "https://sms.example", false},
 		{`["AVoIP Admins"]`, "", "https://sms.example", false},
 		{`["AVoIP Admins"]`, "alice", "https://other.example", false},
 	} {

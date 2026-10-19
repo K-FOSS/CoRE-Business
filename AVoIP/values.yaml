@@ -1532,6 +1532,15 @@ avoipAdmin:
     enabled: false
     target: ''
   replicas: 2
+  auth:
+    providerConfigRef: 'avoip-admin-authentik'
+    providerVersion: '2026.8.0'
+    url: 'https://idp.mylogin.space'
+    outpostName: 'AAA-MainProxy'
+    credentials:
+      namespace: 'crossplane-system-prod'
+      name: 'authentik-credentials'
+      key: 'Token'
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
     tag: '1-62a50ea54d9696c4d539af9a91afc4c85c092813'

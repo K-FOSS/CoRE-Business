@@ -205,3 +205,15 @@ publication did not reconcile Argo CD or change production schema/routing;
 administration deployment now follows the staged rollout above. Real carrier calls, cross-site handoff,
 `mod_xml_curl` availability in the deployed FreeSWITCH image, production
 Authentik login and original fax/voicemail paths remain activation checks.
+
+### Authentik outpost registration
+
+Admin Workspaces use an application-scoped Terraform ProviderConfig, pinned to
+[Authentik provider 2026.8.0](https://registry.terraform.io/providers/goauthentik/authentik/2026.8.0/docs).
+It reuses the existing Authentik controller credential Secret reference and
+uses an [outpost provider attachment](https://registry.terraform.io/providers/goauthentik/authentik/2026.8.0/docs/resources/outpost_provider_attachment)
+to register only this app with `AAA-MainProxy`. It does not take ownership of
+the outpost or replace its other providers. The global `authentik` ProviderConfig
+and existing application provider versions stay unchanged. `avoipAdmin.auth`
+configures the version, API URL, outpost name and stable credential references.
+ProviderConfig is a Crossplane custom API without a BJW-S resource class.

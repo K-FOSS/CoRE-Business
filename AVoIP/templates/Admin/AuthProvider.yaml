@@ -1,0 +1,31 @@
+{{- if and .Values.avoipAdmin.enabled .Values.freeswitch.enabled }}
+# Isolated plugin version for additive outpost attachments. Reuse the existing
+# Authentik controller credential reference; never replace the global outpost.
+apiVersion: tf.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: '{{ .Values.avoipAdmin.auth.providerConfigRef }}'
+  annotations:
+    argocd.argoproj.io/sync-wave: '-6'
+spec:
+  credentials:
+    - source: 'Secret'
+      filename: 'authentik-credentials'
+      secretRef:
+        namespace: '{{ .Values.avoipAdmin.auth.credentials.namespace }}'
+        name: '{{ .Values.avoipAdmin.auth.credentials.name }}'
+        key: '{{ .Values.avoipAdmin.auth.credentials.key }}'
+  configuration: |
+    terraform {
+      required_providers {
+        authentik = {
+          source = "goauthentik/authentik"
+          version = "{{ .Values.avoipAdmin.auth.providerVersion }}"
+        }
+      }
+    }
+    provider "authentik" {
+      url = "{{ .Values.avoipAdmin.auth.url }}"
+      token = file("${path.module}/authentik-credentials")
+    }
+{{- end }}

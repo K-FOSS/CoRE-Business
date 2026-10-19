@@ -15,7 +15,9 @@ func (s *server) groups(r *http.Request) []string {
 	if _, present := r.Header[http.CanonicalHeaderKey("X-Authentik-Groups")]; present {
 		groups = strings.Split(r.Header.Get("X-Authentik-Groups"), "|")
 	} else {
-		_ = json.Unmarshal([]byte(r.Header.Get("X-Auth-Groups")), &groups)
+		if json.Unmarshal([]byte(r.Header.Get("X-Auth-Groups")), &groups) != nil {
+			groups = nil
+		}
 	}
 	seen := map[string]bool{}
 	result := []string{}
