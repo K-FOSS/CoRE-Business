@@ -1,7 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id),state={tab:'sms',sms:[],catalog:{providers:[],dids:[],extensions:[],version:0},audit:[],info:{}};
 const node=(tag,cls='',text='')=>{const n=document.createElement(tag);n.className=cls;n.textContent=text;return n};
-function notice(text){$('snackbar').textContent=text;$('snackbar').classList.add('show');setTimeout(()=>$('snackbar').classList.remove('show'),5000)}
+function notice(text){$('snackbar').textContent=text;$('snackbar').classList.add('visible');setTimeout(()=>$('snackbar').classList.remove('visible'),5000)}
 async function api(path,method='GET',body){const response=await fetch(path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(!response.ok)throw Error((await response.text()).trim()||'Request failed');return response.status===204?null:response.json()}
 async function load(){try{[state.sms,state.catalog,state.audit,state.info]=await Promise.all([api('/api/providers'),api('/api/sip'),api('/api/audit'),api('/api/admin')]);render()}catch(error){notice(error.message)}}
 const fields={

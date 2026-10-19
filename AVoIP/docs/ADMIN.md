@@ -142,7 +142,11 @@ voicemail, IVR, registrations and teardown require end-to-end regression evidenc
 1. Build/test/pin API, web, webhook, admin and managed-routing images. Use BJW-S
    common for workloads/services and inspect the complete Lovely Helm/Kustomize
    render with both site-injected layers.
-2. Activate administration alone. Verify primary User/XUser, PushSecret, imported
+2. Reconcile the SMS webhook replicas first and confirm every replica uses the
+   new image before exposing deletion through the API/inbox. Older receivers do
+   not honor deletion tombstones. Then roll API and web, preserving callback
+   reachability and testing signed fixtures before an authorized real message.
+   Activate administration alone. Verify primary User/XUser, PushSecret, imported
    connection, generated local machine token, both admin replicas, exact-group
    access, private DNS/Gateway attachment and admin/non-admin API behavior.
 3. Configure provider metadata, gateway credentials, network egress, DID ownership
@@ -159,7 +163,7 @@ voicemail, IVR, registrations and teardown require end-to-end regression evidenc
    retention separately during retirement.
 
 Schema startup uses an advisory migration lock and additive tables/columns;
-older code remains compatible. SIP catalog and provider writes are versioned and
+older code remains compatible. SIP catalog and provider updates are versioned; all administrative mutations are
 audited. Deleting an SMS message removes its stored attachments and retains a
 minimal tombstone to prevent callback replay from restoring it; it does not
 recall delivery or erase provider copies/backups. No default cleanup retention
