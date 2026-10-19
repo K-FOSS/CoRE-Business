@@ -288,7 +288,7 @@ func run(logger *slog.Logger) error {
 	}
 	httpServer := &http.Server{
 		Addr:              address,
-		Handler:           mux,
+		Handler:           logWebhookPosts(logger, mode, mux),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -308,6 +308,69 @@ func run(logger *slog.Logger) error {
 		return fmt.Errorf("serve HTTP: %w", err)
 	}
 	return nil
+}
+
+type statusResponseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusResponseWriter) WriteHeader(status int) {
+	if w.status != 0 {
+		return
+	}
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *statusResponseWriter) Write(body []byte) (int, error) {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(body)
+}
+
+func logWebhookPosts(logger *slog.Logger, mode string, next http.Handler) http.Handler {
+	if mode != "webhook" {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			next.ServeHTTP(w, r)
+			return
+		}
+		started := time.Now()
+		tracked := &statusResponseWriter{ResponseWriter: w}
+		defer func() {
+			status := tracked.status
+			if status == 0 {
+				status = http.StatusOK
+			}
+			mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+			if err != nil {
+				mediaType = "invalid"
+			}
+			logger.Debug("inbound HTTP POST received",
+				"path_class", inboundPathClass(r.URL.Path),
+				"content_type", mediaType,
+				"content_length", r.ContentLength,
+				"response_status", status,
+				"duration_ms", time.Since(started).Milliseconds(),
+			)
+		}()
+		next.ServeHTTP(tracked, r)
+	})
+}
+
+func inboundPathClass(path string) string {
+	if path == "/flowroute" || strings.HasPrefix(path, callbackPrefix) {
+		return "/flowroute/{redacted}"
+	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) == 3 && parts[0] == "providers" && parts[2] == "inbound" && parts[1] != "" {
+		return "/providers/{id}/inbound"
+	}
+	return "/unmatched"
 }
 
 func (s *server) health(w http.ResponseWriter, _ *http.Request) {
