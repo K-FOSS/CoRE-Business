@@ -32,18 +32,19 @@
         sl_send_reply("200", "Keepalive");
         exit;
       }
-      {{- if not .Values.kamailio.carrierOutbound.calls.enabled }}
-      if (!has_totag() && is_method("INVITE")) {
-        sl_send_reply("403", "Outbound Calls Disabled");
-        exit;
-      }
-      {{- end }}
       if (!is_method("INVITE")) {
         sl_send_reply("405", "Method Not Allowed");
         exit;
       }
 
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      if ($var(managed_json) == $null) {
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_missing call_id=$ci method=$rm destination_class=nanp\n");
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=snapshot_unavailable site={{ $.Values.region }} call_id=$ci method=$rm destination_class=nanp");
+        {{- end }}
+        sl_send_reply("503", "Routing Snapshot Unavailable"); exit;
+      }
       route(MANAGED_EGRESS);
       {{- end }}
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
@@ -61,10 +62,12 @@
         exit;
       }
       {{- else }}
-      if ($fU != "{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}") {
-        sl_send_reply("403", "Caller Identity Not Authorized");
-        exit;
-      }
+      xlog("L_WARN", "AVOIP_POLICY reject=admin_routing_required call_id=$ci method=$rm destination_class=nanp\n");
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=admin_routing_required site={{ $.Values.region }} call_id=$ci method=$rm destination_class=nanp");
+      {{- end }}
+      sl_send_reply("503", "Admin Routing Required");
+      exit;
       {{- end }}
       if ($rU =~ "^[2-9][0-9]{9}$") {
         $rU = "+1" + $rU;
@@ -73,24 +76,22 @@
       }
       if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") ||
           $rU =~ "^\\+1900" ||
-          $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$"{{- if ne .Values.kamailio.carrierOutbound.calls.mode "nanp" }} ||
-          $rU != "{{ .Values.kamailio.carrierOutbound.testRoute.destination }}"{{- end }}) {
+          $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") {
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=destination_not_allowed extension=$hdr(X-Core-Extension) site={{ $.Values.region }} call_id=$ci method=$rm destination_class=restricted_or_invalid");
         {{- end }}
         sl_send_reply("403", "Destination Not Authorized");
         exit;
       }
+      if ($var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
+        $rU = $var(managed_egress_prefix) + "*" + $rU;
+      }
 
       # Dragonfly executes quota admission atomically across all carrier
       # replicas. A stale call expires after maxDurationSeconds even if a pod
       # disappears before BYE. A failed Redis operation fails closed.
       $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>={{ .Values.kamailio.carrierOutbound.limits.concurrentCalls }} then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>={{ .Values.kamailio.carrierOutbound.limits.callsPerMinute }} or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }},'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }});return 1";
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
-      {{- else }}
-      $var(outbound_quota_key) = "avoip:out:quota:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}";
-      {{- end }}
       if (!redis_cmd(
         "topos", "EVAL %s 1 %s %s", "$var(quota_script)",
         "$var(outbound_quota_key)",
@@ -115,18 +116,8 @@
       }
 
       remove_hf("P-Asserted-Identity");
-      append_hf("P-Asserted-Identity: <sip:{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}$fU{{ else if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      append_hf("P-Asserted-Identity: <sip:$fU@{{ include "avoip.sip.siteHost" . }}>\r\n");
       $ru = "sips:" + $rU + "@" + $var(managed_host);
-      {{- else if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}
-      if (!($env(FLOWROUTE_TECH_PREFIX) =~ "^[0-9]{8}$")) {
-        sl_send_reply("503", "Flowroute Tech Prefix Unavailable");
-        exit;
-      }
-      $ru = "sips:" + $env(FLOWROUTE_TECH_PREFIX) + "*" + $rU + "@{{ .Values.flowroute.outboundHost }}";
-      {{- else }}
-      $ru = "sips:" + $rU + "@{{ .Values.flowroute.outboundHost }}";
-      {{- end }}
       route(RR_BACKEND_TO_CARRIER);
       $dlg_ctx(timeout_route) = "OUTBOUND_DIALOG_TIMEOUT";
       dlg_manage();
@@ -134,6 +125,7 @@
       $dlg_var(core_origin_uniqueid) = $hdr(X-Core-Origin-Uniqueid);
       $dlg_var(outbound_site) = "{{ $.Values.region }}";
       $dlg_var(outbound_gateway) = "flowroute";
+      $dlg_var(outbound_quota_key) = $var(outbound_quota_key);
       $var(outbound_teardown_key) = "avoip:out:teardown:" + $ci;
       $dlg_var(outbound_teardown_key) = $var(outbound_teardown_key);
       if (has_body("application/sdp")) {
@@ -143,14 +135,9 @@
           exit;
         }
       }
-      $du = "sips:{{ .Values.flowroute.outboundHost }}:5061;transport=tls";
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
-      if ($var(managed_egress) == 1) {
-        $du = "sips:" + $var(managed_host) + ":5061;transport=tls";
-        $xavp(tls=>server_name) = $var(managed_host);
-        $dlg_var(outbound_gateway) = $var(managed_host);
-      }
-      {{- end }}
+      $du = "sips:" + $var(managed_host) + ":5061;transport=tls";
+      $xavp(tls=>server_name) = $var(managed_host);
+      $dlg_var(outbound_gateway) = $var(managed_host);
       set_send_socket_name("public_tls");
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog(
@@ -164,9 +151,13 @@
 
     route[OUTBOUND_RELEASE] {
       $var(release_script) = "redis.call('ZREM',KEYS[1],'call:'..ARGV[1]);return 1";
+      $var(outbound_quota_key) = $dlg_var(outbound_quota_key);
+      if ($var(outbound_quota_key) == $null || $var(outbound_quota_key) == "") {
+        $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
+      }
       if (!redis_cmd(
         "topos", "EVAL %s 1 %s %s", "$var(release_script)",
-        "avoip:out:quota:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}",
+        "$var(outbound_quota_key)",
         "$ci", "outbound_release"
       )) {
         xlog("L_ERR", "Outbound quota release failed callid=$ci\n");

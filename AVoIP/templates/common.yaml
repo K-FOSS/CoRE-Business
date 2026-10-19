@@ -369,13 +369,6 @@
                 name: '{{ .Values.kamailio.registrar.database.secretName }}'
                 key: 'psqlURI'
 {{- end }}
-{{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") }}
-          - name: FLOWROUTE_TECH_PREFIX
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "avoip.fullname" . }}-kamailio-flowroute-tech-prefix'
-                key: 'username'
-{{- end }}
 {{- with .Values.kamailio.extraEnv }}
 {{ toYaml . | nindent 10 }}
 {{- end }}
@@ -1095,7 +1088,7 @@ controllers:
             } >> /tmp/avoip-sipcore-pjsip.conf
             unset sip_password
             {{- end }}
-            {{- if .Values.asterisk.sipCore.outboundNANP.enabled }}
+            {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
             printf '\n[carrier-outbound]\ntype=aor\ncontact=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\n\n' >> /tmp/avoip-sipcore-pjsip.conf
             printf '[carrier-outbound]\ntype=endpoint\ntransport=transport-tls\naors=carrier-outbound\noutbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\ncontext=carrier-outbound-deny\ndirect_media=no\nrtp_ipv6=no\ndisallow=all\nallow={{ join "," $.Values.codecs.asterisk.sipCore }}\n' >> /tmp/avoip-sipcore-pjsip.conf
             {{- end }}

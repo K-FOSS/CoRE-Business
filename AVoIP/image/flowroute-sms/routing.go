@@ -23,12 +23,13 @@ type verifiedCallerID struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 }
 type sipProvider struct {
-	ID        string             `json:"id"`
-	Host      string             `json:"host"`
-	Name      string             `json:"name"`
-	CIDRs     []string           `json:"cidrs"`
-	Gateways  map[string]string  `json:"gateways"`
-	CallerIDs []verifiedCallerID `json:"verified_caller_ids"`
+	ID           string             `json:"id"`
+	Host         string             `json:"host"`
+	Name         string             `json:"name"`
+	EgressPrefix string             `json:"egress_prefix,omitempty"`
+	CIDRs        []string           `json:"cidrs"`
+	Gateways     map[string]string  `json:"gateways"`
+	CallerIDs    []verifiedCallerID `json:"verified_caller_ids"`
 }
 type didRoute struct {
 	Number              string   `json:"number"`
@@ -92,7 +93,7 @@ func (c sipCatalog) validate() error {
 	providers := map[string]sipProvider{}
 	prefixes := map[string][]netip.Prefix{}
 	for _, p := range c.Providers {
-		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 {
+		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.EgressPrefix) > 32 || (p.EgressPrefix != "" && !regexp.MustCompile(`^[0-9]+$`).MatchString(p.EgressPrefix)) || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 {
 			return errors.New("invalid SIP provider")
 		}
 		if _, ok := providers[p.ID]; ok {
@@ -330,12 +331,14 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 	dids := map[string]any{}
 	extensions := map[string]any{}
 	targets := map[string]siteTarget{}
+	providerPrefixes := make(map[string]string, len(c.Providers))
 	if json.Unmarshal([]byte(os.Getenv("AVOIP_SITES_JSON")), &targets) != nil {
 		http.Error(w, "site targets unavailable", 503)
 		return
 	}
 	for _, p := range c.Providers {
-		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs)})
+		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix})
+		providerPrefixes[p.ID] = p.EgressPrefix
 	}
 	for _, d := range c.DIDs {
 		t, ok := targets[d.Site]
@@ -351,7 +354,7 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "site target unavailable", 503)
 			return
 		}
-		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port}
+		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": providerPrefixes[e.Provider]}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}

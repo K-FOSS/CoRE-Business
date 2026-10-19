@@ -32,9 +32,6 @@
     {{- if hasKey ($effective.podLabels | default dict) $reserved -}}{{- fail (printf "Kamailio %s podLabels may not override %s" $name $reserved) -}}{{- end -}}
   {{- end -}}
   {{- $envNames := dict "POD_NAME" true "TOPOS_REDIS_SERVER" true "REGISTRAR_DB_URL" true -}}
-  {{- if and $effective.carrierOutbound.enabled $effective.carrierOutbound.calls.enabled (eq $effective.carrierOutbound.calls.mode "nanp") -}}
-    {{- $_ := set $envNames "FLOWROUTE_TECH_PREFIX" true -}}
-  {{- end -}}
   {{- range $entry := $effective.extraEnv -}}
     {{- $envName := required (printf "Kamailio %s extraEnv entry requires name" $name) $entry.name -}}
     {{- if hasKey $envNames $envName -}}{{- fail (printf "Kamailio %s has duplicate or reserved environment variable %s" $name $envName) -}}{{- end -}}
@@ -63,39 +60,8 @@
     {{- if not $outbound.clientIdentity.enabled -}}
       {{- fail (printf "Kamailio %s carrierOutbound requires Vault-backed clientIdentity" $name) -}}
     {{- end -}}
-    {{- if $outbound.calls.enabled -}}
-      {{- if not (has $outbound.calls.mode (list "test" "nanp")) -}}
-        {{- fail (printf "Kamailio %s carrierOutbound.calls.mode must be test or nanp" $name) -}}
-      {{- end -}}
-      {{- if eq $outbound.calls.mode "test" -}}
-        {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString $outbound.testRoute.extension))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.destination))) (not (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" (toString $outbound.testRoute.callerId))) (hasPrefix "+1900" (toString $outbound.testRoute.destination)) (regexMatch "^\\+1[2-9][0-9]{2}976[0-9]{4}$" (toString $outbound.testRoute.destination)) -}}
-          {{- fail (printf "Kamailio %s carrierOutbound test route requires an extension, non-premium NANP destination and NANP caller ID" $name) -}}
-        {{- end -}}
-      {{- else -}}
-        {{- $callerId := toString $outbound.calls.callerId -}}
-        {{- $callerIdConfigured := or (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" $callerId) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" $callerId) -}}
-        {{- if and (not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled)) (or (not $callerIdConfigured) (not $outbound.calls.extensions)) -}}
-          {{- fail (printf "Kamailio %s carrierOutbound NANP policy requires a NANP caller ID and at least one authorized extension" $name) -}}
-        {{- end -}}
-        {{- if not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled) -}}
-        {{- range $outbound.calls.extensions -}}
-          {{- $authorizedExtension := . -}}
-          {{- $found := false -}}
-          {{- range $.Values.asterisk.sipCore.extensions -}}
-            {{- if eq (toString .number) (toString $authorizedExtension) -}}{{- $found = true -}}{{- end -}}
-          {{- end -}}
-          {{- if or (not (regexMatch "^[0-9]{2,8}$" (toString .))) (not $found) -}}
-            {{- fail (printf "Kamailio %s NANP authorized extensions must match configured Asterisk SIP Core accounts" $name) -}}
-          {{- end -}}
-        {{- end -}}
-        {{- end -}}
-      {{- end -}}
-      {{- if or (lt (int $outbound.limits.callsPerMinute) 1) (lt (int $outbound.limits.concurrentCalls) 1) (lt (int $outbound.limits.maxDurationSeconds) 60) -}}
-        {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
-      {{- end -}}
-      {{- if and (eq $role "private-sbc") (eq $outbound.calls.mode "nanp") (not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled)) (or (not $.Values.asterisk.sipCore.outboundNANP.enabled) (not (deepEqual $outbound.calls.extensions $.Values.asterisk.sipCore.outboundNANP.extensions))) -}}
-        {{- fail (printf "Kamailio %s NANP extension allowlist must exactly match Asterisk asterisk.sipCore.outboundNANP.extensions" $name) -}}
-      {{- end -}}
+    {{- if or (lt (int $outbound.limits.callsPerMinute) 1) (lt (int $outbound.limits.concurrentCalls) 1) (lt (int $outbound.limits.maxDurationSeconds) 60) -}}
+      {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
     {{- end -}}
     {{- if $outbound.clientIdentity.enabled -}}
       {{- if or (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.clientIdentity.issuerName))) (not (regexMatch "^[a-zA-Z0-9.-]+$" (toString $outbound.peer.serviceHost))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $outbound.peer.controller))) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $outbound.peer.secretName))) -}}
@@ -272,9 +238,6 @@
     {{- if $effective.carrierOutbound.enabled -}}
       {{- if not (hasKey $peers "carrier") -}}
         {{- fail (printf "Kamailio %s carrierOutbound requires a carrier mTLS peer" $name) -}}
-      {{- end -}}
-      {{- if and $effective.carrierOutbound.calls.enabled (eq $effective.carrierOutbound.calls.mode "test") (or (not (hasKey $peers $effective.carrierOutbound.testRoute.peerName)) (eq $effective.carrierOutbound.testRoute.peerName "carrier")) -}}
-        {{- fail (printf "Kamailio %s carrierOutbound calls require distinct test-origin and carrier mTLS peers" $name) -}}
       {{- end -}}
       {{- range $peer := $effective.privateRouting.peers -}}
         {{- if and (eq $peer.name "carrier") $peer.allowedUsers -}}

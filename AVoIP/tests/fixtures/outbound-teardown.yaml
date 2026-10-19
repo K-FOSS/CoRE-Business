@@ -27,9 +27,6 @@ asterisk:
           remoteKey: 'Tests/SIPCore/7101'
           property: 'Password'
         allowCallsTo: ['9090']
-    outboundNANP:
-      enabled: true
-      extensions: ['7101']
 kamailio:
   enabled: true
   instances:

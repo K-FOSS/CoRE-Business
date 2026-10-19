@@ -52,14 +52,24 @@ grep -Fq '$var(managed_extension_id) = $hdr(X-Core-Extension);' <<< "$carrier_cf
 grep -Fq 'route(MANAGED_EXTENSION);' <<< "$carrier_cfg"
 grep -Fq 'reason=$var(managed_handoff_reason)' <<< "$carrier_cfg"
 grep -Fq 'reason=provider_not_eligible' <<< "$carrier_cfg"
+grep -Fq 'egress_prefix' <<< "$carrier_cfg"
+grep -Fq '$rU = $var(managed_egress_prefix) + "*" + $rU;' <<< "$carrier_cfg"
 grep -Fq 'reason=$var(managed_disabled_reason)' <<< "$carrier_cfg"
 grep -Fq 'Extension Outbound Disabled' <<< "$carrier_cfg"
 grep -Fq 'kamailio_event=outbound_attempt component=private_sipcore' <<< "$internal_cfg"
 grep -Fq 'kamailio_event=outbound_result component=private_sipcore' <<< "$internal_cfg"
 grep -Fq 'kamailio_event=registration_result component=kamailio' <<< "$internal_cfg"
+grep -Fq '$dlg_var(outbound_quota_key) = $var(outbound_quota_key);' <<< "$carrier_cfg"
+grep -Fq '"$var(outbound_quota_key)"' <<< "$carrier_cfg"
+! grep -Fq 'FLOWROUTE_TECH_PREFIX' "$render"
+! grep -Fq 'Flowroute Tech Prefix Unavailable' "$render"
+! grep -Fq 'flowroute-nanp-7101' "$render"
+! grep -Fq 'asterisk.sipCore.outboundNANP' "$render"
+grep -Fq 'egress_prefix' "$repo_root/AVoIP/image/flowroute-sms/web/admin.js"
 
 printf '%s\n' 'PASS: Admin outbound identity is derived from the locked Asterisk extension context'
 printf '%s\n' 'PASS: Kamailio looks up the trusted extension and applies the policy caller ID'
 printf '%s\n' 'PASS: authenticated site handoffs do not reject a rewritten SIP From user'
 printf '%s\n' 'PASS: outbound authorization and registration events are correlated into Homer'
 printf '%s\n' 'PASS: Asterisk trusts the selected site Kamailio CA without disabling TLS verification'
+printf '%s\n' 'PASS: legacy static Flowroute prefixes and egress allowlists are absent'

@@ -378,25 +378,7 @@ data:
           </condition>
         </extension>
         {{- end }}
-        {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.outboundNANP.enabled $.Values.freeswitch.flowrouteOutbound.enabled (not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled)) }}
-        {{- range $.Values.asterisk.sipCore.outboundNANP.extensions }}
-        <extension name="flowroute-nanp-{{ . }}">
-          <condition field="${channel_name}" expression="^sofia/asterisk/"/>
-          <condition field="${sip_authorized}" expression="^true$"/>
-          <condition field="${sip_auth_username}" expression="^freeswitch$"/>
-          <condition field="destination_number" expression="^\+1[2-9][0-9]{2}[2-9][0-9]{6}$">
-            <action application="set" data="effective_caller_id_number={{ . }}"/>
-            <action application="set" data="hangup_after_bridge=true"/>
-            <action application="export" data="sip_h_X-Core-Call-Linkedid=${sip_h_X-Core-Call-Linkedid}"/>
-            <action application="export" data="sip_h_X-Call-ID=${sip_h_X-Call-ID}"/>
-            <action application="export" data="sip_h_X-Core-Origin-Uniqueid=${sip_h_X-Core-Origin-Uniqueid}"/>
-            <action application="log" data="INFO AVoIP_EVENT event=outbound_route_selected linkedid=${sip_h_X-Core-Call-Linkedid} correlation_id=${sip_h_X-Call-ID} origin_uniqueid=${sip_h_X-Core-Origin-Uniqueid} a_uuid=${uuid} a_call_id=${sip_call_id} direction=outbound site={{ $.Values.region }} gateway=flowroute-tls profile=flowroute destination_class=nanp transport=tls codec_policy={{ join "," $.Values.freeswitch.flowrouteOutbound.codecs }}"/>
-            <action application="bridge" data="[absolute_codec_string='{{ join "," $.Values.freeswitch.flowrouteOutbound.codecs }}']sofia/gateway/flowroute-tls/${destination_number}"/>
-            <action application="log" data="INFO AVoIP_EVENT event=outbound_provider_result linkedid=${sip_h_X-Core-Call-Linkedid} correlation_id=${sip_h_X-Call-ID} origin_uniqueid=${sip_h_X-Core-Origin-Uniqueid} a_uuid=${uuid} a_call_id=${sip_call_id} b_uuid=${bleg_uuid} gateway=flowroute-tls site={{ $.Values.region }} b_sip_cause=${last_bridge_proto_specific_hangup_cause} sip_cause=${proto_specific_hangup_cause} bridge_cause=${bridge_hangup_cause} last_bridge_cause=${last_bridge_hangup_cause} hangup_cause=${hangup_cause} q850_cause=${hangup_cause_q850} endpoint_disposition=${endpoint_disposition} sip_disposition=${sip_hangup_disposition}"/>
-          </condition>
-        </extension>
-        {{- end }}
-        {{- end }}
+
         {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
         <extension name="gg-audio">
           <condition field="${channel_name}" expression="^sofia/asterisk/"/>

@@ -246,22 +246,12 @@ data:
     ; Ask the authenticated FreeSWITCH peer to stream the configured sound clip.
     exten => {{ $.Values.asterisk.sipCore.soundClipExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.soundClipDestination }}@freeswitch,30,g)
       same => n,Hangup()
-    {{- if or (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled) (and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions)) }}
+    {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
     ; Admin mode sends the authenticated extension in a fresh, dialplan-stamped
     ; header. Kamailio selects and applies the authorized caller ID from policy.
     exten => _+1NXXNXXXXXX,1,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination_class=nanp)
-    {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
       same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120,b(sipcore-managed-outbound-headers^s^1({{ .number }})))
       same => n,NoOp(AVoIP managed outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination_class=nanp dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
-    {{- else }}
-      same => n,Set(CALLERID(num)={{ .number }})
-      same => n,Set(CHANNEL(hangup_handler_push)=sipcore-outbound-hangup,s,1)
-      same => n,Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,X-Call-ID)})
-      same => n,ExecIf($["${AVOIP_HOMER_CORRELATION_ID}" = ""]?Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,Call-ID)}))
-      same => n,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} extension={{ .number }} destination_class=nanp)
-      same => n,Dial(PJSIP/${EXTEN}@freeswitch,120,gb(sipcore-outbound-headers^s^1))
-      same => n,NoOp(AVoIP outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} destination_class=nanp dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
-    {{- end }}
       same => n,Hangup()
     {{- end }}
     {{- $echoAllowed := false -}}

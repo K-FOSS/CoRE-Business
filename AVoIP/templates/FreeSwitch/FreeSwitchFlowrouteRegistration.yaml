@@ -1,11 +1,5 @@
 {{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
-{{- $carrierNanpOutbound := false -}}
-{{- range (include "avoip.kamailio.instances" . | fromYamlArray) -}}
-  {{- if and .enabled (eq .role "carrier-sbc") .carrierOutbound.enabled .carrierOutbound.calls.enabled (eq .carrierOutbound.calls.mode "nanp") -}}
-    {{- $carrierNanpOutbound = true -}}
-  {{- end -}}
-{{- end -}}
 {{- $privateComponent := include "avoip.kamailio.component" (dict "name" .Values.asterisk.sipCore.kamailioInstance) -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $privateComponent) -}}
 {{- if not (regexMatch "^[a-z0-9.-]+$" (toString .Values.freeswitch.flowrouteOutbound.regionalHost)) -}}
@@ -121,26 +115,4 @@ spec:
       remoteRef:
         key: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.key }}'
         property: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.passwordProperty }}'
-{{- if $carrierNanpOutbound }}
----
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: '{{ $fullName }}-kamailio-flowroute-tech-prefix'
-  annotations:
-    argocd.argoproj.io/sync-wave: '-1'
-spec:
-  refreshInterval: '1h'
-  secretStoreRef:
-    kind: '{{ .Values.freeswitch.flowrouteOutbound.secretStoreRef.kind }}'
-    name: '{{ .Values.freeswitch.flowrouteOutbound.secretStoreRef.name }}'
-  target:
-    name: '{{ $fullName }}-kamailio-flowroute-tech-prefix'
-    creationPolicy: 'Owner'
-  data:
-    - secretKey: username
-      remoteRef:
-        key: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.key }}'
-        property: '{{ .Values.freeswitch.flowrouteOutbound.remoteRef.usernameProperty }}'
-{{- end }}
 {{- end }}

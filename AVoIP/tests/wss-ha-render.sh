@@ -100,8 +100,6 @@ helm template core-home1-talos-prod "$chart_dir" \
   -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
   --set asterisk.enabled=true \
   --set asterisk.sipCore.externalCallback.enabled=true \
-  --set asterisk.sipCore.outboundNANP.enabled=true \
-  --set-string asterisk.sipCore.outboundNANP.extensions[0]=7101 \
   --set freeswitch.ivr.enabled=true \
   --set-string freeswitch.ivr.extensions[0]=1234 \
   --set freeswitch.flowrouteOutbound.enabled=true \

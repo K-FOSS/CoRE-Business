@@ -570,25 +570,12 @@ kamailio:
       clientIdentity:
         enabled: false
         issuerName: ''
-      calls:
-        # Keep PSTN authorization closed independently of mTLS setup.
-        enabled: false
-        mode: 'test'
-        # In NANP mode only calls from these configured Asterisk SIP Core
-        # extensions may use the carrier. The caller ID is the configured DID.
-        extensions: []
-        callerId: ''
       peer:
         cidr: ''
         sanHostname: ''
         serviceHost: ''
         controller: ''
         secretName: ''
-      testRoute:
-        extension: ''
-        peerName: ''
-        destination: ''
-        callerId: ''
       limits:
         callsPerMinute: 3
         concurrentCalls: 2
@@ -975,11 +962,6 @@ asterisk:
     soundClipDestination: 'clang-audio'
     # Optional SIP Core endpoint to ring for inbound calls to the voice DID.
     inboundVoiceExtension: ''
-    outboundNANP:
-      # When enabled, selected browser/SIP Core extensions may dial +1 E.164
-      # numbers through Asterisk and the existing internal Kamailio route.
-      enabled: false
-      extensions: []
     externalCallback:
       # Opt-in IVR callback to the authenticated carrier caller's NANP number.
       # The configured main DID is presented as caller ID; FreeSWITCH still
@@ -1552,8 +1534,8 @@ avoipAdmin:
       key: 'Token'
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
-    tag: '1-0a77e6838db86958c84949f7335f7dcc89f89d71'
-    digest: 'sha256:4fb9a8814ed178edc36c21dea4e1f02b7882c0a21c09e2f8ab9c774741ad7f5a'
+    tag: '1-9bde5be8334006457f2ecd4bdd142e708c7b1783'
+    digest: 'sha256:d15e82a01aa7053b646318d67a0a3bde4111bb834e21581d34f884e734ee9a49'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.

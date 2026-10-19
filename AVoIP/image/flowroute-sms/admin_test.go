@@ -79,6 +79,29 @@ func TestCatalogOwnership(t *testing.T) {
 	}
 }
 
+func TestProviderEgressPrefix(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.Providers[0].EgressPrefix = "12345678"
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("valid provider prefix rejected: %v", err)
+	}
+	encoded, err := json.Marshal(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored sipCatalog
+	if err := json.Unmarshal(encoded, &stored); err != nil || stored.Providers[0].EgressPrefix != "12345678" {
+		t.Fatalf("provider prefix did not survive catalog persistence encoding: %v", err)
+	}
+	for _, invalid := range []string{"123*456", "123;rewrite", "123456789012345678901234567890123"} {
+		catalog := fixtureCatalog()
+		catalog.Providers[0].EgressPrefix = invalid
+		if catalog.validate() == nil {
+			t.Errorf("invalid egress prefix accepted: %q", invalid)
+		}
+	}
+}
+
 func TestExtensionOutboundEnablement(t *testing.T) {
 	legacy := extensionRoute{Extension: "7101", CallerID: "+12065550100", Provider: "carrier", Site: "yvr"}
 	if !legacy.outboundAllowed() || legacy.outboundDisabledReason() != "" {
