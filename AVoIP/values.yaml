@@ -228,8 +228,8 @@ flowrouteSMS:
       digest: 'sha256:4756c2667f7b0bdd62af3779851a83b74ec95e024b4114e6740f71863265142e'
     webhook:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-webhook'
-      tag: '1-c5257a676f01a38340791bb752ef95575eee7aaa'
-      digest: 'sha256:c527a3ad111014894a15462c225b5f14ca23c7335ed68e78563c6513c34b32e6'
+      tag: '1-8b4510a518f8f161cde0a9e581e2ea0ac59fded3'
+      digest: 'sha256:9ba43f4e3cbb148511986a5856881cb5825b27dd491de8cc35cec3276f713f66'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
