@@ -4,6 +4,7 @@
 {{- $_ := required "avoip.authentik.workspaceName is required" $authentik.workspaceName -}}
 {{- $_ := required "avoip.authentik.usersGroup is required" $authentik.usersGroup -}}
 {{- $_ := required "avoip.authentik.adminsGroup is required" $authentik.adminsGroup -}}
+{{- $_ := required "avoip.authentik.adminsMailAcceptingGeneralId is required" $authentik.adminsMailAcceptingGeneralId -}}
 ---
 apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
@@ -19,9 +20,17 @@ spec:
     varmap:
       users_group: '{{ $authentik.usersGroup }}'
       admins_group: '{{ $authentik.adminsGroup }}'
+      admins_mail_accepting_general_id: '{{ $authentik.adminsMailAcceptingGeneralId }}'
     module: |
       variable "users_group" { type = string }
       variable "admins_group" { type = string }
+      variable "admins_mail_accepting_general_id" { type = string }
+
+      # Read the live attributes so existing SMS number assignments survive.
+      data "authentik_group" "current_admins" {
+        name          = var.admins_group
+        include_users = false
+      }
 
       resource "authentik_group" "avoip_users" {
         name         = var.users_group
@@ -36,10 +45,12 @@ spec:
       resource "authentik_group" "avoip_admins" {
         name         = var.admins_group
         is_superuser = false
-        attributes   = jsonencode({ avoip_role = "admin" })
-
-        lifecycle {
-          ignore_changes = [attributes]
-        }
+        attributes = jsonencode(merge(
+          try(jsondecode(data.authentik_group.current_admins.attributes), {}),
+          {
+            avoip_role             = "admin"
+            mailacceptinggeneralid = [var.admins_mail_accepting_general_id]
+          }
+        ))
       }
 {{- end }}

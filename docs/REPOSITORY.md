@@ -136,6 +136,8 @@ current global PSQL provider through the
 [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
 [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
 and [User implementation](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Operations/SSO/User).
+`AVoIP Admins` also publishes `voip@snd.fyi` as an Authentik LDAP group
+attribute; reconciliation retains its existing shared SMS number attributes.
 
 The active, multi-site [Mail chart](../Mail/README.md), owned by the
 [Mail ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml),

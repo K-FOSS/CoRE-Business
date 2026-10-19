@@ -25,6 +25,9 @@ for expected in \
   'AVoIP Admins' \
   'resource "authentik_group" "avoip_users"' \
   'resource "authentik_group" "avoip_admins"' \
+  'data "authentik_group" "current_admins"' \
+  'mailacceptinggeneralid = [var.admins_mail_accepting_general_id]' \
+  'voip@snd.fyi' \
   'resource "authentik_policy_binding" "users_access"' \
   'resource "authentik_policy_binding" "admins_access"' \
   'X-Auth-Numbers' \

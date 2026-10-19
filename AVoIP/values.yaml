@@ -278,6 +278,7 @@ avoip:
     workspaceName: 'avoip-authentik-groups'
     usersGroup: 'AVoIP Users'
     adminsGroup: 'AVoIP Admins'
+    adminsMailAcceptingGeneralId: 'voip@snd.fyi'
 
 fax:
   # Legacy FaxNumber DID, supplied by the owning ApplicationSet and routed to

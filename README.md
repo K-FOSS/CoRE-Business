@@ -7,6 +7,8 @@ The [Flowroute SMS messaging stack](AVoIP/docs/FLOWROUTE-SMS.md) provides a
 responsive conversation inbox, authenticated send API, and independent inbound
 webhook. Its three workloads use the shared PostgreSQL service on the YVR
 primary cluster.
+AVoIP's Authentik admin group publishes the `voip@snd.fyi` mail alias through
+its LDAP group attributes while retaining shared SMS number assignments.
 The [SIP Core remote hangup guide](AVoIP/docs/SIPCORE-REMOTE-HANGUP.md)
 describes the separate Contact-alias loss caused by retransmitted answers.
 
