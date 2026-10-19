@@ -127,9 +127,10 @@ snapshot, but Kamailio rejects their outbound calls with a distinct reason
 (`extension_disabled` or `outbound_disabled`) in Homer. This screen governs
 authorization; it does not rewrite Asterisk endpoint credentials or report
 live registration state. Registration attempts and responses are correlated
-in Homer using the SIP Call-ID. Provider failover based on live health is not
-implemented by this route yet; the policy preview reports health as
-`not_reported`.
+in Homer using the SIP Call-ID. The preview's `failover_order` is the remaining
+eligible provider candidate order; FreeSWITCH currently uses the first eligible
+provider and does not retry another provider. Live health-based failover is not
+implemented, and the preview reports provider health as `not_reported`.
 
 Each DID card can preview an inbound route without placing a call. The preview
 checks the exact DID, site, assigned provider and optional provider source IP
