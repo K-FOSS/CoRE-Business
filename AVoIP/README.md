@@ -413,8 +413,8 @@ RTP independently of SIP signaling. Kamailio sends NG control over the private
 UDP control Service; its explicit timeout/retry, short disable interval, and
 periodic redetection settings recover the node after transient control errors.
 Its media inactivity, muted-stream, unanswered-offer, and total-call timers are
-explicitly set to 120, 3600, 120, and 0 seconds respectively; a zero final
-timeout leaves call lifetime uncapped by RTPEngine.
+explicitly set to 120, 3600, 120, and 300 seconds respectively, limiting each
+call to five minutes in RTPEngine.
 The separate RTPEngine WebSocket control path remains disabled following the
 observed process crash during an offer. Its
 [RTPEngine configuration](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md)

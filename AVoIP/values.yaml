@@ -654,8 +654,8 @@ rtpengine:
     timeoutSeconds: 120
     silentTimeoutSeconds: 3600
     offerTimeoutSeconds: 120
-    # Zero disables maximum call lifetime cleanup.
-    finalTimeoutSeconds: 0
+    # Cap call lifetime at five minutes.
+    finalTimeoutSeconds: 300
   recovery:
     # Probe the stable control Service frequently and retry soon after a
     # timeout marks it unavailable during an RTPEngine rollout or outage.
