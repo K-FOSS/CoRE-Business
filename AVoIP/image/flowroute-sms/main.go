@@ -678,7 +678,7 @@ func (s *server) allowedNumbers(r *http.Request) []string {
 func normalizePhoneNumber(value string) (string, bool) {
 	value = strings.TrimSpace(value)
 	digits := strings.TrimPrefix(value, "+")
-	if len(digits) < 8 || len(digits) > 15 {
+	if len(digits) < 8 || len(digits) > 15 || digits[0] == '0' {
 		return "", false
 	}
 	for _, digit := range digits {

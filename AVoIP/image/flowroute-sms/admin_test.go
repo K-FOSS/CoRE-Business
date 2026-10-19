@@ -338,3 +338,15 @@ func TestUnmanagedXMLFallbackWithoutDatabase(t *testing.T) {
 		t.Fatal("unmanaged contexts must fall back without the routing cache")
 	}
 }
+
+func TestCanonicalNumberCountryPrefix(t *testing.T) {
+	badPrefix := "0" + strings.TrimPrefix("+12065550100", "+1")
+	for _, input := range []string{"+" + badPrefix, badPrefix, "+" + strings.Repeat("0", 8)} {
+		if _, ok := normalizePhoneNumber(input); ok {
+			t.Errorf("invalid country prefix accepted: %q", input)
+		}
+	}
+	if number, ok := normalizePhoneNumber("12065550100"); !ok || number != "+12065550100" {
+		t.Fatal("valid canonical fixture rejected")
+	}
+}

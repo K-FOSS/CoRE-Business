@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const state = {numbers:[], messages:[], selected:'', remote:'', drafts:new Map(), canSend:false, canDelete:false, senders:[], loading:true, hasOlder:false, loadingOlder:false};
 const key = (local,remote) => local+'|'+remote;
-const normalize = value => /^\+?[0-9]{8,15}$/.test(value.trim()) ? '+'+value.trim().replace(/^\+/,'') : '';
+const normalize = value => /^\+?[1-9][0-9]{7,14}$/.test(value.trim()) ? '+'+value.trim().replace(/^\+/,'') : '';
 const dateTime = value => new Date(value);
 const timeLabel = value => new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(dateTime(value));
 const dayLabel = value => { const d=dateTime(value), today=new Date(), yesterday=new Date(); yesterday.setDate(today.getDate()-1); if(d.toDateString()===today.toDateString())return 'Today'; if(d.toDateString()===yesterday.toDateString())return 'Yesterday'; return new Intl.DateTimeFormat(undefined,{month:'long',day:'numeric',year:'numeric'}).format(d); };

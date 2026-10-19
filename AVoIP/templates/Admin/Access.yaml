@@ -56,7 +56,7 @@ spec:
                   return None
               if not digits or any(digit < "0" or digit > "9" for digit in digits):
                   return None
-              if len(digits) < 8 or len(digits) > 15:
+              if len(digits) < 8 or len(digits) > 15 or digits.startswith("0"):
                   return None
               return digits
 
