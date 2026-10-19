@@ -17,6 +17,10 @@ yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod
 rtpengine_args="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | .args[0]' "$temp_dir/final-render.yaml")"
 grep -Fq -- '--redis=' <<< "$rtpengine_args"
 ! grep -Fq -- '--no-redis-required' <<< "$rtpengine_args"
+grep -Fq -- '--timeout=120' <<< "$rtpengine_args"
+grep -Fq -- '--silent-timeout=3600' <<< "$rtpengine_args"
+grep -Fq -- '--offer-timeout=120' <<< "$rtpengine_args"
+grep -Fq -- '--final-timeout=0' <<< "$rtpengine_args"
 yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | .readinessProbe.exec.command[-1] == "test -f /tmp/rtpengine-redis-restored"' "$temp_dir/final-render.yaml" >/dev/null
 yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | any(.volumeMounts[]; .mountPath == "/usr/local/bin/rtpengine-redis-restore-entrypoint.sh" and .readOnly == true)' "$temp_dir/final-render.yaml" >/dev/null
 kamailio_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$temp_dir/final-render.yaml")"

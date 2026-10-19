@@ -1356,6 +1356,7 @@ controllers:
 {{- if not (has .Values.rtpengine.control.transport (list "udp" "websocket")) }}{{- fail "rtpengine.control.transport must be udp or websocket" }}{{- end }}
 {{- if and (eq .Values.rtpengine.control.transport "websocket") (or (lt (int .Values.rtpengine.control.websocketPort) 1) (gt (int .Values.rtpengine.control.websocketPort) 65535)) }}{{- fail "rtpengine.control.websocketPort must be between 1 and 65535" }}{{- end }}
 {{- if and (eq .Values.rtpengine.control.transport "websocket") (lt (int .Values.rtpengine.control.websocketBufferSizeKB) 1) }}{{- fail "rtpengine.control.websocketBufferSizeKB must be positive when WebSocket control is enabled" }}{{- end }}
+{{- if or (lt (int .Values.rtpengine.timeouts.timeoutSeconds) 1) (lt (int .Values.rtpengine.timeouts.silentTimeoutSeconds) 1) (lt (int .Values.rtpengine.timeouts.offerTimeoutSeconds) 1) (lt (int .Values.rtpengine.timeouts.finalTimeoutSeconds) 0) }}{{- fail "RTPEngine timeouts must be positive except finalTimeoutSeconds, which may be zero" }}{{- end }}
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     strategy: RollingUpdate
@@ -1408,6 +1409,10 @@ controllers:
             {{- end }}
             --port-min={{ .Values.rtpengine.media.min }}
             --port-max={{ sub (.Values.rtpengine.media.max | int) 1 }}
+            --timeout={{ .Values.rtpengine.timeouts.timeoutSeconds }}
+            --silent-timeout={{ .Values.rtpengine.timeouts.silentTimeoutSeconds }}
+            --offer-timeout={{ .Values.rtpengine.timeouts.offerTimeoutSeconds }}
+            --final-timeout={{ .Values.rtpengine.timeouts.finalTimeoutSeconds }}
 {{- if .Values.rtpengine.valkey.enabled }}
             --redis=${RTPENGINE_REDIS_HOST}:{{ .Values.rtpengine.valkey.proxy.port }}/{{ .Values.rtpengine.valkey.database }}
             --redis-subscribe=${RTPENGINE_REDIS_HOST}:{{ .Values.rtpengine.valkey.proxy.port }}/{{ .Values.rtpengine.valkey.subscribeKeyspace }}
