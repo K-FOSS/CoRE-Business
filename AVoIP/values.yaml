@@ -236,6 +236,15 @@ flowrouteSMS:
   databaseSecret:
     name: ''
     key: 'psqlURI'
+  legacyFlowroute:
+    enabled: true
+  # Metadata only; credentials are references to existing Secrets.
+  providerSecretStoreRef:
+    kind: 'ClusterSecretStore'
+    name: 'corevault-rootsecrets'
+  localNumbers: []
+  providers: []
+  providerCredentials: {}
   diagnostics:
     enabled: true
   inbox:
@@ -1512,3 +1521,29 @@ jitsi-meet:
     image:
       repository: jitsi/prosody
       tag: 'stable'
+
+# Site-local Authentik administration. Activation requires the new pinned image.
+avoipAdmin:
+  enabled: false
+  primaryRegion: 'yvr'
+  databaseRemoteKey: 'AVoIP/Admin/Database'
+  hostname: ''
+  replicas: 2
+  image:
+    repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
+    tag: ''
+    digest: ''
+  # null delegates catalog writes to administrators; an object is Git-managed.
+  catalog: null
+  # By default use local FreeSWITCH and the configured mTLS inter-site peers.
+  sites: {}
+  # Provider gateway credentials are supplied from Vault, never literal values.
+  upstreams: []
+  routing:
+    enabled: false
+    upstreamCIDRs: []
+    image:
+      repository: 'slop.writemy.codes/core/core-business/kamailio-routing'
+      tag: ''
+      digest: ''
+      pullPolicy: 'IfNotPresent'

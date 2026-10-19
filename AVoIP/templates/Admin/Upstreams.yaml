@@ -1,0 +1,49 @@
+{{- if and .Values.freeswitch.enabled .Values.avoipAdmin.enabled }}
+{{- $root := . -}}
+{{- $private := include "avoip.kamailio.component" (dict "name" .Values.asterisk.sipCore.kamailioInstance) -}}
+{{- $proxy := include "avoip.sip.serviceHost" (dict "root" . "component" $private) -}}
+{{- $names := dict -}}
+{{- range .Values.avoipAdmin.upstreams }}
+{{- if or (hasKey $names .name) (has .name (list "asterisk" "flowroute" "flowroute-tls")) }}{{ fail "additional SIP gateway names must be unique and cannot replace built-in gateways" }}{{ end }}
+{{- $_ := set $names .name true -}}
+{{- if or (not (regexMatch "^[a-z][a-z0-9-]{0,39}$" .name)) (not (regexMatch "^[a-z0-9][a-z0-9.-]+$" .host)) }}{{ fail "SIP upstream names and hostnames must be canonical and contain no SIP parameters" }}{{ end }}
+{{- if not $root.Values.freeswitch.flowrouteOutbound.enabled }}{{ fail "additional SIP gateways require the existing authenticated FreeSWITCH carrier profile" }}{{ end }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" $root "suffix" (printf "upstream-%s" .name)) }}'
+spec:
+  secretStoreRef:
+    kind: '{{ $root.Values.freeswitch.flowrouteOutbound.secretStoreRef.kind }}'
+    name: '{{ $root.Values.freeswitch.flowrouteOutbound.secretStoreRef.name }}'
+  target:
+    creationPolicy: 'Owner'
+    template:
+      engineVersion: 'v2'
+      data:
+        gateway.xml: |
+          <include>
+            <gateway name="{{ .name }}">
+              <param name="username" value="{{ `{{ .username | htmlEscape }}` }}"/>
+              <param name="auth-username" value="{{ `{{ .username | htmlEscape }}` }}"/>
+              <param name="password" value="{{ `{{ .password | htmlEscape }}` }}"/>
+              <param name="proxy" value="{{ .host }}"/>
+              <param name="register-proxy" value="{{ .host }}"/>
+              <param name="register-transport" value="tls"/>
+              <param name="register" value="{{ .register | default false }}"/>
+              <param name="caller-id-in-from" value="true"/>
+              <param name="outbound-proxy" value="sips:{{ $proxy }}:5062;transport=tls"/>
+            </gateway>
+          </include>
+  data:
+    - secretKey: 'username'
+      remoteRef:
+        key: '{{ required "SIP upstream credential Vault reference is required" .remoteKey }}'
+        property: '{{ default "Username" .usernameProperty }}'
+    - secretKey: 'password'
+      remoteRef:
+        key: '{{ .remoteKey }}'
+        property: '{{ default "Password" .passwordProperty }}'
+{{- end }}
+{{- end }}

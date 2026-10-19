@@ -47,6 +47,9 @@ spec:
         flowroute.xml: |
           <profile name="flowroute">
             <gateways>
+              {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.upstreams }}
+              <X-PRE-PROCESS cmd="include" data="/etc/freeswitch/upstreams/*.xml"/>
+              {{ end }}
               <gateway name="flowroute">
                 <param name="username" value="{{ `{{ .username }}` }}"/>
                 <param name="auth-username" value="{{ `{{ .username }}` }}"/>

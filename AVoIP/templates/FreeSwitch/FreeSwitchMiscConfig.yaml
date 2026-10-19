@@ -77,6 +77,9 @@ data:
         <load module="mod_sms"/>
         <load module="mod_sms_flowroute"/>
         {{- end }}
+        {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+        <load module="mod_xml_curl"/>
+        {{ end }}
         <load module="mod_dialplan_xml"/>
         <load module="mod_dptools"/>
         <load module="mod_tone_stream"/>

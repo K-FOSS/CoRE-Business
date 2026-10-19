@@ -22,6 +22,9 @@ spec:
         - path:
             type: 'PathPrefix'
             value: '/flowroute/'
+        - path:
+            type: 'PathPrefix'
+            value: '/providers/'
       backendRefs:
         - group: ''
           kind: 'Service'

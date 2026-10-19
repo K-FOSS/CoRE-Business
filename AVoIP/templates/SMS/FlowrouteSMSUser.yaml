@@ -1,4 +1,4 @@
-{{- if or .Values.flowrouteSMS.enabled (and .Values.freeswitch.enabled .Values.freeswitch.sms.enabled) }}
+{{- if or .Values.flowrouteSMS.enabled (and .Values.freeswitch.enabled (or .Values.freeswitch.sms.enabled (and .Values.avoipAdmin.enabled (eq .Values.region .Values.avoipAdmin.primaryRegion)))) }}
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $claimName := printf "core-voice-%s-%s" .Values.cluster.name .Values.region | lower | replace "_" "-" -}}
 ---

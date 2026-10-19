@@ -63,7 +63,18 @@ metadata:
 data:
   public.xml: |
     <include>
-      <context name="public">
+      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+    <context name="core-managed-entry">
+      <extension name="managed-entry">
+        <condition field="${channel_name}" expression="^sofia/core-managed/"/>
+        <condition field="${sip_h_X-Core-Extension}" expression="^[0-9]{2,12}$">
+          <action application="transfer" data="${destination_number} XML core-managed-outbound"/>
+          <anti-action application="transfer" data="${destination_number} XML core-managed-inbound"/>
+        </condition>
+      </extension>
+    </context>
+    {{ end }}
+    <context name="public">
         {{- if $.Values.freeswitch.interSite.enabled }}
         <extension name="authorized-inter-site-extension">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.extension }}$"/>

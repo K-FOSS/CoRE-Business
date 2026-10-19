@@ -105,6 +105,9 @@ data:
 
     loadmodule "tm.so"
     loadmodule "sl.so"
+    {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+    {{ include "avoip.admin.routing.modules" . | nindent 4 }}
+    {{ end }}
     {{- if $sipCoreEnabled }}
     loadmodule "nathelper.so"
     # SIP Core return routing calls check_flow_token() even on the legacy
@@ -367,6 +370,9 @@ data:
     }
     {{- end }}
 
+{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+{{ include "avoip.admin.routing.routes" . | nindent 4 }}
+{{ end }}
 {{ if eq .Values.kamailio.role "private-sbc" }}
 {{ include "avoip.kamailio.sip.private" . | nindent 4 }}
 {{ else }}

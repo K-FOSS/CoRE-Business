@@ -119,6 +119,10 @@
 {{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     request_route {
+      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      $var(managed_json) = $sht(managed=>snapshot);
+      $var(managed_provider) = "";
+      {{ end }}
       $var(interSitePeer) = "";
       if (is_method("ACK")) {
         xlog(
@@ -214,6 +218,9 @@
             sl_send_reply("405", "Inter-site Method Not Allowed");
             exit;
           }
+          {{ if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
+          route(MANAGED_HANDOFF);
+          {{ end }}
           if (is_method("INVITE") && !has_totag()) {
             $var(interSiteAllowed) = 0;
             {{- range .allowedUsers }}
@@ -250,6 +257,16 @@
         ($proto == "udp" && $Rp == 5060) ||
         ($proto == "tcp" && $Rp == 5060)
       ) {
+        {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+        route(MANAGED_SOURCE);
+        remove_hf("X-Core-Extension"); remove_hf("X-Core-Original-DID"); remove_hf("X-Core-Provider");
+        if ($var(managed_provider) != "") {
+          $var(side) = "carrier";
+          if (is_method("CANCEL")) { $var(cancel_result) = t_relay_cancel(); if ($var(cancel_result) > 0) sl_send_reply("481", "Call Does Not Exist"); else if ($var(cancel_result) < 0) sl_reply_error(); exit; }
+          if (is_method("BYE") && t_check_trans()) exit;
+          route(FROM_CARRIER); exit;
+        }
+        {{ end }}
         {{- range .Values.flowroute.signalingCIDRs }}
         if (src_ip == {{ . }}) {
           $var(side) = "carrier";
@@ -534,6 +551,9 @@
         exit;
       }
 
+      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      route(MANAGED_DID);
+      {{ end }}
       if (is_method("INVITE|MESSAGE|INFO|UPDATE|PRACK|REFER|NOTIFY")) {
         {{- range .Values.kamailio.interSite.transfers }}
         {{- $transfer := . }}
@@ -817,6 +837,13 @@
       #
       # The only SIP peer FreeSWITCH has is Kamailio.
       #
+      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      if (has_totag() && $dlg_var(managed_target) != $null) {
+        $du = $ru;
+        $xavp(tls=>server_name) = $dlg_var(managed_target);
+        set_send_socket_name("private_tls"); return;
+      }
+      {{ end }}
       {{- if .Values.kamailio.interSite.peers }}
       # Add the internal marker at the final backend egress point, after
       # routing and media handling. Its value is derived only from the

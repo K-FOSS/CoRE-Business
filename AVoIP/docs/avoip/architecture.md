@@ -1,5 +1,9 @@
 # AVoIP SIP boundary and availability architecture
 
+The optional [administration and routing layer](../ADMIN.md) adds a site-local
+control plane and native Kamailio snapshot pulls. Its managed FreeSWITCH profile
+is separately activated; existing SIP paths remain the baseline.
+
 The documentation-only [Caller Intelligence extension](../caller-intelligence/README.md)
 proposes a standalone Go policy service and bounded initial-INVITE evaluation.
 See its [discovery baseline](../caller-intelligence/discovery.md) for current

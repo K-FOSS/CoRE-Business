@@ -1,5 +1,9 @@
 # Repository and deployment guide
 
+See [AVoIP administration](../AVoIP/docs/ADMIN.md) for site-local admin access,
+shared provider/DID configuration, verification evidence and routing activation.
+The [UI design specification](../AVoIP/docs/UI-DESIGN.md) covers the inbox and admin pages.
+
 The [Caller Intelligence design package](../AVoIP/docs/caller-intelligence/README.md)
 records AVoIP discovery, API/data/cache proposals, provider licensing and budgets,
 and a staged protection rollout. These are proposed contracts, not deployed resources.

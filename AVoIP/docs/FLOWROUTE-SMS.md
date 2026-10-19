@@ -187,3 +187,110 @@ The service uses the [Go standard library](https://go.dev/doc/),
 [PostgreSQL](https://www.postgresql.org/docs/),
 [Gateway API](https://gateway-api.sigs.k8s.io/), and the
 [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
+
+## Groups, administrative access and providers
+
+The proxy mapping forwards effective Authentik group names, including inherited
+membership, as JSON in `X-Auth-Groups`. The API checks exact membership of
+`flowrouteSMS.inbox.adminGroup` (`AVoIP Admins` by default), together with the
+trusted authenticated username. This header must come from the outpost; direct
+API ingress remains restricted to the named Envoy Gateway. User-supplied group
+or number headers are not authorization on an unprotected endpoint.
+
+Ordinary users retain their personal/group `sms_numbers` access. Admins see all
+configured SMS numbers plus local numbers found in inbound/outbound history;
+this does not automatically discover every number owned at a carrier account.
+Admins may delete individual stored messages through the inbox or
+`DELETE /api/messages/{id}`. Deletion requires same-origin authentication,
+deletes stored attachments through their foreign key and keeps a minimal replay
+tombstone. It does not recall a delivered message, delete provider records or
+remove PostgreSQL backups. Administrative changes have a protected audit trail.
+
+The stack now supports multiple configured accounts using these adapters:
+
+| Provider | Sending | Inbound authentication and scope |
+| --- | --- | --- |
+| [Flowroute](https://www.flowroute.com/), [Messages v2.2](https://developer.flowroute.com/api/messages/v2.2/send-an-sms/) | JSON:API SMS; legacy account remains compatible | Existing token callback and MMS/image persistence; additional named accounts currently support outbound SMS only |
+| [Twilio](https://www.twilio.com/), [Messages resource](https://www.twilio.com/docs/messaging/api/message-resource) | Form-encoded SMS using account SID and Auth Token | [Signed form webhook](https://www.twilio.com/docs/usage/webhooks/webhooks-security), exact configured URL, account and destination validation; SMS text only |
+| [Telnyx](https://telnyx.com/), [messaging API](https://developers.telnyx.com/docs/messaging/messages/send-message) | JSON SMS with bearer API key | [Ed25519 webhook](https://developers.telnyx.com/docs/messaging/messages/receiving-webhooks), five-minute timestamp bound and destination validation; SMS text only |
+
+Twilio/Telnyx callbacks use `/providers/{id}/inbound`. Configure that exact HTTPS
+URL without query parameters. Unsupported MMS returns 415 and is not silently
+acknowledged or discarded; use the existing Flowroute MMS path until additional
+media adapters are implemented. Additional providers' IDs are namespaced in
+stored message IDs. Retries deduplicate in PostgreSQL and honor deletion
+tombstones. No real provider request is used by default tests.
+
+Admins manage account definitions at the site-local
+[AVoIP administration interface](ADMIN.md) or through:
+
+- `GET /api/providers`: redacted account definitions/readiness;
+- `PUT /api/providers/{id}`: create with version `0`, update with the returned
+  version; conflicts return 409;
+- `DELETE /api/providers/{id}`: delete an admin-managed definition, retaining
+  already stored messages;
+- `POST /api/messages`: optional `provider_id` chooses between explicitly
+  configured accounts for an authorized sender. No automatic paid fallback or
+  retry follows ambiguous provider acceptance.
+
+Number ownership remains the sender authorization boundary for users. Provider
+configuration never grants access to someone else's number. A disabled account's
+numbers cannot silently fall back to the legacy account. Sending is acceptance,
+not a delivery receipt. Admin number visibility is intentionally broader than
+ordinary user assignments and must be reviewed as an access change.
+
+The same definitions can be supplied through `flowrouteSMS.providers`; matching
+IDs become read only in the UI and override stored definitions. The ID
+`flowroute` is reserved for the existing Vault account. Set
+`flowrouteSMS.legacyFlowroute.enabled: false` for a Twilio/Telnyx-only installation;
+it then requires neither legacy Flowroute callback nor send credentials.
+Configuration ownership changes require review: removing a Git override can
+reveal an older retained admin definition with the same ID.
+
+Credential fields contain environment references, not values. References must
+start with `SMS_PROVIDER_`; `providerCredentials` maps them to existing Secrets
+or optional Vault remote references. Example using reserved synthetic numbers:
+
+```yaml
+flowrouteSMS:
+  providers:
+    - id: 'twilio-example'
+      type: 'twilio'
+      name: 'Example account'
+      enabled: true
+      numbers: ['+12065550100']
+      key_env: 'SMS_PROVIDER_TWILIO_ACCOUNT'
+      secret_env: 'SMS_PROVIDER_TWILIO_TOKEN'
+      webhook_url: 'https://sms.example/providers/twilio-example/inbound'
+  providerCredentials:
+    SMS_PROVIDER_TWILIO_ACCOUNT:
+      name: 'sms-twilio-example'
+      key: 'AccountSID'
+      remoteRef:
+        key: 'AVoIP/SMS/Example'
+        property: 'AccountSID'
+    SMS_PROVIDER_TWILIO_TOKEN:
+      name: 'sms-twilio-example'
+      key: 'AuthToken'
+      remoteRef:
+        key: 'AVoIP/SMS/Example'
+        property: 'AuthToken'
+```
+
+Twilio `key_env` references an `AC...` account SID, not an `SK...` API key.
+Telnyx uses `key_env` for its API key and `public_key_env` for the base64 public
+verification key. Flowroute accounts use `key_env`/`secret_env` for AccessKey/
+SecretKey. No credential is returned to the UI or stored in provider rows.
+If a Secret is generated through these mappings, all its mapped keys need
+`remoteRef`; otherwise manage that Secret externally. Provider definitions are
+shared through the primary application's existing database. Credential Secrets
+must be provisioned at every consuming site/workload; local readiness reflects
+that site's environment. Changing Secret-backed environment values requires a
+controlled pod rollout.
+
+The additive schema introduces provider metadata, message provider ID, deletion
+tombstones and audit tables. Startup DDL uses one PostgreSQL advisory lock across
+API/webhook/admin replicas. Keep the old tables during rollback. Each database
+pod still has a five-connection maximum; the two-replica API/webhook pair totals
+up to twenty, and two admin replicas per telephony site add up to ten per site.
+The inbox and admin UI share the documented [Material Design 2 spec](UI-DESIGN.md).

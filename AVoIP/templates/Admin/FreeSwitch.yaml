@@ -1,0 +1,29 @@
+{{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled .Values.freeswitch.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: '{{ include "avoip.fullname" . }}-freeswitch-managed'
+data:
+  core-managed.xml: |
+    <profile name="core-managed">
+      <settings>
+        <param name="sip-ip" value="$${local_ip_v4}"/>
+        <param name="rtp-ip" value="$${local_ip_v4}"/>
+        <param name="context" value="core-managed-entry"/>
+        <param name="sip-port" value="5073"/>
+        <param name="tls" value="true"/>
+        <param name="tls-only" value="true"/>
+        <param name="tls-sip-port" value="5072"/>
+        <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
+        <param name="auth-calls" value="false"/>
+        <param name="apply-inbound-acl" value="kamailio"/>
+        <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
+        <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
+        <param name="disable-transcoding" value="false"/>
+        <param name="rtp-timer-name" value="soft"/>
+        <param name="rtp-notimer-during-bridge" value="false"/>
+        <param name="rtp-timeout-sec" value="0"/>
+        <param name="rtp-hold-timeout-sec" value="0"/>
+      </settings>
+    </profile>
+{{- end }}

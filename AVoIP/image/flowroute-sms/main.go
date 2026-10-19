@@ -119,15 +119,18 @@ CREATE INDEX IF NOT EXISTS flowroute_inbound_media_message_idx
 `
 
 type server struct {
-	pool        *pgxpool.Pool
-	token       []byte
-	logger      *slog.Logger
-	mediaClient *http.Client
-	sendKey     string
-	sendSecret  string
-	sendClient  *http.Client
-	sendMu      sync.Mutex
-	lastSend    map[string]time.Time
+	routingMu       sync.RWMutex
+	routingState    *sipCatalog
+	routingDeadline time.Time
+	pool            *pgxpool.Pool
+	token           []byte
+	logger          *slog.Logger
+	mediaClient     *http.Client
+	sendKey         string
+	sendSecret      string
+	sendClient      *http.Client
+	sendMu          sync.Mutex
+	lastSend        map[string]time.Time
 }
 
 type mediaFetchError struct {
@@ -165,6 +168,9 @@ func main() {
 
 func run(logger *slog.Logger) error {
 	mode := strings.TrimSpace(os.Getenv("SMS_SERVICE_MODE"))
+	if mode == "fs-config" {
+		return renderFreeSwitchConfig()
+	}
 	if builtMode != "all" && mode != builtMode {
 		return errors.New("image mode does not match SMS_SERVICE_MODE")
 	}
@@ -178,13 +184,13 @@ func run(logger *slog.Logger) error {
 	}
 	databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	callbackToken := os.Getenv("FLOWROUTE_CALLBACK_TOKEN")
-	if mode != "api" && mode != "webhook" {
-		return errors.New("SMS_SERVICE_MODE must be api, web, or webhook")
+	if mode != "api" && mode != "webhook" && mode != "admin" {
+		return errors.New("SMS_SERVICE_MODE must be api, web, webhook, or admin")
 	}
-	if databaseURL == "" || (mode == "webhook" && callbackToken == "") {
+	if databaseURL == "" || (mode == "webhook" && os.Getenv("FLOWROUTE_ENABLED") != "false" && callbackToken == "") {
 		return errors.New("DATABASE_URL and webhook callback token are required for the selected mode")
 	}
-	if mode == "webhook" && len(callbackToken) < 32 {
+	if mode == "webhook" && os.Getenv("FLOWROUTE_ENABLED") != "false" && len(callbackToken) < 32 {
 		return errors.New("FLOWROUTE_CALLBACK_TOKEN must contain at least 32 bytes")
 	}
 
@@ -209,28 +215,71 @@ func run(logger *slog.Logger) error {
 	if err := pool.Ping(pingCtx); err != nil {
 		return fmt.Errorf("connect to PostgreSQL: %w", err)
 	}
-	if _, err := pool.Exec(pingCtx, createMessagesTable); err != nil {
-		return fmt.Errorf("initialize inbound message table: %w", err)
+	if _, err := configuredProviders(); err != nil {
+		return err
 	}
-	if _, err := pool.Exec(pingCtx, createMessagesIndex); err != nil {
-		return fmt.Errorf("initialize inbound message index: %w", err)
+	if _, err := loadConfiguredCatalog(); err != nil {
+		return err
 	}
-	if _, err := pool.Exec(pingCtx, createMediaIndex); err != nil {
-		return fmt.Errorf("initialize inbound media index: %w", err)
+	initTx, err := pool.Begin(pingCtx)
+	if err != nil {
+		return errors.New("schema initialization unavailable")
+	}
+	defer initTx.Rollback(ctx)
+	if _, err = initTx.Exec(pingCtx, `SELECT pg_advisory_xact_lock(hashtext('avoip_sms_schema'))`); err == nil {
+		_, err = initTx.Exec(pingCtx, createMessagesTable+";"+adminSchema+";"+createMessagesIndex+";"+createMediaIndex)
+	}
+	if err == nil {
+		err = initTx.Commit(pingCtx)
+	}
+	if err != nil {
+		return errors.New("schema initialization failed")
 	}
 
-	app := &server{pool: pool, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendClient: &http.Client{Timeout: 15 * time.Second}, sendKey: os.Getenv("FLOWROUTE_SMS_ACCESS_KEY"), sendSecret: os.Getenv("FLOWROUTE_SMS_SECRET_KEY"), lastSend: make(map[string]time.Time)}
+	app := &server{pool: pool, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendKey: os.Getenv("FLOWROUTE_SMS_ACCESS_KEY"), sendSecret: os.Getenv("FLOWROUTE_SMS_SECRET_KEY"), lastSend: make(map[string]time.Time)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", app.health)
 	mux.HandleFunc("GET /readyz", app.ready)
 	if mode == "webhook" {
-		mux.HandleFunc("POST /flowroute/", app.receive)
+		if os.Getenv("FLOWROUTE_ENABLED") != "false" {
+			mux.HandleFunc("POST /flowroute/", app.receive)
+		}
+		mux.HandleFunc("POST /providers/{id}/inbound", app.receiveProvider)
 	}
 	if mode == "api" {
 		mux.HandleFunc("GET /api/messages", app.listMessages)
 		mux.HandleFunc("GET /api/numbers", app.listNumbers)
 		mux.HandleFunc("POST /api/messages", app.sendMessage)
 		mux.HandleFunc("GET /media/{id}", app.getMedia)
+		mux.HandleFunc("DELETE /api/messages/{id}", app.deleteMessage)
+	}
+
+	if mode == "api" || mode == "admin" {
+		mux.HandleFunc("GET /api/providers", app.listProviders)
+		mux.HandleFunc("PUT /api/providers/{id}", app.saveProvider)
+		mux.HandleFunc("DELETE /api/providers/{id}", app.deleteProvider)
+		app.registerAdmin(mux)
+	}
+	if mode == "admin" {
+		go app.refreshCatalog(ctx)
+		internalMux := http.NewServeMux()
+		internalMux.HandleFunc("GET /routing/snapshot", app.routingSnapshot)
+		internalMux.HandleFunc("POST /routing/freeswitch", app.freeSwitchRoute)
+		internalServer := &http.Server{Addr: ":8081", Handler: internalMux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, MaxHeaderBytes: 16 << 10}
+		go func() {
+			<-ctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			internalServer.Shutdown(shutdownCtx)
+		}()
+		go func() {
+			if err := internalServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logger.Error("internal routing listener failed")
+				stop()
+			}
+		}()
+		mux.HandleFunc("GET /", app.adminPage)
+		mux.HandleFunc("GET /assets/{name}", app.asset)
 	}
 
 	address := os.Getenv("LISTEN_ADDRESS")
@@ -324,7 +373,7 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 	message.From = from
 	message.To = to
 	var alreadyStored bool
-	if err := s.pool.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM public.flowroute_inbound_messages WHERE message_id=$1)`, message.ID).Scan(&alreadyStored); err != nil {
+	if err := s.pool.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM public.flowroute_inbound_messages WHERE message_id=$1 UNION ALL SELECT 1 FROM public.sms_deleted_messages WHERE message_id=$1)`, message.ID).Scan(&alreadyStored); err != nil {
 		s.logger.Warn("callback duplicate check failed", "message_id", message.ID, "failure_stage", "check_duplicate", "response_status", http.StatusServiceUnavailable)
 		s.reply(w, r, message.ID, "database_error", http.StatusServiceUnavailable)
 		return
@@ -418,6 +467,20 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(r.Context())
+
+	if _, err = tx.Exec(r.Context(), `SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, message.ID); err != nil {
+		s.reply(w, r, message.ID, "database_error", 503)
+		return
+	}
+	var deleted bool
+	if err = tx.QueryRow(r.Context(), `SELECT EXISTS(SELECT 1 FROM public.sms_deleted_messages WHERE message_id=$1)`, message.ID).Scan(&deleted); err != nil {
+		s.reply(w, r, message.ID, "database_error", 503)
+		return
+	}
+	if deleted {
+		s.reply(w, r, message.ID, "duplicate", 200)
+		return
+	}
 	err = tx.QueryRow(r.Context(), `
 INSERT INTO public.flowroute_inbound_messages
     (message_id, sender, recipient, body, direction, is_mms, received_at)
@@ -642,7 +705,7 @@ func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if name != "app.css" && name != "app.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
+	if name != "admin.js" && name != "app.css" && name != "app.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
 		http.NotFound(w, r)
 		return
 	}
@@ -664,20 +727,49 @@ func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) listNumbers(w http.ResponseWriter, r *http.Request) {
-	values := s.allowedNumbers(r)
-	numbers := make([]string, 0, len(values)/2)
-	for _, value := range values {
-		if strings.HasPrefix(value, "+") {
-			numbers = append(numbers, value)
+	if r.Header.Get("X-Authentik-Username") == "" {
+		http.Error(w, "forbidden", 403)
+		return
+	}
+	values, err := s.visibleNumbers(r)
+	if err != nil {
+		http.Error(w, "numbers unavailable", 503)
+		return
+	}
+	providers, err := s.providers(r.Context())
+	if err != nil {
+		http.Error(w, "providers unavailable", 503)
+		return
+	}
+	senders := []map[string]string{}
+	canSend := false
+	for _, number := range sortedCanonical(values) {
+		specific := false
+		for _, p := range providers {
+			if p.ID != "flowroute" && authorizedNumber(number, p.Numbers) {
+				specific = true
+			}
+		}
+		for _, p := range providers {
+			if p.CanSend && (authorizedNumber(number, p.Numbers) || p.ID == "flowroute" && !specific) {
+				senders = append(senders, map[string]string{"number": number, "provider_id": p.ID})
+				canSend = true
+			}
 		}
 	}
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"numbers": numbers, "can_send": s.sendKey != "" && s.sendSecret != ""})
+	writeJSON(w, map[string]any{"numbers": sortedCanonical(values), "groups": s.groups(r), "is_admin": s.isAdmin(r), "can_delete": s.isAdmin(r), "admin_url": s.adminURL(r), "can_send": canSend, "senders": senders})
 }
 
 func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
-	numbers := s.allowedNumbers(r)
+	numbers, accessErr := s.visibleNumbers(r)
+	if accessErr != nil {
+		http.Error(w, "access unavailable", 503)
+		return
+	}
+	if len(numbers) == 0 && s.isAdmin(r) {
+		writeJSON(w, []any{})
+		return
+	}
 	if len(numbers) == 0 {
 		s.logger.Debug("inbox message list denied", "failure_stage", "missing_authorized_numbers", "response_status", http.StatusForbidden)
 		http.Error(w, "forbidden", http.StatusForbidden)
@@ -778,7 +870,11 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) getMedia(w http.ResponseWriter, r *http.Request) {
-	numbers := s.allowedNumbers(r)
+	numbers, accessErr := s.visibleNumbers(r)
+	if accessErr != nil {
+		http.Error(w, "access unavailable", 503)
+		return
+	}
 	if len(numbers) == 0 {
 		s.logger.Debug("MMS media request denied", "failure_stage", "missing_authorized_numbers", "response_status", http.StatusForbidden)
 		http.Error(w, "forbidden", 403)
@@ -786,7 +882,7 @@ func (s *server) getMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	var mimeType, fileName string
 	var content []byte
-	err := s.pool.QueryRow(r.Context(), `SELECT m.mime_type,m.file_name,m.content FROM public.flowroute_inbound_media m JOIN public.flowroute_inbound_messages msg USING(message_id) WHERE m.media_id=$1 AND msg.recipient=ANY($2)`, r.PathValue("id"), numbers).Scan(&mimeType, &fileName, &content)
+	err := s.pool.QueryRow(r.Context(), `SELECT m.mime_type,m.file_name,m.content FROM public.flowroute_inbound_media m JOIN public.flowroute_inbound_messages msg USING(message_id) WHERE m.media_id=$1 AND ((msg.direction='inbound' AND msg.recipient=ANY($2)) OR (msg.direction='outbound' AND msg.sender=ANY($2)))`, r.PathValue("id"), numbers).Scan(&mimeType, &fileName, &content)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Debug("MMS media not found or unauthorized", "response_status", http.StatusNotFound)

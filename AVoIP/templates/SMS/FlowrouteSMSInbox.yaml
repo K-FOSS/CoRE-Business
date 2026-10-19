@@ -40,6 +40,8 @@ spec:
         name       = "CoRE SMS inbox authorized numbers {{ $.Values.cluster.name }}"
         scope_name = "core-sms-authorized-numbers-{{ $.Values.cluster.name }}"
         expression = <<-PY
+          import json
+
           def normalize_number(value):
               if isinstance(value, bool):
                   return None
@@ -77,7 +79,7 @@ spec:
                   number = normalize_number(value)
                   if number:
                       numbers.append(number)
-          return {"ak_proxy": {"user_attributes": {"additionalHeaders": {"X-Auth-Numbers": ",".join(sorted(set(numbers)))}}}}
+          return {"ak_proxy": {"user_attributes": {"additionalHeaders": {"X-Auth-Numbers": ",".join(sorted(set(numbers))), "X-Auth-Groups": json.dumps(list(request.user.all_groups().values_list("name", flat=True)))}}}}
         PY
       }
 
@@ -132,6 +134,7 @@ spec:
       headersToBackend:
         - 'x-authentik-*'
         - 'x-auth-numbers'
+        - 'x-auth-groups'
       backendRefs:
         - group: ''
           kind: 'Service'

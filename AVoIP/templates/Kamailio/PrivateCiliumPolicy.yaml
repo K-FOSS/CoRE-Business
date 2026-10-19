@@ -54,6 +54,16 @@ spec:
     {{- end }}
     {{- end }}
   egress:
+    {{ if and $root.Values.avoipAdmin.enabled $root.Values.avoipAdmin.routing.enabled }}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'avoip-admin'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '8081'
+              protocol: 'TCP'
+    {{ end }}
     {{- if $instance.registrar.enabled }}
     - toFQDNs:
         - matchName: '{{ $instance.registrar.database.host }}'

@@ -64,6 +64,32 @@
             - protocol: TCP
               port: 5062
       egress:
+        {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: 'avoip-admin'
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: 'TCP'
+              port: 8081
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: 'freeswitch'
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+          ports:
+            - protocol: 'TCP'
+              port: 5072
+        {{ range .Values.avoipAdmin.routing.upstreamCIDRs }}
+        - to:
+            - ipBlock:
+                cidr: '{{ . }}'
+          ports:
+            - protocol: 'TCP'
+              port: 5061
+        {{ end }}
+        {{ end }}
         {{- if .Values.kamailio.carrierOutbound.enabled }}
         - to:
             - podSelector:
@@ -150,6 +176,9 @@
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
 {{- $websocketHA := .Values.kamailio.websocketHA | default dict -}}
 {{- $kamailioImage := .Values.kamailio.image -}}
+{{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) -}}
+  {{- $kamailioImage = .Values.avoipAdmin.routing.image -}}
+{{- end -}}
 {{- $lfHeartbeat := (($websocketHA.compatibility | default dict).lfOnlyHeartbeat | default dict) -}}
 {{- if $lfHeartbeat.enabled -}}
   {{- $kamailioImage = $lfHeartbeat.image -}}
@@ -311,6 +340,13 @@
             exec /usr/sbin/kamailio -m {{ .Values.kamailio.shmSizeMb }} -DD -E -P /tmp/kamailio.pid
             -f /etc/kamailio/kamailio.cfg
         env:
+{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+          - name: 'AVOIP_ROUTING_TOKEN'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-admin-routing-token'
+                key: 'token'
+{{ end }}
           - name: POD_NAME
             valueFrom:
               fieldRef:
@@ -1610,6 +1646,27 @@ controllers:
         secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}'
 {{- end }}
     initContainers:
+{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+      managed-dialplan-config:
+        image:
+          repository: '{{ .Values.avoipAdmin.image.repository }}'
+          tag: '{{ .Values.avoipAdmin.image.tag }}'
+          digest: '{{ .Values.avoipAdmin.image.digest }}'
+        env:
+          - name: 'SMS_SERVICE_MODE'
+            value: 'fs-config'
+          - name: 'AVOIP_ADMIN_INTERNAL_URL'
+            value: 'http://{{ include "avoip.fullname" . }}-admin.{{ .Release.Namespace }}.svc.{{ .Values.cluster.domain }}:8081'
+          - name: 'AVOIP_ROUTING_TOKEN'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-admin-routing-token'
+                key: 'token'
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+{{ end }}
 {{- if .Values.freeswitch.cdr.enabled }}
       cdr-schema:
         image:
@@ -2047,6 +2104,12 @@ service:
     controller: freeswitch
 {{- include "avoip.service.options" (dict "root" $ "name" "freeswitch") | nindent 4 }}
     ports:
+{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+      tls-managed:
+        port: 5072
+        targetPort: 5072
+        protocol: 'TCP'
+{{ end }}
       tcp-sip:
         port: 5060
         targetPort: tcp-sip
@@ -2503,6 +2566,37 @@ persistence:
           - path: /etc/freeswitch/sip_profiles/flowroute.xml
             subPath: flowroute.xml
 {{- end }}
+{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+  freeswitch-managed-xml:
+    type: emptyDir
+    advancedMounts:
+      freeswitch:
+        managed-dialplan-config:
+          - path: '/config'
+        freeswitch:
+          - path: '/etc/freeswitch/autoload_configs/xml_curl.conf.xml'
+            subPath: 'xml_curl.conf.xml'
+  freeswitch-managed-profile:
+    type: configMap
+    name: '{{ include "avoip.fullname" . }}-freeswitch-managed'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: '/etc/freeswitch/sip_profiles/core-managed.xml'
+            subPath: 'core-managed.xml'
+{{ end }}
+{{ if .Values.avoipAdmin.enabled }}
+{{ range .Values.avoipAdmin.upstreams }}
+  freeswitch-upstream-{{ .name }}:
+    type: secret
+    name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}'
+    advancedMounts:
+      freeswitch:
+        freeswitch:
+          - path: '/etc/freeswitch/upstreams/{{ .name }}.xml'
+            subPath: 'gateway.xml'
+{{ end }}
+{{ end }}
   freeswitch-dialplan-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
@@ -2604,6 +2698,12 @@ persistence:
 {{- if $flowrouteSMSValues.networkpolicies }}
   {{- $_ := set $commonValues "networkpolicies" (mergeOverwrite (deepCopy ($commonValues.networkpolicies | default dict)) $flowrouteSMSValues.networkpolicies) -}}
 {{- end }}
+{{- $adminValues := include "avoip.admin.commonValues" . | fromYaml -}}
+{{- range $key := list "controllers" "service" "networkpolicies" -}}
+  {{- if index $adminValues $key -}}
+    {{- $_ := set $commonValues $key (mergeOverwrite (deepCopy (index $commonValues $key | default dict)) (index $adminValues $key)) -}}
+  {{- end -}}
+{{- end -}}
 {{- $_ := set .Values "controllers" $commonValues.controllers -}}
 {{- $_ := set .Values "service" $commonValues.service -}}
 {{- $_ := set .Values "persistence" $commonValues.persistence -}}

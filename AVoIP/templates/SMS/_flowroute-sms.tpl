@@ -54,13 +54,33 @@ controllers:
             value: '{{ $settings.inbox.frameAncestor }}'
           {{- end }}
           {{- if ne $mode "web" }}
+          {{ if $.Values.avoipAdmin.enabled }}
+          - name: 'AVOIP_ADMIN_URL'
+            value: 'https://{{ include "avoip.admin.hostname" $ }}'
+          {{ end }}
+          - name: 'FLOWROUTE_ENABLED'
+            value: '{{ $settings.legacyFlowroute.enabled }}'
+          - name: 'SMS_ADMIN_GROUP'
+            value: '{{ $settings.inbox.adminGroup }}'
+          - name: 'SMS_LOCAL_NUMBERS'
+            value: '{{ join "," $settings.localNumbers }}'
+          - name: 'SMS_PROVIDERS_JSON'
+            value: '{{ toJson $settings.providers | replace "'" "''" }}'
+          {{- range $name, $secret := $settings.providerCredentials }}
+          {{- if not (regexMatch "^SMS_PROVIDER_[A-Z0-9_]{1,100}$" $name) }}{{ fail "provider credential names must start with SMS_PROVIDER_" }}{{ end }}
+          - name: '{{ $name }}'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ required "provider credential Secret name required" $secret.name }}'
+                key: '{{ required "provider credential Secret key required" $secret.key }}'
+          {{- end }}
           - name: 'DATABASE_URL'
             valueFrom:
               secretKeyRef:
                 name: '{{ default (printf "%s-core-voice-sms" $fullName) $settings.databaseSecret.name }}'
                 key: '{{ $settings.databaseSecret.key }}'
           {{- end }}
-          {{- if eq $mode "webhook" }}
+          {{- if and (eq $mode "webhook") $settings.legacyFlowroute.enabled }}
           - name: 'FLOWROUTE_CALLBACK_TOKEN'
             valueFrom:
               secretKeyRef:
@@ -69,7 +89,7 @@ controllers:
           - name: 'FLOWROUTE_SMS_DIAGNOSTICS'
             value: '{{ $settings.diagnostics.enabled }}'
           {{- end }}
-          {{- if eq $mode "api" }}
+          {{- if and (eq $mode "api") $settings.legacyFlowroute.enabled }}
           - name: 'FLOWROUTE_SMS_ACCESS_KEY'
             valueFrom:
               secretKeyRef:

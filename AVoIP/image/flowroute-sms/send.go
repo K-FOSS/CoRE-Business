@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -37,14 +36,11 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid origin", http.StatusForbidden)
 		return
 	}
-	if s.sendKey == "" || s.sendSecret == "" {
-		http.Error(w, "sending unavailable", http.StatusServiceUnavailable)
-		return
-	}
 	var input struct {
-		From string `json:"from"`
-		To   string `json:"to"`
-		Body string `json:"body"`
+		From     string `json:"from"`
+		To       string `json:"to"`
+		Body     string `json:"body"`
+		Provider string `json:"provider_id"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&input); err != nil {
 		http.Error(w, "invalid request", 400)
@@ -52,7 +48,12 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	from, fromOK := normalizePhoneNumber(input.From)
 	to, toOK := normalizePhoneNumber(input.To)
-	if !fromOK || !toOK || !authorizedNumber(from, s.allowedNumbers(r)) {
+	numbers, accessErr := s.visibleNumbers(r)
+	if accessErr != nil {
+		http.Error(w, "numbers unavailable", 503)
+		return
+	}
+	if !fromOK || !toOK || !authorizedNumber(from, numbers) {
 		http.Error(w, "number unavailable", 403)
 		return
 	}
@@ -73,46 +74,32 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	s.lastSend[identity] = time.Now()
 	s.sendMu.Unlock()
-	payload, _ := json.Marshal(map[string]any{"data": map[string]any{"type": "message", "attributes": map[string]string{"from": from, "to": to, "body": input.Body}}})
-	req, err := http.NewRequestWithContext(r.Context(), "POST", flowrouteSendURL, bytes.NewReader(payload))
+	providers, err := s.providers(r.Context())
 	if err != nil {
-		http.Error(w, "send unavailable", 502)
+		http.Error(w, "providers unavailable", 503)
 		return
 	}
-	req.SetBasicAuth(s.sendKey, s.sendSecret)
-	req.Header.Set("Content-Type", "application/vnd.api+json")
-	req.Header.Set("Accept", "application/vnd.api+json")
-	resp, err := s.sendClient.Do(req)
+	provider, err := chooseProvider(providers, from, input.Provider)
 	if err != nil {
-		s.logger.Warn("SMS send failed", "user", identity, "from", from, "reason", "provider_connection")
-		http.Error(w, "send failed", 502)
+		http.Error(w, err.Error(), 422)
 		return
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusAccepted {
-		s.logger.Warn("SMS send rejected", "user", identity, "from", from, "status", resp.StatusCode)
-		http.Error(w, "provider rejected message", 502)
-		return
-	}
-	var result struct {
-		Data struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&result); err != nil || result.Data.ID == "" {
-		http.Error(w, "provider response invalid", 502)
-		return
-	}
-	_, err = s.pool.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_messages (message_id,sender,recipient,body,direction,is_mms,received_at) VALUES ($1,$2,$3,$4,'outbound',false,$5) ON CONFLICT (message_id) DO NOTHING`, result.Data.ID, from, to, input.Body, time.Now().UTC())
+	id, err := s.transmit(r.Context(), provider, from, to, input.Body)
 	if err != nil {
-		s.logger.Error("sent SMS could not be stored", "message_id", result.Data.ID, "user", identity, "from", from)
+		s.logger.Warn("SMS send failed", "actor", identity, "provider_id", provider.ID)
+		http.Error(w, err.Error(), 502)
+		return
+	}
+	_, err = s.pool.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_messages (message_id,sender,recipient,body,direction,is_mms,received_at,provider_id) VALUES ($1,$2,$3,$4,'outbound',false,$5,$6) ON CONFLICT (message_id) DO NOTHING`, id, from, to, input.Body, time.Now().UTC(), provider.ID)
+	if err != nil {
+		s.logger.Error("sent SMS could not be stored", "message_id", id, "user", identity, "from", from)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(map[string]any{"id": result.Data.ID, "stored": false})
+		json.NewEncoder(w).Encode(map[string]any{"id": id, "stored": false})
 		return
 	}
-	s.logger.Info("SMS sent", "message_id", result.Data.ID, "user", identity, "from", from, "to", to)
+	s.logger.Info("SMS sent", "message_id", id, "user", identity, "from", from, "to", to)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]any{"id": result.Data.ID, "stored": true})
+	json.NewEncoder(w).Encode(map[string]any{"id": id, "stored": true})
 }

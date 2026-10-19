@@ -1,5 +1,9 @@
 # CoRE Business
 
+AVoIP’s [administration and managed routing](AVoIP/docs/ADMIN.md) extend SMS
+group access, provider accounts and DID/caller-ID configuration. The inbox and
+admin screens share a [Material Design 2 specification](AVoIP/docs/UI-DESIGN.md).
+
 AVoIP’s proposed [Caller Intelligence & Call Protection](AVoIP/docs/caller-intelligence/README.md)
 design covers local call policy, business identity, provider quotas and staged
 Kamailio integration. It is documentation only; no service or routing is enabled.
