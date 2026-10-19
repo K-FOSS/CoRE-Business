@@ -15,6 +15,7 @@ asterisk_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-h
 internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
 asterisk_pjsip="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-config-tpl") | .data["pjsip.conf"]' "$render")"
 asterisk_deploy="$(yq -c 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-asterisk")' "$render")"
+asterisk_secret_reload="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-asterisk") | .spec.template.metadata.annotations["secret.reloader.stakater.com/reload"]' "$render")"
 
 # The locked per-extension Asterisk dialplan stamps the trusted identity on a
 # new outbound PJSIP channel; Admin mode does not turn the extension into the
@@ -28,7 +29,7 @@ grep -Fq 'verify_server=yes' <<< "$asterisk_pjsip"
 grep -Fq '"secretName":"core-home1-talos-prod-avoip-kamailio-internal-sip-tls"' <<< "$asterisk_deploy"
 grep -Fq '"key":"ca.crt"' <<< "$asterisk_deploy"
 grep -Fq 'cat /etc/ssl/certs/ca-certificates.crt /etc/asterisk/sipcore-ca/ca.crt > /tmp/avoip-ca-bundle.pem' <<< "$asterisk_deploy"
-grep -Fq 'core-home1-talos-prod-avoip-kamailio-internal-sip-tls' <<< "$asterisk_deploy"
+grep -Fq 'core-home1-talos-prod-avoip-kamailio-internal-sip-tls' <<< "$asterisk_secret_reload"
 
 # Only the Asterisk-only TLS path promotes the stamped extension into the
 # policy variable. The route looks up that identity and then overwrites From
