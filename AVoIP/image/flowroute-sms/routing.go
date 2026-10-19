@@ -61,6 +61,30 @@ type extensionRoute struct {
 	BlockedDestinations []string `json:"blocked_destinations,omitempty"`
 }
 
+type outboundRoutePreviewRequest struct {
+	Extension   string `json:"extension"`
+	Destination string `json:"destination"`
+	CallerID    string `json:"caller_id,omitempty"`
+	Site        string `json:"site"`
+}
+
+type outboundRoutePreview struct {
+	Allowed               bool                `json:"allowed"`
+	DenialReason          string              `json:"denial_reason,omitempty"`
+	Extension             string              `json:"extension"`
+	Site                  string              `json:"site"`
+	NormalizedDestination string              `json:"normalized_destination,omitempty"`
+	NormalizedCallerID    string              `json:"normalized_caller_id,omitempty"`
+	EligibleProviders     []string            `json:"eligible_providers"`
+	RemovedProviders      []map[string]string `json:"removed_providers"`
+	SelectedProvider      string              `json:"selected_provider,omitempty"`
+	FailoverOrder         []string            `json:"failover_order"`
+	EgressDestination     string              `json:"egress_destination,omitempty"`
+	CodecOrder            []string            `json:"codec_order,omitempty"`
+	PolicyRevision        int64               `json:"policy_revision"`
+	ProviderHealth        string              `json:"provider_health"`
+}
+
 // Existing catalog entries predate these flags and remain enabled until an
 // administrator explicitly disables them. Disabled entries stay in the live
 // snapshot with a reason so Kamailio can reject them precisely and fail closed.
@@ -92,7 +116,9 @@ type siteTarget struct {
 
 var extensionID = regexp.MustCompile(`^[0-9]{2,12}$`)
 var adminUserID = regexp.MustCompile(`^[A-Za-z0-9_.@:-]{1,128}$`)
+var correlationID = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,128}$`)
 var sipHost = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,252}$`)
+var nanpE164 = regexp.MustCompile(`^\+1[2-9][0-9]{2}[2-9][0-9]{6}$`)
 var upstreamCodecs = map[string]bool{"OPUS": true, "G722": true, "PCMU": true, "PCMA": true}
 
 func validateCodecOrder(codecs []string) error {
@@ -390,6 +416,124 @@ func (s *server) saveCatalog(w http.ResponseWriter, r *http.Request) {
 	s.cacheCatalog(c)
 	writeJSON(w, c)
 }
+
+func previewOutboundRoute(c sipCatalog, request outboundRoutePreviewRequest, activeSite string) outboundRoutePreview {
+	result := outboundRoutePreview{
+		Extension: request.Extension, Site: request.Site,
+		EligibleProviders: []string{}, RemovedProviders: []map[string]string{},
+		FailoverOrder: []string{}, ProviderHealth: "not_reported",
+		PolicyRevision: c.Version,
+	}
+	deny := func(reason string) outboundRoutePreview {
+		result.Allowed = false
+		result.DenialReason = reason
+		return result
+	}
+	if !extensionID.MatchString(request.Extension) {
+		return deny("invalid_extension")
+	}
+	if request.Site != "yvr" && request.Site != "yxl" {
+		return deny("invalid_site")
+	}
+	if activeSite != "" && request.Site != activeSite {
+		return deny("site_not_available_in_this_admin_context")
+	}
+	var extension *extensionRoute
+	for i := range c.Extensions {
+		if c.Extensions[i].Extension == request.Extension {
+			extension = &c.Extensions[i]
+			break
+		}
+	}
+	if extension == nil {
+		return deny("extension_not_configured")
+	}
+	if !extension.outboundAllowed() {
+		return deny(extension.outboundDisabledReason())
+	}
+	if extension.Site != request.Site {
+		return deny("extension_site_mismatch")
+	}
+	destination, validDestination := normalizePhoneNumber(request.Destination)
+	if !validDestination || destination != request.Destination || !nanpE164.MatchString(destination) {
+		return deny("destination_not_supported_by_current_nanp_route")
+	}
+	result.NormalizedDestination = destination
+	if len(extension.AllowedDestinations) > 0 && !containsString(extension.AllowedDestinations, destination) {
+		return deny("destination_not_in_extension_allowlist")
+	}
+	if containsString(extension.BlockedDestinations, destination) {
+		return deny("destination_blocked_for_extension")
+	}
+	callerID := extension.CallerID
+	if request.CallerID != "" {
+		requested, valid := normalizePhoneNumber(request.CallerID)
+		if !valid || requested != request.CallerID {
+			return deny("invalid_caller_id")
+		}
+		callerID = requested
+	}
+	result.NormalizedCallerID = callerID
+	if callerID != extension.CallerID {
+		return deny("caller_id_not_authorized_for_extension")
+	}
+	var provider *sipProvider
+	for i := range c.Providers {
+		if c.Providers[i].ID == extension.Provider {
+			provider = &c.Providers[i]
+			break
+		}
+	}
+	if provider == nil {
+		result.RemovedProviders = append(result.RemovedProviders, map[string]string{"provider": extension.Provider, "reason": "provider_not_configured"})
+		return deny("no_eligible_provider")
+	}
+	if provider.Gateways[request.Site] == "" {
+		result.RemovedProviders = append(result.RemovedProviders, map[string]string{"provider": provider.ID, "reason": "site_gateway_missing"})
+		return deny("no_eligible_provider")
+	}
+	verified := false
+	for _, approval := range provider.CallerIDs {
+		if approval.Number == callerID && (approval.ExpiresAt == nil || approval.ExpiresAt.After(time.Now())) {
+			verified = true
+			break
+		}
+	}
+	if !verified {
+		result.RemovedProviders = append(result.RemovedProviders, map[string]string{"provider": provider.ID, "reason": "caller_id_not_verified_for_provider"})
+		return deny("no_eligible_provider")
+	}
+	result.Allowed = true
+	result.EligibleProviders = append(result.EligibleProviders, provider.ID)
+	result.SelectedProvider = provider.ID
+	result.FailoverOrder = append(result.FailoverOrder, provider.ID)
+	result.EgressDestination = destination
+	if provider.EgressPrefix != "" {
+		result.EgressDestination = provider.EgressPrefix + "*" + destination
+	}
+	result.CodecOrder = effectiveProviderCodecOrder(*provider)
+	return result
+}
+
+func (s *server) previewOutboundRoute(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r, false) {
+		return
+	}
+	var request outboundRoutePreviewRequest
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&request) != nil || decoder.Decode(new(any)) != io.EOF {
+		http.Error(w, "invalid routing preview request", http.StatusBadRequest)
+		return
+	}
+	catalog, err := s.catalog(r)
+	if err != nil || catalog.validate() != nil {
+		http.Error(w, "routing policy unavailable or expired", http.StatusServiceUnavailable)
+		return
+	}
+	result := previewOutboundRoute(catalog, request, strings.ToLower(os.Getenv("AVOIP_SITE")))
+	writeJSON(w, result)
+}
 func routingAuthorized(r *http.Request) bool {
 	token := os.Getenv("AVOIP_ROUTING_TOKEN")
 	if user, password, ok := r.BasicAuth(); ok {
@@ -518,6 +662,7 @@ func (s *server) registerAdmin(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("GET /api/sip", s.getCatalog)
 	mux.HandleFunc("PUT /api/sip", s.saveCatalog)
+	mux.HandleFunc("POST /api/routing/preview", s.previewOutboundRoute)
 	mux.HandleFunc("GET /api/audit", s.audit)
 }
 func (s *server) adminPage(w http.ResponseWriter, r *http.Request) {
@@ -573,6 +718,8 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	gateway := ""
 	providerID := ""
 	codecOrder := []string(nil)
+	callLinkedID := safeCorrelationID(r.Form.Get("variable_sip_h_X-Core-Call-Linkedid"))
+	originUniqueID := safeCorrelationID(r.Form.Get("variable_sip_h_X-Core-Origin-Uniqueid"))
 	if context == "core-managed-outbound" && extensionID.MatchString(extension) {
 		for _, e := range c.Extensions {
 			if e.Extension == extension && e.Site == site {
@@ -635,16 +782,24 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		text += `<action application="set" data="effective_caller_id_number=` + escape(callerID) + `"/>`
 	}
 	if context == "core-managed-outbound" {
-		text += `<action application="log" data="INFO AVoIP outbound route selected extension=` + escape(extension) + ` site=` + escape(site) + ` provider=` + escape(providerID) + ` codecs=` + escape(strings.Join(codecOrder, ",")) + ` policy_revision=` + strconv.FormatInt(c.Version, 10) + ` destination-class=nanp call_id=${sip_call_id} uuid=${uuid}"/>`
+		text += `<action application="log" data="INFO AVoIP outbound route selected extension=` + escape(extension) + ` site=` + escape(site) + ` provider=` + escape(providerID) + ` codecs=` + escape(strings.Join(codecOrder, ",")) + ` policy_revision=` + strconv.FormatInt(c.Version, 10) + ` destination-class=nanp call_id=${sip_call_id} linkedid=` + escape(callLinkedID) + ` origin_uniqueid=` + escape(originUniqueID) + ` uuid=${uuid}"/>`
+	}
+	if len(codecOrder) > 0 {
+		text += `<action application="export" data="nolocal:absolute_codec_string=` + escape(strings.Join(codecOrder, ",")) + `"/>`
+	}
+	if context == "core-managed-outbound" {
+		if callLinkedID != "" {
+			text += `<action application="export" data="nolocal:sip_h_X-Core-Call-Linkedid=` + escape(callLinkedID) + `"/>`
+		}
+		if originUniqueID != "" {
+			text += `<action application="export" data="nolocal:sip_h_X-Core-Origin-Uniqueid=` + escape(originUniqueID) + `"/>`
+		}
 	}
 	if context == "core-managed-inbound" {
 		text += `<action application="set" data="fax_original_destination=` + escape(destination) + `"/>`
 		if detectFax {
 			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>`
 		}
-	}
-	if len(codecOrder) > 0 {
-		text += `<action application="export" data="nolocal:absolute_codec_string=` + escape(strings.Join(codecOrder, ",")) + `"/>`
 	}
 	if transfer != "" {
 		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
@@ -657,6 +812,13 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 
 func managedGatewayBridge(gateway, destination string) string {
 	return "sofia/gateway/" + gateway + "/" + destination
+}
+
+func safeCorrelationID(value string) string {
+	if correlationID.MatchString(value) {
+		return value
+	}
+	return ""
 }
 
 func verifiedNumbers(values []verifiedCallerID) string {

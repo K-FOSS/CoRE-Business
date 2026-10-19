@@ -128,6 +128,14 @@
       $dlg_var(outbound_quota_key) = $var(outbound_quota_key);
       $var(outbound_teardown_key) = "avoip:out:teardown:" + $ci;
       $dlg_var(outbound_teardown_key) = $var(outbound_teardown_key);
+      # CoRE authorization/correlation headers are for trusted internal hops
+      # only. Preserve the validated call IDs in dialog state for Homer and
+      # quota diagnostics, then remove them before sending the INVITE upstream.
+      remove_hf("X-Core-Extension");
+      remove_hf("X-Core-Call-Linkedid");
+      remove_hf("X-Core-Origin-Uniqueid");
+      remove_hf("X-Core-Original-DID");
+      remove_hf("X-Core-Provider");
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("replace-origin internal external address-family=IP4")) {
           route(OUTBOUND_RELEASE);

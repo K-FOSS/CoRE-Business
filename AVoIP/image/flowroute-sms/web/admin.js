@@ -26,6 +26,15 @@ function extensionReadiness(record){
  else if(approval.expires_at&&(!Number.isFinite(Date.parse(approval.expires_at))||Date.parse(approval.expires_at)<=Date.now()))problems.push('Caller ID verification expiry is invalid or expired');
  return problems;
 }
+function addRoutePreview(card,record){
+ const form=node('form','route-preview');
+ const destination=node('input');destination.type='tel';destination.inputMode='tel';destination.required=true;destination.placeholder='+1…';destination.setAttribute('aria-label',`Destination for extension ${record.extension}`);
+ const callerID=node('input');callerID.type='tel';callerID.inputMode='tel';callerID.value=record.caller_id||'';callerID.setAttribute('aria-label',`Caller ID for extension ${record.extension}`);
+ const submit=node('button','text-button','Preview route');submit.type='submit';
+ const result=node('p','route-preview-result','Preview uses the current Admin policy. Provider health is not checked.');result.setAttribute('role','status');
+ form.append(destination,callerID,submit);form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;result.textContent='Checking route…';try{const preview=await api('/api/routing/preview','POST',{extension:record.extension,destination:destination.value.trim(),caller_id:callerID.value.trim(),site:record.site});if(preview.allowed){const codecs=preview.codec_order?.length?` · Codecs ${preview.codec_order.join(' → ')}`:'';const egress=preview.egress_destination?` · Sent as ${preview.egress_destination}`:'';result.textContent=`Allowed · ${preview.normalized_destination} · Caller ID ${preview.normalized_caller_id} · ${preview.selected_provider}${egress}${codecs} · Revision ${preview.policy_revision} · Provider health ${preview.provider_health}`}else result.textContent=`Denied · ${preview.denial_reason||'policy_denied'} · Revision ${preview.policy_revision}`}catch(error){result.textContent=error.message}finally{submit.disabled=false}};
+ card.append(form,result);
+}
 function render(){
  const tab=state.tab,root=$('records'),query=$('record-search').value.trim().toLowerCase();
  $('routing-mode').textContent=state.info.routing_enabled?(state.info.snapshot_ready?'Routing enabled':'Routing snapshot unavailable'):'Routing not activated';
@@ -54,6 +63,7 @@ function render(){
    if(record.blocked_destinations?.length)card.append(node('p','','Blocked destinations: '+record.blocked_destinations.join(', ')));
    const problems=extensionReadiness(record);
    card.append(node('p',problems.length?'extension-readiness warning':'extension-readiness',problems.length?`Configuration needs attention: ${problems.join('; ')}`:'Catalog authorization is configured. Live provider availability and registration are reported by SIP runtime events.'));
+   addRoutePreview(card,record);
   }
   if(record.numbers?.length)card.append(node('p','',record.numbers.join(', ')));
   if((tab==='sms'&&record.source!=='admin')||(tab!=='sms'&&state.catalog.source==='config'))card.append(node('small','',`Managed by ${record.source||'configuration'}`));

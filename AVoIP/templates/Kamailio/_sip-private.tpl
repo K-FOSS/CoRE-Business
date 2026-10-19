@@ -743,6 +743,15 @@
 
     route[PRIVATE_RELAY] {
       if (is_method("BYE")) {
+        # $var() values are request-local and may be empty once TM enters a
+        # failure/reply route. Preserve the selected dialog path in XAVPs,
+        # which are attached to the transaction, so teardown diagnostics can
+        # identify the actual peer and next hop.
+        $xavp(private_bye=>side) = $var(side);
+        $xavp(private_bye=>peer) = $var(peer_name);
+        $xavp(private_bye=>destination) = $du;
+        $xavp(private_bye=>transport) = $dP;
+        $xavp(private_bye=>socket) = $fsn;
         t_on_failure("PRIVATE_BYE_FAILURE");
         t_on_reply("PRIVATE_BYE_REPLY");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -808,20 +817,25 @@
     # Keep this failure route to pseudo-variables exported by the loaded core
     # and tm modules. TMX-specific $T_* fields require loading tmx.so.
     failure_route[PRIVATE_BYE_FAILURE] {
+      $var(private_bye_timeout) = 0;
+      $var(private_bye_received_reply) = 0;
+      $var(private_bye_reply_code) = t_get_status_code();
+      if (t_branch_timeout()) $var(private_bye_timeout) = 1;
+      if (t_branch_replied()) $var(private_bye_received_reply) = 1;
       xlog(
         "L_ERR",
-        "SIP relay failure stage=private-bye-transaction pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn\n"
+        "SIP relay failure stage=private-bye-transaction pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) side=$xavp(private_bye=>side) peer=$xavp(private_bye=>peer) destination=$xavp(private_bye=>destination) transport=$xavp(private_bye=>transport) socket=$xavp(private_bye=>socket) reply_code=$var(private_bye_reply_code) timed_out=$var(private_bye_timeout) received_reply=$var(private_bye_received_reply)\n"
       );
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-      hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_transaction_failure call_id=$ci method=BYE side=$var(side) peer=$var(peer_name) cseq=$hdr(CSeq) site={{ .Values.region }}");
+      hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_transaction_failure call_id=$ci method=BYE side=$xavp(private_bye=>side) peer=$xavp(private_bye=>peer) destination=$xavp(private_bye=>destination) transport=$xavp(private_bye=>transport) socket=$xavp(private_bye=>socket) reply_code=$var(private_bye_reply_code) timed_out=$var(private_bye_timeout) received_reply=$var(private_bye_received_reply) cseq=$hdr(CSeq) site={{ .Values.region }}");
       {{- end }}
     }
 
     onreply_route[PRIVATE_BYE_REPLY] {
       if ($rm == "BYE" && $rs >= 200) {
-        xlog("L_INFO", "SIP dialog teardown stage=private-bye-response pod=$env(POD_NAME) callid=$ci status=$rs from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name)\n");
+        xlog("L_INFO", "SIP dialog teardown stage=private-bye-response pod=$env(POD_NAME) callid=$ci status=$rs from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) side=$xavp(private_bye=>side) peer=$xavp(private_bye=>peer) destination=$xavp(private_bye=>destination) transport=$xavp(private_bye=>transport) socket=$xavp(private_bye=>socket)\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-        hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_response call_id=$ci method=BYE status=$rs side=$var(side) peer=$var(peer_name) cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt site={{ .Values.region }}");
+        hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_response call_id=$ci method=BYE status=$rs side=$xavp(private_bye=>side) peer=$xavp(private_bye=>peer) destination=$xavp(private_bye=>destination) transport=$xavp(private_bye=>transport) socket=$xavp(private_bye=>socket) cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt site={{ .Values.region }}");
         {{- end }}
       }
     }

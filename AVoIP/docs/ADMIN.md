@@ -65,6 +65,7 @@ PostgreSQL grants must be ready before admin pods can become ready.
 | `avoipAdmin.sites` | Optional site-target overrides; normally derived from local FreeSWITCH and existing authenticated inter-site carrier peers |
 | `avoipAdmin.routing.upstreamCIDRs` | Explicit network egress approval for additional carrier TLS destinations; an admin catalog edit cannot widen Kubernetes network policy |
 | `GET/PUT /api/sip` | Read/replace catalog, admin-only with version conflict detection |
+| `POST /api/routing/preview` | Admin-only outbound policy preview using the current extension, destination, caller ID, site and provider catalog |
 | `GET /api/audit` | Recent protected control-plane audit metadata; no credential values |
 | `GET /routing/snapshot` | Token-authenticated internal compiled route view; machine listener only |
 | `POST /routing/freeswitch` | Authenticated internal XML dialplan for managed contexts; machine listener only |
@@ -126,6 +127,13 @@ only those exact numbers pass; block-list entries always deny. Empty lists leave
 the existing NANP policy in force. The assigned-user value is Admin metadata,
 not SIP authentication, and is omitted from Kamailio's runtime snapshot. No
 extension secret or authentication identity is changed by these edits.
+
+Each extension card also has a **Preview route** action. It applies the current
+extension, site, caller-ID, destination and provider verification rules and
+returns the policy revision, selected provider, provider-specific egress prefix
+and effective codec order. Provider health is reported as `not_reported`: the
+catalog does not yet contain live health or failover state, so the preview does
+not claim that a provider is currently reachable.
 
 Assignments are evaluated only from the existing authenticated
 Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never

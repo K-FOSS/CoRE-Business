@@ -21,9 +21,26 @@ Asterisk SIP Core side. Other private Kamailio peers retain the existing
 selection and preserves source authentication at both listeners.
 
 Kamailio emits Homer events for the private BYE relay attempt, queued relay,
-final response status, and transaction failure. These events retain Call-ID,
-CSeq, dialog tags, direction and peer identity, but omit phone numbers, SDP and
-SIP credentials.
+final response status, and transaction failure. Reply and failure callbacks
+now read the selected side, peer, destination, transport and socket from
+transaction-scoped XAVPs rather than request-local variables. Failure events
+also report the final reply code, whether the branch timed out, and whether it
+received an earlier reply, using TM's `t_get_status_code()`,
+`t_branch_timeout()` and `t_branch_replied()` functions. This keeps the
+diagnosis within the deployed TM module and does not require TMX.
+Events retain Call-ID, CSeq and dialog tags, but omit phone numbers, SDP and SIP
+credentials. The Admin-generated FreeSWITCH outbound leg also carries the
+validated Asterisk linked ID and unique ID over trusted internal hops, allowing
+Homer to correlate the Asterisk, FreeSWITCH and Kamailio records. Kamailio
+copies those values into its dialog state and removes the CoRE-only identity
+headers before the provider-facing INVITE.
+
+The YVR trace at 2026-10-19 21:12 UTC showed both FreeSWITCH call legs ending
+with terminal hangup events, while its corresponding Kamailio BYE transaction
+timed out without a recorded final response. That confirms teardown at
+FreeSWITCH and a signaling response gap on the proxy transaction; it does not
+prove that the remote SIP peer received a successful BYE. The richer failure
+event distinguishes a timeout from a final rejection on the next teardown.
 
 ## Validation and rollout
 

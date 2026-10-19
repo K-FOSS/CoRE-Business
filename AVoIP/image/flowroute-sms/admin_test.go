@@ -57,6 +57,65 @@ func fixtureCatalog() sipCatalog {
 	return sipCatalog{Providers: []sipProvider{{ID: "carrier", Host: "sip.carrier.example", CIDRs: []string{"192.0.2.0/24"}, Gateways: map[string]string{"yvr": "carrier-tls", "yxl": "carrier-tls"}, CallerIDs: []verifiedCallerID{{Number: "+12065550100", Evidence: "provider ownership review"}}}}, DIDs: []didRoute{{Number: "+12065550100", Providers: []string{"carrier"}, Site: "yvr", Kind: "extension", Destination: "7101"}}, Extensions: []extensionRoute{{Extension: "7101", CallerID: "+12065550100", Provider: "carrier", Site: "yvr"}}}
 }
 
+func TestOutboundRoutePreviewUsesCurrentAuthorization(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.Version = 17
+	catalog.Providers[0].EgressPrefix = "9"
+	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "PCMA"}
+	catalog.Extensions[0].AllowedDestinations = []string{"+16505550123"}
+	request := outboundRoutePreviewRequest{Extension: "7101", Destination: "+16505550123", CallerID: "+12065550100", Site: "yvr"}
+	preview := previewOutboundRoute(catalog, request, "yvr")
+	if !preview.Allowed || preview.SelectedProvider != "carrier" || preview.EgressDestination != "9*+16505550123" || preview.PolicyRevision != 17 || len(preview.FailoverOrder) != 1 || preview.ProviderHealth != "not_reported" {
+		t.Fatalf("unexpected allowed preview: %+v", preview)
+	}
+	for _, tc := range []struct {
+		name   string
+		mutate func(*sipCatalog, *outboundRoutePreviewRequest)
+		want   string
+	}{
+		{"disabled extension", func(c *sipCatalog, _ *outboundRoutePreviewRequest) {
+			disabled := false
+			c.Extensions[0].Enabled = &disabled
+		}, "extension_disabled"},
+		{"disabled outbound", func(c *sipCatalog, _ *outboundRoutePreviewRequest) {
+			disabled := false
+			c.Extensions[0].OutboundEnabled = &disabled
+		}, "outbound_disabled"},
+		{"blocked destination", func(c *sipCatalog, _ *outboundRoutePreviewRequest) {
+			c.Extensions[0].BlockedDestinations = []string{"+16505550123"}
+		}, "destination_blocked_for_extension"},
+		{"outside allowlist", func(c *sipCatalog, r *outboundRoutePreviewRequest) { r.Destination = "+14155550123" }, "destination_not_in_extension_allowlist"},
+		{"caller ID override", func(_ *sipCatalog, r *outboundRoutePreviewRequest) { r.CallerID = "+14155550100" }, "caller_id_not_authorized_for_extension"},
+		{"wrong site", func(_ *sipCatalog, r *outboundRoutePreviewRequest) { r.Site = "yxl" }, "site_not_available_in_this_admin_context"},
+		{"unsupported destination", func(_ *sipCatalog, r *outboundRoutePreviewRequest) { r.Destination = "+11005550100" }, "destination_not_supported_by_current_nanp_route"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, r := fixtureCatalog(), request
+			c.Version = 17
+			c.Providers[0].EgressPrefix = "9"
+			c.Providers[0].SupportedCodecs = []string{"PCMU", "PCMA"}
+			c.Extensions[0].AllowedDestinations = []string{"+16505550123"}
+			tc.mutate(&c, &r)
+			got := previewOutboundRoute(c, r, "yvr")
+			if got.Allowed || got.DenialReason != tc.want {
+				t.Fatalf("preview = %+v, want denial %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestOutboundRoutePreviewRequiresAdmin(t *testing.T) {
+	server := &server{}
+	mux := http.NewServeMux()
+	server.registerAdmin(mux)
+	request := httptest.NewRequest(http.MethodPost, "/api/routing/preview", strings.NewReader(`{"extension":"7101","destination":"+16505550123","site":"yvr"}`))
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("unauthorized route preview returned %d", response.Code)
+	}
+}
+
 func freeSwitchActionData(t *testing.T, document, application string) string {
 	t.Helper()
 	var response struct {
@@ -185,9 +244,11 @@ func TestFreeSwitchOutboundDialplanAppliesProviderAndDIDCodecOrder(t *testing.T)
 	lookup := func() string {
 		t.Helper()
 		form := url.Values{
-			"Caller-Context":                  {"core-managed-outbound"},
-			"Caller-Destination-Number":       {"+12065550101"},
-			"variable_sip_h_X-Core-Extension": {"7101"},
+			"Caller-Context":                        {"core-managed-outbound"},
+			"Caller-Destination-Number":             {"+12065550101"},
+			"variable_sip_h_X-Core-Extension":       {"7101"},
+			"variable_sip_h_X-Core-Call-Linkedid":   {"avoip-asterisk-1792442113.215"},
+			"variable_sip_h_X-Core-Origin-Uniqueid": {"avoip-asterisk-1792442113.216"},
 		}
 		r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -210,12 +271,31 @@ func TestFreeSwitchOutboundDialplanAppliesProviderAndDIDCodecOrder(t *testing.T)
 	if !strings.Contains(xml, "provider=carrier codecs=PCMA,PCMU") {
 		t.Fatalf("FreeSWITCH route selection diagnostics did not include provider and codec order: %s", xml)
 	}
+	if !strings.Contains(xml, `data="nolocal:sip_h_X-Core-Call-Linkedid=avoip-asterisk-1792442113.215"`) || !strings.Contains(xml, `data="nolocal:sip_h_X-Core-Origin-Uniqueid=avoip-asterisk-1792442113.216"`) {
+		t.Fatalf("FreeSWITCH B-leg did not inherit the trusted Asterisk correlation identifiers: %s", xml)
+	}
 
 	catalog.DIDs[0].CodecOrder = nil
 	s.cacheCatalog(catalog)
 	xml = lookup()
 	if got := freeSwitchActionData(t, xml, "export"); got != "nolocal:absolute_codec_string=PCMU,PCMA" {
 		t.Fatalf("provider codec order was not applied when the DID has no override: %s", xml)
+	}
+}
+
+func TestSafeCorrelationID(t *testing.T) {
+	for _, tc := range []struct {
+		input, want string
+	}{
+		{"avoip-asterisk-1792442113.215", "avoip-asterisk-1792442113.215"},
+		{"", ""},
+		{"call\r\nX-Injected: yes", ""},
+		{"call;header=value", ""},
+		{strings.Repeat("a", 129), ""},
+	} {
+		if got := safeCorrelationID(tc.input); got != tc.want {
+			t.Errorf("safeCorrelationID(%q) = %q, want %q", tc.input, got, tc.want)
+		}
 	}
 }
 
