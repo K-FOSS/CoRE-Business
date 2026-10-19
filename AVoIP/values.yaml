@@ -220,16 +220,16 @@ flowrouteSMS:
   images:
     web:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-web'
-      tag: '1-26c2251c658e4f541c4b3b2dbbf1037b5b285306'
-      digest: 'sha256:2129e19f369b00b8863bf996afe2b45f3c2aa603c6361f010c561e8a1d6e0ccb'
+      tag: '1-62a50ea54d9696c4d539af9a91afc4c85c092813'
+      digest: 'sha256:5cd6156fe231acd9212a5682902a019a4e367d34fc96e85e832dab4199fa5a52'
     api:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-api'
-      tag: '1-26c2251c658e4f541c4b3b2dbbf1037b5b285306'
-      digest: 'sha256:a9f18c04ce9f28796db22521d686c3d57e52a8cf0123d8e6e4f53b8da2c23c0e'
+      tag: '1-62a50ea54d9696c4d539af9a91afc4c85c092813'
+      digest: 'sha256:6b867415f0eb69bae4f4253b9f2fd37067073e5f6364459e14ff6de97f1b8151'
     webhook:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-webhook'
-      tag: '1-26c2251c658e4f541c4b3b2dbbf1037b5b285306'
-      digest: 'sha256:3eed0b0b80087903bf731750988e029c6a82969b1f06e45220f0991aa4bf2a99'
+      tag: '1-62a50ea54d9696c4d539af9a91afc4c85c092813'
+      digest: 'sha256:2b8f138edcc3e76d9c5d8c1bdacec028b0913a479fe5a58172f2568bb4608a8b'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
@@ -1522,7 +1522,7 @@ jitsi-meet:
       repository: jitsi/prosody
       tag: 'stable'
 
-# Site-local Authentik administration. Activation requires the new pinned image.
+# Site-local Authentik administration; enable separately from managed SIP routing.
 avoipAdmin:
   enabled: false
   primaryRegion: 'yvr'
@@ -1531,8 +1531,8 @@ avoipAdmin:
   replicas: 2
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
-    tag: ''
-    digest: ''
+    tag: '1-62a50ea54d9696c4d539af9a91afc4c85c092813'
+    digest: 'sha256:a2afec90cefdd31c1e01a3d6f80e9633827958690901894498ef37ae28c05270'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.
@@ -1544,6 +1544,6 @@ avoipAdmin:
     upstreamCIDRs: []
     image:
       repository: 'slop.writemy.codes/core/core-business/kamailio-routing'
-      tag: ''
-      digest: ''
+      tag: '1-b58e69003e930cf3b41f4083c4dcc7a03b498e1f'
+      digest: 'sha256:219818c75659592456b5b34543572effda93512cd57f6dbb9c00fdded5d3deb5'
       pullPolicy: 'IfNotPresent'

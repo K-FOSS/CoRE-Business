@@ -3,10 +3,10 @@
     # The private peer listener uses strict mTLS and an explicit allowlist.
     # The separate SIP Core return listener uses Cilium workload identity.
     request_route {
-      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       $var(managed_json) = $sht(managed=>snapshot);
       $var(managed_provider) = "";
-      {{ end }}
+      {{- end }}
       if (!sanity_check("1511", "7") || !mf_process_maxfwd_header("10")) {
         if (!is_method("ACK")) sl_send_reply("400", "Invalid Request");
         exit;
@@ -217,7 +217,7 @@
       # comes through this private listener, then the existing local carrier
       # Gateway continues through carrier Kamailio and RTPEngine.
       if ($var(peer_name) == "freeswitch-flowroute") {
-        {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+        {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
         route(MANAGED_EGRESS);
         if ($var(managed_egress) == 1) {
           if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") || $rU =~ "^\\+1900" || $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") { sl_send_reply("403", "Destination Not Authorized"); exit; }
@@ -226,7 +226,7 @@
           record_route(); dlg_manage(); $dlg_var(outbound_carrier) = "yes";
           route(PRIVATE_TO_CARRIER_GATEWAY); route(PRIVATE_RELAY); exit;
         }
-        {{ end }}
+        {{- end }}
         if (!is_method("INVITE") ||
             !($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") ||
             $rU =~ "^\\+1900" ||
@@ -413,13 +413,13 @@
         exit;
       }
 
-      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       if (has_totag() && $dlg_var(managed_outbound) == "yes") {
         if (!loose_route()) { if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist"); exit; }
         route(PRIVATE_RELAY); exit;
       }
       route(MANAGED_EXTENSION);
-      {{ end }}
+      {{- end }}
       {{- if .Values.kamailio.carrierOutbound.enabled }}
       if (has_totag() && $dlg_var(outbound_carrier) == "yes") {
         if (is_method("ACK") && !is_present_hf("Route") && $(ru{uri.param,tps}) == "") {

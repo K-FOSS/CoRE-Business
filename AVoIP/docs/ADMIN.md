@@ -168,3 +168,32 @@ audited. Deleting an SMS message removes its stored attachments and retains a
 minimal tombstone to prevent callback replay from restoring it; it does not
 recall delivery or erase provider copies/backups. No default cleanup retention
 is imposed by this change.
+
+## Validation record and activation boundary
+
+The implementation was checked with Go race tests and a disposable localhost
+PostgreSQL database, including additive DDL, concurrent message deduplication,
+tombstones, authorization and optimistic updates. Provider HTTP requests and
+webhook signatures use synthetic fixtures; no paid provider calls are required.
+The database integration tests require `SMS_TEST_DATABASE_URL` pointing to a
+throwaway localhost database ending in `_test` and reset their own test tables.
+Never point these tests at an application database.
+
+With managed routing disabled, all 68 existing YVR SIP/media resources compare
+exactly against the pre-change baseline, including configuration strings and
+FreeSWITCH credential templates. This avoids incidental configuration reloads.
+Both YVR and YXL Backplane value layers were rendered through Helm and the local
+Kustomize patches. Embedded XML, Terraform/HCL and Authentik Python expressions
+were parsed. Native Kamailio syntax checks cover carrier/private configurations
+at both sites; the existing WebSocket LF-heartbeat image remains separate.
+See [the UI fixtures](UI-DESIGN.md#reproducible-browser-fixtures) for browser
+coverage and remaining accessibility acceptance.
+
+Image publication is tracked in the [SMS build](https://slop.writemy.codes/CoRE/CoRE-Business/actions/runs/54)
+and [managed Kamailio build](https://slop.writemy.codes/CoRE/CoRE-Business/actions/runs/51).
+Values pin published artifacts; `avoipAdmin.enabled` and
+`avoipAdmin.routing.enabled` remain false until an intentional rollout. This
+work did not reconcile Argo CD, execute application schema changes in production,
+or change live SIP routing. Real carrier calls, cross-site handoff,
+`mod_xml_curl` availability in the deployed FreeSWITCH image, production
+Authentik login and original fax/voicemail paths remain activation checks.

@@ -43,12 +43,13 @@
         exit;
       }
 
-      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       route(MANAGED_EGRESS);
-      {{ end }}
-      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- end }}
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       route(MANAGED_HANDOFF);
-      {{ end }}
+      {{- end }}
+
       # New calls require the configured service identity and caller policy.
       if ({{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}$var(managed_egress) != 1 && {{ end }}{{- if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}$fU != "{{ .Values.kamailio.carrierOutbound.calls.callerId }}"{{- else }}$fU != "{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}"{{- end }}) {
         sl_send_reply("403", "Caller Identity Not Authorized");
@@ -105,9 +106,9 @@
       {{- else }}
       $ru = "sips:" + $rU + "@{{ .Values.flowroute.outboundHost }}";
       {{- end }}
-      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       if ($var(managed_egress) == 1) { $ru = "sips:" + $rU + "@" + $var(managed_host); }
-      {{ end }}
+      {{- end }}
       route(RR_BACKEND_TO_CARRIER);
       $dlg_ctx(timeout_route) = "OUTBOUND_DIALOG_TIMEOUT";
       dlg_manage();
@@ -125,13 +126,13 @@
         }
       }
       $du = "sips:{{ .Values.flowroute.outboundHost }}:5061;transport=tls";
-      {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       if ($var(managed_egress) == 1) {
         $du = "sips:" + $var(managed_host) + ":5061;transport=tls";
         $xavp(tls=>server_name) = $var(managed_host);
         $dlg_var(outbound_gateway) = $var(managed_host);
       }
-      {{ end }}
+      {{- end }}
       set_send_socket_name("public_tls");
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog(
