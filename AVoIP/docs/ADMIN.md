@@ -82,6 +82,8 @@ an admin-reviewed entitlement, not STIR/SHAKEN authentication of an inbound call
 A DID lists its allowed inbound providers, each with current number-ownership
 verification, and a destination site plus one of:
 
+- `ivr`: the site's existing silent FreeSWITCH IVR; leave destination empty and
+  choose a site with `freeswitch.ivr.enabled`;
 - `extension`: an explicit numeric internal extension;
 - `did`: canonical external number, outbound provider and a verified caller ID;
 - `sip`: an explicit `sips:user@host[:port]` endpoint without arbitrary headers,
@@ -93,6 +95,26 @@ Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never
 authorization to select a caller ID. The existing outbound NANP and premium-rate
 restrictions and carrier quota remain; this change does not authorize unrestricted
 international calling. Emergency/service dialing stays on the existing routes.
+
+### Move the existing IVR and direct numbers into Admin
+
+In **SIP providers**, keep the inbound carrier's signaling CIDRs, site gateway,
+and a current ownership verification record for each DID. In **DIDs**, add one
+record per inbound number, using canonical `+1…` format and the provider ID in
+**Allowed inbound provider IDs**:
+
+| Number | Destination site | Destination type | Destination |
+| --- | --- | --- | --- |
+| Main voice DID | `yvr` | `ivr` | Empty; enters `silent-ivr-entry` |
+| Each direct DID | `yvr` | `extension` | `7101` (or its intended extension) |
+
+The IVR site must have `freeswitch.ivr.enabled`; its digit choices still come
+from the site's FreeSWITCH IVR configuration. The direct extension must exist
+in Asterisk SIP Core. Add or verify the **Caller ID assignments** record for
+`7101` separately: select its outbound provider, verified caller-ID number,
+and egress site. An inbound DID route does not grant outbound caller-ID use.
+The catalog is administered per site; confirm both sites have the required
+records before removing the static cross-site or carrier fallback.
 
 Additional upstream gateways use the established FreeSWITCH carrier profile and
 private-to-carrier Kamailio proxy, preserving the public signaling border and

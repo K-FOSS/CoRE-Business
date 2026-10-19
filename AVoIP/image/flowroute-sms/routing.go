@@ -137,6 +137,10 @@ func (c sipCatalog) validate() error {
 			}
 		}
 		switch d.Kind {
+		case "ivr":
+			if d.Destination != "" {
+				return errors.New("IVR destination must be empty")
+			}
 		case "extension":
 			if !extensionID.MatchString(d.Destination) {
 				return errors.New("invalid destination extension")
@@ -415,6 +419,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	destination := r.Form.Get("Caller-Destination-Number")
 	extension := r.Form.Get("variable_sip_h_X-Core-Extension")
 	bridge := ""
+	transfer := ""
 	callerID := ""
 	gateway := ""
 	if context == "core-managed-outbound" && extensionID.MatchString(extension) {
@@ -437,6 +442,8 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		for _, d := range c.DIDs {
 			if d.Number == did && d.Site == site {
 				switch d.Kind {
+				case "ivr":
+					transfer = "silent-ivr-entry XML public"
 				case "extension":
 					bridge = "sofia/gateway/asterisk/" + d.Destination
 				case "sip":
@@ -454,7 +461,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "text/xml")
-	if bridge == "" {
+	if bridge == "" && transfer == "" {
 		io.WriteString(w, `<document type="freeswitch/xml"><section name="result"><result status="not found"/></section></document>`)
 		return
 	}
@@ -463,7 +470,12 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	if callerID != "" {
 		text += `<action application="set" data="effective_caller_id_number=` + escape(callerID) + `"/>`
 	}
-	text += `<action application="set" data="hangup_after_bridge=true"/><action application="bridge" data="` + escape(bridge) + `"/></condition></extension></context></section></document>`
+	if transfer != "" {
+		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
+	} else {
+		text += `<action application="set" data="hangup_after_bridge=true"/><action application="bridge" data="` + escape(bridge) + `"/>`
+	}
+	text += `</condition></extension></context></section></document>`
 	io.WriteString(w, text)
 }
 

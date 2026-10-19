@@ -267,7 +267,10 @@ disabled. The former Asterisk-to-FreeSWITCH route remains available only while
 Admin routing is disabled. FreeSWITCH still registers to the regional
 Flowroute SIP endpoint using the existing Vault record
 `AVoIP/SIP/FlowRoute` (`Username` and `Password`) for its separate inbound
-role. YXL uses the US-East-VA PoP and YVR uses US-West-OR. The existing
+role. The managed DID catalog supports an IVR destination for the main voice
+number and direct extension destinations for other numbers; see the
+[Admin configuration steps](docs/ADMIN.md#move-the-existing-ivr-and-direct-numbers-into-admin).
+YXL uses the US-East-VA PoP and YVR uses US-West-OR. The existing
 carrier path and RTPEngine continue to handle signaling and media. The legacy
 Flowroute gateway uses its `outbound-proxy` for the Kamailio INVITE hop,
 following the
