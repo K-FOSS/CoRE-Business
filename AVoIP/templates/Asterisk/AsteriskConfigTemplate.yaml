@@ -21,7 +21,7 @@
   {{- if not $sipCoreKamailioFound -}}
     {{- fail "Asterisk SIP Core requires a configured enabled private-sbc matching asterisk.sipCore.kamailioInstance" -}}
   {{- end -}}
-  {{- if and .Values.asterisk.sipCore.outboundNANP.enabled (not .Values.freeswitch.flowrouteOutbound.enabled) -}}
+  {{- if and .Values.asterisk.sipCore.outboundNANP.enabled (not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled)) (not .Values.freeswitch.flowrouteOutbound.enabled) -}}
     {{- fail "Asterisk NANP outbound requires freeswitch.flowrouteOutbound.enabled" -}}
   {{- end -}}
   {{- if .Values.asterisk.sipCore.externalCallback.enabled -}}
@@ -160,7 +160,7 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- if .Values.asterisk.sipCore.outboundNANP.enabled -}}
+  {{- if and .Values.asterisk.sipCore.outboundNANP.enabled (not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled)) -}}
     {{- if not .Values.asterisk.sipCore.outboundNANP.extensions -}}
       {{- fail "asterisk.sipCore.outboundNANP.extensions must list at least one enabled account" -}}
     {{- end -}}

@@ -74,9 +74,10 @@
       {{- else -}}
         {{- $callerId := toString $outbound.calls.callerId -}}
         {{- $callerIdConfigured := or (regexMatch "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" $callerId) (regexMatch "^<path:[A-Za-z0-9_./#-]+>$" $callerId) -}}
-        {{- if or (not $callerIdConfigured) (not $outbound.calls.extensions) -}}
+        {{- if and (not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled)) (or (not $callerIdConfigured) (not $outbound.calls.extensions)) -}}
           {{- fail (printf "Kamailio %s carrierOutbound NANP policy requires a NANP caller ID and at least one authorized extension" $name) -}}
         {{- end -}}
+        {{- if not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled) -}}
         {{- range $outbound.calls.extensions -}}
           {{- $authorizedExtension := . -}}
           {{- $found := false -}}
@@ -87,11 +88,12 @@
             {{- fail (printf "Kamailio %s NANP authorized extensions must match configured Asterisk SIP Core accounts" $name) -}}
           {{- end -}}
         {{- end -}}
+        {{- end -}}
       {{- end -}}
       {{- if or (lt (int $outbound.limits.callsPerMinute) 1) (lt (int $outbound.limits.concurrentCalls) 1) (lt (int $outbound.limits.maxDurationSeconds) 60) -}}
         {{- fail (printf "Kamailio %s carrierOutbound requires positive rate/concurrency limits and at least 60 seconds max duration" $name) -}}
       {{- end -}}
-      {{- if and (eq $role "private-sbc") (eq $outbound.calls.mode "nanp") (or (not $.Values.asterisk.sipCore.outboundNANP.enabled) (not (deepEqual $outbound.calls.extensions $.Values.asterisk.sipCore.outboundNANP.extensions))) -}}
+      {{- if and (eq $role "private-sbc") (eq $outbound.calls.mode "nanp") (not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled)) (or (not $.Values.asterisk.sipCore.outboundNANP.enabled) (not (deepEqual $outbound.calls.extensions $.Values.asterisk.sipCore.outboundNANP.extensions))) -}}
         {{- fail (printf "Kamailio %s NANP extension allowlist must exactly match Asterisk asterisk.sipCore.outboundNANP.extensions" $name) -}}
       {{- end -}}
     {{- end -}}

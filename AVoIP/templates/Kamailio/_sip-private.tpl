@@ -419,6 +419,15 @@
         route(PRIVATE_RELAY); exit;
       }
       route(MANAGED_EXTENSION);
+      # Database routing is authoritative for new NANP calls. A missing,
+      # expired, or unauthorized extension mapping must not fall through to
+      # the older static extension/caller-ID allowlist below.
+      if (!has_totag() && is_method("INVITE") &&
+          $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") {
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_unmatched call_id=$ci extension=$fU destination_format=nanp\n");
+        sl_send_reply("403", "Managed Extension Not Authorized");
+        exit;
+      }
       {{- end }}
       {{- if .Values.kamailio.carrierOutbound.enabled }}
       if (has_totag() && $dlg_var(outbound_carrier) == "yes") {
@@ -435,7 +444,7 @@
       }
       {{- end }}
 
-      {{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") }}
+      {{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.carrierOutbound.calls.enabled (eq .Values.kamailio.carrierOutbound.calls.mode "nanp") (not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled)) }}
       # Asterisk-originated NANP calls use this existing TLS listener and the
       # private Kamailio's existing Gateway/mTLS connection to the carrier.
       if (!has_totag() && is_method("INVITE") && $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") {

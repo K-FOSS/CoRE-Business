@@ -51,10 +51,18 @@
       {{- end }}
 
       # New calls require the configured service identity and caller policy.
-      if ({{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}$var(managed_egress) != 1 && {{ end }}{{- if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}$fU != "{{ .Values.kamailio.carrierOutbound.calls.callerId }}"{{- else }}$fU != "{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}"{{- end }}) {
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      if ($var(managed_egress) != 1) {
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_egress_unverified call_id=$ci extension=$hdr(X-Core-Extension) method=$rm\n");
+        sl_send_reply("403", "Managed Egress Not Authorized");
+        exit;
+      }
+      {{- else }}
+      if ($fU != "{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}") {
         sl_send_reply("403", "Caller Identity Not Authorized");
         exit;
       }
+      {{- end }}
       if ($rU =~ "^[2-9][0-9]{9}$") {
         $rU = "+1" + $rU;
       } else if ($rU =~ "^1[2-9][0-9]{9}$") {
@@ -72,9 +80,14 @@
       # replicas. A stale call expires after maxDurationSeconds even if a pod
       # disappears before BYE. A failed Redis operation fails closed.
       $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>={{ .Values.kamailio.carrierOutbound.limits.concurrentCalls }} then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>={{ .Values.kamailio.carrierOutbound.limits.callsPerMinute }} or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }},'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }});return 1";
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
+      {{- else }}
+      $var(outbound_quota_key) = "avoip:out:quota:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}";
+      {{- end }}
       if (!redis_cmd(
         "topos", "EVAL %s 1 %s %s", "$var(quota_script)",
-        "avoip:out:quota:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}",
+        "$var(outbound_quota_key)",
         "$ci", "outbound_quota"
       )) {
         sl_send_reply("503", "Outbound Quota Unavailable");
@@ -96,7 +109,7 @@
       }
 
       remove_hf("P-Asserted-Identity");
-      append_hf("P-Asserted-Identity: <sip:{{ if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
+      append_hf("P-Asserted-Identity: <sip:{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}$fU{{ else if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
       {{- if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}
       if (!($env(FLOWROUTE_TECH_PREFIX) =~ "^[0-9]{8}$")) {
         sl_send_reply("503", "Flowroute Tech Prefix Unavailable");

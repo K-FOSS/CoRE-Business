@@ -42,7 +42,7 @@ data:
     #!defenvs REGISTRAR_DB_URL
     {{- end }}
 
-    debug={{ if .Values.kamailio.sipLogging.diagnostics.enabled }}{{ .Values.kamailio.sipLogging.diagnostics.coreDebug }}{{ else }}0{{ end }}
+    debug={{ if .Values.kamailio.sipLogging.diagnostics.enabled }}{{ .Values.kamailio.sipLogging.diagnostics.coreDebug }}{{ else }}{{ .Values.kamailio.coreDebug }}{{ end }}
     corelog=-1
     log_stderror=yes
 

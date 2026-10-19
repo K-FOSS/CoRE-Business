@@ -265,15 +265,23 @@ data:
     ; Ask the authenticated FreeSWITCH peer to stream the configured sound clip.
     exten => {{ $.Values.asterisk.sipCore.soundClipExtension }},1,Dial(PJSIP/{{ $.Values.asterisk.sipCore.soundClipDestination }}@freeswitch,30,g)
       same => n,Hangup()
-    {{- if and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions) }}
-    ; PSTN egress is limited to the configured NANP-enabled account.
+    {{- if or (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled) (and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions)) }}
+    ; With Admin routing active, Kamailio resolves this extension and caller ID
+    ; from the managed database. Keep the static FreeSWITCH route only as the
+    ; compatibility path for sites not yet using managed routing.
     exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .number }})
+    {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
+      same => n,NoOp(AVoIP managed outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination=${EXTEN})
+      same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120)
+      same => n,NoOp(AVoIP managed outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
+    {{- else }}
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-outbound-hangup,s,1)
       same => n,Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,X-Call-ID)})
       same => n,ExecIf($["${AVOIP_HOMER_CORRELATION_ID}" = ""]?Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,Call-ID)}))
       same => n,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} extension={{ .number }} destination=${EXTEN})
       same => n,Dial(PJSIP/${EXTEN}@freeswitch,120,gb(sipcore-outbound-headers^s^1))
       same => n,NoOp(AVoIP outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
+    {{- end }}
       same => n,Hangup()
     {{- end }}
     {{- $echoAllowed := false -}}

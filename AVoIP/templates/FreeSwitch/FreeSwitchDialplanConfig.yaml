@@ -423,7 +423,7 @@ data:
           </condition>
         </extension>
         {{- end }}
-        {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.outboundNANP.enabled $.Values.freeswitch.flowrouteOutbound.enabled }}
+        {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.outboundNANP.enabled $.Values.freeswitch.flowrouteOutbound.enabled (not (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled)) }}
         {{- range $.Values.asterisk.sipCore.outboundNANP.extensions }}
         <extension name="flowroute-nanp-{{ . }}">
           <condition field="${channel_name}" expression="^sofia/asterisk/"/>

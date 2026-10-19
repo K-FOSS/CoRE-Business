@@ -432,6 +432,9 @@ kamailio:
       role: 'carrier-sbc'
       replicas: 3
   defaults:
+    # Keep Kamailio core diagnostics at info level for every role, including
+    # carrier instances that do not enable the more detailed SIP diagnostics.
+    coreDebug: 2
     # Optional per-instance workload overrides. Empty values preserve the
     # existing carrier manifest. extraEnv is a replace-only list; entries may
     # use secretKeyRef, never inline credentials.
