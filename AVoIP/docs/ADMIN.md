@@ -222,3 +222,5 @@ The admin-only Terraform ProviderConfig retains the existing Authentik Kubernete
 state backend (`providerconfig-authentik` in the credential namespace). Workspace
 state remains scoped by workspace identity; changing the plugin version must not
 move or reset that state. No state migration or application recreation is intended.
+The admin Workspace initializes with `-reconfigure` so cached Terraform metadata
+uses this unchanged backend after the provider split; it does not migrate state.

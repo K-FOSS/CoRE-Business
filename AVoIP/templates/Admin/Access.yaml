@@ -16,6 +16,8 @@ spec:
     name: '{{ $.Values.avoipAdmin.auth.providerConfigRef }}'
   forProvider:
     source: 'Inline'
+    # Reinitialize cached metadata against the unchanged remote state backend.
+    initArgs: ['-reconfigure']
     varmap:
       provider_name: '{{ $name }} {{ $.Values.cluster.name }}'
       outpost_name: '{{ $.Values.avoipAdmin.auth.outpostName }}'
