@@ -54,7 +54,7 @@ spec:
     {{- end }}
     {{- end }}
   egress:
-    {{ if and $root.Values.avoipAdmin.enabled $root.Values.avoipAdmin.routing.enabled }}
+    {{ if and $root.Values.avoipAdmin.enabled $root.Values.avoipAdmin.routing.enabled (not ($instance.websocketHA | default dict).enabled) }}
     - toEndpoints:
         - matchLabels:
             app.kubernetes.io/controller: 'avoip-admin'

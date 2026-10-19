@@ -64,7 +64,7 @@
             - protocol: TCP
               port: 5062
       egress:
-        {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+        {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
         - to:
             - podSelector:
                 matchLabels:
@@ -340,7 +340,7 @@
             exec /usr/sbin/kamailio -m {{ .Values.kamailio.shmSizeMb }} -DD -E -P /tmp/kamailio.pid
             -f /etc/kamailio/kamailio.cfg
         env:
-{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
+{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
           - name: 'AVOIP_ROUTING_TOKEN'
             valueFrom:
               secretKeyRef:
