@@ -51,9 +51,9 @@ data:
 
   CONF_VIRTUAL_TRANSPORT: 'lmtp:inet:mail.mylogin.space:2525'
   CONF_VIRTUAL_MAILBOX_DOMAINS: 'mail.mylogin.space'
+  CONF_VIRTUAL_ALIAS_DOMAINS: {{ .Values.email.aliasDomains | join "," | squote }}
   CONF_VIRTUAL_ALIAS_MAPS: 'ldap:/etc/postfix/ldap.cf'
   CONF_VIRTUAL_MAILBOX_MAPS: 'ldap:/etc/postfix/ldap-in.cf'
-  CONF_RELAY_DOMAINS: 'ldap:/etc/postfix/ldap-relay.cf'
   CONF_LMTP_HOST_LOOKUP: 'native'
   CONF_SMTPD_SENDER_LOGIN_MAPS: 'ldap:/etc/postfix/ldap-auth.cf'
 
@@ -78,6 +78,7 @@ data:
   #
   CONF_SMTPD_RECIPIENT_RESTRICTIONS: |
     reject_unauth_pipelining,reject_non_fqdn_recipient,permit_mynetworks,permit
+  CONF_SMTPD_REJECT_UNLISTED_RECIPIENT: 'yes'
 
   CONF_SMTPD_RELAY_RESTRICTIONS: |
     permit_sasl_authenticated,permit_mynetworks,reject_unauth_destination

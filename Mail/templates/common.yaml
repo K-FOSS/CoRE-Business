@@ -125,6 +125,7 @@ controllers:
         image:
           repository: 'kristianfoss/postfix'
           tag: 'core'
+          digest: 'sha256:a799022b5250ecf83b3cb2d3a07ea6bf492a63a8fece7a1de1e5f37288305593'
           pullPolicy: IfNotPresent
         resources:
           requests:
@@ -443,8 +444,6 @@ persistence:
         postfix:
           - path: '/etc/postfix/ldap.cf'
             subPath: 'ldap.cf'
-          - path: '/etc/postfix/ldap-relay.cf'
-            subPath: 'ldap-relay.cf'
           - path: '/etc/postfix/ldap-in.cf'
             subPath: 'ldap-in.cf'
           - path: '/etc/postfix/ldap-auth.cf'

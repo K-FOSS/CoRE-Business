@@ -18,10 +18,12 @@ access group and does not grant Authentik superuser privileges. The inbox
 allows either group. See the
 [Flowroute SMS guide](docs/FLOWROUTE-SMS.md) for scaling, data handling,
 deployment inputs and verification.
-The `AVoIP Admins` group also publishes `voip@snd.fyi` in its
-`mailacceptinggeneralid` LDAP attribute for the mail alias lookup. Its
-existing attributes, including shared `sms_numbers`, are retained when this
-value is reconciled.
+The `AVoIP Admins` desired state declares `voip@snd.fyi`,
+`voip@resolvemy.host` and `voip@writemy.codes` as separate values in its
+`mailacceptinggeneralid` LDAP attribute for Postfix group alias expansion.
+Runtime alias resolution still requires LDAP-backed verification. Its existing
+attributes, including shared `sms_numbers`, are retained when these values are
+reconciled.
 For inbound-call ACKs or remote BYEs rejected after a retransmitted answer,
 see the [SIP Core Contact alias repair](docs/SIPCORE-REMOTE-HANGUP.md).
 

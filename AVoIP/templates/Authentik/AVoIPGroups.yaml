@@ -4,7 +4,7 @@
 {{- $_ := required "avoip.authentik.workspaceName is required" $authentik.workspaceName -}}
 {{- $_ := required "avoip.authentik.usersGroup is required" $authentik.usersGroup -}}
 {{- $_ := required "avoip.authentik.adminsGroup is required" $authentik.adminsGroup -}}
-{{- $_ := required "avoip.authentik.adminsMailAcceptingGeneralId is required" $authentik.adminsMailAcceptingGeneralId -}}
+{{- $_ := required "avoip.authentik.adminsMailAcceptingGeneralIds is required" $authentik.adminsMailAcceptingGeneralIds -}}
 ---
 apiVersion: tf.upbound.io/v1beta1
 kind: Workspace
@@ -20,11 +20,12 @@ spec:
     varmap:
       users_group: '{{ $authentik.usersGroup }}'
       admins_group: '{{ $authentik.adminsGroup }}'
-      admins_mail_accepting_general_id: '{{ $authentik.adminsMailAcceptingGeneralId }}'
+      admins_mail_accepting_general_ids:
+{{- $authentik.adminsMailAcceptingGeneralIds | toYaml | nindent 8 }}
     module: |
       variable "users_group" { type = string }
       variable "admins_group" { type = string }
-      variable "admins_mail_accepting_general_id" { type = string }
+      variable "admins_mail_accepting_general_ids" { type = list(string) }
 
       # Read the live attributes so existing SMS number assignments survive.
       data "authentik_group" "current_admins" {
@@ -49,7 +50,7 @@ spec:
           try(jsondecode(data.authentik_group.current_admins.attributes), {}),
           {
             avoip_role             = "admin"
-            mailacceptinggeneralid = [var.admins_mail_accepting_general_id]
+            mailacceptinggeneralid = var.admins_mail_accepting_general_ids
           }
         ))
       }

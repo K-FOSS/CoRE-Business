@@ -35,23 +35,9 @@ data:
     query_filter = (&(objectClass=group)(mailacceptinggeneralid=%s))
 
     search_base = dc=ldap,dc=mylogin,dc=space
-    result_attribute = cn
+    result_attribute =
     special_result_attribute = member
-
-  ldap-relay.cf: |
-    server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
-    {{`
-    start_tls = no
-    version = 3
-
-    bind = yes
-    bind_dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
-    bind_pw = {{ .Password }}
-
-    search_base = dc=ldap,dc=mylogin,dc=space
-    query_filter = (&(objectClass=group)(mailacceptinggeneralid=%s))
-    result_attribute = cn
-    `}}
+    leaf_result_attribute = mail
 
   ldap-in.cf: |
     server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}

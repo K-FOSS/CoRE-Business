@@ -45,6 +45,10 @@ site:
 email:
   domain: mail.mylogin.space
   support: k@mylogin.space
+  aliasDomains:
+    - 'snd.fyi'
+    - 'resolvemy.host'
+    - 'writemy.codes'
   tls:
     secretName: myloginspace-default-certificates
 

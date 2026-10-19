@@ -133,30 +133,36 @@ a provisioned callback token and immutable webhook image digest. The protected
 API uses the same PostgreSQL records for conversations and sends through
 Flowroute with separate Vault sourced credentials. The service uses the
 current global PSQL provider through the
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml),
-[PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
-and [User implementation](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Operations/SSO/User).
-`AVoIP Admins` also publishes `voip@snd.fyi` as an Authentik LDAP group
-attribute; reconciliation retains its existing shared SMS number attributes.
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml),
+[PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml),
+and [User implementation](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User).
+`AVoIP Admins` desired state declares the `voip@` aliases on `snd.fyi`,
+`resolvemy.host` and `writemy.codes` as separate Authentik LDAP group attribute
+values; reconciliation retains its existing shared SMS number attributes.
+Postfix still requires an LDAP-backed lookup to confirm that these values are
+visible through the deployed Outpost.
 
 The active, multi-site [Mail chart](../Mail/README.md), owned by the
-[Mail ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Mail.yaml),
+[Mail ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Mail.yaml),
 uses the current
-[`mylogin.space` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+[`mylogin.space` User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
 to provision Maddy's PostgreSQL database and S3 service account. Its merge
 generator targets the approved `dc1-k3s-node1`, `core-dc1-talos-prod` and
 `core-home1-talos-prod` clusters. Lovely injects each cluster's DNS domain,
 LDAP endpoint, site-local PostgreSQL and Dragonfly endpoints, and PostgreSQL/S3
 provider names into Maddy, Postfix, Dovecot and Rspamd. Those dependencies are
 defined by the
-[PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml),
-[storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml),
+[PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml),
+[storage base ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml),
 and
-[Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
+[Dragonfly ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Dragonfly/CoRE.yaml).
 Dragonfly credentials remain platform-managed and are rendered into Rspamd's
 configuration by External Secrets rather than committed to this repository.
 The checked-in values remain DC1 K3s defaults; validate a render with every
 target's injected values before changing this production stack.
+Postfix accepts the three public alias domains through virtual alias mapping
+and expands Authentik group members to their primary `mail.mylogin.space`
+addresses; `mail.mylogin.space` remains the mailbox domain.
 The selected Mail credential hub exclusively owns the generated Postfix,
 Maddy and optional SimpleLogin identities and publishes their connection
 fields below its cluster path in the shared Vault store. Other Mail targets

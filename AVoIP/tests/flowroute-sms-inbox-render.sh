@@ -26,8 +26,12 @@ for expected in \
   'resource "authentik_group" "avoip_users"' \
   'resource "authentik_group" "avoip_admins"' \
   'data "authentik_group" "current_admins"' \
-  'mailacceptinggeneralid = [var.admins_mail_accepting_general_id]' \
+  'admins_mail_accepting_general_ids:' \
+  'variable "admins_mail_accepting_general_ids" { type = list(string) }' \
+  'mailacceptinggeneralid = var.admins_mail_accepting_general_ids' \
   'voip@snd.fyi' \
+  'voip@resolvemy.host' \
+  'voip@writemy.codes' \
   'resource "authentik_policy_binding" "users_access"' \
   'resource "authentik_policy_binding" "admins_access"' \
   'X-Auth-Numbers' \
