@@ -304,7 +304,13 @@ Flowroute Tech Prefix setting; SIP registration and provider credentials remain
 Vault-backed. Flowroute IP authentication also requires a static public egress
 IP and account-side allowlisting; see its
 [IP-auth setup](https://support.bcmone.com/flowroute-support/docs/set-up-ip-based-authentication-for-outbound-calls).
-The Extensions editor can also record an assigned Authentik user and exact
+The Extensions editor can authorize several verified caller IDs and upstream
+providers in preference order. The first caller ID is the live default; for
+that number, the first provider with current verification and a site gateway is
+published to FreeSWITCH/Kamailio and used by the managed route. Route preview
+also evaluates another authorized caller ID against each provider. Provider
+health is currently reported as unknown and live health-based failover is not
+implemented. The editor also records an assigned Authentik user and exact
 E.164 destination allow/block lists. Kamailio enforces configured destination
 restrictions before selecting the upstream; the assignment is administrative
 metadata and does not change an extension's SIP credential. Managed Asterisk

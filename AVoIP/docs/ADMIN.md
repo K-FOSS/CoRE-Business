@@ -112,15 +112,24 @@ Disable it on a DID to skip SpanDSP detection. The site-wide
 enabled for detection to run. Detected faxes transfer to the existing
 `fax-receive` processing path; the DID destination still controls the voice call.
 
-An extension assignment selects its verified caller-ID number, upstream provider
-and YVR/YXL egress site. The **Extensions** screen also stores a display name and
-explicit enabled/outbound-enabled flags. Older catalog entries without those
-flags retain their previous enabled behavior. Disabled entries stay identifiable
-in the immutable routing snapshot, but Kamailio rejects their outbound calls
-with a distinct reason (`extension_disabled` or `outbound_disabled`) in Homer.
-This screen governs authorization; it does not rewrite Asterisk endpoint
-credentials or report live registration state. Registration attempts and
-responses are correlated in Homer using the SIP Call-ID.
+An extension can select verified caller IDs and authorized providers in
+preference order. A caller ID is eligible only through a provider that has
+current verification evidence and a gateway at the selected site. The first
+caller ID is the runtime default; for that identity, the first currently
+eligible provider is used. Route preview can check another authorized caller ID
+and shows each provider removed by verification or missing site gateway. The
+**Extensions** screen also stores assignment metadata, exact destination
+allow/block lists, display name and explicit enabled/outbound-enabled flags.
+Older catalog entries without the list fields keep their singular caller ID and
+provider behavior, and entries without enablement flags retain their prior
+enabled behavior. Disabled entries stay identifiable in the immutable routing
+snapshot, but Kamailio rejects their outbound calls with a distinct reason
+(`extension_disabled` or `outbound_disabled`) in Homer. This screen governs
+authorization; it does not rewrite Asterisk endpoint credentials or report
+live registration state. Registration attempts and responses are correlated
+in Homer using the SIP Call-ID. Provider failover based on live health is not
+implemented by this route yet; the policy preview reports health as
+`not_reported`.
 
 Each DID card can preview an inbound route without placing a call. The preview
 checks the exact DID, site, assigned provider and optional provider source IP

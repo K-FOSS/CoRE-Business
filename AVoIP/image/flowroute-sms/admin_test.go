@@ -104,6 +104,45 @@ func TestOutboundRoutePreviewUsesCurrentAuthorization(t *testing.T) {
 	}
 }
 
+func TestOutboundRoutePreviewSupportsProviderSpecificCallerIDsAndFailoverOrder(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.Providers = append(catalog.Providers, sipProvider{
+		ID: "backup", Host: "sip.backup.example", CIDRs: []string{"198.51.100.0/24"},
+		Gateways:  map[string]string{"yvr": "backup-tls"},
+		CallerIDs: []verifiedCallerID{{Number: "+12065550101", Evidence: "provider ownership review"}},
+	})
+	catalog.Extensions[0].AuthorizedCallerIDs = []string{"+12065550100", "+12065550101"}
+	catalog.Extensions[0].AuthorizedProviders = []string{"carrier", "backup"}
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("valid provider-specific authorization rejected: %v", err)
+	}
+	preview := previewOutboundRoute(catalog, outboundRoutePreviewRequest{
+		Extension: "7101", Destination: "+16505550123", CallerID: "+12065550101", Site: "yvr",
+	}, "yvr")
+	if !preview.Allowed || preview.SelectedProvider != "backup" || len(preview.EligibleProviders) != 1 || preview.EligibleProviders[0] != "backup" || len(preview.FailoverOrder) != 1 || preview.FailoverOrder[0] != "backup" {
+		t.Fatalf("provider-specific caller-ID route selected incorrectly: %+v", preview)
+	}
+	if len(preview.RemovedProviders) != 1 || preview.RemovedProviders[0]["provider"] != "carrier" || preview.RemovedProviders[0]["reason"] != "caller_id_not_verified_for_provider" {
+		t.Fatalf("missing provider eligibility reason: %+v", preview.RemovedProviders)
+	}
+}
+
+func TestOutboundRoutePreviewOrdersAuthorizedProviderFailover(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.Providers = append(catalog.Providers, sipProvider{
+		ID: "backup", Host: "sip.backup.example", CIDRs: []string{"198.51.100.0/24"},
+		Gateways:  map[string]string{"yvr": "backup-tls"},
+		CallerIDs: []verifiedCallerID{{Number: "+12065550100", Evidence: "provider ownership review"}},
+	})
+	catalog.Extensions[0].AuthorizedProviders = []string{"backup", "carrier"}
+	preview := previewOutboundRoute(catalog, outboundRoutePreviewRequest{
+		Extension: "7101", Destination: "+16505550123", Site: "yvr",
+	}, "yvr")
+	if !preview.Allowed || preview.SelectedProvider != "backup" || len(preview.EligibleProviders) != 2 || len(preview.FailoverOrder) != 2 || preview.FailoverOrder[0] != "backup" || preview.FailoverOrder[1] != "carrier" {
+		t.Fatalf("configured provider order was not preserved: %+v", preview)
+	}
+}
+
 func TestOutboundRoutePreviewRequiresAdmin(t *testing.T) {
 	server := &server{}
 	mux := http.NewServeMux()
@@ -684,6 +723,32 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	extension := snapshot.Extensions["7101"]
 	if _, leaksUserIdentity := extension["assigned_user"]; leaksUserIdentity || extension["allowed_destinations"] != ",+12065550101," || extension["blocked_destinations"] != ",+12065550102," {
 		t.Fatalf("destination restrictions missing or user identity leaked into routing snapshot: %#v", extension)
+	}
+
+	// New list-based policy must publish the same default caller-ID/provider
+	// pair that the live FreeSWITCH lookup and Admin preview choose.
+	withAlternates := fixtureCatalog()
+	withAlternates.Providers = append(withAlternates.Providers, sipProvider{
+		ID: "backup", Host: "sip.backup.example", CIDRs: []string{"198.51.100.0/24"},
+		Gateways:  map[string]string{"yvr": "backup-tls"},
+		CallerIDs: []verifiedCallerID{{Number: "+12065550101", Evidence: "provider ownership review"}},
+	})
+	withAlternates.Extensions[0].AuthorizedCallerIDs = []string{"+12065550101", "+12065550100"}
+	withAlternates.Extensions[0].AuthorizedProviders = []string{"carrier", "backup"}
+	if err := withAlternates.validate(); err != nil {
+		t.Fatalf("alternate extension policy invalid: %v", err)
+	}
+	s.cacheCatalog(withAlternates)
+	w = httptest.NewRecorder()
+	s.routingSnapshot(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("alternate snapshot status %d: %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Extensions["7101"]["caller_id"] != "+12065550101" || snapshot.Extensions["7101"]["provider"] != "backup" {
+		t.Fatalf("runtime snapshot did not select the first eligible authorized route: %#v", snapshot.Extensions["7101"])
 	}
 }
 

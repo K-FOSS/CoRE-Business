@@ -9,27 +9,27 @@ const fields={
  sms:[['id','Provider ID'],['name','Display name'],['type','Provider','select',['flowroute','twilio','telnyx']],['numbers','SMS numbers (one per line)','area'],['key_env','Access key credential reference'],['secret_env','Secret credential reference'],['public_key_env','Telnyx verification key reference'],['webhook_url','Inbound webhook URL'],['enabled','Enabled','checkbox']],
  providers:[['id','Provider ID'],['name','Display name'],['host','Provider SIP hostname'],['egress_prefix','Dialed-number egress prefix (digits; sent as prefix*destination)'],['supported_codecs','Codecs supported by this upstream provider (one per line: OPUS, G722, PCMU, PCMA)','area'],['codec_order','Preferred upstream codec order (subset of supported codecs; one per line)','area'],['cidrs','Allowed signaling networks (one CIDR per line)','area'],['yvr_gateway','YVR FreeSWITCH gateway'],['yxl_gateway','YXL FreeSWITCH gateway'],['verified','Verified caller IDs: number | verification evidence | expiry (optional)','area']],
  dids:[['number','DID'],['allowed_providers','Allowed inbound provider IDs (one per line)','area'],['site','Destination site','select',['yvr','yxl']],['kind','Destination type','select',['ivr','extension','did','sip']],['destination','Destination extension, DID or SIPS address (leave empty for IVR)'],['fax_detection_enabled','Detect fax after answer','checkbox'],['outbound_provider','Outbound provider for DID forwarding'],['caller_id','Verified caller ID for DID forwarding'],['codec_order','DID-specific codec order override (one per line; leave empty to inherit provider order)','area']],
- extensions:[['extension','Extension number'],['display_name','Display name'],['assigned_user','Assigned Authentik user ID or username (optional)'],['enabled','Extension enabled','checkbox'],['outbound_enabled','Outbound calling enabled','checkbox'],['caller_id','Authorized verified caller ID'],['provider','Authorized upstream provider ID'],['site','Outbound egress site','select',['yvr','yxl']],['allowed_destinations','Allowed exact E.164 destinations (one per line; empty uses the platform NANP policy)','area'],['blocked_destinations','Blocked exact E.164 destinations (one per line)','area']]
+ extensions:[['extension','Extension number'],['display_name','Display name'],['assigned_user','Assigned Authentik user ID or username (optional)'],['enabled','Extension enabled','checkbox'],['outbound_enabled','Outbound calling enabled','checkbox'],['authorized_caller_ids','Authorized verified caller IDs, in preference order (one E.164 number per line)','area'],['authorized_providers','Authorized upstream providers, in preference order (one provider ID per line)','area'],['site','Outbound egress site','select',['yvr','yxl']],['allowed_destinations','Allowed exact E.164 destinations (one per line; empty uses the platform NANP policy)','area'],['blocked_destinations','Blocked exact E.164 destinations (one per line)','area']]
 };
 function rowsFor(tab){return tab==='sms'?state.sms:tab==='audit'?state.audit:state.catalog[tab]||[]}
-function recordText(tab,record){return tab==='sms'?`${record.id} ${record.name} ${record.type} ${(record.numbers||[]).join(' ')}`:tab==='providers'?`${record.id} ${record.name} ${record.host} ${(record.cidrs||[]).join(' ')}`:tab==='dids'?`${record.number} ${record.site} ${record.kind} ${record.destination} ${(record.allowed_providers||[]).join(' ')}`:tab==='extensions'?`${record.extension} ${record.display_name||''} ${record.assigned_user||''} ${record.site} ${record.provider} ${record.caller_id} ${(record.allowed_destinations||[]).join(' ')} ${(record.blocked_destinations||[]).join(' ')}`:`${record.actor} ${record.action} ${record.object_id}`}
+function recordText(tab,record){return tab==='sms'?`${record.id} ${record.name} ${record.type} ${(record.numbers||[]).join(' ')}`:tab==='providers'?`${record.id} ${record.name} ${record.host} ${(record.cidrs||[]).join(' ')}`:tab==='dids'?`${record.number} ${record.site} ${record.kind} ${record.destination} ${(record.allowed_providers||[]).join(' ')}`:tab==='extensions'?`${record.extension} ${record.display_name||''} ${record.assigned_user||''} ${record.site} ${(record.authorized_providers||[record.provider]).join(' ')} ${(record.authorized_caller_ids||[record.caller_id]).join(' ')} ${(record.allowed_destinations||[]).join(' ')} ${(record.blocked_destinations||[]).join(' ')}`:`${record.actor} ${record.action} ${record.object_id}`}
 function extensionReadiness(record){
  const problems=[];
- const provider=state.catalog.providers.find(item=>item.id===record.provider);
+ const providers=record.authorized_providers||[record.provider].filter(Boolean);
+ const callerIDs=record.authorized_caller_ids||[record.caller_id].filter(Boolean);
  const enabled=record.enabled!==false,outbound=record.outbound_enabled!==false;
  if(!enabled)problems.push('Extension is disabled');
  if(enabled&&!outbound)problems.push('Outbound calling is disabled');
- if(!provider)problems.push('Provider is missing from the SIP catalog');
- else if(!provider.gateways?.[record.site])problems.push(`Provider has no ${String(record.site||'unknown').toUpperCase()} gateway`);
- const approval=provider?.verified_caller_ids?.find(item=>item.number===record.caller_id);
- if(!approval)problems.push('Caller ID is not verified for this provider');
- else if(approval.expires_at&&(!Number.isFinite(Date.parse(approval.expires_at))||Date.parse(approval.expires_at)<=Date.now()))problems.push('Caller ID verification expiry is invalid or expired');
+ if(!providers.length)problems.push('No upstream provider is authorized');
+ if(!callerIDs.length)problems.push('No caller ID is authorized');
+ const eligible=providers.filter(id=>{const provider=state.catalog.providers.find(item=>item.id===id);return provider?.gateways?.[record.site]&&callerIDs.some(number=>provider.verified_caller_ids?.some(item=>item.number===number&&(!item.expires_at||Date.parse(item.expires_at)>Date.now()))) });
+ if(!eligible.length)problems.push('No authorized provider has a site gateway and current verification for an authorized caller ID');
  return problems;
 }
 function addRoutePreview(card,record){
  const form=node('form','route-preview');
  const destination=node('input');destination.type='tel';destination.inputMode='tel';destination.required=true;destination.placeholder='+1…';destination.setAttribute('aria-label',`Destination for extension ${record.extension}`);
- const callerID=node('input');callerID.type='tel';callerID.inputMode='tel';callerID.value=record.caller_id||'';callerID.setAttribute('aria-label',`Caller ID for extension ${record.extension}`);
+ const callerID=node('input');callerID.type='tel';callerID.inputMode='tel';callerID.value=(record.authorized_caller_ids||[record.caller_id]).filter(Boolean)[0]||'';callerID.setAttribute('aria-label',`Caller ID for extension ${record.extension}`);
  const submit=node('button','text-button','Preview route');submit.type='submit';
  const result=node('p','route-preview-result','Preview uses the current Admin policy. Provider health is not checked.');result.setAttribute('role','status');
  form.append(destination,callerID,submit);form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;result.textContent='Checking route…';try{const preview=await api('/api/routing/preview','POST',{extension:record.extension,destination:destination.value.trim(),caller_id:callerID.value.trim(),site:record.site});if(preview.allowed){const codecs=preview.codec_order?.length?` · Codecs ${preview.codec_order.join(' → ')}`:'';const egress=preview.egress_destination?` · Sent as ${preview.egress_destination}`:'';result.textContent=`Allowed · ${preview.normalized_destination} · Caller ID ${preview.normalized_caller_id} · ${preview.selected_provider}${egress}${codecs} · Revision ${preview.policy_revision} · Provider health ${preview.provider_health}`}else result.textContent=`Denied · ${preview.denial_reason||'policy_denied'} · Revision ${preview.policy_revision}`}catch(error){result.textContent=error.message}finally{submit.disabled=false}};
@@ -70,7 +70,8 @@ function render(){
   else summary=`${record.actor} · ${new Date(record.at).toLocaleString()}`;
   card.append(node('p','',summary));
   if(tab==='extensions'){
-   card.append(node('p','',`Caller ID ${record.caller_id} · Provider ${record.provider} · Egress ${String(record.site||'unknown').toUpperCase()}${record.assigned_user?` · Assigned user ${record.assigned_user}`:''}`));
+   const callerIDs=record.authorized_caller_ids||[record.caller_id].filter(Boolean),providers=record.authorized_providers||[record.provider].filter(Boolean);
+   card.append(node('p','',`Caller IDs ${callerIDs.join(', ')||'none'} · Providers ${providers.join(' → ')||'none'} · Egress ${String(record.site||'unknown').toUpperCase()}${record.assigned_user?` · Assigned user ${record.assigned_user}`:''}`));
    if(record.allowed_destinations?.length)card.append(node('p','','Allowed destinations: '+record.allowed_destinations.join(', ')));
    if(record.blocked_destinations?.length)card.append(node('p','','Blocked destinations: '+record.blocked_destinations.join(', ')));
    const problems=extensionReadiness(record);
@@ -87,6 +88,7 @@ function render(){
 }
 function editRecord(record={},index=-1){
  const tab=state.tab,values={...record},root=$('edit-fields');
+ if(tab==='extensions'){values.authorized_caller_ids=record.authorized_caller_ids||[record.caller_id].filter(Boolean);values.authorized_providers=record.authorized_providers||[record.provider].filter(Boolean)}
  if(tab==='providers'){values.yvr_gateway=record.gateways?.yvr||'';values.yxl_gateway=record.gateways?.yxl||'';values.verified=(record.verified_caller_ids||[]).map(v=>`${v.number} | ${v.evidence} | ${v.expires_at||''}`).join('\n')}
  root.replaceChildren();$('edit-error').textContent='';$('edit-title').textContent=`${index<0?'Add':'Edit'} ${tab==='extensions'?'extension':tab==='dids'?'DID':'record'}`;
  for(const [key,label,type,options] of fields[tab]){
@@ -106,7 +108,7 @@ function editRecord(record={},index=-1){
    else{
     if(tab==='providers'){result.cidrs=lines(result.cidrs);result.supported_codecs=lines(result.supported_codecs).map(value=>value.toUpperCase());result.codec_order=lines(result.codec_order).map(value=>value.toUpperCase());result.gateways={};if(result.yvr_gateway)result.gateways.yvr=result.yvr_gateway;if(result.yxl_gateway)result.gateways.yxl=result.yxl_gateway;result.verified_caller_ids=lines(result.verified).map(line=>{const [number,evidence,expiry]=line.split('|').map(x=>x.trim());return {number,evidence,...(expiry?{expires_at:new Date(expiry).toISOString()}:{})}});delete result.yvr_gateway;delete result.yxl_gateway;delete result.verified}
     if(tab==='dids'){result.allowed_providers=lines(result.allowed_providers);result.codec_order=lines(result.codec_order).map(value=>value.toUpperCase())}
-    if(tab==='extensions'){result.allowed_destinations=lines(result.allowed_destinations);result.blocked_destinations=lines(result.blocked_destinations)}
+    if(tab==='extensions'){result.allowed_destinations=lines(result.allowed_destinations);result.blocked_destinations=lines(result.blocked_destinations);result.authorized_caller_ids=lines(result.authorized_caller_ids);result.authorized_providers=lines(result.authorized_providers)}
     const catalog=structuredClone(state.catalog);if(index<0)catalog[tab].push(result);else catalog[tab][index]={...catalog[tab][index],...result};await api('/api/sip','PUT',catalog);
    }
    $('edit-record').close();notice(state.info.routing_enabled?'Saved. SIP replicas refresh the published authorization snapshot shortly.':'Saved. Managed SIP routing is not activated.');await load();

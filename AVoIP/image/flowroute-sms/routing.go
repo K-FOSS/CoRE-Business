@@ -56,9 +56,68 @@ type extensionRoute struct {
 	OutboundEnabled     *bool    `json:"outbound_enabled,omitempty"`
 	CallerID            string   `json:"caller_id"`
 	Provider            string   `json:"provider"`
+	AuthorizedCallerIDs []string `json:"authorized_caller_ids,omitempty"`
+	AuthorizedProviders []string `json:"authorized_providers,omitempty"`
 	Site                string   `json:"site"`
 	AllowedDestinations []string `json:"allowed_destinations,omitempty"`
 	BlockedDestinations []string `json:"blocked_destinations,omitempty"`
+}
+
+// Legacy records carry one caller ID and provider. New records can authorize
+// several, with list order defining deterministic preference and failover.
+func (e extensionRoute) callerIDs() []string {
+	if len(e.AuthorizedCallerIDs) > 0 {
+		return e.AuthorizedCallerIDs
+	}
+	if e.CallerID != "" {
+		return []string{e.CallerID}
+	}
+	return nil
+}
+
+func (e extensionRoute) providers() []string {
+	if len(e.AuthorizedProviders) > 0 {
+		return e.AuthorizedProviders
+	}
+	if e.Provider != "" {
+		return []string{e.Provider}
+	}
+	return nil
+}
+
+func eligibleExtensionProviders(c sipCatalog, e extensionRoute, callerID, site string) ([]sipProvider, []map[string]string) {
+	eligible := make([]sipProvider, 0, len(e.providers()))
+	removed := []map[string]string{}
+	for _, providerID := range e.providers() {
+		var provider *sipProvider
+		for i := range c.Providers {
+			if c.Providers[i].ID == providerID {
+				provider = &c.Providers[i]
+				break
+			}
+		}
+		if provider == nil {
+			removed = append(removed, map[string]string{"provider": providerID, "reason": "provider_not_configured"})
+			continue
+		}
+		if provider.Gateways[site] == "" {
+			removed = append(removed, map[string]string{"provider": provider.ID, "reason": "site_gateway_missing"})
+			continue
+		}
+		verified := false
+		for _, approval := range provider.CallerIDs {
+			if approval.Number == callerID && (approval.ExpiresAt == nil || approval.ExpiresAt.After(time.Now())) {
+				verified = true
+				break
+			}
+		}
+		if !verified {
+			removed = append(removed, map[string]string{"provider": provider.ID, "reason": "caller_id_not_verified_for_provider"})
+			continue
+		}
+		eligible = append(eligible, *provider)
+	}
+	return eligible, removed
 }
 
 type outboundRoutePreviewRequest struct {
@@ -296,8 +355,43 @@ func (c sipCatalog) validate() error {
 		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || (e.AssignedUser != "" && !adminUserID.MatchString(e.AssignedUser)) || seen[e.Extension] || len(e.AllowedDestinations) > 100 || len(e.BlockedDestinations) > 100 {
 			return errors.New("invalid or duplicate extension")
 		}
-		if !verify(e.Provider, e.CallerID, e.Site) {
-			return errors.New("extension needs a unique identity and provider-verified caller ID at its egress site")
+		callerIDs := e.callerIDs()
+		providerIDs := e.providers()
+		if len(callerIDs) == 0 || len(callerIDs) > 50 || len(providerIDs) == 0 || len(providerIDs) > 50 {
+			return errors.New("extension needs at least one authorized caller ID and provider")
+		}
+		seenCallerIDs := map[string]bool{}
+		for _, callerID := range callerIDs {
+			number, valid := normalizePhoneNumber(callerID)
+			if !valid || number != callerID || seenCallerIDs[callerID] {
+				return errors.New("extension caller IDs must be unique canonical E.164 numbers")
+			}
+			seenCallerIDs[callerID] = true
+		}
+		seenProviders := map[string]bool{}
+		providerRecords := make([]sipProvider, 0, len(providerIDs))
+		for _, providerID := range providerIDs {
+			if seenProviders[providerID] {
+				return errors.New("extension providers must be unique")
+			}
+			seenProviders[providerID] = true
+			provider, exists := providers[providerID]
+			if !exists {
+				return errors.New("extension refers to an unknown provider")
+			}
+			providerRecords = append(providerRecords, provider)
+		}
+		for _, callerID := range callerIDs {
+			verifiedSomewhere := false
+			for _, provider := range providerRecords {
+				if verify(provider.ID, callerID, e.Site) {
+					verifiedSomewhere = true
+					break
+				}
+			}
+			if !verifiedSomewhere {
+				return errors.New("each extension caller ID must be verified by an authorized provider at its egress site")
+			}
 		}
 		for _, destinations := range [][]string{e.AllowedDestinations, e.BlockedDestinations} {
 			seenDestinations := make(map[string]bool, len(destinations))
@@ -485,7 +579,8 @@ func previewOutboundRoute(c sipCatalog, request outboundRoutePreviewRequest, act
 	if containsString(extension.BlockedDestinations, destination) {
 		return deny("destination_blocked_for_extension")
 	}
-	callerID := extension.CallerID
+	callerIDs := extension.callerIDs()
+	callerID := callerIDs[0]
 	if request.CallerID != "" {
 		requested, valid := normalizePhoneNumber(request.CallerID)
 		if !valid || requested != request.CallerID {
@@ -494,44 +589,26 @@ func previewOutboundRoute(c sipCatalog, request outboundRoutePreviewRequest, act
 		callerID = requested
 	}
 	result.NormalizedCallerID = callerID
-	if callerID != extension.CallerID {
+	if !containsString(callerIDs, callerID) {
 		return deny("caller_id_not_authorized_for_extension")
 	}
-	var provider *sipProvider
-	for i := range c.Providers {
-		if c.Providers[i].ID == extension.Provider {
-			provider = &c.Providers[i]
-			break
-		}
+	eligibleProviders, removedProviders := eligibleExtensionProviders(c, *extension, callerID, request.Site)
+	result.RemovedProviders = append(result.RemovedProviders, removedProviders...)
+	for _, provider := range eligibleProviders {
+		result.EligibleProviders = append(result.EligibleProviders, provider.ID)
 	}
-	if provider == nil {
-		result.RemovedProviders = append(result.RemovedProviders, map[string]string{"provider": extension.Provider, "reason": "provider_not_configured"})
+	if len(result.EligibleProviders) == 0 {
 		return deny("no_eligible_provider")
 	}
-	if provider.Gateways[request.Site] == "" {
-		result.RemovedProviders = append(result.RemovedProviders, map[string]string{"provider": provider.ID, "reason": "site_gateway_missing"})
-		return deny("no_eligible_provider")
-	}
-	verified := false
-	for _, approval := range provider.CallerIDs {
-		if approval.Number == callerID && (approval.ExpiresAt == nil || approval.ExpiresAt.After(time.Now())) {
-			verified = true
-			break
-		}
-	}
-	if !verified {
-		result.RemovedProviders = append(result.RemovedProviders, map[string]string{"provider": provider.ID, "reason": "caller_id_not_verified_for_provider"})
-		return deny("no_eligible_provider")
-	}
+	provider := eligibleProviders[0]
 	result.Allowed = true
-	result.EligibleProviders = append(result.EligibleProviders, provider.ID)
 	result.SelectedProvider = provider.ID
-	result.FailoverOrder = append(result.FailoverOrder, provider.ID)
+	result.FailoverOrder = append(result.FailoverOrder, result.EligibleProviders...)
 	result.EgressDestination = destination
 	if provider.EgressPrefix != "" {
 		result.EgressDestination = provider.EgressPrefix + "*" + destination
 	}
-	result.CodecOrder = effectiveProviderCodecOrder(*provider)
+	result.CodecOrder = effectiveProviderCodecOrder(provider)
 	return result
 }
 
@@ -683,8 +760,6 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 	dids := map[string]any{}
 	extensions := map[string]any{}
 	targets := map[string]siteTarget{}
-	providerPrefixes := make(map[string]string, len(c.Providers))
-	providerCodecs := make(map[string][]string, len(c.Providers))
 	providerCodecFlags := make(map[string]string, len(c.Providers))
 	if json.Unmarshal([]byte(os.Getenv("AVOIP_SITES_JSON")), &targets) != nil {
 		http.Error(w, "site targets unavailable", 503)
@@ -693,8 +768,6 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 	for _, p := range c.Providers {
 		providerCodecsForRoute := effectiveProviderCodecOrder(p)
 		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix, "codec_flags": codecRTPEngineFlags(providerCodecsForRoute)})
-		providerPrefixes[p.ID] = p.EgressPrefix
-		providerCodecs[p.ID] = providerCodecsForRoute
 		providerCodecFlags[p.ID] = codecRTPEngineFlags(providerCodecsForRoute)
 	}
 	for _, d := range c.DIDs {
@@ -719,14 +792,21 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "site target unavailable", 503)
 			return
 		}
-		codecOrder := providerCodecs[e.Provider]
+		callerID := e.callerIDs()[0]
+		eligibleProviders, _ := eligibleExtensionProviders(c, e, callerID, e.Site)
+		if len(eligibleProviders) == 0 {
+			http.Error(w, "extension has no eligible provider", 503)
+			return
+		}
+		provider := eligibleProviders[0]
+		codecOrder := effectiveProviderCodecOrder(provider)
 		for _, did := range c.DIDs {
-			if did.Number == e.CallerID && containsString(did.Providers, e.Provider) && len(did.CodecOrder) > 0 {
+			if did.Number == callerID && containsString(did.Providers, provider.ID) && len(did.CodecOrder) > 0 {
 				codecOrder = did.CodecOrder
 				break
 			}
 		}
-		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": providerPrefixes[e.Provider], "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "allowed_destinations": "," + strings.Join(e.AllowedDestinations, ",") + ",", "blocked_destinations": "," + strings.Join(e.BlockedDestinations, ",") + ","}
+		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": provider.EgressPrefix, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "allowed_destinations": "," + strings.Join(e.AllowedDestinations, ",") + ",", "blocked_destinations": "," + strings.Join(e.BlockedDestinations, ",") + ","}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}
@@ -849,16 +929,16 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		for _, e := range c.Extensions {
 			if e.Extension == extension && e.Site == site {
 				if _, ok := normalizePhoneNumber(destination); ok {
-					callerID = e.CallerID
-					providerID = e.Provider
-					for _, p := range c.Providers {
-						if p.ID == e.Provider {
-							gateway = p.Gateways[site]
-							codecOrder = effectiveProviderCodecOrder(p)
-						}
+					callerID = e.callerIDs()[0]
+					eligibleProviders, _ := eligibleExtensionProviders(c, e, callerID, site)
+					if len(eligibleProviders) > 0 {
+						provider := eligibleProviders[0]
+						providerID = provider.ID
+						gateway = provider.Gateways[site]
+						codecOrder = effectiveProviderCodecOrder(provider)
 					}
 					for _, d := range c.DIDs {
-						if d.Number == e.CallerID && containsString(d.Providers, e.Provider) && len(d.CodecOrder) > 0 {
+						if d.Number == callerID && containsString(d.Providers, providerID) && len(d.CodecOrder) > 0 {
 							codecOrder = d.CodecOrder
 							break
 						}
