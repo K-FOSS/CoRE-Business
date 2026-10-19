@@ -102,6 +102,9 @@ func TestCatalogOwnership(t *testing.T) {
 		func(c *sipCatalog) { c.DIDs[0].Providers = []string{"unknown"} },
 		func(c *sipCatalog) { c.Extensions[0].CallerID = "+12065550101" },
 		func(c *sipCatalog) { c.Extensions[0].Site = "unknown" },
+		func(c *sipCatalog) { c.Extensions[0].AssignedUser = "not a valid user id" },
+		func(c *sipCatalog) { c.Extensions[0].AllowedDestinations = []string{"2065550101"} },
+		func(c *sipCatalog) { c.Extensions[0].BlockedDestinations = []string{"+12065550100", "+12065550100"} },
 		func(c *sipCatalog) {
 			c.DIDs[0].Kind = "sip"
 			c.DIDs[0].Destination = "sips:user@example.com;header=injected"
@@ -523,6 +526,9 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "G722"}
 	catalog.Providers[0].CodecOrder = []string{"PCMU", "G722"}
 	catalog.DIDs[0].CodecOrder = []string{"G722", "PCMU"}
+	catalog.Extensions[0].AssignedUser = "august@example.test"
+	catalog.Extensions[0].AllowedDestinations = []string{"+12065550101"}
+	catalog.Extensions[0].BlockedDestinations = []string{"+12065550102"}
 	s := &server{}
 	s.cacheCatalog(catalog)
 	r := httptest.NewRequest("GET", "http://local/routing/snapshot", nil)
@@ -550,6 +556,10 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	extensionFlags := snapshot.Extensions["7101"]["codec_flags"]
 	if extensionFlags != didFlags {
 		t.Fatalf("extension should inherit the caller-ID DID order: %#v", extensionFlags)
+	}
+	extension := snapshot.Extensions["7101"]
+	if _, leaksUserIdentity := extension["assigned_user"]; leaksUserIdentity || extension["allowed_destinations"] != ",+12065550101," || extension["blocked_destinations"] != ",+12065550102," {
+		t.Fatalf("destination restrictions missing or user identity leaked into routing snapshot: %#v", extension)
 	}
 }
 

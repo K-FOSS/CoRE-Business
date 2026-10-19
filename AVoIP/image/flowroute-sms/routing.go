@@ -49,13 +49,16 @@ type didRoute struct {
 func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
 
 type extensionRoute struct {
-	Extension       string `json:"extension"`
-	DisplayName     string `json:"display_name,omitempty"`
-	Enabled         *bool  `json:"enabled,omitempty"`
-	OutboundEnabled *bool  `json:"outbound_enabled,omitempty"`
-	CallerID        string `json:"caller_id"`
-	Provider        string `json:"provider"`
-	Site            string `json:"site"`
+	Extension           string   `json:"extension"`
+	DisplayName         string   `json:"display_name,omitempty"`
+	AssignedUser        string   `json:"assigned_user,omitempty"`
+	Enabled             *bool    `json:"enabled,omitempty"`
+	OutboundEnabled     *bool    `json:"outbound_enabled,omitempty"`
+	CallerID            string   `json:"caller_id"`
+	Provider            string   `json:"provider"`
+	Site                string   `json:"site"`
+	AllowedDestinations []string `json:"allowed_destinations,omitempty"`
+	BlockedDestinations []string `json:"blocked_destinations,omitempty"`
 }
 
 // Existing catalog entries predate these flags and remain enabled until an
@@ -88,6 +91,7 @@ type siteTarget struct {
 }
 
 var extensionID = regexp.MustCompile(`^[0-9]{2,12}$`)
+var adminUserID = regexp.MustCompile(`^[A-Za-z0-9_.@:-]{1,128}$`)
 var sipHost = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,252}$`)
 var upstreamCodecs = map[string]bool{"OPUS": true, "G722": true, "PCMU": true, "PCMA": true}
 
@@ -243,11 +247,21 @@ func (c sipCatalog) validate() error {
 	}
 	seen := map[string]bool{}
 	for _, e := range c.Extensions {
-		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || seen[e.Extension] {
+		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || (e.AssignedUser != "" && !adminUserID.MatchString(e.AssignedUser)) || seen[e.Extension] || len(e.AllowedDestinations) > 100 || len(e.BlockedDestinations) > 100 {
 			return errors.New("invalid or duplicate extension")
 		}
 		if !verify(e.Provider, e.CallerID, e.Site) {
 			return errors.New("extension needs a unique identity and provider-verified caller ID at its egress site")
+		}
+		for _, destinations := range [][]string{e.AllowedDestinations, e.BlockedDestinations} {
+			seenDestinations := make(map[string]bool, len(destinations))
+			for _, destination := range destinations {
+				normalized, valid := normalizePhoneNumber(destination)
+				if !valid || normalized != destination || seenDestinations[destination] {
+					return errors.New("extension destination restrictions must be unique canonical E.164 numbers")
+				}
+				seenDestinations[destination] = true
+			}
 		}
 		seen[e.Extension] = true
 	}
@@ -444,7 +458,7 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": providerPrefixes[e.Provider], "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder)}
+		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": providerPrefixes[e.Provider], "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "allowed_destinations": "," + strings.Join(e.AllowedDestinations, ",") + ",", "blocked_destinations": "," + strings.Join(e.BlockedDestinations, ",") + ","}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}

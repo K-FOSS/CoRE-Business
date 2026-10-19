@@ -42,6 +42,8 @@ grep -Fq '$var(managed_path) = "extensions." + $var(managed_extension_id);' <<< 
 grep -Fq 'X-Core-Extension: $var(managed_extension_id)' <<< "$internal_cfg"
 grep -Fq '$fU = $var(managed_caller_id);' <<< "$internal_cfg"
 grep -Fq 'reject=trusted_extension_missing' <<< "$internal_cfg"
+grep -Fq 'record_route_preset("core-home1-talos-prod-avoip-kamailio-internal-sipcore-return.core-prod.svc.k8s.home1.resolvemy.host:5063;transport=tls;lr");' <<< "$internal_cfg"
+grep -Fq 'if ($var(side) == "sipcore") {' <<< "$internal_cfg"
 
 # The authenticated private Kamailio handoff uses the extension from the
 # trusted header and revalidates it against the active Admin snapshot. SIP
@@ -56,6 +58,10 @@ grep -Fq 'egress_prefix' <<< "$carrier_cfg"
 grep -Fq '$rU = $var(managed_egress_prefix) + "*" + $rU;' <<< "$carrier_cfg"
 grep -Fq 'reason=$var(managed_disabled_reason)' <<< "$carrier_cfg"
 grep -Fq 'Extension Outbound Disabled' <<< "$carrier_cfg"
+grep -Fq 'extension_destination_restricted' <<< "$internal_cfg"
+grep -Fq 'Extension Destination Not Authorized' <<< "$internal_cfg"
+grep -Fq 'private_bye_response' <<< "$internal_cfg"
+grep -Fq 'private_bye_transaction_failure' <<< "$internal_cfg"
 grep -Fq 'kamailio_event=outbound_attempt component=private_sipcore' <<< "$internal_cfg"
 grep -Fq 'kamailio_event=outbound_result component=private_sipcore' <<< "$internal_cfg"
 grep -Fq 'kamailio_event=registration_result component=kamailio' <<< "$internal_cfg"

@@ -298,6 +298,13 @@ Flowroute Tech Prefix setting; SIP registration and provider credentials remain
 Vault-backed. Flowroute IP authentication also requires a static public egress
 IP and account-side allowlisting; see its
 [IP-auth setup](https://support.bcmone.com/flowroute-support/docs/set-up-ip-based-authentication-for-outbound-calls).
+The Extensions editor can also record an assigned Authentik user and exact
+E.164 destination allow/block lists. Kamailio enforces configured destination
+restrictions before selecting the upstream; the assignment is administrative
+metadata and does not change an extension's SIP credential. Managed Asterisk
+outbound dialogs pin their return route to the private SIP Core listener so
+BYE requests do not return through the public carrier listener. See the
+[managed BYE return runbook](docs/avoip/runbooks/asterisk-managed-bye-return.md).
 YVR also provisions the `twilio-west` FreeSWITCH gateway for
 [Twilio Elastic SIP Trunking](https://www.twilio.com/docs/sip-trunking) using
 IP ACL authentication and no registration. The Admin provider and extension

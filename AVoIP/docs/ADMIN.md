@@ -120,6 +120,13 @@ This screen governs authorization; it does not rewrite Asterisk endpoint
 credentials or report live registration state. Registration attempts and
 responses are correlated in Homer using the SIP Call-ID.
 
+The editor also accepts an optional assigned Authentik user ID/username and
+exact E.164 allow/block lists for destinations. When an allow list is present,
+only those exact numbers pass; block-list entries always deny. Empty lists leave
+the existing NANP policy in force. The assigned-user value is Admin metadata,
+not SIP authentication, and is omitted from Kamailio's runtime snapshot. No
+extension secret or authentication identity is changed by these edits.
+
 Assignments are evaluated only from the existing authenticated
 Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never
 authorization to select a caller ID. The existing outbound NANP and premium-rate

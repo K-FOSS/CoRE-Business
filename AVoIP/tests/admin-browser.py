@@ -9,7 +9,7 @@ print('Synthetic UI artifacts:', artifacts)
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, args=['--no-sandbox'])
     for width, theme in [(1280, 'light'), (360, 'light'), (768, 'dark')]:
-        api_state = {'sip': {'providers': [{'id': 'carrier', 'host': 'sip.carrier.example', 'gateways': {'yvr': 'carrier-yvr'}, 'verified_caller_ids': [{'number': '+12065550100', 'evidence': 'fixture approval'}]}], 'dids': [], 'extensions': [{'extension': '7101', 'display_name': 'Desk phone', 'enabled': True, 'outbound_enabled': True, 'caller_id': '+12065550100', 'provider': 'carrier', 'site': 'yvr'}], 'version': 0}}
+        api_state = {'sip': {'providers': [{'id': 'carrier', 'host': 'sip.carrier.example', 'gateways': {'yvr': 'carrier-yvr'}, 'verified_caller_ids': [{'number': '+12065550100', 'evidence': 'fixture approval'}]}], 'dids': [], 'extensions': [{'extension': '7101', 'display_name': 'Desk phone', 'assigned_user': 'august@example.test', 'enabled': True, 'outbound_enabled': True, 'caller_id': '+12065550100', 'provider': 'carrier', 'site': 'yvr', 'allowed_destinations': ['+12065550101'], 'blocked_destinations': ['+12065550102']}], 'version': 0}}
         page = browser.new_page(viewport={'width': width, 'height': 900}, color_scheme=theme)
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
@@ -50,10 +50,14 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Extensions', exact=True).click()
         page.get_by_text('Desk phone', exact=True).wait_for()
         assert 'Outbound enabled' in page.locator('.admin-card').inner_text()
+        assert 'Assigned user august@example.test' in page.locator('.admin-card').inner_text()
+        assert '+12065550101' in page.locator('.admin-card').inner_text()
         assert 'Catalog authorization is configured' in page.locator('.admin-card').inner_text()
         page.locator('#record-search').fill('7101')
         assert page.locator('.admin-card').count() == 1
         page.get_by_role('button', name='Edit', exact=True).click()
+        assert page.locator('#field-assigned_user').input_value() == 'august@example.test'
+        assert page.locator('#field-allowed_destinations').input_value() == '+12065550101'
         page.locator('#field-outbound_enabled').uncheck()
         page.get_by_role('button', name='Save', exact=True).click()
         page.get_by_text('Outbound disabled', exact=False).wait_for()

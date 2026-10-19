@@ -145,6 +145,18 @@
         {{- end }}
         sl_send_reply("403", "Extension Outbound Disabled"); exit;
       }
+      jansson_get("allowed_destinations", "$var(managed_route)", "$var(managed_allowed_destinations)");
+      jansson_get("blocked_destinations", "$var(managed_route)", "$var(managed_blocked_destinations)");
+      if (($var(managed_allowed_destinations) != $null && $var(managed_allowed_destinations) != ",," &&
+           !in_list("$rU", "$var(managed_allowed_destinations)", ",")) ||
+          ($var(managed_blocked_destinations) != $null && $var(managed_blocked_destinations) != ",," &&
+           in_list("$rU", "$var(managed_blocked_destinations)", ","))) {
+        xlog("L_WARN", "AVOIP_POLICY reject=extension_destination_restricted call_id=$ci extension=$var(managed_extension_id) site={{ .Values.region }} destination_class=restricted\n");
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=extension_destination_restricted extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm destination_class=restricted");
+        {{- end }}
+        sl_send_reply("403", "Extension Destination Not Authorized"); exit;
+      }
       if (t_check_trans()) exit;
       jansson_get("host", "$var(managed_route)", "$var(managed_host)");
       jansson_get("port", "$var(managed_route)", "$var(managed_port)");
@@ -164,7 +176,19 @@
       }
       $ru = "sips:" + $rU + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";
-      {{ if eq .Values.kamailio.role "private-sbc" }}
+      {{ if and (eq .Values.kamailio.role "private-sbc") .Values.asterisk.sipCore.enabled }}
+      # Asterisk's dedicated SIP Core listener is the return path for its
+      # managed outbound dialog. Generic record_route() can select the
+      # carrier-facing send socket after the upstream route is chosen, causing
+      # Asterisk's BYE to hit the public listener and be rejected as an
+      # untrusted source. Pin this dialog's route set to the private return
+      # Service/listener, independent of the upstream send socket.
+      if ($var(side) == "sipcore") {
+        record_route_preset("{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ .Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+      } else {
+        record_route();
+      }
+      {{ else if eq .Values.kamailio.role "private-sbc" }}
       record_route();
       {{ end }}
       dlg_manage(); $dlg_var(managed_outbound) = "yes"; $dlg_var(managed_target) = $var(managed_host);

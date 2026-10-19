@@ -742,7 +742,13 @@
     {{- end }}
 
     route[PRIVATE_RELAY] {
-      if (is_method("BYE")) t_on_failure("PRIVATE_BYE_FAILURE");
+      if (is_method("BYE")) {
+        t_on_failure("PRIVATE_BYE_FAILURE");
+        t_on_reply("PRIVATE_BYE_REPLY");
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_relay_attempt call_id=$ci method=BYE side=$var(side) peer=$var(peer_name) cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt site={{ .Values.region }}");
+        {{- end }}
+      }
       $var(private_relay_result) = t_relay();
       if ($var(side) == "sipcore" && is_method("INFO")) {
         xlog("L_INFO", "SIPCORE INFO relay callid=$ci cseq=$hdr(CSeq) method=$rm content_type=$cT branch=$var(sipcore_info_branch) relay_result=$var(private_relay_result)\n");
@@ -776,6 +782,11 @@
           "L_INFO",
           "SIP relay result=queued tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn t_relay_result=$var(private_relay_result)\n"
         );
+        if (is_method("BYE")) {
+          {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+          hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_relay_queued call_id=$ci method=BYE side=$var(side) peer=$var(peer_name) cseq=$hdr(CSeq) relay_result=$var(private_relay_result) site={{ .Values.region }}");
+          {{- end }}
+        }
       }
       exit;
     }
@@ -801,6 +812,18 @@
         "L_ERR",
         "SIP relay failure stage=private-bye-transaction pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn\n"
       );
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_transaction_failure call_id=$ci method=BYE side=$var(side) peer=$var(peer_name) cseq=$hdr(CSeq) site={{ .Values.region }}");
+      {{- end }}
+    }
+
+    onreply_route[PRIVATE_BYE_REPLY] {
+      if ($rm == "BYE" && $rs >= 200) {
+        xlog("L_INFO", "SIP dialog teardown stage=private-bye-response pod=$env(POD_NAME) callid=$ci status=$rs from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name)\n");
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_response call_id=$ci method=BYE status=$rs side=$var(side) peer=$var(peer_name) cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt site={{ .Values.region }}");
+        {{- end }}
+      }
     }
 
     {{- if .Values.kamailio.registrar.enabled }}
