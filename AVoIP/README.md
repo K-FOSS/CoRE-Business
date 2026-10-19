@@ -275,12 +275,19 @@ site-local SIP route identity as the From host rather than a FreeSWITCH pod
 address. This is set when FreeSWITCH creates the dialog, so subsequent
 in-dialog requests retain the same dialog identity without a Kamailio header
 rewrite.
-The carrier Kamailio prefixes the Flowroute registration username and `*` to
-the outbound E.164 Request-URI from a username-only ExternalSecret. This
-provides Flowroute's IP-auth Tech Prefix format; it does not disable the
-existing SIP registration credentials. Flowroute IP authentication also
-requires a static public egress IP and account-side allowlisting; see its
+When Admin routing is disabled, carrier Kamailio prefixes the Flowroute
+registration username and `*` to the outbound E.164 Request-URI from a
+username-only ExternalSecret. This provides Flowroute's IP-auth Tech Prefix
+format; it does not disable the existing SIP registration credentials.
+Admin-managed outbound calls instead use the selected provider's host and
+verified caller ID. Flowroute IP authentication also requires a static public
+egress IP and account-side allowlisting; see its
 [IP-auth setup](https://support.bcmone.com/flowroute-support/docs/set-up-ip-based-authentication-for-outbound-calls).
+YVR also provisions the `twilio-west` FreeSWITCH gateway for
+[Twilio Elastic SIP Trunking](https://www.twilio.com/docs/sip-trunking) using
+IP ACL authentication and no registration. The Admin provider and extension
+assignment determine whether a call uses it; see the
+[upstream configuration](docs/ADMIN.md).
 The ApplicationSet enables two FreeSWITCH replicas at both sites and disables
 the direct SIP Service. The configured Asterisk SIP Core NANP caller remains
 YVR extension `7101`; YXL has no SIP Core caller configured. This provides

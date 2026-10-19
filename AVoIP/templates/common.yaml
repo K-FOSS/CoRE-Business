@@ -792,6 +792,20 @@ configMaps:
       style.css: |
 {{ $.Files.Get "files/audio-library/style.css" | indent 8 }}
 {{- end }}
+{{- if .Values.avoipAdmin.enabled }}
+{{- range .Values.avoipAdmin.upstreams }}
+{{- if eq (default "credentials" .authentication) "ip-acl" }}
+  freeswitch-upstream-{{ .name }}:
+    forceRename: '{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}'
+    includeChecksumInControllers:
+      - 'freeswitch'
+    data:
+      gateway.xml: |
+{{ include "avoip.upstream.gatewayXML" (dict "root" $ "upstream" . "authentication" "ip-acl") | indent 8 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 networkpolicies:
 {{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.soundLibrary.enabled (or .Values.asterisk.enabled .Values.freeswitch.enabled) }}
   audio-library:
@@ -1639,11 +1653,11 @@ controllers:
         # Flowroute/fax, Sofia, dialplan, and core XML are mounted as separate
         # ConfigMaps. Roll the pod so FreeSWITCH reloads the complete set
         # consistently instead of retaining a mixed in-memory configuration.
-        configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs'
+        configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "ip-acl" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
 {{- if .Values.freeswitch.sms.enabled }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "credentials" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
 {{- else }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "credentials" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
 {{- end }}
     initContainers:
 {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
@@ -2588,7 +2602,7 @@ persistence:
 {{ if .Values.avoipAdmin.enabled }}
 {{ range .Values.avoipAdmin.upstreams }}
   freeswitch-upstream-{{ .name }}:
-    type: secret
+    type: {{ if eq (default "credentials" .authentication) "ip-acl" }}configMap{{ else }}secret{{ end }}
     name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}'
     advancedMounts:
       freeswitch:

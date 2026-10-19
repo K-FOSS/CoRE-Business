@@ -61,7 +61,7 @@ PostgreSQL grants must be ready before admin pods can become ready.
 | `flowrouteSMS.localNumbers` | Explicit legacy Flowroute number inventory; admins also see historical local senders/recipients and other configured provider numbers |
 | `avoipAdmin.catalog: null` | Administrators manage the shared SIP catalog in PostgreSQL |
 | `avoipAdmin.catalog: {providers, dids, extensions, version}` | Entire catalog is Git-managed and read only in UI; configure consistently across sites |
-| `avoipAdmin.upstreams` | Provision additional FreeSWITCH gateways from Vault-backed username/password references; registration is explicitly enabled per gateway |
+| `avoipAdmin.upstreams` | Provision additional FreeSWITCH gateways with Vault-backed credentials or `authentication: 'ip-acl'`; registration is explicitly enabled per gateway |
 | `avoipAdmin.sites` | Optional site-target overrides; normally derived from local FreeSWITCH and existing authenticated inter-site carrier peers |
 | `avoipAdmin.routing.upstreamCIDRs` | Explicit network egress approval for additional carrier TLS destinations; an admin catalog edit cannot widen Kubernetes network policy |
 | `GET/PUT /api/sip` | Read/replace catalog, admin-only with version conflict detection |
@@ -128,11 +128,26 @@ snapshots before changing a destination.
 
 Additional upstream gateways use the established FreeSWITCH carrier profile and
 private-to-carrier Kamailio proxy, preserving the public signaling border and
-RTPEngine anchoring. Provision credentials/network reachability first, then map
-the gateway name in the catalog. Gateway host and catalog host must agree.
-Adding or rotating registration credentials requires a controlled FreeSWITCH
+RTPEngine anchoring. A credential-backed gateway reads username and password
+from Vault. An `ip-acl` gateway is a ConfigMap with no SIP credentials and must
+use `register: false`; the carrier must authorize the site's actual public
+egress IP. The [FreeSWITCH non-registering gateway guidance](https://developer.signalwire.com/freeswitch/users-and-endpoints/gateways/)
+documents this mode. Provision carrier authentication and network reachability
+first, then map the gateway name in the catalog. Gateway host and catalog host
+must agree. Adding or rotating credentials requires a controlled FreeSWITCH
 reload/rescan or rollout; metadata editing does not independently register a new
 carrier account. Keep existing Flowroute gateway names reserved.
+
+YVR provisions `twilio-west` as an IP ACL gateway to the
+[Twilio Oregon termination URI](https://www.twilio.com/docs/sip-trunking), with
+no registration. The site policy permits outbound TLS signaling to Twilio's
+[Oregon signaling range](https://www.twilio.com/docs/sip-trunking/ip-addresses)
+on port 5061. In Admin, the `twilio-west` provider must use
+`coreinc-yvr.pstn.umatilla.twilio.com` as its host and `twilio-west` as its
+YVR gateway. Assigning an extension to this provider selects Twilio only for
+that extension; the gateway's presence does not change existing assignments.
+Twilio must allow the observed YVR public source IP in the trunk's IP Access
+Control List and accept the chosen verified caller ID.
 
 ## Pull, enforcement and failure behavior
 

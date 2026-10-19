@@ -1,13 +1,40 @@
+{{- define "avoip.upstream.gatewayXML" -}}
+{{- $root := .root -}}
+{{- $upstream := .upstream -}}
+{{- $private := include "avoip.kamailio.component" (dict "name" $root.Values.asterisk.sipCore.kamailioInstance) -}}
+{{- $proxy := include "avoip.sip.serviceHost" (dict "root" $root "component" $private) -}}
+<include>
+  <gateway name="{{ $upstream.name }}">
+    {{- if eq .authentication "credentials" }}
+    <param name="username" value="{{ `{{ .username | htmlEscape }}` }}"/>
+    <param name="auth-username" value="{{ `{{ .username | htmlEscape }}` }}"/>
+    <param name="password" value="{{ `{{ .password | htmlEscape }}` }}"/>
+    {{- end }}
+    <param name="proxy" value="{{ $upstream.host }}"/>
+    <param name="from-domain" value="{{ include "avoip.sip.siteHost" $root }}"/>
+    {{- if $upstream.register }}
+    <param name="register-proxy" value="{{ $upstream.host }}"/>
+    {{- end }}
+    <param name="register-transport" value="tls"/>
+    <param name="register" value="{{ $upstream.register | default false }}"/>
+    <param name="caller-id-in-from" value="true"/>
+    <param name="outbound-proxy" value="sips:{{ $proxy }}:5062;transport=tls"/>
+  </gateway>
+</include>
+{{- end -}}
+
 {{- if and .Values.freeswitch.enabled .Values.avoipAdmin.enabled }}
 {{- $root := . -}}
-{{- $private := include "avoip.kamailio.component" (dict "name" .Values.asterisk.sipCore.kamailioInstance) -}}
-{{- $proxy := include "avoip.sip.serviceHost" (dict "root" . "component" $private) -}}
 {{- $names := dict -}}
 {{- range .Values.avoipAdmin.upstreams }}
+{{- $authentication := default "credentials" .authentication -}}
 {{- if or (hasKey $names .name) (has .name (list "asterisk" "flowroute" "flowroute-tls")) }}{{ fail "additional SIP gateway names must be unique and cannot replace built-in gateways" }}{{ end }}
 {{- $_ := set $names .name true -}}
 {{- if or (not (regexMatch "^[a-z][a-z0-9-]{0,39}$" .name)) (not (regexMatch "^[a-z0-9][a-z0-9.-]+$" .host)) }}{{ fail "SIP upstream names and hostnames must be canonical and contain no SIP parameters" }}{{ end }}
+{{- if not (has $authentication (list "credentials" "ip-acl")) }}{{ fail "SIP upstream authentication must be credentials or ip-acl" }}{{ end }}
+{{- if and (eq $authentication "ip-acl") (.register | default false) }}{{ fail "IP ACL upstreams cannot register" }}{{ end }}
 {{- if not $root.Values.freeswitch.flowrouteOutbound.enabled }}{{ fail "additional SIP gateways require the existing authenticated FreeSWITCH carrier profile" }}{{ end }}
+{{- if eq $authentication "credentials" }}
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -23,19 +50,7 @@ spec:
       engineVersion: 'v2'
       data:
         gateway.xml: |
-          <include>
-            <gateway name="{{ .name }}">
-              <param name="username" value="{{ `{{ .username | htmlEscape }}` }}"/>
-              <param name="auth-username" value="{{ `{{ .username | htmlEscape }}` }}"/>
-              <param name="password" value="{{ `{{ .password | htmlEscape }}` }}"/>
-              <param name="proxy" value="{{ .host }}"/>
-              <param name="register-proxy" value="{{ .host }}"/>
-              <param name="register-transport" value="tls"/>
-              <param name="register" value="{{ .register | default false }}"/>
-              <param name="caller-id-in-from" value="true"/>
-              <param name="outbound-proxy" value="sips:{{ $proxy }}:5062;transport=tls"/>
-            </gateway>
-          </include>
+{{ include "avoip.upstream.gatewayXML" (dict "root" $root "upstream" . "authentication" $authentication) | indent 10 }}
   data:
     - secretKey: 'username'
       remoteRef:
@@ -45,5 +60,6 @@ spec:
       remoteRef:
         key: '{{ .remoteKey }}'
         property: '{{ default "Password" .passwordProperty }}'
+{{- end }}
 {{- end }}
 {{- end }}

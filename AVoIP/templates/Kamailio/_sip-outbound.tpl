@@ -110,7 +110,9 @@
 
       remove_hf("P-Asserted-Identity");
       append_hf("P-Asserted-Identity: <sip:{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}$fU{{ else if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}{{ .Values.kamailio.carrierOutbound.calls.callerId }}{{ else }}{{ .Values.kamailio.carrierOutbound.testRoute.callerId }}{{ end }}@{{ include "avoip.sip.siteHost" . }}>\r\n");
-      {{- if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}
+      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      $ru = "sips:" + $rU + "@" + $var(managed_host);
+      {{- else if eq .Values.kamailio.carrierOutbound.calls.mode "nanp" }}
       if (!($env(FLOWROUTE_TECH_PREFIX) =~ "^[0-9]{8}$")) {
         sl_send_reply("503", "Flowroute Tech Prefix Unavailable");
         exit;
@@ -118,9 +120,6 @@
       $ru = "sips:" + $env(FLOWROUTE_TECH_PREFIX) + "*" + $rU + "@{{ .Values.flowroute.outboundHost }}";
       {{- else }}
       $ru = "sips:" + $rU + "@{{ .Values.flowroute.outboundHost }}";
-      {{- end }}
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
-      if ($var(managed_egress) == 1) { $ru = "sips:" + $rU + "@" + $var(managed_host); }
       {{- end }}
       route(RR_BACKEND_TO_CARRIER);
       $dlg_ctx(timeout_route) = "OUTBOUND_DIALOG_TIMEOUT";
