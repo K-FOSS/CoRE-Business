@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/xml"
 	"io"
 	"log/slog"
 	"net/http"
@@ -54,6 +55,42 @@ func TestAdminGroupsAndOrigin(t *testing.T) {
 }
 func fixtureCatalog() sipCatalog {
 	return sipCatalog{Providers: []sipProvider{{ID: "carrier", Host: "sip.carrier.example", CIDRs: []string{"192.0.2.0/24"}, Gateways: map[string]string{"yvr": "carrier-tls", "yxl": "carrier-tls"}, CallerIDs: []verifiedCallerID{{Number: "+12065550100", Evidence: "provider ownership review"}}}}, DIDs: []didRoute{{Number: "+12065550100", Providers: []string{"carrier"}, Site: "yvr", Kind: "extension", Destination: "7101"}}, Extensions: []extensionRoute{{Extension: "7101", CallerID: "+12065550100", Provider: "carrier", Site: "yvr"}}}
+}
+
+func freeSwitchBridgeAction(t *testing.T, document string) string {
+	t.Helper()
+	var response struct {
+		Sections []struct {
+			Contexts []struct {
+				Extensions []struct {
+					Conditions []struct {
+						Actions []struct {
+							Application string `xml:"application,attr"`
+							Data        string `xml:"data,attr"`
+						} `xml:"action"`
+					} `xml:"condition"`
+				} `xml:"extension"`
+			} `xml:"context"`
+		} `xml:"section"`
+	}
+	if err := xml.Unmarshal([]byte(document), &response); err != nil {
+		t.Fatalf("FreeSWITCH returned invalid XML: %v", err)
+	}
+	for _, section := range response.Sections {
+		for _, context := range section.Contexts {
+			for _, extension := range context.Extensions {
+				for _, condition := range extension.Conditions {
+					for _, action := range condition.Actions {
+						if action.Application == "bridge" {
+							return action.Data
+						}
+					}
+				}
+			}
+		}
+	}
+	t.Fatal("FreeSWITCH route did not contain a bridge action")
+	return ""
 }
 func TestCatalogOwnership(t *testing.T) {
 	if err := fixtureCatalog().validate(); err != nil {
@@ -161,7 +198,7 @@ func TestFreeSwitchOutboundDialplanAppliesProviderAndDIDCodecOrder(t *testing.T)
 	}
 
 	xml := lookup()
-	if !strings.Contains(xml, "[absolute_codec_string='PCMA,PCMU']sofia/gateway/carrier-tls/+12065550101") {
+	if got := freeSwitchBridgeAction(t, xml); got != "[absolute_codec_string='PCMA,PCMU']sofia/gateway/carrier-tls/+12065550101" {
 		t.Fatalf("DID codec order was not applied to the FreeSWITCH upstream bridge: %s", xml)
 	}
 	if !strings.Contains(xml, "provider=carrier codecs=PCMA,PCMU") {
@@ -171,7 +208,7 @@ func TestFreeSwitchOutboundDialplanAppliesProviderAndDIDCodecOrder(t *testing.T)
 	catalog.DIDs[0].CodecOrder = nil
 	s.cacheCatalog(catalog)
 	xml = lookup()
-	if !strings.Contains(xml, "[absolute_codec_string='PCMU,PCMA']sofia/gateway/carrier-tls/+12065550101") {
+	if got := freeSwitchBridgeAction(t, xml); got != "[absolute_codec_string='PCMU,PCMA']sofia/gateway/carrier-tls/+12065550101" {
 		t.Fatalf("provider codec order was not applied when the DID has no override: %s", xml)
 	}
 }
@@ -197,7 +234,7 @@ func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
 	r.SetBasicAuth("routing", os.Getenv("AVOIP_ROUTING_TOKEN"))
 	w := httptest.NewRecorder()
 	s.freeSwitchRoute(w, r)
-	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "[absolute_codec_string='PCMU,PCMA']sofia/gateway/twilio-west/+12065550101") {
+	if w.Code != http.StatusOK || freeSwitchBridgeAction(t, w.Body.String()) != "[absolute_codec_string='PCMU,PCMA']sofia/gateway/twilio-west/+12065550101" {
 		t.Fatalf("legacy Twilio route did not constrain its upstream SDP to G.711: status=%d body=%s", w.Code, w.Body.String())
 	}
 }
