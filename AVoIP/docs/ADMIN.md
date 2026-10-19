@@ -103,6 +103,10 @@ Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never
 authorization to select a caller ID. The existing outbound NANP and premium-rate
 restrictions and carrier quota remain; this change does not authorize unrestricted
 international calling. Emergency/service dialing stays on the existing routes.
+On the second Kamailio hop, the site-private peer is accepted only over its
+authenticated TLS identity. That hop revalidates the stamped extension against
+the current Admin snapshot and applies the authorized caller ID; it does not
+reject the call because an intermediate SIP From value changed.
 
 ### Configure the current inbound numbers in Admin
 

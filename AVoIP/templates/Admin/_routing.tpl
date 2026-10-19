@@ -186,7 +186,13 @@
         if (jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)")) {
           jansson_get("site", "$var(managed_route)", "$var(managed_site)");
           jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");
-          if (($var(managed_site) == "{{ .Values.region }}" || $var(side) == "internal-outbound") && $fU == $var(managed_caller_id)) {
+          # The local Kamailio peer is authenticated by mTLS and has already
+          # selected this extension's caller ID from the same policy snapshot.
+          # Its SIP From can be rewritten by intermediate routing, so do not
+          # use that mutable value as the extension identity check. For a
+          # remote-site handoff, retain the explicit caller-ID match.
+          if (($var(managed_site) == "{{ .Values.region }}" || $var(side) == "internal-outbound") &&
+              ($var(side) == "internal-outbound" || $fU == $var(managed_caller_id))) {
             $fU = $hdr(X-Core-Extension);
             route(MANAGED_EXTENSION);
           }

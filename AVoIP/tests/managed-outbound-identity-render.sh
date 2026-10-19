@@ -13,6 +13,7 @@ helm template core-home1-talos-prod "$chart_dir" --namespace core-prod \
 
 asterisk_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$render")"
 internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
+carrier_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["kamailio.cfg"]' "$render")"
 asterisk_pjsip="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-config-tpl") | .data["pjsip.conf"]' "$render")"
 asterisk_deploy="$(yq -c 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-asterisk")' "$render")"
 asterisk_secret_reload="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-asterisk") | .spec.template.metadata.annotations["secret.reloader.stakater.com/reload"]' "$render")"
@@ -40,6 +41,15 @@ grep -Fq 'X-Core-Extension: $var(managed_extension_id)' <<< "$internal_cfg"
 grep -Fq '$fU = $var(managed_caller_id);' <<< "$internal_cfg"
 grep -Fq 'reject=trusted_extension_missing' <<< "$internal_cfg"
 
+# The authenticated private Kamailio handoff uses the extension from the
+# trusted header and revalidates it against the active Admin snapshot. SIP
+# From may change across hops, so only inter-site handoffs require a From
+# caller-ID match before the shared policy route applies the authorized ID.
+grep -Fq '($var(side) == "internal-outbound" || $fU == $var(managed_caller_id))' <<< "$carrier_cfg"
+grep -Fq '$var(managed_extension_id) = $hdr(X-Core-Extension);' <<< "$carrier_cfg"
+grep -Fq 'route(MANAGED_EXTENSION);' <<< "$carrier_cfg"
+
 printf '%s\n' 'PASS: Admin outbound identity is derived from the locked Asterisk extension context'
 printf '%s\n' 'PASS: Kamailio looks up the trusted extension and applies the policy caller ID'
+printf '%s\n' 'PASS: authenticated site handoffs do not reject a rewritten SIP From user'
 printf '%s\n' 'PASS: Asterisk trusts the selected site Kamailio CA without disabling TLS verification'
