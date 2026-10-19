@@ -1,0 +1,1748 @@
+'openapi': '3.1.0'
+'info':
+  'title': 'CoRE Caller Intelligence API proposal'
+  'version': '0.1.0'
+  'description': 'Design only; no deployed endpoint. Private mTLS evaluation and separately authorized Authentik
+    management. See api.md for semantic requirements.'
+'paths':
+  '/v1/caller/evaluate':
+    'post':
+      'operationId': 'evaluateCaller'
+      'summary': 'Evaluate initial inbound call using local intelligence only'
+      'security':
+      - 'sbcMTLS': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/EvaluationResult'
+              'example':
+                'correlation_id': '00000000-0000-4000-8000-000000000001'
+                'normalized_caller':
+                  'number': '+14165550100'
+                  'status': 'valid'
+                  'assigned_region': 'CA'
+                  'region_status': 'resolved'
+                  'metadata_version': 'fixture-metadata-v1'
+                'called_did': '+12025550100'
+                'evaluated_scopes':
+                - 'tenant_id': '00000000-0000-4000-8000-000000000002'
+                  'type': 'did'
+                  'id': 'fixture-did'
+                'identity':
+                  'status': 'unknown'
+                  'confidence': 0
+                  'contact_match': false
+                  'businesses': []
+                'authentication': &id001
+                  'status': 'not_present'
+                  'attestation': null
+                  'provenance': 'fixture-carrier-profile'
+                  'verified_at': null
+                  'origin_bound': false
+                  'destination_bound': false
+                'reputation':
+                  'risk': null
+                  'raw_score': 0
+                  'confidence': 0
+                  'model_revision': 'fixture-model-v1'
+                  'labels':
+                  - 'unknown'
+                'matched_rules':
+                - 'symbol': 'UNKNOWN_CALLER'
+                  'rule_id': null
+                  'evidence_refs': []
+                  'evidence_summary': 'No reviewed local identity.'
+                  'confidence': 0
+                  'score_contribution': 0
+                  'dimension': 'identity'
+                  'suggested_action': null
+                  'shadowed': false
+                'decision':
+                  'action': 'normal'
+                  'suggested_action': 'normal'
+                  'mode': 'observe'
+                  'winning_rule_id': null
+                  'explanation': 'Unknown caller; preserve existing routing.'
+                  'degraded': false
+                  'fallback_reason': null
+                  'decision_expires_at': '2026-10-18T12:00:30Z'
+                'policy_revision': 'fixture-policy-v1'
+                'cache_status': 'miss'
+                'freshness':
+                - 'source': 'local-policy'
+                  'observed_at': '2026-10-18T12:00:00Z'
+                  'retrieved_at': '2026-10-18T12:00:00Z'
+                  'refresh_after': null
+                  'source_expires_at': null
+                  'stale': false
+                  'license_revision': null
+                'paid_lookup_used': false
+                'enrichment_scheduled': false
+                'evaluation_ms': 2
+        '400': &id002
+          'description': 'Invalid bounded input'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '401': &id003
+          'description': 'Missing or invalid authentication'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '403': &id004
+          'description': 'Scope not authorized'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '404': &id005
+          'description': 'Object absent or not visible'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '409': &id006
+          'description': 'Idempotency conflict or incompatible state'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '422': &id007
+          'description': 'Invalid policy/lookup semantics'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '429': &id008
+          'description': 'Rate/quota limit; no automatic overage'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '503': &id009
+          'description': 'Control plane unavailable; SBC retains normal-routing fallback'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+      'requestBody':
+        'required': true
+        'content':
+          'application/json':
+            'schema':
+              '$ref': '#/components/schemas/EvaluationRequest'
+            'example':
+              'correlation_id': '00000000-0000-4000-8000-000000000001'
+              'transaction_key': 'fixture-hmac-transaction-0001'
+              'site': 'yvr'
+              'call_kind': 'initial_inbound'
+              'caller':
+                'raw': '+14165550100'
+                'presentation': 'present'
+                'source': 'from'
+                'trust_profile_id': 'fixture-carrier-profile'
+              'called_did': '+12025550100'
+              'authentication': *id001
+  '/v1/caller/lookup/{number}':
+    'get':
+      'operationId': 'getCallerLookup'
+      'summary': 'Read authorized cached/local facts and latest job state; never spend'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/LookupResult'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'parameters':
+      - 'name': 'number'
+        'in': 'path'
+        'required': true
+        'schema':
+          '$ref': '#/components/schemas/E164'
+  '/v1/caller/lookup':
+    'post':
+      'operationId': 'requestCallerLookup'
+      'summary': 'Queue explicitly requested eligible features under quota'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '202':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/LookupResult'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'requestBody':
+        'required': true
+        'content':
+          'application/json':
+            'schema':
+              '$ref': '#/components/schemas/LookupRequest'
+      'parameters':
+      - &id010
+        'name': 'Idempotency-Key'
+        'in': 'header'
+        'required': true
+        'schema':
+          'type': 'string'
+          'minLength': 16
+          'maxLength': 128
+        'description': 'Required for mutation; tenant/principal/method/path/body bound, retained at least 24h. Different
+          body returns 409.'
+  '/v1/caller/businesses':
+    'get':
+      'operationId': 'listBusinesses'
+      'summary': 'Search authorized reviewed and candidate directory entries'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/BusinessPage'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'parameters':
+      - &id011
+        'name': 'cursor'
+        'in': 'query'
+        'required': false
+        'schema':
+          'type': 'string'
+          'maxLength': 1024
+      - &id012
+        'name': 'limit'
+        'in': 'query'
+        'required': false
+        'schema':
+          'type': 'integer'
+          'minimum': 1
+          'maximum': 100
+          'default': 50
+      - 'name': 'q'
+        'in': 'query'
+        'required': false
+        'schema':
+          'type': 'string'
+          'maxLength': 256
+    'post':
+      'operationId': 'createBusiness'
+      'summary': 'Create candidate business for review'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '201':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Business'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'requestBody':
+        'required': true
+        'content':
+          'application/json':
+            'schema':
+              '$ref': '#/components/schemas/BusinessInput'
+      'parameters':
+      - *id010
+  '/v1/caller/rules':
+    'get':
+      'operationId': 'listRules'
+      'summary': 'List rules visible in authorized scopes'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/RulePage'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'parameters':
+      - *id011
+      - *id012
+      - 'name': 'scope_id'
+        'in': 'query'
+        'required': false
+        'schema':
+          'type': 'string'
+          'maxLength': 128
+    'post':
+      'operationId': 'createRule'
+      'summary': 'Create draft or activate an authorized policy revision'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '201':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Rule'
+          'headers':
+            'ETag':
+              'schema':
+                'type': 'string'
+              'description': 'Version required for later mutation'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'requestBody':
+        'required': true
+        'content':
+          'application/json':
+            'schema':
+              '$ref': '#/components/schemas/RuleInput'
+      'parameters':
+      - *id010
+  '/v1/caller/rules/{id}':
+    'patch':
+      'operationId': 'patchRule'
+      'summary': 'Change a rule with optimistic concurrency'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Rule'
+          'headers':
+            'ETag':
+              'schema':
+                'type': 'string'
+              'description': 'Updated rule version'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+        '412':
+          'description': 'Stale rule version'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '428':
+          'description': 'If-Match required'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+      'requestBody':
+        'required': true
+        'content':
+          'application/json':
+            'schema':
+              '$ref': '#/components/schemas/RulePatch'
+      'parameters':
+      - 'name': 'id'
+        'in': 'path'
+        'required': true
+        'schema': &id013
+          'type': 'string'
+          'format': 'uuid'
+      - &id014
+        'name': 'If-Match'
+        'in': 'header'
+        'required': true
+        'schema':
+          'type': 'string'
+          'minLength': 1
+          'maxLength': 128
+        'description': 'Opaque rule version ETag; stale returns 412, missing returns 428.'
+      - *id010
+    'delete':
+      'operationId': 'deleteRule'
+      'summary': 'Tombstone rule and publish invalidation; return convergence status'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '202':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Rule'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+        '412':
+          'description': 'Stale rule version'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+        '428':
+          'description': 'If-Match required'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Error'
+      'parameters':
+      - 'name': 'id'
+        'in': 'path'
+        'required': true
+        'schema': *id013
+      - *id014
+      - *id010
+  '/v1/caller/history':
+    'get':
+      'operationId': 'listHistory'
+      'summary': 'List own authorized call history; numbers are access controlled'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/HistoryPage'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'parameters':
+      - *id011
+      - *id012
+      - 'name': 'since'
+        'in': 'query'
+        'required': false
+        'schema': &id015
+          'type': 'string'
+          'format': 'date-time'
+      - 'name': 'until'
+        'in': 'query'
+        'required': false
+        'schema': *id015
+  '/v1/caller/providers':
+    'get':
+      'operationId': 'listProviders'
+      'summary': 'Read permitted redacted capability and health summaries'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/ProviderPage'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'parameters':
+      - *id011
+      - *id012
+  '/v1/caller/budget':
+    'get':
+      'operationId': 'getBudget'
+      'summary': 'Read authorized period counters and estimates versus reconciliation'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Budget'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+  '/v1/caller/simulate':
+    'post':
+      'operationId': 'simulatePolicy'
+      'summary': 'Simulate owned scope without SIP action, paid work or report side effects'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '200':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/EvaluationResult'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'requestBody':
+        'required': true
+        'content':
+          'application/json':
+            'schema':
+              '$ref': '#/components/schemas/EvaluationRequest'
+  '/v1/caller/reports':
+    'post':
+      'operationId': 'reportCaller'
+      'summary': 'Submit bounded unreviewed report; never immediately change global reputation'
+      'security':
+      - 'authentikBearer': []
+      'responses':
+        '201':
+          'description': 'Success'
+          'content':
+            'application/json':
+              'schema':
+                '$ref': '#/components/schemas/Report'
+        '400': *id002
+        '401': *id003
+        '403': *id004
+        '404': *id005
+        '409': *id006
+        '422': *id007
+        '429': *id008
+        '503': *id009
+      'requestBody':
+        'required': true
+        'content':
+          'application/json':
+            'schema':
+              '$ref': '#/components/schemas/ReportInput'
+      'parameters':
+      - *id010
+'components':
+  'securitySchemes':
+    'sbcMTLS':
+      'type': 'mutualTLS'
+      'description': 'Dedicated SBC client identity and verified server TLS; map cert identity to site/tenant/DID
+        permissions.'
+    'authentikBearer':
+      'type': 'http'
+      'scheme': 'bearer'
+      'bearerFormat': 'JWT'
+      'description': 'Authentik access token, validated issuer/audience/expiry/signature and application scopes;
+        never trust an arbitrary user header.'
+  'schemas':
+    'E164':
+      'type': 'string'
+      'pattern': '^\+[1-9][0-9]{1,14}$'
+      'maxLength': 16
+      'description': 'Canonical E.164 syntax; numbering-plan validation is additional.'
+    'Action':
+      'type': 'string'
+      'enum':
+      - 'normal'
+      - 'warn'
+      - 'challenge'
+      - 'voicemail'
+      - 'reject'
+    'Scope':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'tenant_id': *id013
+        'type':
+          'type': 'string'
+          'enum':
+          - 'platform'
+          - 'tenant'
+          - 'did'
+          - 'extension'
+          - 'user'
+        'id':
+          'type': 'string'
+          'maxLength': 128
+        'issuer':
+          'type': 'string'
+          'format': 'uri'
+        'subject':
+          'type': 'string'
+          'maxLength': 256
+      'required':
+      - 'tenant_id'
+      - 'type'
+      - 'id'
+      'description': 'Resolved from authenticated ownership; issuer/subject required for user scope. Client scope
+        is a hint subject to authorization.'
+    'CallerInput':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'raw':
+          'anyOf':
+          - 'type': 'string'
+            'maxLength': 256
+          - 'type': 'null'
+        'presentation':
+          'type': 'string'
+          'enum':
+          - 'present'
+          - 'withheld'
+          - 'unknown'
+        'source':
+          'type': 'string'
+          'enum':
+          - 'trusted_pai'
+          - 'from'
+          - 'carrier_verified'
+          - 'none'
+        'trust_profile_id':
+          'type': 'string'
+          'maxLength': 128
+      'required':
+      - 'raw'
+      - 'presentation'
+      - 'source'
+      'description': 'No arbitrary headers or display-name authority. SBC validates source and asserted-identity
+        selection.'
+    'Authentication':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'status':
+          'type': 'string'
+          'enum':
+          - 'valid'
+          - 'invalid'
+          - 'unavailable'
+          - 'not_present'
+        'attestation':
+          'anyOf':
+          - 'type': 'string'
+            'enum':
+            - 'A'
+            - 'B'
+            - 'C'
+          - 'type': 'null'
+        'provenance':
+          'type': 'string'
+          'maxLength': 128
+        'verified_at':
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+        'origin_bound': &id016
+          'type': 'boolean'
+        'destination_bound': *id016
+      'required':
+      - 'status'
+      - 'attestation'
+      - 'provenance'
+      - 'verified_at'
+      - 'origin_bound'
+      - 'destination_bound'
+    'EvaluationRequest':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'correlation_id': *id013
+        'transaction_key':
+          'type': 'string'
+          'minLength': 16
+          'maxLength': 256
+        'site':
+          'type': 'string'
+          'maxLength': 64
+        'call_kind':
+          'type': 'string'
+          'enum':
+          - 'initial_inbound'
+        'caller':
+          '$ref': '#/components/schemas/CallerInput'
+        'called_did':
+          '$ref': '#/components/schemas/E164'
+        'authentication':
+          '$ref': '#/components/schemas/Authentication'
+        'scope_hint':
+          '$ref': '#/components/schemas/Scope'
+      'required':
+      - 'correlation_id'
+      - 'transaction_key'
+      - 'site'
+      - 'call_kind'
+      - 'caller'
+      - 'called_did'
+      - 'authentication'
+      'description': 'transaction_key is an SBC-generated HMAC over SIP transaction facts, stable across replicas.
+        Tenant/site/DID authorization derives from mTLS principal, not a claimed tenant.'
+    'NormalizedCaller':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'number':
+          'anyOf':
+          - '$ref': '#/components/schemas/E164'
+          - 'type': 'null'
+        'status':
+          'type': 'string'
+          'enum':
+          - 'valid'
+          - 'withheld'
+          - 'malformed'
+          - 'unknown'
+          - 'non_geographic'
+        'assigned_region':
+          'anyOf':
+          - 'type': 'string'
+            'pattern': '^[A-Z]{2}$'
+          - 'type': 'null'
+        'region_status':
+          'type': 'string'
+          'enum':
+          - 'resolved'
+          - 'ambiguous'
+          - 'unknown'
+          - 'non_geographic'
+        'metadata_version':
+          'type': 'string'
+      'required':
+      - 'number'
+      - 'status'
+      - 'assigned_region'
+      - 'region_status'
+      - 'metadata_version'
+    'BusinessMatch':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'id': *id013
+        'parent_id':
+          'anyOf':
+          - *id013
+          - 'type': 'null'
+        'name':
+          'type': 'string'
+          'maxLength': 256
+        'status':
+          'type': 'string'
+          'enum':
+          - 'candidate'
+          - 'reviewed'
+          - 'verified'
+          - 'disputed'
+        'association_confidence': &id017
+          'type': 'number'
+          'minimum': 0
+          'maximum': 1
+        'categories':
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'maxLength': 64
+        'evidence_refs':
+          'type': 'array'
+          'items': *id013
+        'expires_at':
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+      'required':
+      - 'id'
+      - 'parent_id'
+      - 'name'
+      - 'status'
+      - 'association_confidence'
+      - 'categories'
+      - 'evidence_refs'
+      - 'expires_at'
+    'Identity':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'status':
+          'type': 'string'
+          'enum':
+          - 'unknown'
+          - 'candidate'
+          - 'reviewed'
+          - 'verified'
+          - 'disputed'
+        'confidence': *id017
+        'contact_match': *id016
+        'businesses':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/BusinessMatch'
+      'required':
+      - 'status'
+      - 'confidence'
+      - 'contact_match'
+      - 'businesses'
+    'Reputation':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'risk':
+          'anyOf':
+          - 'type': 'number'
+            'minimum': 0
+            'maximum': 100
+          - 'type': 'null'
+        'raw_score':
+          'type': 'number'
+        'confidence': *id017
+        'model_revision':
+          'type': 'string'
+        'labels':
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'maxLength': 64
+      'required':
+      - 'risk'
+      - 'raw_score'
+      - 'confidence'
+      - 'model_revision'
+      - 'labels'
+    'RuleMatch':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'symbol':
+          'type': 'string'
+          'maxLength': 80
+        'rule_id':
+          'anyOf':
+          - *id013
+          - 'type': 'null'
+        'evidence_refs':
+          'type': 'array'
+          'items': *id013
+        'evidence_summary':
+          'type': 'string'
+          'maxLength': 512
+        'confidence': *id017
+        'score_contribution':
+          'type': 'number'
+        'dimension':
+          'type': 'string'
+          'enum':
+          - 'risk'
+          - 'identity'
+          - 'authentication'
+          - 'policy'
+          - 'category'
+          - 'operational'
+        'suggested_action':
+          'anyOf':
+          - '$ref': '#/components/schemas/Action'
+          - 'type': 'null'
+        'shadowed': *id016
+      'required':
+      - 'symbol'
+      - 'rule_id'
+      - 'evidence_refs'
+      - 'evidence_summary'
+      - 'confidence'
+      - 'score_contribution'
+      - 'dimension'
+      - 'suggested_action'
+      - 'shadowed'
+    'Decision':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'action':
+          '$ref': '#/components/schemas/Action'
+        'suggested_action':
+          '$ref': '#/components/schemas/Action'
+        'mode':
+          'type': 'string'
+          'enum':
+          - 'observe'
+          - 'enforce'
+          - 'simulate'
+        'winning_rule_id':
+          'anyOf':
+          - *id013
+          - 'type': 'null'
+        'explanation':
+          'type': 'string'
+          'maxLength': 2048
+        'degraded': *id016
+        'fallback_reason':
+          'anyOf':
+          - 'type': 'string'
+            'maxLength': 128
+          - 'type': 'null'
+        'decision_expires_at': *id015
+      'required':
+      - 'action'
+      - 'suggested_action'
+      - 'mode'
+      - 'winning_rule_id'
+      - 'explanation'
+      - 'degraded'
+      - 'fallback_reason'
+      - 'decision_expires_at'
+    'Freshness':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'source':
+          'type': 'string'
+          'maxLength': 128
+        'observed_at':
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+        'retrieved_at': *id015
+        'refresh_after':
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+        'source_expires_at':
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+        'stale': *id016
+        'license_revision':
+          'anyOf':
+          - 'type': 'string'
+          - 'type': 'null'
+      'required':
+      - 'source'
+      - 'observed_at'
+      - 'retrieved_at'
+      - 'refresh_after'
+      - 'source_expires_at'
+      - 'stale'
+      - 'license_revision'
+    'EvaluationResult':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'correlation_id': *id013
+        'normalized_caller':
+          '$ref': '#/components/schemas/NormalizedCaller'
+        'called_did':
+          '$ref': '#/components/schemas/E164'
+        'evaluated_scopes':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/Scope'
+        'identity':
+          '$ref': '#/components/schemas/Identity'
+        'authentication':
+          '$ref': '#/components/schemas/Authentication'
+        'reputation':
+          '$ref': '#/components/schemas/Reputation'
+        'matched_rules':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/RuleMatch'
+        'decision':
+          '$ref': '#/components/schemas/Decision'
+        'policy_revision':
+          'type': 'string'
+        'cache_status':
+          'type': 'string'
+          'enum':
+          - 'hit'
+          - 'miss'
+          - 'stale'
+          - 'partial'
+          - 'bypass'
+        'freshness':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/Freshness'
+        'paid_lookup_used': *id016
+        'enrichment_scheduled': *id016
+        'evaluation_ms':
+          'type': 'number'
+          'minimum': 0
+      'required':
+      - 'correlation_id'
+      - 'normalized_caller'
+      - 'called_did'
+      - 'evaluated_scopes'
+      - 'identity'
+      - 'authentication'
+      - 'reputation'
+      - 'matched_rules'
+      - 'decision'
+      - 'policy_revision'
+      - 'cache_status'
+      - 'freshness'
+      - 'paid_lookup_used'
+      - 'enrichment_scheduled'
+      - 'evaluation_ms'
+      'description': 'paid_lookup_used means licensed paid-derived evidence was used, possibly cached. No paid request
+        occurs synchronously. action is always normal in observe mode; suggested_action records classification.'
+    'LookupRequest':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'number':
+          '$ref': '#/components/schemas/E164'
+        'features':
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'maxLength': 64
+          'minItems': 1
+          'maxItems': 4
+          'uniqueItems': true
+        'purpose':
+          'type': 'string'
+          'minLength': 1
+          'maxLength': 256
+        'allow_paid': *id016
+      'required':
+      - 'number'
+      - 'features'
+      - 'purpose'
+      - 'allow_paid'
+      'description': 'Queues work only after authorization/approval/quota. allow_paid is intent, never authorization
+        to exceed a cap.'
+    'LookupResult':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'number':
+          '$ref': '#/components/schemas/E164'
+        'normalized_caller':
+          '$ref': '#/components/schemas/NormalizedCaller'
+        'identity':
+          '$ref': '#/components/schemas/Identity'
+        'reputation':
+          '$ref': '#/components/schemas/Reputation'
+        'freshness':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/Freshness'
+        'cache_status':
+          'type': 'string'
+          'enum':
+          - 'hit'
+          - 'miss'
+          - 'stale'
+          - 'partial'
+          - 'bypass'
+        'job_id':
+          'anyOf':
+          - *id013
+          - 'type': 'null'
+        'job_state':
+          'type': 'string'
+          'enum':
+          - 'none'
+          - 'queued'
+          - 'running'
+          - 'completed'
+          - 'denied'
+          - 'uncertain'
+          - 'failed'
+        'denial_reason':
+          'anyOf':
+          - 'type': 'string'
+            'maxLength': 128
+          - 'type': 'null'
+      'required':
+      - 'number'
+      - 'normalized_caller'
+      - 'identity'
+      - 'reputation'
+      - 'freshness'
+      - 'cache_status'
+      - 'job_id'
+      - 'job_state'
+      - 'denial_reason'
+    'EvidenceInput':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'kind':
+          'type': 'string'
+          'enum':
+          - 'independent_review'
+          - 'first_party'
+          - 'provider_reference'
+        'source_reference':
+          'type': 'string'
+          'maxLength': 512
+        'summary':
+          'type': 'string'
+          'maxLength': 1024
+        'observed_at': *id015
+        'expires_at':
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+      'required':
+      - 'kind'
+      - 'source_reference'
+      - 'summary'
+      - 'observed_at'
+      - 'expires_at'
+    'BusinessInput':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'name': &id018
+          'type': 'string'
+          'minLength': 1
+          'maxLength': 256
+        'parent_id': &id019
+          'anyOf':
+          - *id013
+          - 'type': 'null'
+        'aliases': &id020
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'maxLength': 256
+          'maxItems': 20
+        'categories': &id021
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'maxLength': 64
+          'maxItems': 20
+        'numbers': &id022
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/E164'
+          'maxItems': 100
+        'evidence': &id023
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/EvidenceInput'
+          'minItems': 1
+          'maxItems': 20
+      'required':
+      - 'name'
+      - 'parent_id'
+      - 'aliases'
+      - 'categories'
+      - 'numbers'
+      - 'evidence'
+      'description': 'Creates a candidate review record only; submitted categories/number associations are not automatically
+        verified or activated. Independently sourced content required for durable records.'
+    'Business':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'name': *id018
+        'parent_id': *id019
+        'aliases': *id020
+        'categories': *id021
+        'numbers': *id022
+        'evidence': *id023
+        'id': *id013
+        'tenant_id': *id013
+        'status':
+          'type': 'string'
+          'enum':
+          - 'candidate'
+          - 'reviewed'
+          - 'verified'
+          - 'disputed'
+        'version': &id032
+          'type': 'integer'
+          'minimum': 0
+        'created_at': *id015
+        'updated_at': *id015
+      'required':
+      - 'name'
+      - 'parent_id'
+      - 'aliases'
+      - 'categories'
+      - 'numbers'
+      - 'evidence'
+      - 'id'
+      - 'tenant_id'
+      - 'status'
+      - 'version'
+      - 'created_at'
+      - 'updated_at'
+    'ExactSelector':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'type':
+          'type': 'string'
+          'enum':
+          - 'exact'
+        'number':
+          '$ref': '#/components/schemas/E164'
+      'required':
+      - 'type'
+      - 'number'
+    'PrefixSelector':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'type':
+          'type': 'string'
+          'enum':
+          - 'prefix'
+        'prefix':
+          'type': 'string'
+          'pattern': '^\+[1-9][0-9]{1,14}$'
+        'broad_match_approval_id': *id013
+      'required':
+      - 'type'
+      - 'prefix'
+    'RangeSelector':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'type':
+          'type': 'string'
+          'enum':
+          - 'range'
+        'start':
+          '$ref': '#/components/schemas/E164'
+        'end':
+          '$ref': '#/components/schemas/E164'
+        'broad_match_approval_id': *id013
+      'required':
+      - 'type'
+      - 'start'
+      - 'end'
+    'CountrySelector':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'type':
+          'type': 'string'
+          'enum':
+          - 'country'
+        'countries':
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'pattern': '^[A-Z]{2}$'
+          'minItems': 1
+          'uniqueItems': true
+      'required':
+      - 'type'
+      - 'countries'
+    'BusinessSelector':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'type':
+          'type': 'string'
+          'enum':
+          - 'business'
+        'business_id': *id013
+        'coverage':
+          'type': 'string'
+          'enum':
+          - 'branch_only'
+          - 'reviewed_entity_tree'
+        'minimum_association_confidence': *id017
+        'require_authenticated_origin': *id016
+      'required':
+      - 'type'
+      - 'business_id'
+      - 'coverage'
+      - 'minimum_association_confidence'
+      - 'require_authenticated_origin'
+    'CategorySelector':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'type':
+          'type': 'string'
+          'enum':
+          - 'category'
+        'categories':
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'maxLength': 64
+          'minItems': 1
+          'uniqueItems': true
+      'required':
+      - 'type'
+      - 'categories'
+    'PresentationSelector':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'type':
+          'type': 'string'
+          'enum':
+          - 'presentation'
+        'states':
+          'type': 'array'
+          'items':
+            'type': 'string'
+            'enum':
+            - 'withheld'
+            - 'malformed'
+            - 'unknown'
+          'minItems': 1
+          'uniqueItems': true
+      'required':
+      - 'type'
+      - 'states'
+    'Selector':
+      'oneOf':
+      - '$ref': '#/components/schemas/ExactSelector'
+      - '$ref': '#/components/schemas/PrefixSelector'
+      - '$ref': '#/components/schemas/RangeSelector'
+      - '$ref': '#/components/schemas/CountrySelector'
+      - '$ref': '#/components/schemas/BusinessSelector'
+      - '$ref': '#/components/schemas/CategorySelector'
+      - '$ref': '#/components/schemas/PresentationSelector'
+      'discriminator':
+        'propertyName': 'type'
+    'RuleInput':
+      'type': 'object'
+      'additionalProperties': false
+      'properties': &id024
+        'scope': &id025
+          '$ref': '#/components/schemas/Scope'
+        'selector': &id026
+          '$ref': '#/components/schemas/Selector'
+        'action': &id027
+          '$ref': '#/components/schemas/Action'
+        'priority': &id028
+          'type': 'integer'
+          'minimum': -1000
+          'maximum': 1000
+        'mandatory': *id016
+        'state': &id029
+          'type': 'string'
+          'enum':
+          - 'draft'
+          - 'active'
+          - 'disabled'
+        'reason': &id030
+          'type': 'string'
+          'minLength': 1
+          'maxLength': 512
+        'valid_from': *id015
+        'expires_at': &id031
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+      'required':
+      - 'scope'
+      - 'selector'
+      - 'action'
+      - 'priority'
+      - 'mandatory'
+      - 'state'
+      - 'reason'
+      - 'valid_from'
+      - 'expires_at'
+      'description': 'Server checks scope ownership, admin-only mandatory/global flags, breadth, expiry, conflicts
+        and supported actions. Activation uses a versioned outbox; request cannot choose a routing URI.'
+    'RulePatch':
+      'type': 'object'
+      'additionalProperties': false
+      'properties': *id024
+      'minProperties': 1
+      'description': 'Partial update, with the same authorization and semantic constraints as RuleInput. If-Match
+        required.'
+    'Rule':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'scope': *id025
+        'selector': *id026
+        'action': *id027
+        'priority': *id028
+        'mandatory': *id016
+        'state': *id029
+        'reason': *id030
+        'valid_from': *id015
+        'expires_at': *id031
+        'id': *id013
+        'version': *id032
+        'etag':
+          'type': 'string'
+          'description': 'Opaque version validator returned in list/create/update for If-Match.'
+        'policy_revision':
+          'type': 'string'
+        'activation':
+          'type': 'string'
+          'enum':
+          - 'pending'
+          - 'active'
+          - 'disabled'
+        'pending_sites':
+          'type': 'array'
+          'items':
+            'type': 'string'
+        'created_at': *id015
+        'updated_at': *id015
+      'required':
+      - 'scope'
+      - 'selector'
+      - 'action'
+      - 'priority'
+      - 'mandatory'
+      - 'state'
+      - 'reason'
+      - 'valid_from'
+      - 'expires_at'
+      - 'id'
+      - 'version'
+      - 'etag'
+      - 'policy_revision'
+      - 'activation'
+      - 'pending_sites'
+      - 'created_at'
+      - 'updated_at'
+    'ProviderFeature':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'id':
+          'type': 'string'
+        'countries':
+          'type': 'array'
+          'items':
+            'type': 'string'
+        'enabled': *id016
+        'approval':
+          'type': 'string'
+          'enum':
+          - 'approved'
+          - 'pending'
+          - 'denied'
+          - 'not_required'
+        'price_micros':
+          'anyOf':
+          - *id032
+          - 'type': 'null'
+        'currency':
+          'anyOf':
+          - 'type': 'string'
+            'pattern': '^[A-Z]{3}$'
+          - 'type': 'null'
+        'price_verified_at':
+          'anyOf':
+          - *id015
+          - 'type': 'null'
+        'retention_seconds':
+          'anyOf':
+          - *id032
+          - 'type': 'null'
+        'cache_eligible': *id016
+        'timeout_ms': *id032
+        'priority': *id032
+      'required':
+      - 'id'
+      - 'countries'
+      - 'enabled'
+      - 'approval'
+      - 'price_micros'
+      - 'currency'
+      - 'price_verified_at'
+      - 'retention_seconds'
+      - 'cache_eligible'
+      - 'timeout_ms'
+      - 'priority'
+    'Provider':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'id':
+          'type': 'string'
+        'api_revision':
+          'type': 'string'
+        'status':
+          'type': 'string'
+          'enum':
+          - 'disabled'
+          - 'healthy'
+          - 'degraded'
+          - 'unavailable'
+        'features':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/ProviderFeature'
+      'required':
+      - 'id'
+      - 'api_revision'
+      - 'status'
+      - 'features'
+      'description': 'Redacted capability summary only; no credentials or private account configuration.'
+    'BudgetCounter':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'dimension':
+          'type': 'string'
+          'enum':
+          - 'global'
+          - 'provider'
+          - 'feature'
+          - 'tenant'
+          - 'currency'
+        'id':
+          'type': 'string'
+        'base_limit': *id032
+        'override_limit': *id032
+        'consumed': *id032
+        'reserved': *id032
+        'uncertain': *id032
+        'remaining': *id032
+        'failed': *id032
+        'currency':
+          'anyOf':
+          - 'type': 'string'
+            'pattern': '^[A-Z]{3}$'
+          - 'type': 'null'
+        'estimated_cost_micros': *id032
+        'reconciled_cost_micros':
+          'anyOf':
+          - *id032
+          - 'type': 'null'
+      'required':
+      - 'dimension'
+      - 'id'
+      - 'base_limit'
+      - 'override_limit'
+      - 'consumed'
+      - 'reserved'
+      - 'uncertain'
+      - 'remaining'
+      - 'failed'
+      - 'currency'
+      - 'estimated_cost_micros'
+      - 'reconciled_cost_micros'
+      'description': 'Feature units except currency dimension in micros. Failure count is orthogonal to billing
+        states. Tenant users see own counters and approved aggregate availability only.'
+    'Budget':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'period_start': *id015
+        'period_end': *id015
+        'timezone':
+          'type': 'string'
+          'enum':
+          - 'UTC'
+        'counters':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/BudgetCounter'
+        'as_of': *id015
+      'required':
+      - 'period_start'
+      - 'period_end'
+      - 'timezone'
+      - 'counters'
+      - 'as_of'
+    'HistoryEntry':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'id': *id013
+        'created_at': *id015
+        'result':
+          '$ref': '#/components/schemas/EvaluationResult'
+      'required':
+      - 'id'
+      - 'created_at'
+      - 'result'
+    'ReportInput':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'number': &id033
+          '$ref': '#/components/schemas/E164'
+        'evaluation_id': &id034
+          'anyOf':
+          - *id013
+          - 'type': 'null'
+        'category': &id035
+          'type': 'string'
+          'maxLength': 64
+        'comment': &id036
+          'type': 'string'
+          'maxLength': 1024
+      'required':
+      - 'number'
+      - 'evaluation_id'
+      - 'category'
+      - 'comment'
+    'Report':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'number': *id033
+        'evaluation_id': *id034
+        'category': *id035
+        'comment': *id036
+        'id': *id013
+        'status':
+          'type': 'string'
+          'enum':
+          - 'pending'
+          - 'reviewed'
+          - 'disputed'
+          - 'withdrawn'
+        'created_at': *id015
+      'required':
+      - 'number'
+      - 'evaluation_id'
+      - 'category'
+      - 'comment'
+      - 'id'
+      - 'status'
+      - 'created_at'
+    'Error':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'code':
+          'type': 'string'
+        'message':
+          'type': 'string'
+          'maxLength': 512
+        'correlation_id': *id013
+      'required':
+      - 'code'
+      - 'message'
+      - 'correlation_id'
+    'BusinessPage':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'items':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/Business'
+          'maxItems': 100
+        'next_cursor':
+          'anyOf':
+          - 'type': 'string'
+            'maxLength': 1024
+          - 'type': 'null'
+      'required':
+      - 'items'
+      - 'next_cursor'
+    'RulePage':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'items':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/Rule'
+          'maxItems': 100
+        'next_cursor':
+          'anyOf':
+          - 'type': 'string'
+            'maxLength': 1024
+          - 'type': 'null'
+      'required':
+      - 'items'
+      - 'next_cursor'
+    'HistoryPage':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'items':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/HistoryEntry'
+          'maxItems': 100
+        'next_cursor':
+          'anyOf':
+          - 'type': 'string'
+            'maxLength': 1024
+          - 'type': 'null'
+      'required':
+      - 'items'
+      - 'next_cursor'
+    'ProviderPage':
+      'type': 'object'
+      'additionalProperties': false
+      'properties':
+        'items':
+          'type': 'array'
+          'items':
+            '$ref': '#/components/schemas/Provider'
+          'maxItems': 100
+        'next_cursor':
+          'anyOf':
+          - 'type': 'string'
+            'maxLength': 1024
+          - 'type': 'null'
+      'required':
+      - 'items'
+      - 'next_cursor'

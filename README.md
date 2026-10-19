@@ -1,5 +1,9 @@
 # CoRE Business
 
+AVoIP’s proposed [Caller Intelligence & Call Protection](AVoIP/docs/caller-intelligence/README.md)
+design covers local call policy, business identity, provider quotas and staged
+Kamailio integration. It is documentation only; no service or routing is enabled.
+
 AVoIP's [SIP Core INFO routing guide](AVoIP/docs/SIPCORE-DTMF.md) documents
 DTMF delivery to Asterisk, the separate RTPEngine trickle ICE path, and safe
 live verification of voicemail navigation and ACK routing.

@@ -1,5 +1,10 @@
 # AVoIP SIP boundary and availability architecture
 
+The documentation-only [Caller Intelligence extension](../caller-intelligence/README.md)
+proposes a standalone Go policy service and bounded initial-INVITE evaluation.
+See its [discovery baseline](../caller-intelligence/discovery.md) for current
+Backplane carrier replica declarations; it does not change this SIP boundary.
+
 ## Current boundary
 
 ```mermaid

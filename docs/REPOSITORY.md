@@ -1,5 +1,9 @@
 # Repository and deployment guide
 
+The [Caller Intelligence design package](../AVoIP/docs/caller-intelligence/README.md)
+records AVoIP discovery, API/data/cache proposals, provider licensing and budgets,
+and a staged protection rollout. These are proposed contracts, not deployed resources.
+
 For SIP Core keypad failures, use the [INFO routing and ACK verification
 guide](../AVoIP/docs/SIPCORE-DTMF.md). It explains MIME classification,
 scoped Kamailio reconciliation and verification without logging PINs or digits.

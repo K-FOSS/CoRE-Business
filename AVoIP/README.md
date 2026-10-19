@@ -1,5 +1,9 @@
 # AVoIP
 
+The proposed [CoRE Caller Intelligence & Call Protection](docs/caller-intelligence/README.md)
+package documents number/business policies, reputation, lookup budgets, APIs and
+a future Kamailio bridge. It adds no running service or telephony configuration.
+
 YXL voice/IVR calls ring and immediately enter the answering IVR
 on their authenticated YVR ingress. See the [phone tree](docs/PHONE-TREE.md)
 for the scoped timing value and verification procedure.
