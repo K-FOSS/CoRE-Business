@@ -231,7 +231,12 @@ data:
     external_signaling_port=5061
     cert_file=/etc/asterisk/tls/tls.crt
     priv_key_file=/etc/asterisk/tls/tls.key
+    {{- if .Values.asterisk.sipCore.enabled }}
+    ; Include the active site Kamailio issuer CA while retaining public roots.
+    ca_list_file=/tmp/avoip-ca-bundle.pem
+    {{- else }}
     ca_list_file=/etc/ssl/certs/ca-certificates.crt
+    {{- end }}
     method=tlsv1_2
     verify_client=no
     verify_server=yes

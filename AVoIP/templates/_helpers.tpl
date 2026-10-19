@@ -143,6 +143,18 @@ nat.mylogin.space
 {{- printf "%s.%s.svc.%s" $serviceName $root.Release.Namespace (required "cluster.domain is required for SIP Core return service" $root.Values.cluster.domain) -}}
 {{- end -}}
 
+{{- define "avoip.asterisk.sipCore.kamailioTLSSecret" -}}
+{{- $root := . -}}
+{{- $instanceName := $root.Values.asterisk.sipCore.kamailioInstance -}}
+{{- $secretName := "" -}}
+{{- range (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+  {{- if eq .name $instanceName -}}
+    {{- $secretName = include "avoip.kamailio.resourceName" (dict "root" $root "instance" . "suffix" "sip-tls") -}}
+  {{- end -}}
+{{- end -}}
+{{- required (printf "asterisk.sipCore.kamailioInstance %s has no TLS Secret" $instanceName) $secretName -}}
+{{- end -}}
+
 {{- define "avoip.sip.kamailioPubHost" -}}
 {{- $root := . -}}
 {{- $kamailio := $root.Values.kamailio -}}

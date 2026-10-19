@@ -868,7 +868,7 @@ controllers:
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }},{{ include "avoip.fullname" . }}-asterisk-voicemail-pin{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }},{{ include "avoip.fullname" . }}-asterisk-voicemail-pin{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }},{{ include "avoip.asterisk.sipCore.kamailioTLSSecret" . }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
     initContainers:
       asterisk-timezone:
         image:
@@ -1054,6 +1054,14 @@ controllers:
         args:
           - |
             umask 077
+            {{- if .Values.asterisk.sipCore.enabled }}
+            if [ ! -s /etc/asterisk/sipcore-ca/ca.crt ]; then
+              printf '%s\n' 'Site SIP CA bundle is missing; refusing unverified Asterisk TLS' >&2
+              exit 1
+            fi
+            cat /etc/ssl/certs/ca-certificates.crt /etc/asterisk/sipcore-ca/ca.crt > /tmp/avoip-ca-bundle.pem
+            chmod 0444 /tmp/avoip-ca-bundle.pem
+            {{- end }}
             printf '[freeswitch-auth]\ntype=auth\nauth_type=userpass\nusername=freeswitch\npassword=%s\n' \
               "$(cat /tmp/avoip-freeswitch-peer-password)" > /tmp/avoip-pjsip-auth.conf
             {{- if .Values.freeswitch.enabled }}
@@ -2399,6 +2407,19 @@ persistence:
       asterisk:
         asterisk:
           - path: /etc/asterisk/tls
+  {{- if .Values.asterisk.sipCore.enabled }}
+  asterisk-sipcore-ca:
+    type: secret
+    name: '{{ include "avoip.asterisk.sipCore.kamailioTLSSecret" . }}'
+    items:
+      - key: 'ca.crt'
+        path: 'ca.crt'
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /etc/asterisk/sipcore-ca
+            readOnly: true
+  {{- end }}
 {{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }}
   asterisk-turn-secret:
     type: secret

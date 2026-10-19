@@ -43,8 +43,11 @@ AVoIP/tests/managed-outbound-identity-render.sh
 It confirms that the locked Asterisk extension context stamps its identity on
 the new outbound channel, Admin routing does not replace that identity with
 the caller ID before authorization, and Kamailio uses the trusted marker for
-the policy lookup before applying the authorized caller ID. It does not place
-a live call or validate provider account acceptance.
+the policy lookup before applying the authorized caller ID. It also confirms
+that Asterisk combines public system roots with the selected site's Kamailio CA
+while keeping server verification enabled, and that CA rotation triggers an
+Asterisk restart. It does not place a live call or validate provider account
+acceptance.
 
 The Homer capture-ID and SIP-dialog correlation render check is:
 

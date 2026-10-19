@@ -13,6 +13,8 @@ helm template core-home1-talos-prod "$chart_dir" --namespace core-prod \
 
 asterisk_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$render")"
 internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
+asterisk_pjsip="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-config-tpl") | .data["pjsip.conf"]' "$render")"
+asterisk_deploy="$(yq -c 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-asterisk")' "$render")"
 
 # The locked per-extension Asterisk dialplan stamps the trusted identity on a
 # new outbound PJSIP channel; Admin mode does not turn the extension into the
@@ -21,6 +23,12 @@ grep -Fq 'Dial(PJSIP/${EXTEN}@carrier-outbound,120,b(sipcore-managed-outbound-he
 grep -Fq 'PJSIP_HEADER(remove,X-Core-Extension)=' <<< "$asterisk_cfg"
 grep -Fq 'PJSIP_HEADER(add,X-Core-Extension)=${ARG1}' <<< "$asterisk_cfg"
 ! grep -Fq 'Set(CALLERID(num)=7101)' <<< "$asterisk_cfg"
+grep -Fq 'ca_list_file=/tmp/avoip-ca-bundle.pem' <<< "$asterisk_pjsip"
+grep -Fq 'verify_server=yes' <<< "$asterisk_pjsip"
+grep -Fq '"secretName":"core-home1-talos-prod-avoip-kamailio-internal-sip-tls"' <<< "$asterisk_deploy"
+grep -Fq '"key":"ca.crt"' <<< "$asterisk_deploy"
+grep -Fq 'cat /etc/ssl/certs/ca-certificates.crt /etc/asterisk/sipcore-ca/ca.crt > /tmp/avoip-ca-bundle.pem' <<< "$asterisk_deploy"
+grep -Fq 'core-home1-talos-prod-avoip-kamailio-internal-sip-tls' <<< "$asterisk_deploy"
 
 # Only the Asterisk-only TLS path promotes the stamped extension into the
 # policy variable. The route looks up that identity and then overwrites From
@@ -33,3 +41,4 @@ grep -Fq 'reject=trusted_extension_missing' <<< "$internal_cfg"
 
 printf '%s\n' 'PASS: Admin outbound identity is derived from the locked Asterisk extension context'
 printf '%s\n' 'PASS: Kamailio looks up the trusted extension and applies the policy caller ID'
+printf '%s\n' 'PASS: Asterisk trusts the selected site Kamailio CA without disabling TLS verification'
