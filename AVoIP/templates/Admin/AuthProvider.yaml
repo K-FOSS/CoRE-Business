@@ -17,6 +17,12 @@ spec:
         key: '{{ .Values.avoipAdmin.auth.credentials.key }}'
   configuration: |
     terraform {
+      # Preserve the existing Workspace state location when isolating the plugin.
+      backend "kubernetes" {
+        secret_suffix = "providerconfig-authentik"
+        namespace = "{{ .Values.avoipAdmin.auth.credentials.namespace }}"
+        in_cluster_config = true
+      }
       required_providers {
         authentik = {
           source = "goauthentik/authentik"

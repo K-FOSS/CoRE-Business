@@ -217,3 +217,8 @@ the outpost or replace its other providers. The global `authentik` ProviderConfi
 and existing application provider versions stay unchanged. `avoipAdmin.auth`
 configures the version, API URL, outpost name and stable credential references.
 ProviderConfig is a Crossplane custom API without a BJW-S resource class.
+
+The admin-only Terraform ProviderConfig retains the existing Authentik Kubernetes
+state backend (`providerconfig-authentik` in the credential namespace). Workspace
+state remains scoped by workspace identity; changing the plugin version must not
+move or reset that state. No state migration or application recreation is intended.
