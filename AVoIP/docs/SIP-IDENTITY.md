@@ -108,7 +108,15 @@ The public/private route pair is constructed once per direction with `record_rou
 
 The `sips-tls` Gateway listener uses TLS passthrough to the Kamailio `TLSRoute`; it does not terminate the SIP TLS session. Envoy Gateway normally matches the route hostname against SNI. The fallback [EnvoyPatchPolicy](https://gateway.envoyproxy.io/docs/tasks/extensibility/envoy-patch-policy/) removes the `server_names` match from the one SIPS filter chain, allowing no-SNI TLS clients to reach that same TLSRoute without changing the backend or terminating TLS. This relies on the SIPS listener having one TLSRoute/backend; adding another SIPS route requires revisiting the fallback so it cannot route unrelated SNI traffic incorrectly. Envoy prepends PROXY protocol v2, which Kamailio consumes before its native TLS handshake. Kamailio presents its chart-managed cert-manager certificate; its SAN list includes the site hostname, shared SIP alias, and private Kamailio service name. `sip.tls.issuerName` must issue publicly trusted certificates for the public names. Verify the Kamailio `Certificate` is Ready and run the TLS verification below before testing Flowroute. The private hops remain Kamailio to FreeSWITCH on TLS 5061 at the Kamailio service's private port 5062 and FreeSWITCH to Asterisk on TLS 5061; Sofia verifies the Asterisk server certificate.
 
-The voice DID is configured with `avoip.did`; at YVR it enters the silent FreeSWITCH extension collector. The YXL voice DID reaches the same collector through the existing carrier mTLS route at ingress extension `7102`. The separate FaxNumber DID is configured with `fax.did` and routes to YVR Asterisk SIP Core extension `7101`. Neither DID currently selects fax reception or automatic fax detection. The retained fax spool and explicit `fax-receive` dialplan extension remain available for future routing. The current route and extension allowlist are documented in the [inbound call path](PHONE-TREE.md). Temporary call recording is controlled separately by `freeswitch.media.diagnostics.callRecording.enabled`.
+The Admin catalog selects inbound destinations for both sites. It currently
+routes the voice DID to YVR extension `67` and the other DID to YVR extension
+`66`; YXL uses the existing carrier mTLS peer for the managed handoff. The
+top-level `avoip.did` and `fax.did` values remain for other identity settings,
+but no longer match inbound routes. Each DID has a post-answer fax detection
+switch. Existing records default to enabled, and detected faxes transfer to
+the retained `fax-receive` path. See the [inbound call path](PHONE-TREE.md).
+Temporary call recording is controlled separately by
+`freeswitch.media.diagnostics.callRecording.enabled`.
 
 The FreeSWITCH Sofia profiles set `rtp-timer-name=soft` and
 `rtp-notimer-during-bridge=false` on the Asterisk, external, and Kamailio legs
@@ -241,11 +249,10 @@ TLS listeners and certificate SANs with `openssl s_client`,
 `sofia status profile kamailio`, `sofia status profile asterisk`, and
 `pjsip show transports`.
 
-For voice, call `avoip.did`, type each configured IVR destination, and confirm
-the selected Asterisk route. Call `fax.did` and confirm it rings SIP Core
-extension `7101` without entering `rxfax`. Call with the selected endpoint
-unregistered and verify the DID is not answered into empty early media and the
-call ends after its configured timeout. Compare RTPEngine packet counts in
+Call each DID and confirm its Admin-selected destination at both sites. If a
+DID selects the IVR, check the allowed digit choices. Send fax CNG to a DID
+with detection enabled and confirm `fax-receive`; disable its switch in Admin
+and confirm detection is skipped. Compare RTPEngine packet counts in
 both directions and verify Homer receives RTPEngine HEP on TCP 9061.
 
 The UDP and TLS SIPp scenarios, including steering the UDP dialog ACK and BYE

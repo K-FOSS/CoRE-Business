@@ -189,7 +189,10 @@
         }
         sl_send_reply("403", "Managed Extension Not Authorized"); exit;
       }
-      if ($rU =~ "^\\+?[1-9][0-9]{7,14}$" && $hdr(X-Core-Original-DID) != $null) {
+      if ($hdr(X-Core-Original-DID) != $null) {
+        if (!($rU =~ "^\\+?[1-9][0-9]{7,14}$")) {
+          sl_send_reply("403", "Managed DID Mismatch"); exit;
+        }
         $var(managed_number) = $(rU{re.subst,/^\+//});
         $var(expected_did) = "+" + $var(managed_number);
         if ($hdr(X-Core-Original-DID) != $var(expected_did)) {
@@ -209,6 +212,9 @@
           }
         }
         sl_send_reply("403", "Managed DID Not Authorized"); exit;
+      }
+      if ($hdr(X-Core-Extension) != $null) {
+        sl_send_reply("403", "Managed Extension Not Authorized"); exit;
       }
     }
 {{- end -}}
