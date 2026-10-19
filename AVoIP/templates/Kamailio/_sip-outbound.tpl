@@ -54,6 +54,9 @@
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       if ($var(managed_egress) != 1) {
         xlog("L_WARN", "AVOIP_POLICY reject=managed_egress_unverified call_id=$ci extension=$hdr(X-Core-Extension) method=$rm\n");
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=authorization_result policy=provider_egress decision=deny reason=provider_not_eligible extension=$hdr(X-Core-Extension) site={{ $.Values.region }} call_id=$ci method=$rm");
+        {{- end }}
         sl_send_reply("403", "Managed Egress Not Authorized");
         exit;
       }
@@ -72,6 +75,9 @@
           $rU =~ "^\\+1900" ||
           $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$"{{- if ne .Values.kamailio.carrierOutbound.calls.mode "nanp" }} ||
           $rU != "{{ .Values.kamailio.carrierOutbound.testRoute.destination }}"{{- end }}) {
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=destination_not_allowed extension=$hdr(X-Core-Extension) site={{ $.Values.region }} call_id=$ci method=$rm destination_class=restricted_or_invalid");
+        {{- end }}
         sl_send_reply("403", "Destination Not Authorized");
         exit;
       }

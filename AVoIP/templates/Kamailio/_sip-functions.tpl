@@ -480,6 +480,11 @@
     }
 
     onreply_route[SIPCORE_ASTERISK_REPLY] {
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      if ($rm == "INVITE" && $rs >= 200) {
+        hlog("$ci", "kamailio_event=outbound_result component=kamailio stage=upstream_response call_id=$ci status=$rs method=$rm site={{ .Values.region }}");
+      }
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
@@ -489,6 +494,14 @@
     }
 
     onreply_route[SIPCORE_WS_REPLY] {
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      if ($rm == "REGISTER" && $rs >= 200) {
+        $var(registration_decision) = "rejected";
+        if ($rs == 401 || $rs == 407) $var(registration_decision) = "challenge";
+        else if ($rs < 300) $var(registration_decision) = "accepted";
+        hlog("$ci", "kamailio_event=registration_result component=kamailio stage=asterisk_response decision=$var(registration_decision) status=$rs extension=$fU site={{ .Values.region }} call_id=$ci");
+      }
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core WebSocket answer handling failed callid=$ci status=$rs\n");

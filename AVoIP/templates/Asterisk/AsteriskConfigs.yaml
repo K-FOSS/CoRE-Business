@@ -249,10 +249,10 @@ data:
     {{- if or (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled) (and $.Values.asterisk.sipCore.outboundNANP.enabled (has (toString .number) $.Values.asterisk.sipCore.outboundNANP.extensions)) }}
     ; Admin mode sends the authenticated extension in a fresh, dialplan-stamped
     ; header. Kamailio selects and applies the authorized caller ID from policy.
-    exten => _+1NXXNXXXXXX,1,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination=${EXTEN})
+    exten => _+1NXXNXXXXXX,1,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination_class=nanp)
     {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
       same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120,b(sipcore-managed-outbound-headers^s^1({{ .number }})))
-      same => n,NoOp(AVoIP managed outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
+      same => n,NoOp(AVoIP managed outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination_class=nanp dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
     {{- else }}
       same => n,Set(CALLERID(num)={{ .number }})
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-outbound-hangup,s,1)
@@ -312,6 +312,10 @@ data:
     ; from-sipcore-<extension> dialplan context.
     exten => s,1,Set(PJSIP_HEADER(remove,X-Core-Extension)=)
       same => n,Set(PJSIP_HEADER(add,X-Core-Extension)=${ARG1})
+      same => n,Set(PJSIP_HEADER(remove,X-Core-Call-Linkedid)=)
+      same => n,Set(PJSIP_HEADER(add,X-Core-Call-Linkedid)=${CHANNEL(linkedid)})
+      same => n,Set(PJSIP_HEADER(remove,X-Core-Origin-Uniqueid)=)
+      same => n,Set(PJSIP_HEADER(add,X-Core-Origin-Uniqueid)=${CHANNEL(uniqueid)})
       same => n,Return()
     {{- if .Values.asterisk.sipCore.externalCallback.enabled }}
     ; The hangup handler outlives the inbound IVR leg. Once the external

@@ -41,6 +41,18 @@ rewritten. `X-Core-Call-Linkedid` and
 `X-Core-Origin-Uniqueid` continue to carry Asterisk's linked ID and originating
 channel ID for diagnostics; they are not overwritten by the Homer alias.
 
+When `kamailio.functions.sipTrace` and Homer are enabled, policy outcomes are
+also emitted as HEP custom events keyed by the SIP Call-ID. Outbound events
+record the extension, site, route stage, selected provider label, SIP status,
+and a bounded rejection reason; they omit the dialed number and caller-ID
+value. SIP Core REGISTER replies emit accepted, challenge, or rejected status
+events without copying Authorization headers. Asterisk's managed outbound
+handler adds its internal linked ID and channel ID to the trusted Kamailio hop,
+and its channel logs record the final dial status and hangup cause. FreeSWITCH
+continues to send SIP signaling over its existing HEP capture path and logs
+bridge disposition with the same Core correlation IDs. TLS failures before a
+SIP request exists remain in the Asterisk container logs and Loki.
+
 Homer's `ingest.sip.aleg_ids` maps `X-Call-ID` into HEP `cid`; its custom-header
 list retains the Core linked/origin IDs in `data_extra`. The SIP table's
 `uuid` is a per-record identifier, not the logical call key. `session_id` is

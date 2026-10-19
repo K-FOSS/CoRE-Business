@@ -428,6 +428,9 @@
           sl_send_reply("403", "Managed Extension Identity Missing"); exit;
         }
         $var(managed_extension_id) = $hdr(X-Core-Extension);
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=outbound_attempt component=private_sipcore extension=$var(managed_extension_id) site={{ .Values.region }} linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) call_id=$ci method=$rm destination_class=nanp");
+        {{- end }}
       }
       route(MANAGED_EXTENSION);
       # Database routing is authoritative for new NANP calls. A missing,
@@ -711,6 +714,11 @@
         "SIPCORE FLOW stage=asterisk-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) content_type=$cT branch=dialog-response\n"
       );
       {{- end }}
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      if ($rm == "INVITE" && $rs >= 200) {
+        hlog("$ci", "kamailio_event=outbound_result component=private_sipcore stage=upstream_response call_id=$ci status=$rs method=$rm site={{ .Values.region }}");
+      }
+      {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
@@ -728,6 +736,14 @@
         remove_hf("X-Call-ID");
         append_hf("X-Call-ID: $ci\r\n");
       }
+      {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+      if ($rm == "REGISTER" && $rs >= 200) {
+        $var(registration_decision) = "rejected";
+        if ($rs == 401 || $rs == 407) $var(registration_decision) = "challenge";
+        else if ($rs < 300) $var(registration_decision) = "accepted";
+        hlog("$ci", "kamailio_event=registration_result component=kamailio stage=asterisk_response decision=$var(registration_decision) status=$rs extension=$fU site={{ .Values.region }} call_id=$ci");
+      }
+      {{- end }}
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",

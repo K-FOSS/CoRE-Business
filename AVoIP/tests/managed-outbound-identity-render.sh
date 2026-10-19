@@ -24,6 +24,8 @@ asterisk_secret_reload="$(yq -r 'select(.kind == "Deployment" and .metadata.name
 grep -Fq 'Dial(PJSIP/${EXTEN}@carrier-outbound,120,b(sipcore-managed-outbound-headers^s^1(7101)))' <<< "$asterisk_cfg"
 grep -Fq 'PJSIP_HEADER(remove,X-Core-Extension)=' <<< "$asterisk_cfg"
 grep -Fq 'PJSIP_HEADER(add,X-Core-Extension)=${ARG1}' <<< "$asterisk_cfg"
+grep -Fq 'PJSIP_HEADER(add,X-Core-Call-Linkedid)=${CHANNEL(linkedid)}' <<< "$asterisk_cfg"
+grep -Fq 'PJSIP_HEADER(add,X-Core-Origin-Uniqueid)=${CHANNEL(uniqueid)}' <<< "$asterisk_cfg"
 ! grep -Fq 'Set(CALLERID(num)=7101)' <<< "$asterisk_cfg"
 grep -Fq 'ca_list_file=/tmp/avoip-ca-bundle.pem' <<< "$asterisk_pjsip"
 grep -Fq 'verify_server=yes' <<< "$asterisk_pjsip"
@@ -48,8 +50,14 @@ grep -Fq 'reject=trusted_extension_missing' <<< "$internal_cfg"
 grep -Fq '($var(side) == "internal-outbound" || $fU == $var(managed_caller_id))' <<< "$carrier_cfg"
 grep -Fq '$var(managed_extension_id) = $hdr(X-Core-Extension);' <<< "$carrier_cfg"
 grep -Fq 'route(MANAGED_EXTENSION);' <<< "$carrier_cfg"
+grep -Fq 'reason=$var(managed_handoff_reason)' <<< "$carrier_cfg"
+grep -Fq 'reason=provider_not_eligible' <<< "$carrier_cfg"
+grep -Fq 'kamailio_event=outbound_attempt component=private_sipcore' <<< "$internal_cfg"
+grep -Fq 'kamailio_event=outbound_result component=private_sipcore' <<< "$internal_cfg"
+grep -Fq 'kamailio_event=registration_result component=kamailio' <<< "$internal_cfg"
 
 printf '%s\n' 'PASS: Admin outbound identity is derived from the locked Asterisk extension context'
 printf '%s\n' 'PASS: Kamailio looks up the trusted extension and applies the policy caller ID'
 printf '%s\n' 'PASS: authenticated site handoffs do not reject a rewritten SIP From user'
+printf '%s\n' 'PASS: outbound authorization and registration events are correlated into Homer'
 printf '%s\n' 'PASS: Asterisk trusts the selected site Kamailio CA without disabling TLS verification'
