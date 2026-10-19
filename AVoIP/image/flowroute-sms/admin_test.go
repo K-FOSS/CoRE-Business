@@ -365,3 +365,16 @@ func TestStandardAuthentikGroups(t *testing.T) {
 		}
 	}
 }
+
+func TestVerifiedGroupsOverrideCustomHeaders(t *testing.T) {
+	s := &server{}
+	for _, verified := range []string{"AVoIP Users", ""} {
+		r := httptest.NewRequest("GET", "https://sms.example/api/numbers", nil)
+		r.Header.Set("X-Authentik-Username", "fixture-user")
+		r.Header.Set("X-Authentik-Groups", verified)
+		r.Header.Set("X-Auth-Groups", `["AVoIP Admins"]`)
+		if s.isAdmin(r) {
+			t.Fatal("custom header overrode authoritative membership")
+		}
+	}
+}

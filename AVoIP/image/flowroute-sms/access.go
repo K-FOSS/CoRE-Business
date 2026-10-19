@@ -10,11 +10,12 @@ import (
 
 func (s *server) groups(r *http.Request) []string {
 	var groups []string
-	// Both headers are supplied by the trusted Authentik authorization response.
-	// The standard header also works for sessions issued before custom mappings.
-	_ = json.Unmarshal([]byte(r.Header.Get("X-Auth-Groups")), &groups)
-	if raw := r.Header.Get("X-Authentik-Groups"); raw != "" {
-		groups = append(groups, strings.Split(raw, "|")...)
+	// Authentik's standard header is authoritative, including an empty value.
+	// Never merge a client-supplied custom header over the verified group set.
+	if _, present := r.Header[http.CanonicalHeaderKey("X-Authentik-Groups")]; present {
+		groups = strings.Split(r.Header.Get("X-Authentik-Groups"), "|")
+	} else {
+		_ = json.Unmarshal([]byte(r.Header.Get("X-Auth-Groups")), &groups)
 	}
 	seen := map[string]bool{}
 	result := []string{}

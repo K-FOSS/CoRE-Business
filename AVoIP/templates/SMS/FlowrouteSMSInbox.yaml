@@ -36,6 +36,14 @@ spec:
       data "authentik_group" "users" { name = var.access_group }
       data "authentik_group" "admins" { name = var.admin_group }
 
+      data "authentik_property_mapping_provider_scope" "identity" {
+        managed_list = [
+          "goauthentik.io/providers/oauth2/scope-openid",
+          "goauthentik.io/providers/oauth2/scope-profile",
+          "goauthentik.io/providers/oauth2/scope-email",
+        ]
+      }
+
       resource "authentik_property_mapping_provider_scope" "numbers" {
         name       = "CoRE SMS inbox authorized numbers {{ $.Values.cluster.name }}"
         scope_name = "core-sms-authorized-numbers-{{ $.Values.cluster.name }}"
@@ -90,7 +98,7 @@ spec:
         access_token_validity  = "hours=3"
         authorization_flow     = data.authentik_flow.authorization.id
         invalidation_flow      = data.authentik_flow.invalidation.id
-        property_mappings      = [authentik_property_mapping_provider_scope.numbers.id]
+        property_mappings      = concat(data.authentik_property_mapping_provider_scope.identity.ids, [authentik_property_mapping_provider_scope.numbers.id])
       }
 
       resource "authentik_application" "inbox" {
@@ -132,7 +140,9 @@ spec:
       - 'x-forwarded-uri'
     http:
       headersToBackend:
-        - 'x-authentik-*'
+        - 'x-authentik-username'
+        - 'x-authentik-groups'
+        - 'x-authentik-uid'
         - 'x-auth-numbers'
         - 'x-auth-groups'
       backendRefs:

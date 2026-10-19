@@ -300,3 +300,9 @@ as well as the JSON custom group header, both supplied by the trusted external
 authorization response. This preserves admin number visibility for existing
 sessions while custom property mappings roll out. Exact group names and an
 authenticated username are still required; no access is inferred from UI state.
+
+Envoy's HTTP external-auth response allowlist uses exact header names. Explicitly
+forward `x-authentik-username`, `x-authentik-groups` and `x-authentik-uid`; a
+literal `x-authentik-*` is not a wildcard. Standard group membership is
+authoritative when that header is present, including an empty group set, so
+a custom header cannot override verified membership.
