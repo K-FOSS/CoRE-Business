@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -114,6 +115,23 @@ func codecRTPEngineFlags(codecs []string) string {
 	}
 	flags = append(flags, "codec-offer-telephone-event")
 	return strings.Join(flags, " ")
+}
+
+// effectiveProviderCodecOrder uses an explicit Admin preference first. When
+// an Admin codec capability list is present without a separate preference, its
+// listed order is the fallback. Twilio Elastic SIP only guarantees PCMU/PCMA;
+// use that documented baseline for legacy Twilio entries with no codec data.
+func effectiveProviderCodecOrder(provider sipProvider) []string {
+	if len(provider.CodecOrder) > 0 {
+		return provider.CodecOrder
+	}
+	if len(provider.SupportedCodecs) > 0 {
+		return provider.SupportedCodecs
+	}
+	if strings.HasSuffix(strings.ToLower(provider.Host), ".twilio.com") {
+		return []string{"PCMU", "PCMA"}
+	}
+	return nil
 }
 
 func (c sipCatalog) validate() error {
@@ -391,10 +409,11 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, p := range c.Providers {
-		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix, "codec_flags": codecRTPEngineFlags(p.CodecOrder)})
+		providerCodecsForRoute := effectiveProviderCodecOrder(p)
+		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix, "codec_flags": codecRTPEngineFlags(providerCodecsForRoute)})
 		providerPrefixes[p.ID] = p.EgressPrefix
-		providerCodecs[p.ID] = p.CodecOrder
-		providerCodecFlags[p.ID] = codecRTPEngineFlags(p.CodecOrder)
+		providerCodecs[p.ID] = providerCodecsForRoute
+		providerCodecFlags[p.ID] = codecRTPEngineFlags(providerCodecsForRoute)
 	}
 	for _, d := range c.DIDs {
 		t, ok := targets[d.Site]
@@ -538,17 +557,27 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	detectFax := false
 	callerID := ""
 	gateway := ""
+	providerID := ""
+	codecOrder := []string(nil)
 	if context == "core-managed-outbound" && extensionID.MatchString(extension) {
 		for _, e := range c.Extensions {
 			if e.Extension == extension && e.Site == site {
 				if _, ok := normalizePhoneNumber(destination); ok {
 					callerID = e.CallerID
+					providerID = e.Provider
 					for _, p := range c.Providers {
 						if p.ID == e.Provider {
 							gateway = p.Gateways[site]
+							codecOrder = effectiveProviderCodecOrder(p)
 						}
 					}
-					bridge = "sofia/gateway/" + gateway + "/" + destination
+					for _, d := range c.DIDs {
+						if d.Number == e.CallerID && containsString(d.Providers, e.Provider) && len(d.CodecOrder) > 0 {
+							codecOrder = d.CodecOrder
+							break
+						}
+					}
+					bridge = managedGatewayBridge(gateway, destination, codecOrder)
 				}
 			}
 		}
@@ -570,9 +599,13 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 					for _, p := range c.Providers {
 						if p.ID == d.OutboundProvider {
 							gateway = p.Gateways[site]
+							codecOrder = effectiveProviderCodecOrder(p)
 						}
 					}
-					bridge = "sofia/gateway/" + gateway + "/" + d.Destination
+					if len(d.CodecOrder) > 0 {
+						codecOrder = d.CodecOrder
+					}
+					bridge = managedGatewayBridge(gateway, d.Destination, codecOrder)
 				}
 			}
 		}
@@ -587,6 +620,9 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	if callerID != "" {
 		text += `<action application="set" data="effective_caller_id_number=` + escape(callerID) + `"/>`
 	}
+	if context == "core-managed-outbound" {
+		text += `<action application="log" data="INFO AVoIP outbound route selected extension=` + escape(extension) + ` site=` + escape(site) + ` provider=` + escape(providerID) + ` codecs=` + escape(strings.Join(codecOrder, ",")) + ` policy_revision=` + strconv.FormatInt(c.Version, 10) + ` destination-class=nanp call_id=${sip_call_id} uuid=${uuid}"/>`
+	}
 	if context == "core-managed-inbound" {
 		text += `<action application="set" data="fax_original_destination=` + escape(destination) + `"/>`
 		if detectFax {
@@ -600,6 +636,14 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	}
 	text += `</condition></extension></context></section></document>`
 	io.WriteString(w, text)
+}
+
+func managedGatewayBridge(gateway, destination string, codecOrder []string) string {
+	bridge := "sofia/gateway/" + gateway + "/" + destination
+	if len(codecOrder) == 0 {
+		return bridge
+	}
+	return "[absolute_codec_string='" + strings.Join(codecOrder, ",") + "']" + bridge
 }
 
 func verifiedNumbers(values []verifiedCallerID) string {

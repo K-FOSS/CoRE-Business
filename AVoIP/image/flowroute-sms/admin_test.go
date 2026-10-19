@@ -132,6 +132,76 @@ func TestProviderAndDIDCodecOrder(t *testing.T) {
 	}
 }
 
+func TestFreeSwitchOutboundDialplanAppliesProviderAndDIDCodecOrder(t *testing.T) {
+	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
+	t.Setenv("AVOIP_SITE", "yvr")
+	catalog := fixtureCatalog()
+	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "PCMA"}
+	catalog.Providers[0].CodecOrder = []string{"PCMU", "PCMA"}
+	catalog.DIDs[0].CodecOrder = []string{"PCMA", "PCMU"}
+	s := &server{}
+	s.cacheCatalog(catalog)
+
+	lookup := func() string {
+		t.Helper()
+		form := url.Values{
+			"Caller-Context":                  {"core-managed-outbound"},
+			"Caller-Destination-Number":       {"+12065550101"},
+			"variable_sip_h_X-Core-Extension": {"7101"},
+		}
+		r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.SetBasicAuth("routing", os.Getenv("AVOIP_ROUTING_TOKEN"))
+		w := httptest.NewRecorder()
+		s.freeSwitchRoute(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("FreeSWITCH dialplan status %d: %s", w.Code, w.Body.String())
+		}
+		return w.Body.String()
+	}
+
+	xml := lookup()
+	if !strings.Contains(xml, "[absolute_codec_string='PCMA,PCMU']sofia/gateway/carrier-tls/+12065550101") {
+		t.Fatalf("DID codec order was not applied to the FreeSWITCH upstream bridge: %s", xml)
+	}
+	if !strings.Contains(xml, "provider=carrier codecs=PCMA,PCMU") {
+		t.Fatalf("FreeSWITCH route selection diagnostics did not include provider and codec order: %s", xml)
+	}
+
+	catalog.DIDs[0].CodecOrder = nil
+	s.cacheCatalog(catalog)
+	xml = lookup()
+	if !strings.Contains(xml, "[absolute_codec_string='PCMU,PCMA']sofia/gateway/carrier-tls/+12065550101") {
+		t.Fatalf("provider codec order was not applied when the DID has no override: %s", xml)
+	}
+}
+
+func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
+	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
+	t.Setenv("AVOIP_SITE", "yvr")
+	catalog := fixtureCatalog()
+	catalog.Providers[0].Host = "coreinc-yvr.pstn.umatilla.twilio.com"
+	catalog.Providers[0].Gateways["yvr"] = "twilio-west"
+	if order := effectiveProviderCodecOrder(catalog.Providers[0]); strings.Join(order, ",") != "PCMU,PCMA" {
+		t.Fatalf("legacy Twilio provider default = %q, want PCMU,PCMA", strings.Join(order, ","))
+	}
+	s := &server{}
+	s.cacheCatalog(catalog)
+	form := url.Values{
+		"Caller-Context":                  {"core-managed-outbound"},
+		"Caller-Destination-Number":       {"+12065550101"},
+		"variable_sip_h_X-Core-Extension": {"7101"},
+	}
+	r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.SetBasicAuth("routing", os.Getenv("AVOIP_ROUTING_TOKEN"))
+	w := httptest.NewRecorder()
+	s.freeSwitchRoute(w, r)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "[absolute_codec_string='PCMU,PCMA']sofia/gateway/twilio-west/+12065550101") {
+		t.Fatalf("legacy Twilio route did not constrain its upstream SDP to G.711: status=%d body=%s", w.Code, w.Body.String())
+	}
+}
+
 func TestExtensionOutboundEnablement(t *testing.T) {
 	legacy := extensionRoute{Extension: "7101", CallerID: "+12065550100", Provider: "carrier", Site: "yvr"}
 	if !legacy.outboundAllowed() || legacy.outboundDisabledReason() != "" {
