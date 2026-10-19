@@ -52,6 +52,8 @@ grep -Fq '$var(managed_extension_id) = $hdr(X-Core-Extension);' <<< "$carrier_cf
 grep -Fq 'route(MANAGED_EXTENSION);' <<< "$carrier_cfg"
 grep -Fq 'reason=$var(managed_handoff_reason)' <<< "$carrier_cfg"
 grep -Fq 'reason=provider_not_eligible' <<< "$carrier_cfg"
+grep -Fq 'reason=$var(managed_disabled_reason)' <<< "$carrier_cfg"
+grep -Fq 'Extension Outbound Disabled' <<< "$carrier_cfg"
 grep -Fq 'kamailio_event=outbound_attempt component=private_sipcore' <<< "$internal_cfg"
 grep -Fq 'kamailio_event=outbound_result component=private_sipcore' <<< "$internal_cfg"
 grep -Fq 'kamailio_event=registration_result component=kamailio' <<< "$internal_cfg"

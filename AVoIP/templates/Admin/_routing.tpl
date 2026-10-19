@@ -127,6 +127,15 @@
         {{- end }}
         sl_send_reply("503", "Routing Snapshot Expired"); exit;
       }
+      $var(managed_disabled_reason) = "";
+      jansson_get("disabled_reason", "$var(managed_route)", "$var(managed_disabled_reason)");
+      if ($var(managed_disabled_reason) != $null && $var(managed_disabled_reason) != "") {
+        xlog("L_WARN", "AVOIP_POLICY reject=$var(managed_disabled_reason) call_id=$ci extension=$var(managed_extension_id)\n");
+        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
+        hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=$var(managed_disabled_reason) extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm destination_class=nanp");
+        {{- end }}
+        sl_send_reply("403", "Extension Outbound Disabled"); exit;
+      }
       if (t_check_trans()) exit;
       jansson_get("host", "$var(managed_route)", "$var(managed_host)");
       jansson_get("port", "$var(managed_route)", "$var(managed_port)");

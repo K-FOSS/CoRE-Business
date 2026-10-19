@@ -79,6 +79,28 @@ func TestCatalogOwnership(t *testing.T) {
 	}
 }
 
+func TestExtensionOutboundEnablement(t *testing.T) {
+	legacy := extensionRoute{Extension: "7101", CallerID: "+12065550100", Provider: "carrier", Site: "yvr"}
+	if !legacy.outboundAllowed() || legacy.outboundDisabledReason() != "" {
+		t.Fatal("legacy extension entries must preserve their current authorization")
+	}
+	disabled := false
+	legacy.Enabled = &disabled
+	if legacy.outboundAllowed() || legacy.outboundDisabledReason() != "extension_disabled" {
+		t.Fatal("disabled extension must be excluded from outbound routing")
+	}
+	enabled := true
+	legacy.Enabled = &enabled
+	legacy.OutboundEnabled = &disabled
+	if legacy.outboundAllowed() || legacy.outboundDisabledReason() != "outbound_disabled" {
+		t.Fatal("extension with outbound disabled must be excluded from outbound routing")
+	}
+	legacy.OutboundEnabled = &enabled
+	if !legacy.outboundAllowed() || legacy.outboundDisabledReason() != "" {
+		t.Fatal("enabled extension with outbound permission must remain routable")
+	}
+}
+
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

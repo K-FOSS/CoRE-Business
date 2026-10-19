@@ -9,12 +9,14 @@ print('Synthetic UI artifacts:', artifacts)
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, args=['--no-sandbox'])
     for width, theme in [(1280, 'light'), (360, 'light'), (768, 'dark')]:
+        api_state = {'sip': {'providers': [], 'dids': [], 'extensions': [{'extension': '7101', 'display_name': 'Desk phone', 'enabled': True, 'outbound_enabled': True, 'caller_id': '+12065550100', 'provider': 'carrier', 'site': 'yvr'}], 'version': 0}}
         page = browser.new_page(viewport={'width': width, 'height': 900}, color_scheme=theme)
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
 
         def route(r):
             path = r.request.url.split('fixture.test', 1)[1]
+            method = r.request.method
             if path == '/':
                 content = (root / 'admin.html').read_text()
                 mime = 'text/html'
@@ -23,8 +25,12 @@ with sync_playwright() as p:
                 content = file.read_bytes()
                 mime = 'text/css' if file.suffix == '.css' else 'application/javascript' if file.suffix == '.js' else 'font/ttf'
             else:
-                fixtures = {'/api/providers': [{'id': 'twilio', 'type': 'twilio', 'name': 'Twilio fixture', 'source': 'admin', 'enabled': True, 'can_send': True, 'numbers': ['+12065550100'], 'version': 1}], '/api/sip': {'providers': [], 'dids': [], 'extensions': [], 'version': 0}, '/api/audit': [], '/api/admin': {'routing_enabled': False}}
-                content = json.dumps(fixtures.get(path, {}))
+                fixtures = {'/api/providers': [{'id': 'twilio', 'type': 'twilio', 'name': 'Twilio fixture', 'source': 'admin', 'enabled': True, 'can_send': True, 'numbers': ['+12065550100'], 'version': 1}], '/api/audit': [], '/api/admin': {'routing_enabled': True, 'snapshot_ready': True, 'site': 'yvr'}}
+                if path == '/api/sip' and method == 'PUT':
+                    updated = json.loads(r.request.post_data)
+                    updated['version'] = api_state['sip']['version'] + 1
+                    api_state['sip'] = updated
+                content = json.dumps(api_state['sip'] if path == '/api/sip' else fixtures.get(path, {}))
                 mime = 'application/json'
             r.fulfill(status=200, body=content, content_type=mime)
         page.route('https://fixture.test/**', route)
@@ -41,6 +47,16 @@ with sync_playwright() as p:
         assert page.locator('#confirm-action').evaluate('(el)=>el.open')
         page.keyboard.press('Escape')
         assert not page.locator('#confirm-action').evaluate('(el)=>el.open')
+        page.get_by_role('button', name='Extensions', exact=True).click()
+        page.get_by_text('Desk phone', exact=True).wait_for()
+        assert 'Outbound enabled' in page.locator('.admin-card').inner_text()
+        page.locator('#record-search').fill('7101')
+        assert page.locator('.admin-card').count() == 1
+        page.get_by_role('button', name='Edit', exact=True).click()
+        page.locator('#field-outbound_enabled').uncheck()
+        page.get_by_role('button', name='Save', exact=True).click()
+        page.get_by_text('Outbound disabled', exact=False).wait_for()
+        assert api_state['sip']['extensions'][0]['outbound_enabled'] is False
         page.screenshot(path=artifacts / f'admin-{width}-{theme}.png', full_page=True)
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'horizontal overflow'
         assert not errors, errors

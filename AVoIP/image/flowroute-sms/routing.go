@@ -44,11 +44,32 @@ type didRoute struct {
 func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
 
 type extensionRoute struct {
-	Extension string `json:"extension"`
-	CallerID  string `json:"caller_id"`
-	Provider  string `json:"provider"`
-	Site      string `json:"site"`
+	Extension       string `json:"extension"`
+	DisplayName     string `json:"display_name,omitempty"`
+	Enabled         *bool  `json:"enabled,omitempty"`
+	OutboundEnabled *bool  `json:"outbound_enabled,omitempty"`
+	CallerID        string `json:"caller_id"`
+	Provider        string `json:"provider"`
+	Site            string `json:"site"`
 }
+
+// Existing catalog entries predate these flags and remain enabled until an
+// administrator explicitly disables them. Disabled entries stay in the live
+// snapshot with a reason so Kamailio can reject them precisely and fail closed.
+func (e extensionRoute) outboundAllowed() bool {
+	return (e.Enabled == nil || *e.Enabled) && (e.OutboundEnabled == nil || *e.OutboundEnabled)
+}
+
+func (e extensionRoute) outboundDisabledReason() string {
+	if e.Enabled != nil && !*e.Enabled {
+		return "extension_disabled"
+	}
+	if e.OutboundEnabled != nil && !*e.OutboundEnabled {
+		return "outbound_disabled"
+	}
+	return ""
+}
+
 type sipCatalog struct {
 	Providers  []sipProvider    `json:"providers"`
 	DIDs       []didRoute       `json:"dids"`
@@ -164,7 +185,10 @@ func (c sipCatalog) validate() error {
 	}
 	seen := map[string]bool{}
 	for _, e := range c.Extensions {
-		if !extensionID.MatchString(e.Extension) || seen[e.Extension] || !verify(e.Provider, e.CallerID, e.Site) {
+		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || seen[e.Extension] {
+			return errors.New("invalid or duplicate extension")
+		}
+		if !verify(e.Provider, e.CallerID, e.Site) {
 			return errors.New("extension needs a unique identity and provider-verified caller ID at its egress site")
 		}
 		seen[e.Extension] = true
@@ -327,7 +351,11 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "site target unavailable", 503)
 			return
 		}
-		extensions[e.Extension] = map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port}
+		route := map[string]any{"caller_id": e.CallerID, "provider": e.Provider, "site": e.Site, "host": t.Host, "port": t.Port}
+		if !e.outboundAllowed() {
+			route["disabled_reason"] = e.outboundDisabledReason()
+		}
+		extensions[e.Extension] = route
 	}
 	for _, p := range c.Providers {
 		for _, id := range p.CallerIDs {

@@ -8,7 +8,11 @@
 :root{--danger:#b3261e}.danger,#edit-error{color:var(--danger)}.message-meta .text-button{min-height:44px}#provider{max-width:128px;min-width:0}#routing-mode{margin-left:auto;font-size:12px;color:var(--muted)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--danger:#f2b8b5}}:root[data-theme=dark]{--danger:#f2b8b5}
 
-.admin-page .dialog-primary{border:0;border-radius:4px;min-height:44px;padding:10px 16px;background:var(--primary);color:#fff;box-shadow:0 2px 3px #0002;font-size:14px;font-weight:500}.admin-page .dialog-actions button,.admin-card .text-button{min-height:44px}.admin-bar{gap:16px}.admin-bar>span{min-width:0}#routing-mode{max-width:150px;text-align:right}@media(max-width:600px){.admin-bar>span:not(#routing-mode){display:none}}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .admin-page .dialog-primary{color:#102a43}}:root[data-theme=dark] .admin-page .dialog-primary{color:#102a43}
+.admin-page .dialog-primary{border:0;border-radius:4px;min-height:44px;padding:10px 16px;background:var(--primary);color:#fff;box-shadow:0 2px 3px #0002;font-size:14px;font-weight:500}.admin-page .dialog-actions button,.admin-card .text-button{min-height:44px}.admin-bar{gap:16px}.admin-bar>span{min-width:0}#routing-mode{max-width:150px;text-align:right}@media(max-width:600px){.admin-bar>span:not(#routing-mode):not(#active-site){display:none}}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .admin-page .dialog-primary{color:#102a43}}:root[data-theme=dark] .admin-page .dialog-primary{color:#102a43}
 
 .composer textarea{min-width:0}#provider{flex:0 1 110px;max-width:110px;min-height:44px;font-size:12px}
 .composer{flex-wrap:wrap}.composer .media-label{width:100%;font-size:12px;color:var(--muted)}.composer .media-urls{width:100%;resize:vertical;min-height:54px;border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--bg);color:var(--text)}
+
+.admin-search{display:block;max-width:480px;margin:16px 0;color:var(--muted);font-size:12px}.admin-search input{display:block;width:100%;min-height:48px;margin-top:4px;padding:12px;border:1px solid var(--divider);border-radius:4px;background:var(--surface);color:var(--text);font:16px Roboto,sans-serif}
+@media(max-width:600px){.admin-search{max-width:none}}
+#active-site{color:var(--muted);font-size:12px;white-space:nowrap}@media(max-width:600px){.admin-bar{gap:8px}#active-site,#routing-mode{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}}

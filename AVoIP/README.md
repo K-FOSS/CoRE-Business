@@ -2,7 +2,9 @@
 
 [AVoIP administration](docs/ADMIN.md) provides group-aware SMS administration,
 multiple messaging accounts and a managed SIP provider/DID/caller-ID catalog.
-Routing activation is independent of UI enablement. Both interfaces follow the
+Its Extensions screen controls outbound enablement, verified caller ID, provider,
+and egress site; disabled decisions are sent to Homer. Routing activation is
+independent of UI enablement. Both interfaces follow the
 [shared Material Design 2 specification](docs/UI-DESIGN.md).
 
 The proposed [CoRE Caller Intelligence & Call Protection](docs/caller-intelligence/README.md)

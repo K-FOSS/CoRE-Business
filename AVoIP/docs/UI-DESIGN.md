@@ -36,7 +36,9 @@ providers. Access controls remain server-side; hiding a button is not authorizat
 The administration page uses the same typography, colors and control patterns:
 app bar, section tabs, responsive cards, labeled edit dialogs, explicit cancel/
 save actions and snackbar feedback. Sections cover SMS providers, SIP providers,
-DIDs, caller-ID assignments and audit activity. Configuration-managed records
+DIDs, extension outbound permissions and audit activity. The searchable
+extension list includes display name, enabled and outbound-enabled controls,
+verified caller ID, provider, and egress site. Configuration-managed records
 are clearly read only. Edits use optimistic concurrency and show conflicts
 rather than silently overwriting another administrator's work.
 

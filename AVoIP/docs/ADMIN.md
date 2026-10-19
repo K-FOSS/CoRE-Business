@@ -98,7 +98,16 @@ enabled for detection to run. Detected faxes transfer to the existing
 `fax-receive` processing path; the DID destination still controls the voice call.
 
 An extension assignment selects its verified caller-ID number, upstream provider
-and YVR/YXL egress site. It is evaluated only from the existing authenticated
+and YVR/YXL egress site. The **Extensions** screen also stores a display name and
+explicit enabled/outbound-enabled flags. Older catalog entries without those
+flags retain their previous enabled behavior. Disabled entries stay identifiable
+in the immutable routing snapshot, but Kamailio rejects their outbound calls
+with a distinct reason (`extension_disabled` or `outbound_disabled`) in Homer.
+This screen governs authorization; it does not rewrite Asterisk endpoint
+credentials or report live registration state. Registration attempts and
+responses are correlated in Homer using the SIP Call-ID.
+
+Assignments are evaluated only from the existing authenticated
 Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never
 authorization to select a caller ID. The existing outbound NANP and premium-rate
 restrictions and carrier quota remain; this change does not authorize unrestricted

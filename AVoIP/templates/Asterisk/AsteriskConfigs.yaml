@@ -258,9 +258,9 @@ data:
       same => n,Set(CHANNEL(hangup_handler_push)=sipcore-outbound-hangup,s,1)
       same => n,Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,X-Call-ID)})
       same => n,ExecIf($["${AVOIP_HOMER_CORRELATION_ID}" = ""]?Set(_AVOIP_HOMER_CORRELATION_ID=${PJSIP_HEADER(read,Call-ID)}))
-      same => n,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} extension={{ .number }} destination=${EXTEN})
+      same => n,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} extension={{ .number }} destination_class=nanp)
       same => n,Dial(PJSIP/${EXTEN}@freeswitch,120,gb(sipcore-outbound-headers^s^1))
-      same => n,NoOp(AVoIP outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} destination=${EXTEN} dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
+      same => n,NoOp(AVoIP outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} browser_call_id=${PJSIP_HEADER(read,Call-ID)} destination_class=nanp dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
     {{- end }}
       same => n,Hangup()
     {{- end }}
