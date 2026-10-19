@@ -855,3 +855,8 @@ for this workflow: [User platform APIs](https://github.com/K-FOSS/CoRE-Backplane
   [Jitsi Helm chart](https://github.com/jitsi-contrib/jitsi-helm)
 - [Nextcloud AIO Talk image and deployment](https://github.com/nextcloud/all-in-one/tree/main/Containers/talk)
   and [Nextcloud Talk quick install and administration settings](https://nextcloud-talk.readthedocs.io/en/latest/quick-install/)
+
+AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
+SMS hosted in YVR and managed SIP routing disabled. DNS-only admin aliases
+use the existing site HTTPS gateway names; the routes require Authentik. See
+[deployment and rollback](docs/ADMIN.md).

@@ -1,0 +1,19 @@
+{{- if and .Values.avoipAdmin.enabled .Values.freeswitch.enabled .Values.avoipAdmin.dns.enabled }}
+{{- $target := required "avoipAdmin.dns.target must reference an existing site HTTPS gateway DNS name" .Values.avoipAdmin.dns.target -}}
+{{- if not (regexMatch "^[a-z0-9][a-z0-9.-]{0,252}$" $target) }}{{ fail "avoipAdmin.dns.target must be a canonical DNS name" }}{{ end }}
+# DNSEndpoint is not a BJW-S resource class. Publish DNS metadata separately
+# from the private, Authentik-protected HTTPRoute.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: '{{ include "avoip.fullname" . }}-admin'
+  labels:
+    wan-mode: 'public'
+spec:
+  endpoints:
+    - dnsName: '{{ include "avoip.admin.hostname" . }}'
+      recordType: 'CNAME'
+      recordTTL: 60
+      targets:
+        - '{{ $target }}'
+{{- end }}

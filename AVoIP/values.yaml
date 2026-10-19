@@ -1528,6 +1528,9 @@ avoipAdmin:
   primaryRegion: 'yvr'
   databaseRemoteKey: 'AVoIP/Admin/Database'
   hostname: ''
+  dns:
+    enabled: false
+    target: ''
   replicas: 2
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'

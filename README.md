@@ -258,3 +258,8 @@ complete result. Do not apply the temporary render directly to a cluster.
 
 Where documentation and manifests differ, the manifests, owning Backplane
 ApplicationSet and observed controller state are authoritative.
+
+AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
+SMS hosted in YVR and managed SIP routing disabled. DNS-only admin aliases
+use the existing site HTTPS gateway names; the routes require Authentik. See
+[deployment and rollback](AVoIP/docs/ADMIN.md).

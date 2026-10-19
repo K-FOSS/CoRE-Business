@@ -505,3 +505,8 @@ and coordinate explicit Dragonfly database allocations with the
 [Backplane allocation registry](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Storage/Dragonfly/CoRE/README.md).
 Removal requires checking external resources and orphan/deletion policies; deleting
 a claim does not establish that its data or grants were removed.
+
+AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
+SMS hosted in YVR and managed SIP routing disabled. DNS-only admin aliases
+use the existing site HTTPS gateway names; the routes require Authentik. See
+[deployment and rollback](../AVoIP/docs/ADMIN.md).
