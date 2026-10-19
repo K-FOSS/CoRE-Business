@@ -224,3 +224,9 @@ state remains scoped by workspace identity; changing the plugin version must not
 move or reset that state. No state migration or application recreation is intended.
 The admin Workspace initializes with `-reconfigure` so cached Terraform metadata
 uses this unchanged backend after the provider split; it does not migrate state.
+
+Deployment verification: [SMS image build 57](https://slop.writemy.codes/CoRE/CoRE-Business/actions/runs/57)
+completed successfully for source `c5257a676f01a38340791bb752ef95575eee7aaa`.
+The chart pins all four images by digest. Explicit Envoy identity-header forwarding
+restored inbox number visibility, confirmed by the signed-in user. Managed SIP
+routing remains disabled in the owning ApplicationSet during this deployment.
