@@ -85,6 +85,26 @@ type outboundRoutePreview struct {
 	ProviderHealth        string              `json:"provider_health"`
 }
 
+type inboundRoutePreviewRequest struct {
+	DID             string `json:"did"`
+	InboundProvider string `json:"inbound_provider"`
+	Site            string `json:"site"`
+	SourceIP        string `json:"source_ip,omitempty"`
+}
+
+type inboundRoutePreview struct {
+	Allowed             bool   `json:"allowed"`
+	DenialReason        string `json:"denial_reason,omitempty"`
+	NormalizedDID       string `json:"normalized_did,omitempty"`
+	InboundProvider     string `json:"inbound_provider"`
+	Site                string `json:"site"`
+	DestinationKind     string `json:"destination_kind,omitempty"`
+	Destination         string `json:"destination,omitempty"`
+	ProviderEligibility string `json:"provider_eligibility"`
+	ProviderHealth      string `json:"provider_health"`
+	PolicyRevision      int64  `json:"policy_revision"`
+}
+
 // Existing catalog entries predate these flags and remain enabled until an
 // administrator explicitly disables them. Disabled entries stay in the live
 // snapshot with a reason so Kamailio can reject them precisely and fail closed.
@@ -534,6 +554,110 @@ func (s *server) previewOutboundRoute(w http.ResponseWriter, r *http.Request) {
 	result := previewOutboundRoute(catalog, request, strings.ToLower(os.Getenv("AVOIP_SITE")))
 	writeJSON(w, result)
 }
+
+func previewInboundRoute(c sipCatalog, request inboundRoutePreviewRequest, activeSite string) inboundRoutePreview {
+	result := inboundRoutePreview{
+		InboundProvider:     request.InboundProvider,
+		Site:                request.Site,
+		ProviderEligibility: "not_checked",
+		ProviderHealth:      "not_reported",
+		PolicyRevision:      c.Version,
+	}
+	deny := func(reason string) inboundRoutePreview {
+		result.Allowed = false
+		result.DenialReason = reason
+		return result
+	}
+	if request.Site != "yvr" && request.Site != "yxl" {
+		return deny("invalid_site")
+	}
+	if activeSite != "" && request.Site != activeSite {
+		return deny("site_not_available_in_this_admin_context")
+	}
+	number, valid := normalizePhoneNumber(request.DID)
+	if !valid || number != request.DID {
+		return deny("invalid_did")
+	}
+	result.NormalizedDID = number
+	if !providerID.MatchString(request.InboundProvider) {
+		return deny("invalid_inbound_provider")
+	}
+	var route *didRoute
+	for i := range c.DIDs {
+		if c.DIDs[i].Number == number {
+			route = &c.DIDs[i]
+			break
+		}
+	}
+	if route == nil {
+		return deny("did_not_configured")
+	}
+	if route.Site != request.Site {
+		return deny("did_site_mismatch")
+	}
+	result.DestinationKind = route.Kind
+	result.Destination = route.Destination
+	if route.Destination == "" && route.Kind == "ivr" {
+		result.Destination = "existing_ivr"
+	}
+	if !containsString(route.Providers, request.InboundProvider) {
+		result.ProviderEligibility = "denied"
+		return deny("provider_not_allowed_for_did")
+	}
+	var provider *sipProvider
+	for i := range c.Providers {
+		if c.Providers[i].ID == request.InboundProvider {
+			provider = &c.Providers[i]
+			break
+		}
+	}
+	if provider == nil {
+		result.ProviderEligibility = "denied"
+		return deny("provider_not_configured")
+	}
+	if request.SourceIP != "" {
+		address, err := netip.ParseAddr(request.SourceIP)
+		if err != nil || address.Zone() != "" {
+			return deny("invalid_source_ip")
+		}
+		address = address.Unmap()
+		matched := false
+		for _, rawPrefix := range provider.CIDRs {
+			prefix, parseErr := netip.ParsePrefix(rawPrefix)
+			if parseErr == nil && prefix.Contains(address) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			result.ProviderEligibility = "denied"
+			return deny("source_ip_not_allowed_for_provider")
+		}
+	}
+	result.Allowed = true
+	result.ProviderEligibility = "allowed"
+	return result
+}
+
+func (s *server) previewInboundRoute(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r, false) {
+		return
+	}
+	var request inboundRoutePreviewRequest
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&request) != nil || decoder.Decode(new(any)) != io.EOF {
+		http.Error(w, "invalid inbound routing preview request", http.StatusBadRequest)
+		return
+	}
+	catalog, err := s.catalog(r)
+	if err != nil || catalog.validate() != nil {
+		http.Error(w, "routing policy unavailable or expired", http.StatusServiceUnavailable)
+		return
+	}
+	result := previewInboundRoute(catalog, request, strings.ToLower(os.Getenv("AVOIP_SITE")))
+	writeJSON(w, result)
+}
 func routingAuthorized(r *http.Request) bool {
 	token := os.Getenv("AVOIP_ROUTING_TOKEN")
 	if user, password, ok := r.BasicAuth(); ok {
@@ -663,6 +787,7 @@ func (s *server) registerAdmin(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/sip", s.getCatalog)
 	mux.HandleFunc("PUT /api/sip", s.saveCatalog)
 	mux.HandleFunc("POST /api/routing/preview", s.previewOutboundRoute)
+	mux.HandleFunc("POST /api/routing/inbound-preview", s.previewInboundRoute)
 	mux.HandleFunc("GET /api/audit", s.audit)
 }
 func (s *server) adminPage(w http.ResponseWriter, r *http.Request) {

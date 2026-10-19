@@ -116,6 +116,50 @@ func TestOutboundRoutePreviewRequiresAdmin(t *testing.T) {
 	}
 }
 
+func TestInboundRoutePreviewUsesConfiguredDIDAndProviderPolicy(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.Version = 23
+	request := inboundRoutePreviewRequest{DID: "+12065550100", InboundProvider: "carrier", Site: "yvr", SourceIP: "192.0.2.42"}
+	preview := previewInboundRoute(catalog, request, "yvr")
+	if !preview.Allowed || preview.NormalizedDID != request.DID || preview.DestinationKind != "extension" || preview.Destination != "7101" || preview.ProviderEligibility != "allowed" || preview.ProviderHealth != "not_reported" || preview.PolicyRevision != 23 {
+		t.Fatalf("unexpected allowed inbound preview: %+v", preview)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		mutate func(*inboundRoutePreviewRequest)
+		want   string
+	}{
+		{"unknown DID", func(r *inboundRoutePreviewRequest) { r.DID = "+12065550101" }, "did_not_configured"},
+		{"unassigned provider", func(r *inboundRoutePreviewRequest) { r.InboundProvider = "other" }, "provider_not_allowed_for_did"},
+		{"wrong site", func(r *inboundRoutePreviewRequest) { r.Site = "yxl" }, "site_not_available_in_this_admin_context"},
+		{"non-canonical DID", func(r *inboundRoutePreviewRequest) { r.DID = "12065550100" }, "invalid_did"},
+		{"source outside provider network", func(r *inboundRoutePreviewRequest) { r.SourceIP = "198.51.100.12" }, "source_ip_not_allowed_for_provider"},
+		{"invalid source IP", func(r *inboundRoutePreviewRequest) { r.SourceIP = "not-an-ip" }, "invalid_source_ip"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := request
+			tc.mutate(&r)
+			got := previewInboundRoute(catalog, r, "yvr")
+			if got.Allowed || got.DenialReason != tc.want {
+				t.Fatalf("preview = %+v, want denial %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestInboundRoutePreviewRequiresAdmin(t *testing.T) {
+	server := &server{}
+	mux := http.NewServeMux()
+	server.registerAdmin(mux)
+	request := httptest.NewRequest(http.MethodPost, "/api/routing/inbound-preview", strings.NewReader(`{"did":"+12065550100","inbound_provider":"carrier","site":"yvr"}`))
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("unauthorized inbound preview returned %d", response.Code)
+	}
+}
+
 func freeSwitchActionData(t *testing.T, document, application string) string {
 	t.Helper()
 	var response struct {

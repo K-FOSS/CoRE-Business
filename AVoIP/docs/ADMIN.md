@@ -66,6 +66,7 @@ PostgreSQL grants must be ready before admin pods can become ready.
 | `avoipAdmin.routing.upstreamCIDRs` | Explicit network egress approval for additional carrier TLS destinations; an admin catalog edit cannot widen Kubernetes network policy |
 | `GET/PUT /api/sip` | Read/replace catalog, admin-only with version conflict detection |
 | `POST /api/routing/preview` | Admin-only outbound policy preview using the current extension, destination, caller ID, site and provider catalog |
+| `POST /api/routing/inbound-preview` | Admin-only inbound DID preview using the current DID, provider assignment, optional source IP, site and catalog revision |
 | `GET /api/audit` | Recent protected control-plane audit metadata; no credential values |
 | `GET /routing/snapshot` | Token-authenticated internal compiled route view; machine listener only |
 | `POST /routing/freeswitch` | Authenticated internal XML dialplan for managed contexts; machine listener only |
@@ -120,6 +121,12 @@ with a distinct reason (`extension_disabled` or `outbound_disabled`) in Homer.
 This screen governs authorization; it does not rewrite Asterisk endpoint
 credentials or report live registration state. Registration attempts and
 responses are correlated in Homer using the SIP Call-ID.
+
+Each DID card can preview an inbound route without placing a call. The preview
+checks the exact DID, site, assigned provider and optional provider source IP
+against the current catalog, then displays the destination and policy revision.
+Provider health and failover targets are not represented by the current
+catalog, so the preview reports provider health as `not_reported`.
 
 The editor also accepts an optional assigned Authentik user ID/username and
 exact E.164 allow/block lists for destinations. When an allow list is present,

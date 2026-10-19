@@ -112,9 +112,11 @@ verification. The [Flowroute teardown runbook](docs/avoip/runbooks/outbound-flow
 covers the internal Kamailio BYE route, replica-safe TOPOS restoration,
 render regression and live SIP/media acceptance.
 The Admin Extensions screen also provides an outbound route preview against
-the current authorization catalog; live provider health is not yet part of
-that preview. The managed Asterisk BYE-return diagnostics and preview API are
-documented in [Admin operations](docs/ADMIN.md).
+the current authorization catalog, and DID cards can preview inbound provider
+eligibility and destination without placing a call. Live provider health and DID
+failover targets are not represented in these previews yet. The managed
+Asterisk BYE-return diagnostics and preview APIs are documented in
+[Admin operations](docs/ADMIN.md).
 Confirm the deployed catalog and snapshots before changing an inbound route.
 
 ## Deployment ownership

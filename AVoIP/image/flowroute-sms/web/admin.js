@@ -35,6 +35,18 @@ function addRoutePreview(card,record){
  form.append(destination,callerID,submit);form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;result.textContent='Checking route…';try{const preview=await api('/api/routing/preview','POST',{extension:record.extension,destination:destination.value.trim(),caller_id:callerID.value.trim(),site:record.site});if(preview.allowed){const codecs=preview.codec_order?.length?` · Codecs ${preview.codec_order.join(' → ')}`:'';const egress=preview.egress_destination?` · Sent as ${preview.egress_destination}`:'';result.textContent=`Allowed · ${preview.normalized_destination} · Caller ID ${preview.normalized_caller_id} · ${preview.selected_provider}${egress}${codecs} · Revision ${preview.policy_revision} · Provider health ${preview.provider_health}`}else result.textContent=`Denied · ${preview.denial_reason||'policy_denied'} · Revision ${preview.policy_revision}`}catch(error){result.textContent=error.message}finally{submit.disabled=false}};
  card.append(form,result);
 }
+function addInboundRoutePreview(card,record){
+ const form=node('form','route-preview');
+ const provider=node('select');provider.required=true;provider.setAttribute('aria-label',`Inbound provider for DID ${record.number}`);
+ const placeholder=node('option','','Select inbound provider');placeholder.value='';placeholder.disabled=true;placeholder.selected=true;provider.append(placeholder);
+ for(const item of state.catalog.providers){const assigned=(record.allowed_providers||[]).includes(item.id);const option=node('option','',`${item.name||item.id}${assigned?'':' · not assigned to this DID'}`);option.value=item.id;provider.append(option)}
+ if(record.allowed_providers?.length)provider.value=record.allowed_providers[0];
+ const source=node('input');source.placeholder='Optional source IP';source.setAttribute('aria-label',`Optional source IP for DID ${record.number}`);source.inputMode='text';
+ const submit=node('button','text-button','Preview inbound route');submit.type='submit';
+ const result=node('p','route-preview-result','Preview uses the current Admin policy and does not place a call. Provider health is not checked.');result.setAttribute('role','status');
+ form.append(provider,source,submit);form.onsubmit=async event=>{event.preventDefault();submit.disabled=true;result.textContent='Checking inbound route…';try{const preview=await api('/api/routing/inbound-preview','POST',{did:record.number,inbound_provider:provider.value,site:record.site,...(source.value.trim()?{source_ip:source.value.trim()}:{})});if(preview.allowed){const destination=preview.destination?` ${preview.destination}`:'';result.textContent=`Allowed · ${preview.normalized_did} · ${preview.inbound_provider} · Route ${preview.destination_kind}${destination} · Revision ${preview.policy_revision} · Provider health ${preview.provider_health}`}else result.textContent=`Denied · ${preview.denial_reason||'policy_denied'} · Revision ${preview.policy_revision}`}catch(error){result.textContent=error.message}finally{submit.disabled=false}};
+ card.append(form,result);
+}
 function render(){
  const tab=state.tab,root=$('records'),query=$('record-search').value.trim().toLowerCase();
  $('routing-mode').textContent=state.info.routing_enabled?(state.info.snapshot_ready?'Routing enabled':'Routing snapshot unavailable'):'Routing not activated';
@@ -65,6 +77,7 @@ function render(){
    card.append(node('p',problems.length?'extension-readiness warning':'extension-readiness',problems.length?`Configuration needs attention: ${problems.join('; ')}`:'Catalog authorization is configured. Live provider availability and registration are reported by SIP runtime events.'));
    addRoutePreview(card,record);
   }
+  if(tab==='dids')addInboundRoutePreview(card,record);
   if(record.numbers?.length)card.append(node('p','',record.numbers.join(', ')));
   if((tab==='sms'&&record.source!=='admin')||(tab!=='sms'&&state.catalog.source==='config'))card.append(node('small','',`Managed by ${record.source||'configuration'}`));
   else if(tab!=='audit'){const actions=node('div','dialog-actions'),edit=node('button','text-button','Edit'),remove=node('button','text-button danger','Delete');edit.onclick=()=>editRecord(record,index);remove.onclick=()=>removeRecord(record,index);actions.append(edit,remove);card.append(actions)}
