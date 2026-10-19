@@ -43,6 +43,7 @@
         $var(managed_i) = $var(managed_i) + 1;
       }
     }
+    {{- if ne .Values.kamailio.role "private-sbc" }}
     route[MANAGED_DID] {
       if (!is_method("INVITE") || has_totag()) return;
       if (!($rU =~ "^\\+?[1-9][0-9]{7,14}$")) return;
@@ -88,6 +89,7 @@
       {{ end }}
       route(RELAY); exit;
     }
+    {{- end }}
     route[MANAGED_EXTENSION] {
       if (!is_method("INVITE") || has_totag() || !($fU =~ "^[0-9]{2,12}$")) return;
       if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") || $rU =~ "^\\+1900" || $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") return;
@@ -173,7 +175,11 @@
           jansson_get("site", "$var(managed_route)", "$var(managed_site)");
           if ($var(managed_site) == "{{ .Values.region }}") {
             $var(managed_provider) = $hdr(X-Core-Provider);
-            route(MANAGED_DID);
+            jansson_get("providers", "$var(managed_route)", "$var(managed_allowed)");
+            if ($var(managed_provider) == "" || !in_list("$var(managed_provider)", "$var(managed_allowed)", ",")) {
+              sl_send_reply("403", "DID Provider Not Authorized"); exit;
+            }
+            return;
           }
         }
         sl_send_reply("403", "Managed DID Not Authorized"); exit;
