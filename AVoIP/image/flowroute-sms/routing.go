@@ -577,7 +577,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 							break
 						}
 					}
-					bridge = managedGatewayBridge(gateway, destination, codecOrder)
+					bridge = managedGatewayBridge(gateway, destination)
 				}
 			}
 		}
@@ -605,7 +605,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 					if len(d.CodecOrder) > 0 {
 						codecOrder = d.CodecOrder
 					}
-					bridge = managedGatewayBridge(gateway, d.Destination, codecOrder)
+					bridge = managedGatewayBridge(gateway, d.Destination)
 				}
 			}
 		}
@@ -629,6 +629,9 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>`
 		}
 	}
+	if len(codecOrder) > 0 {
+		text += `<action application="export" data="nolocal:absolute_codec_string=` + escape(strings.Join(codecOrder, ",")) + `"/>`
+	}
 	if transfer != "" {
 		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
 	} else {
@@ -638,12 +641,8 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, text)
 }
 
-func managedGatewayBridge(gateway, destination string, codecOrder []string) string {
-	bridge := "sofia/gateway/" + gateway + "/" + destination
-	if len(codecOrder) == 0 {
-		return bridge
-	}
-	return "[absolute_codec_string='" + strings.Join(codecOrder, ",") + "']" + bridge
+func managedGatewayBridge(gateway, destination string) string {
+	return "sofia/gateway/" + gateway + "/" + destination
 }
 
 func verifiedNumbers(values []verifiedCallerID) string {

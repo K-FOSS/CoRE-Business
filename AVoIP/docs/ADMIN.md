@@ -82,11 +82,13 @@ an admin-reviewed entitlement, not STIR/SHAKEN authentication of an inbound call
 
 Provider **Supported codecs** declares the upstream capability set, and
 **Codec order** sets its preferred order. The FreeSWITCH XML dialplan applies
-that order to the actual outbound gateway leg using `absolute_codec_string`; a
-DID codec order overrides the provider order when configured. If the order is
-empty, the supported list order is used. Legacy Twilio Elastic SIP records with
-no codec fields use the documented PCMU, then PCMA baseline because those are
-Twilio's generally available termination codecs ([Twilio codec support](https://www.twilio.com/docs/sip-trunking/codecs)).
+that order to the outbound gateway leg with the documented
+`export nolocal:absolute_codec_string=...` action before bridging; a DID codec
+order overrides the provider order when configured. If the order is empty, the
+supported list order is used. Legacy Twilio Elastic SIP records with no codec
+fields use the documented PCMU, then PCMA baseline because those are Twilio's
+generally available termination codecs ([Twilio codec support](https://www.twilio.com/docs/sip-trunking/codecs),
+[FreeSWITCH codec negotiation](https://developer.signalwire.com/freeswitch/media-and-codecs/codecs/)).
 An explicit Admin provider or DID order always takes precedence. The selected
 provider, site, and effective codec order are also written to the FreeSWITCH
 call log for correlation with Kamailio's Homer events.
