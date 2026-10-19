@@ -54,7 +54,7 @@ controllers:
             value: '{{ $settings.inbox.frameAncestor }}'
           {{- end }}
           {{- if ne $mode "web" }}
-          {{ if $.Values.avoipAdmin.enabled }}
+          {{ if and $.Values.avoipAdmin.enabled $.Values.freeswitch.enabled }}
           - name: 'AVOIP_ADMIN_URL'
             value: 'https://{{ include "avoip.admin.hostname" $ }}'
           {{ end }}

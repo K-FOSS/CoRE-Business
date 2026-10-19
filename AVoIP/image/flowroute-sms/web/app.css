@@ -9,3 +9,5 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--danger:#f2b8b5}}:root[data-theme=dark]{--danger:#f2b8b5}
 
 .admin-page .dialog-primary{border:0;border-radius:4px;min-height:44px;padding:10px 16px;background:var(--primary);color:#fff;box-shadow:0 2px 3px #0002;font-size:14px;font-weight:500}.admin-page .dialog-actions button,.admin-card .text-button{min-height:44px}.admin-bar{gap:16px}.admin-bar>span{min-width:0}#routing-mode{max-width:150px;text-align:right}@media(max-width:600px){.admin-bar>span:not(#routing-mode){display:none}}@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .admin-page .dialog-primary{color:#102a43}}:root[data-theme=dark] .admin-page .dialog-primary{color:#102a43}
+
+.composer textarea{min-width:0}#provider{flex:0 1 110px;max-width:110px;min-height:44px;font-size:12px}

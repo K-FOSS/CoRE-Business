@@ -64,3 +64,27 @@ accept a production password or token.
 Functional/API validation and rendering checks are recorded with the relevant
 implementation. Browser visual and assistive-technology checks must be reported
 separately from syntax checks; a valid JavaScript file is not visual acceptance.
+
+## Reproducible browser fixtures
+
+The optional [admin](../tests/admin-browser.py) and
+[inbox](../tests/sms-inbox-browser.py) Chromium checks intercept every application
+request with synthetic responses. They exercise admin dialogs, visible save
+feedback, provider selection, history pagination and confirmed deletion. They
+produce screenshots in a temporary directory and check for browser errors and
+layout overflow. They do not exercise production Authentik, carriers or SIP.
+
+Use a disposable environment with Python, fonts and Chromium dependencies:
+
+```sh
+python3 -m venv /tmp/avoip-ui-check
+/tmp/avoip-ui-check/bin/pip install 'playwright==1.64.0'
+/tmp/avoip-ui-check/bin/playwright install chromium
+/tmp/avoip-ui-check/bin/python AVoIP/tests/admin-browser.py
+/tmp/avoip-ui-check/bin/python AVoIP/tests/sms-inbox-browser.py
+```
+
+The fixture launcher disables Chromium sandboxing for disposable test containers.
+The observed fixtures cover admin at 360/768/1280 px, light and dark themes, and
+inbox at 360/1280 px. Manual screen-reader and production login/call acceptance
+remain rollout checks.

@@ -8,6 +8,10 @@ and [SMS inbox patterns](../FLOWROUTE-SMS.md) are references, not automatic gran
 for call protection. Existing `AVoIP Admins` is application access, not Authentik
 superuser status. Avoid broadening its existing mail/SMS attributes accidentally.
 
+The proposed Call Protection UI must follow the shared
+[2019–2022 Material Design 2 specification](../UI-DESIGN.md), including existing
+SMS typography, surfaces, controls and responsive behavior.
+
 ## Identity and access
 
 Propose an Authentik confidential OIDC application with authorization-code flow
