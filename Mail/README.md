@@ -63,6 +63,11 @@ Mail client IMAP :143/:993
   queue size and age histograms on an internal metrics Service at port 9154.
   The exporter shares only Postfix's pod-local `public` socket directory; its
   log input is `/dev/null`, so log-derived delivery counters are not collected.
+  `mail.mylogin.space` is the virtual mailbox domain delivered through Dovecot
+  LMTP. Relay domains are looked up independently in LDAP groups through
+  `mailacceptinggeneralid`; the directory must authorize `snd.fyi`,
+  `resolvemy.host` and `writemy.codes` there. Those relay domains do not become
+  local mailbox domains.
 - Dovecot provides IMAP/IMAPS, SASL and LMTP services. It authenticates through
   LDAP and proxies/reads mailbox state according to the checked-in storage
   configuration.

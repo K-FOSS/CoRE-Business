@@ -443,6 +443,8 @@ persistence:
         postfix:
           - path: '/etc/postfix/ldap.cf'
             subPath: 'ldap.cf'
+          - path: '/etc/postfix/ldap-relay.cf'
+            subPath: 'ldap-relay.cf'
           - path: '/etc/postfix/ldap-in.cf'
             subPath: 'ldap-in.cf'
           - path: '/etc/postfix/ldap-auth.cf'

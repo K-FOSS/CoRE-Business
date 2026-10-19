@@ -21,6 +21,8 @@ spec:
 
               - key: ldap.cf
 
+              - key: ldap-relay.cf
+
               - key: ldap-auth.cf
   data:
     #

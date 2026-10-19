@@ -53,6 +53,7 @@ data:
   CONF_VIRTUAL_MAILBOX_DOMAINS: 'mail.mylogin.space'
   CONF_VIRTUAL_ALIAS_MAPS: 'ldap:/etc/postfix/ldap.cf'
   CONF_VIRTUAL_MAILBOX_MAPS: 'ldap:/etc/postfix/ldap-in.cf'
+  CONF_RELAY_DOMAINS: 'ldap:/etc/postfix/ldap-relay.cf'
   CONF_LMTP_HOST_LOOKUP: 'native'
   CONF_SMTPD_SENDER_LOGIN_MAPS: 'ldap:/etc/postfix/ldap-auth.cf'
 

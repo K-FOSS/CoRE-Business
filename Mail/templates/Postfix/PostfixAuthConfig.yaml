@@ -38,6 +38,21 @@ data:
     result_attribute = cn
     special_result_attribute = member
 
+  ldap-relay.cf: |
+    server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
+    {{`
+    start_tls = no
+    version = 3
+
+    bind = yes
+    bind_dn = cn={{ .Username }},ou=users,dc=ldap,dc=mylogin,dc=space
+    bind_pw = {{ .Password }}
+
+    search_base = dc=ldap,dc=mylogin,dc=space
+    query_filter = (&(objectClass=group)(mailacceptinggeneralid=%s))
+    result_attribute = cn
+    `}}
+
   ldap-in.cf: |
     server_host = ldaps://{{ .Values.site.ldap.hostname }}:{{ .Values.site.ldap.port }}
     {{`
