@@ -172,7 +172,7 @@
       $fU = $var(managed_caller_id);
       append_hf("P-Asserted-Identity: <sip:$var(managed_caller_id)@{{ include "avoip.sip.siteHost" . }}>\r\n");
       if ($var(managed_site) == "{{ .Values.region }}" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
-        $rU = $var(managed_egress_prefix) + "*" + $rU;
+        $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
       }
       $ru = "sips:" + $rU + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";

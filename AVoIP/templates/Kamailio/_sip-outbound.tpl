@@ -84,7 +84,7 @@
         exit;
       }
       if ($var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
-        $rU = $var(managed_egress_prefix) + "*" + $rU;
+        $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
       }
 
       # Dragonfly executes quota admission atomically across all carrier
