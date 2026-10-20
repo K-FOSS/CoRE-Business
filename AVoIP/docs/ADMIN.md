@@ -162,7 +162,7 @@ duration. A profile can be assigned directly to an inbound DID or extension,
 or made the default for one site or tenant. On each call, an explicit record
 assignment wins; otherwise the matching tenant profile wins, followed by the
 record's destination/egress site profile. When none is configured, the existing
-site values under `kamailio.carrierOutbound.limits` remain the compatibility
+site values under `kamailio.defaults.carrierOutbound.limits` remain the compatibility
 default; outbound calls retain their legacy caller-ID quota bucket in that
 case.
 
