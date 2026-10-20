@@ -137,7 +137,7 @@
           # managed_outbound marker is stored on the dialog when the original
           # Asterisk INVITE is authorized. Send its in-dialog requests back to
           # Asterisk; only unmarked legacy dialogs use the FreeSWITCH owner.
-          if ($dlg_var(managed_outbound) == "yes") {
+          if ($dlg_var(managed_outbound) == "yes" || $hdr(Route) =~ "sipcore-return") {
             route(TO_SIPCORE_ASTERISK);
             xlog(
               "L_INFO",
@@ -435,6 +435,20 @@
         # other in-dialog requests) must follow the carrier gateway, not the
         # SIP Core return route back toward the WebSocket contact.
         route(PRIVATE_TO_CARRIER_GATEWAY);
+        route(PRIVATE_RELAY); exit;
+      }
+      # A dialog-management failure on the initial Asterisk INVITE can leave
+      # the managed_outbound dialog variable unset. Asterisk's carrier leg
+      # still has no WebSocket flow token, so route its in-dialog requests by
+      # the dedicated SIP Core return listener instead of entering the browser
+      # alias loop.
+      if (has_totag() && check_flow_token() != 1) {
+        if (!loose_route()) { if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist"); exit; }
+        route(PRIVATE_TO_CARRIER_GATEWAY);
+        xlog(
+          "L_WARN",
+          "SIP dialog route stage=asterisk-to-carrier-fallback pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) reason=no-flow-token destination=$du ruri=$ru route=$hdr(Route)\n"
+        );
         route(PRIVATE_RELAY); exit;
       }
       if (!has_totag() && is_method("INVITE") &&
