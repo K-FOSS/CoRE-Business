@@ -7,6 +7,11 @@ and egress site; disabled decisions are sent to Homer. Routing activation is
 independent of UI enablement. Both interfaces follow the
 [shared Material Design 2 specification](docs/UI-DESIGN.md).
 
+The optional authenticated [Bridged calls](docs/BRIDGED-CALLS.md) page lets a
+user schedule or place a callback-first call to an authorized extension. It is
+disabled by default pending private Event Socket wiring and live teardown
+acceptance.
+
 The proposed [CoRE Caller Intelligence & Call Protection](docs/caller-intelligence/README.md)
 package documents number/business policies, reputation, lookup budgets, APIs and
 a future Kamailio bridge. It adds no running service or telephony configuration.

@@ -264,6 +264,7 @@ func run(logger *slog.Logger) error {
 	}
 	if mode == "admin" {
 		go app.refreshCatalog(ctx)
+		go app.bridgedCallWorker(ctx)
 		internalMux := http.NewServeMux()
 		internalMux.HandleFunc("GET /routing/snapshot", app.routingSnapshot)
 		internalMux.HandleFunc("POST /routing/freeswitch", app.freeSwitchRoute)
@@ -282,6 +283,7 @@ func run(logger *slog.Logger) error {
 		}()
 		mux.HandleFunc("GET /", app.adminPage)
 		mux.HandleFunc("GET /assets/{name}", app.asset)
+		app.registerBridgedCalls(mux)
 	}
 
 	address := os.Getenv("LISTEN_ADDRESS")

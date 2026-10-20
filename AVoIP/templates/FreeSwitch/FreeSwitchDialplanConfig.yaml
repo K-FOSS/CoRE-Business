@@ -70,6 +70,35 @@ data:
       </context>
       {{- end }}
       <context name="public">
+        {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
+        <extension name="bridged-call-callback">
+          <condition field="destination_number" expression="^bridged-call-callback$">
+            <action application="answer"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            <action application="set" data="bridge_early_media=false"/>
+            <action application="set" data="bridged_call_stage=awaiting_confirmation"/>
+            <condition field="${bridged_confirmation_required}" expression="^true$">
+              <action application="play_and_get_digits" data="1 1 1 {{ $.Values.avoipAdmin.bridgedCalls.confirmationTimeoutSeconds }}000 '' silence_stream://1000 bridged_call_confirmation ^1$ 1000"/>
+              <condition field="${bridged_call_confirmation}" expression="^1$">
+                <action application="set" data="bridged_call_stage=calling_extension"/>
+                <action application="set" data="bridge_answer_timeout={{ $.Values.avoipAdmin.bridgedCalls.extensionRingTimeoutSeconds }}"/>
+                <action application="sched_hangup" data="+{{ $.Values.avoipAdmin.bridgedCalls.maximumDurationSeconds }} NORMAL_CLEARING"/>
+                <action application="export" data="nolocal:api_on_answer=uuid_setvar ${uuid} bridged_call_stage connected"/>
+                <action application="bridge" data="${bridged_call_target}"/>
+                <anti-action application="hangup" data="NO_USER_RESPONSE"/>
+              </condition>
+              <anti-action application="hangup" data="NO_USER_RESPONSE"/>
+            </condition>
+            <condition field="${bridged_confirmation_required}" expression="^false$">
+              <action application="set" data="bridged_call_stage=calling_extension"/>
+              <action application="set" data="bridge_answer_timeout={{ $.Values.avoipAdmin.bridgedCalls.extensionRingTimeoutSeconds }}"/>
+              <action application="sched_hangup" data="+{{ $.Values.avoipAdmin.bridgedCalls.maximumDurationSeconds }} NORMAL_CLEARING"/>
+              <action application="export" data="nolocal:api_on_answer=uuid_setvar ${uuid} bridged_call_stage connected"/>
+              <action application="bridge" data="${bridged_call_target}"/>
+            </condition>
+          </condition>
+        </extension>
+        {{- end }}
         {{- if $.Values.freeswitch.interSite.enabled }}
         <extension name="authorized-inter-site-extension">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.extension }}$"/>

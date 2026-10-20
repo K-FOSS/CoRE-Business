@@ -15,6 +15,12 @@
 {{- define "avoip.admin.commonValues" -}}
 {{- if and .Values.avoipAdmin.enabled .Values.freeswitch.enabled -}}
 {{- $settings := .Values.avoipAdmin -}}
+{{- if and $settings.bridgedCalls.enabled (or (not $settings.telephony.enabled) (not $settings.routing.enabled)) }}
+{{- fail "avoipAdmin.bridgedCalls requires telephony integrations and managed routing" }}
+{{- end }}
+{{- if and $settings.bridgedCalls.enabled (or (lt (int $settings.bridgedCalls.callbackRingTimeoutSeconds) 1) (gt (int $settings.bridgedCalls.callbackRingTimeoutSeconds) 300) (lt (int $settings.bridgedCalls.confirmationTimeoutSeconds) 1) (gt (int $settings.bridgedCalls.confirmationTimeoutSeconds) 30) (lt (int $settings.bridgedCalls.extensionRingTimeoutSeconds) 1) (gt (int $settings.bridgedCalls.extensionRingTimeoutSeconds) 300) (lt (int $settings.bridgedCalls.maximumDurationSeconds) 60) (gt (int $settings.bridgedCalls.maximumDurationSeconds) 86400) (lt (int $settings.bridgedCalls.schedulingHorizonDays) 1) (gt (int $settings.bridgedCalls.schedulingHorizonDays) 90) (lt (int $settings.bridgedCalls.perUserConcurrency) 1) (gt (int $settings.bridgedCalls.perUserConcurrency) 20)) }}
+{{- fail "avoipAdmin.bridgedCalls timeout, duration, horizon, or concurrency setting is outside its allowed range" }}
+{{- end }}
 {{- $dbName := printf "%s-admin-connection" (include "avoip.fullname" .) -}}
 controllers:
   avoip-admin:
@@ -72,6 +78,26 @@ controllers:
           {{ end }}
           - name: 'AVOIP_SITE'
             value: '{{ .Values.region }}'
+          - name: 'AVOIP_BRIDGED_CALLS_ENABLED'
+            value: '{{ $settings.bridgedCalls.enabled }}'
+          - name: 'AVOIP_BRIDGED_CONFIRMATION_REQUIRED'
+            value: '{{ $settings.bridgedCalls.confirmationRequired }}'
+          - name: 'AVOIP_BRIDGED_INTERNAL_CONFIRMATION_REQUIRED'
+            value: '{{ $settings.bridgedCalls.internalConfirmationRequired }}'
+          - name: 'AVOIP_BRIDGED_CALLBACK_RING_TIMEOUT_SECONDS'
+            value: '{{ $settings.bridgedCalls.callbackRingTimeoutSeconds }}'
+          - name: 'AVOIP_BRIDGED_CONFIRMATION_TIMEOUT_SECONDS'
+            value: '{{ $settings.bridgedCalls.confirmationTimeoutSeconds }}'
+          - name: 'AVOIP_BRIDGED_EXTENSION_RING_TIMEOUT_SECONDS'
+            value: '{{ $settings.bridgedCalls.extensionRingTimeoutSeconds }}'
+          - name: 'AVOIP_BRIDGED_MAX_DURATION_SECONDS'
+            value: '{{ $settings.bridgedCalls.maximumDurationSeconds }}'
+          - name: 'AVOIP_BRIDGED_SCHEDULING_HORIZON_DAYS'
+            value: '{{ $settings.bridgedCalls.schedulingHorizonDays }}'
+          - name: 'AVOIP_BRIDGED_LATENESS_GRACE_SECONDS'
+            value: '{{ $settings.bridgedCalls.latenessGraceSeconds }}'
+          - name: 'AVOIP_BRIDGED_PER_USER_CONCURRENCY'
+            value: '{{ $settings.bridgedCalls.perUserConcurrency }}'
           - name: 'AVOIP_DEFAULT_LIMITS_JSON'
             value: '{{ dict "calls_per_minute" .Values.kamailio.defaults.carrierOutbound.limits.callsPerMinute "concurrent_calls" .Values.kamailio.defaults.carrierOutbound.limits.concurrentCalls "max_duration_seconds" .Values.kamailio.defaults.carrierOutbound.limits.maxDurationSeconds | toJson | replace "'" "''" }}'
           - name: 'AVOIP_SITES_JSON'

@@ -126,6 +126,12 @@ spec:
         group  = data.authentik_group.admins.id
         order  = 0
       }
+
+      resource "authentik_policy_binding" "users_access" {
+        target = authentik_application.inbox.uuid
+        group  = data.authentik_group.users.id
+        order  = 1
+      }
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy

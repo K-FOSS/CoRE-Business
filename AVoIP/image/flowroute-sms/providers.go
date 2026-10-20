@@ -23,6 +23,53 @@ CREATE TABLE IF NOT EXISTS public.sms_deleted_messages(message_id text PRIMARY K
 CREATE TABLE IF NOT EXISTS public.sms_providers(id text PRIMARY KEY,configuration jsonb NOT NULL,version bigint NOT NULL DEFAULT 1,updated_at timestamptz NOT NULL DEFAULT now(),updated_by text NOT NULL);
 CREATE TABLE IF NOT EXISTS public.avoip_catalog(id boolean PRIMARY KEY DEFAULT true CHECK(id),configuration jsonb NOT NULL,version bigint NOT NULL DEFAULT 1,updated_at timestamptz NOT NULL DEFAULT now(),updated_by text NOT NULL);
 CREATE TABLE IF NOT EXISTS public.avoip_admin_audit(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,actor text NOT NULL,action text NOT NULL,object_id text NOT NULL,changed_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.avoip_bridged_calls(
+    id uuid PRIMARY KEY,
+    owner text NOT NULL,
+    callback_kind text NOT NULL,
+    callback_destination text NOT NULL,
+    callback_label text NOT NULL DEFAULT '',
+    extension text NOT NULL,
+    caller_id text NOT NULL,
+    provider_id text NOT NULL,
+    scheduled_at timestamptz NOT NULL,
+    timezone text NOT NULL,
+    status text NOT NULL,
+    cancellation_requested boolean NOT NULL DEFAULT false,
+    idempotency_key text NOT NULL,
+    callback_uuid text NOT NULL,
+    extension_uuid text NOT NULL,
+    telephony_job_id text NOT NULL DEFAULT '',
+    version bigint NOT NULL DEFAULT 1,
+    failure_code text NOT NULL DEFAULT '',
+    hangup_cause text NOT NULL DEFAULT '',
+    created_at timestamptz NOT NULL DEFAULT now(),
+    started_at timestamptz,
+    answered_at timestamptz,
+    connected_at timestamptz,
+    completed_at timestamptz,
+    cancelled_at timestamptz,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(owner, idempotency_key)
+);
+CREATE INDEX IF NOT EXISTS avoip_bridged_calls_owner_schedule_idx ON public.avoip_bridged_calls(owner, scheduled_at DESC);
+CREATE INDEX IF NOT EXISTS avoip_bridged_calls_dispatch_idx ON public.avoip_bridged_calls(status, scheduled_at);
+CREATE TABLE IF NOT EXISTS public.avoip_bridged_call_events(
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    call_id uuid NOT NULL REFERENCES public.avoip_bridged_calls(id) ON DELETE CASCADE,
+    event_type text NOT NULL,
+    detail jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.avoip_callback_destinations(
+    id uuid PRIMARY KEY,
+    owner text NOT NULL,
+    label text NOT NULL,
+    kind text NOT NULL,
+    destination text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(owner, label, destination)
+);
 `
 
 var providerID = regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)

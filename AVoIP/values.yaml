@@ -1567,6 +1567,17 @@ avoipAdmin:
       eventSocketSecret: {name: '', key: 'secret'}
       cdrConnectionSecret: {name: '', key: 'psqlURI'}
       cdrTable: 'cdr'
+  bridgedCalls:
+    enabled: false
+    confirmationRequired: true
+    internalConfirmationRequired: true
+    callbackRingTimeoutSeconds: 30
+    confirmationTimeoutSeconds: 5
+    extensionRingTimeoutSeconds: 30
+    maximumDurationSeconds: 7200
+    schedulingHorizonDays: 30
+    latenessGraceSeconds: 900
+    perUserConcurrency: 2
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams: []
   routing:

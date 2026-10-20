@@ -375,6 +375,13 @@ func freeSwitchHangup(ctx context.Context, address, secret, id string) error {
 	_, err := eslCommand(ctx, address, secret, "uuid_kill "+id+" NORMAL_CLEARING")
 	return err
 }
+
+func freeSwitchVariable(ctx context.Context, address, secret, uuid, name string) (string, error) {
+	if uuid == "" || strings.ContainsAny(uuid, "\r\n ") || !correlationID.MatchString(uuid) || name == "" || strings.ContainsAny(name, "\r\n ") {
+		return "", errors.New("invalid channel variable request")
+	}
+	return eslCommand(ctx, address, secret, "uuid_getvar "+uuid+" "+name)
+}
 func eslCommand(ctx context.Context, address, secret, command string) (string, error) {
 	if address == "" || secret == "" {
 		return "", errors.New("event socket not configured")
