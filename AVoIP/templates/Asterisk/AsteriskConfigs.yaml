@@ -188,7 +188,11 @@ data:
     ; Return only to a configured internal account or a valid NANP caller
     ; identity. This FreeSWITCH peer is TLS-authenticated; external callback
     ; egress is separately opt-in and header-gated.
-    exten => {{ . }},1,NoOp(AVoIP callback request received on authenticated FreeSWITCH peer)
+    exten => {{ . }},1,Answer()
+      same => n,NoOp(AVoIP callback greeting start uniqueid=${UNIQUEID} native=${CHANNEL(audionativeformat)} read=${CHANNEL(audioreadformat)} write=${CHANNEL(audiowriteformat)})
+      same => n,Playback(hello-world)
+      same => n,NoOp(AVoIP callback greeting complete uniqueid=${UNIQUEID} native=${CHANNEL(audionativeformat)} read=${CHANNEL(audioreadformat)} write=${CHANNEL(audiowriteformat)})
+      same => n,NoOp(AVoIP callback request received on authenticated FreeSWITCH peer)
       {{- range $.Values.asterisk.sipCore.extensions }}
       same => n,GotoIf($["${CALLERID(num)}" = "{{ .number }}"]?internal-{{ .number }})
       {{- end }}
