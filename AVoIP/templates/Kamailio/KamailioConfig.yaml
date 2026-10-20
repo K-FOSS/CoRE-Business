@@ -20,6 +20,9 @@
 {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.tcpEnabled (not .Values.kamailio.publicExposure.sip.directService.enabled) -}}
 {{- fail "public TCP SIP dialogs require kamailio.publicExposure.sip.directService.enabled so the advertised TCP Contact is reachable" -}}
 {{- end -}}
+{{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (not .Values.kamailio.carrierOutbound.clientIdentity.enabled) -}}
+{{- fail "carrier Kamailio needs carrierOutbound.clientIdentity enabled to route TLS dialogs to the SIP Core return Service" -}}
+{{- end -}}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -483,6 +486,20 @@ data:
     ca_list = {{ if eq .Values.kamailio.role "carrier-sbc" }}/etc/kamailio/peer-ca/ca.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
     private_key = /etc/kamailio/mtls/tls.key
     certificate = /etc/kamailio/mtls/tls.crt
+    {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
+
+    # The SIP Core return Service is a distinct TLS identity from the private
+    # Kamailio peer Service. Match its exact DNS name and use the internal
+    # mTLS identity and CA bundle when relaying restored dialogs to port 5063.
+    [client:any]
+    server_name = {{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = no
+    ca_list = /etc/kamailio/peer-ca/ca.crt
+    private_key = /etc/kamailio/mtls/tls.key
+    certificate = /etc/kamailio/mtls/tls.crt
+    {{- end }}
     {{- end }}
     {{- if and (eq .Values.kamailio.role "private-sbc") .Values.freeswitch.enabled .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
 

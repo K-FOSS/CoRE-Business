@@ -974,6 +974,19 @@
       if ($du == $null || $du == "") {
         $du = $ru;
       }
+      {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
+      # The restored Route/Request-URI can target SIP Core's dedicated 5063
+      # return Service. Its RR socket token describes the original public
+      # ingress and must not override the private egress socket for this hop.
+      if ($(du{uri.host}) == "{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}") {
+        $xavp(tls=>server_name) = "{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}";
+        set_send_socket_name("private_tls");
+        xlog(
+          "L_INFO",
+          "SIP dialog egress class=internal-sipcore route_source=topos-or-loose-route call_id=$ci cseq=$hdr(CSeq) method=$rm from_tag=$ft to_tag=$tt tls_profile=internal-mtls socket=$fsn sni=$xavp(tls=>server_name) next_hop=$du resolved=$dd:$dp\n"
+        );
+      }
+      {{- end }}
       # TOPOS restores the private return route for Asterisk-originated
       # dialogs, but the TLS client profile is not reconstructed from the
       # Route header. Set SNI from the restored next hop before relaying so
@@ -1012,7 +1025,7 @@
         {{- end }}
         xlog(
           "L_ERR",
-          "SIP relay failure pod=$env(POD_NAME) callid=$ci method=$rm side=$var(side) recv=$Ri:$Rp next=$du socket=$fsn\n"
+          "SIP relay result=failed pod=$env(POD_NAME) call_id=$ci method=$rm direction=$var(side) cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt recv=$Ri:$Rp route=$route_uri next_hop=$du resolved=$dd:$dp socket=$fsn tls_sni=$xavp(tls=>server_name)\n"
         );
 
         if (!is_method("ACK")) {
@@ -1025,7 +1038,7 @@
       {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
       xlog(
         "L_INFO",
-        "SIP relay queued pod=$env(POD_NAME) callid=$ci method=$rm side=$var(side) next=$du socket=$fsn\n"
+        "SIP relay result=queued pod=$env(POD_NAME) call_id=$ci method=$rm direction=$var(side) cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt route=$route_uri next_hop=$du resolved=$dd:$dp socket=$fsn tls_sni=$xavp(tls=>server_name)\n"
       );
       {{- end }}
 
@@ -1123,10 +1136,18 @@
 
     onsend_route {
       {{- if $carrierTrafficLogging }}
-      if ($fsn == "public_tls" || $fsn == "public_udp" || $fsn == "public_tcp") {
+      {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }}
+      if ($(du{uri.host}) == "{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}") {
         xlog(
           "L_INFO",
-          "SIP FLOWROUTE TX pod=$env(POD_NAME) destination=$snd(ip):$snd(port) wire_proto=$snd(proto) socket_name=$fsn callid=$ci method=$rm cseq=$hdr(CSeq)\n--- SIP FLOWROUTE TX BEGIN ---\n$snd(buf)\n--- SIP FLOWROUTE TX END ---\n"
+          "SIP INTERNAL SIPCORE TX pod=$env(POD_NAME) call_id=$ci method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt socket_name=$fsn tls_sni=$xavp(tls=>server_name) route=$route_uri destination_host=$(du{uri.host}) destination_ip=$snd(ip) destination_port=$snd(port) transport=$snd(proto) relay_result=sent\n"
+        );
+      }
+      {{- end }}
+      if (($fsn == "public_tls" || $fsn == "public_udp" || $fsn == "public_tcp"){{ if and (eq .Values.kamailio.role "carrier-sbc") .Values.asterisk.enabled .Values.asterisk.sipCore.enabled }} && $(du{uri.host}) != "{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}"{{ end }}) {
+        xlog(
+          "L_INFO",
+          "SIP FLOWROUTE TX pod=$env(POD_NAME) direction=external-carrier call_id=$ci method=$rm cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt route=$route_uri destination_host=$(du{uri.host}) destination_ip=$snd(ip) destination_port=$snd(port) wire_proto=$snd(proto) socket_name=$fsn tls_sni=$xavp(tls=>server_name) relay_result=sent\n--- SIP FLOWROUTE TX BEGIN ---\n$snd(buf)\n--- SIP FLOWROUTE TX END ---\n"
         );
       }
       {{- end }}

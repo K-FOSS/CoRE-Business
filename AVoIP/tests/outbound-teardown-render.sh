@@ -14,6 +14,7 @@ internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-h
 internal_rollout="$(yq -r 'select(.kind == "Deployment" and .metadata.labels["app.kubernetes.io/controller"] == "kamailio-internal") | .spec.strategy.rollingUpdate' "$render")"
 internal_policy="$(yq 'select(.kind == "CiliumNetworkPolicy" and .spec.endpointSelector.matchLabels["app.kubernetes.io/controller"] == "kamailio-internal") | .spec' "$render")"
 internal_tls="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["tls.cfg"]' "$render")"
+carrier_tls="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["tls.cfg"]' "$render")"
 freeswitch_dialplan="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$render")"
 asterisk_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$render")"
 flowroute_profile="$(yq -r 'select(.kind == "ExternalSecret" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-flowroute") | .spec.target.template.data["flowroute.xml"]' "$render")"
@@ -69,6 +70,21 @@ freeswitch_tls="$(sed -n '/server_name = core-home1-talos-prod-avoip-freeswitch.
 grep -Fq 'verify_certificate = yes' <<< "$freeswitch_tls"
 grep -Fq 'ca_list = /etc/kamailio/peer-ca/ca.crt' <<< "$freeswitch_tls"
 grep -Fq 'certificate = /etc/kamailio/mtls/tls.crt' <<< "$freeswitch_tls"
+
+# SIP Core's dedicated return Service has a separate SAN from the carrier's
+# internal Kamailio peer Service. Its restored Route must use the internal
+# socket, exact SNI, internal trust bundle, and Vault mTLS client identity.
+sipcore_return_host="$(yq -r 'select(.kind == "Certificate") | .spec.dnsNames[] | select(contains("sipcore-return"))' "$render" | head -n1)"
+[[ -n "$sipcore_return_host" ]]
+sipcore_client_profile="$(sed -n "/server_name = ${sipcore_return_host}/,/certificate = \/etc\/kamailio\/mtls\/tls.crt/p" <<< "$carrier_tls")"
+grep -Fq "server_name = $sipcore_return_host" <<< "$sipcore_client_profile"
+grep -Fq 'verify_certificate = yes' <<< "$sipcore_client_profile"
+grep -Fq 'ca_list = /etc/kamailio/peer-ca/ca.crt' <<< "$sipcore_client_profile"
+grep -Fq 'private_key = /etc/kamailio/mtls/tls.key' <<< "$sipcore_client_profile"
+grep -Fq 'certificate = /etc/kamailio/mtls/tls.crt' <<< "$sipcore_client_profile"
+grep -Fq "if (\$(du{uri.host}) == \"$sipcore_return_host\")" <<< "$carrier_cfg"
+grep -Fq 'class=internal-sipcore route_source=topos-or-loose-route' <<< "$carrier_cfg"
+! grep -Fq 'class=internal-sipcore' <<< "$internal_cfg"
 
 # TM reports its negative relay result and handles duplicate requests before
 # media/quota teardown side effects in both hops.
