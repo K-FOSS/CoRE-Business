@@ -220,16 +220,16 @@ flowrouteSMS:
   images:
     web:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-web'
-      tag: '1-a5aa5b6d01a06864470abe19739c075c198ba962'
-      digest: 'sha256:0ad279c3bc41aaebfc90422ffa862426a0168ce1e8dae2a1c9f993c0ca2e1cf3'
+      tag: '1-41646a7a2eb4e44db6ee8ff0a6747e68a7cb2a5c'
+      digest: 'sha256:93f28474ffcb2ee83325e73793049a7074f134b65e87cdcbdcd41c8e7358a48f'
     api:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-api'
-      tag: '1-a5aa5b6d01a06864470abe19739c075c198ba962'
-      digest: 'sha256:9d9d82164529630500e8a535e66defa8c20dfe389b1534933afc6c415ce1eefa'
+      tag: '1-41646a7a2eb4e44db6ee8ff0a6747e68a7cb2a5c'
+      digest: 'sha256:3ad8e53e35d78f5d98db864b9f5ea14809e4fe7b77b0f9b354e14bc0743c3ae7'
     webhook:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-webhook'
-      tag: '1-a5aa5b6d01a06864470abe19739c075c198ba962'
-      digest: 'sha256:09cea28286bef70477863643e09817a027ec2f0305bbf30f79ecd33d5c04b35f'
+      tag: '1-41646a7a2eb4e44db6ee8ff0a6747e68a7cb2a5c'
+      digest: 'sha256:615ecf68803f775b456df9f05f931b8abb4ca43ed29745e2df47d7ec4b52a040'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
@@ -1546,8 +1546,8 @@ avoipAdmin:
       key: 'Token'
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
-    tag: '1-425ea5c8e565cf99fbd70f8f6c5fb075bf6177f0'
-    digest: 'sha256:5512bf08d53ce8372b7e54831b052083182578df1e712f30044f6292918f5fc6'
+    tag: '1-41646a7a2eb4e44db6ee8ff0a6747e68a7cb2a5c'
+    digest: 'sha256:d81cc211102296db95265db2ef7d0f94efcec971b3fb985914772304fbaf33d0'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.
