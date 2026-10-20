@@ -928,22 +928,26 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	if context == "core-managed-outbound" && extensionID.MatchString(extension) {
 		for _, e := range c.Extensions {
 			if e.Extension == extension && e.Site == site {
-				if _, ok := normalizePhoneNumber(destination); ok {
-					callerID = e.callerIDs()[0]
-					eligibleProviders, _ := eligibleExtensionProviders(c, e, callerID, site)
-					if len(eligibleProviders) > 0 {
-						provider := eligibleProviders[0]
-						providerID = provider.ID
-						gateway = provider.Gateways[site]
-						codecOrder = effectiveProviderCodecOrder(provider)
+				callerID = e.callerIDs()[0]
+				eligibleProviders, _ := eligibleExtensionProviders(c, e, callerID, site)
+				if len(eligibleProviders) > 0 {
+					provider := eligibleProviders[0]
+					providerID = provider.ID
+					gateway = provider.Gateways[site]
+					codecOrder = effectiveProviderCodecOrder(provider)
+					normalizedDestination := destination
+					if provider.EgressPrefix != "" {
+						normalizedDestination = strings.TrimPrefix(destination, provider.EgressPrefix+"*")
 					}
-					for _, d := range c.DIDs {
-						if d.Number == callerID && containsString(d.Providers, providerID) && len(d.CodecOrder) > 0 {
-							codecOrder = d.CodecOrder
-							break
+					if _, ok := normalizePhoneNumber(normalizedDestination); ok {
+						for _, d := range c.DIDs {
+							if d.Number == callerID && containsString(d.Providers, providerID) && len(d.CodecOrder) > 0 {
+								codecOrder = d.CodecOrder
+								break
+							}
 						}
+						bridge = managedGatewayBridge(gateway, normalizedDestination)
 					}
-					bridge = managedGatewayBridge(gateway, destination)
 				}
 			}
 		}

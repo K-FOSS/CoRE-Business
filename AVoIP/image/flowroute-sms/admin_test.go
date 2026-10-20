@@ -401,6 +401,7 @@ func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
 	catalog := fixtureCatalog()
 	catalog.Providers[0].Host = "coreinc-yvr.pstn.umatilla.twilio.com"
 	catalog.Providers[0].Gateways["yvr"] = "twilio-west"
+	catalog.Providers[0].EgressPrefix = "70417878"
 	if order := effectiveProviderCodecOrder(catalog.Providers[0]); strings.Join(order, ",") != "PCMU,PCMA" {
 		t.Fatalf("legacy Twilio provider default = %q, want PCMU,PCMA", strings.Join(order, ","))
 	}
@@ -408,7 +409,7 @@ func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
 	s.cacheCatalog(catalog)
 	form := url.Values{
 		"Caller-Context":                  {"core-managed-outbound"},
-		"Caller-Destination-Number":       {"+12065550101"},
+		"Caller-Destination-Number":       {"70417878*+12065550101"},
 		"variable_sip_h_X-Core-Extension": {"7101"},
 	}
 	r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
