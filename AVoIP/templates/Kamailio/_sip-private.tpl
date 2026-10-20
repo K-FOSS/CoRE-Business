@@ -1,5 +1,6 @@
 {{- define "avoip.kamailio.sip.private" -}}
 {{- $sipCoreReturnHost := include "avoip.sip.sipCoreReturnHost" (dict "root" .) -}}
+{{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     # The private peer listener uses strict mTLS and an explicit allowlist.
     # The separate SIP Core return listener uses Cilium workload identity.
     request_route {
@@ -137,6 +138,7 @@
           # managed_outbound marker is stored on the dialog when the original
           # Asterisk INVITE is authorized. Send its in-dialog requests back to
           # Asterisk; only unmarked legacy dialogs use the FreeSWITCH owner.
+          {{- if $sipCoreEnabled }}
           if ($dlg_var(managed_outbound) == "yes" || $hdr(Route) =~ "sipcore-return") {
             route(TO_SIPCORE_ASTERISK);
             xlog(
@@ -146,6 +148,7 @@
             route(PRIVATE_RELAY);
             exit;
           }
+          {{- end }}
           if (!($rd =~ "^[0-9.]+$") ||
               $rp != {{ .Values.freeswitch.flowrouteOutbound.tlsPort }}) {
             xlog(
