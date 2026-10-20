@@ -110,6 +110,9 @@ data:
     {{- end }}
     {{- if $sipCoreEnabled }}
     loadmodule "nathelper.so"
+    # SIP Core reads the managed extension codec policy on WSS INVITEs even
+    # when the admin-routing module bundle is disabled on the HA edge.
+    loadmodule "jansson.so"
     # SIP Core return routing calls check_flow_token() even on the legacy
     # single-replica owner while a separate WSS edge is being piloted.
     loadmodule "outbound.so"
