@@ -173,7 +173,10 @@
       append_hf("X-Core-Extension: $var(managed_extension_id)\r\n");
       $fU = $var(managed_caller_id);
       append_hf("P-Asserted-Identity: <sip:$var(managed_caller_id)@{{ include "avoip.sip.siteHost" . }}>\r\n");
-      if ($var(managed_site) == "{{ .Values.region }}" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
+      # The Asterisk/private leg crosses the carrier-facing managed-handoff
+      # validator. Keep its Request-URI E.164; apply the provider prefix only
+      # after that validator has authenticated the handoff.
+      if ($var(side) != "sipcore" && $var(managed_site) == "{{ .Values.region }}" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
         $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
         xlog("L_INFO", "AVOIP_POLICY managed_extension decision=prefix_applied extension=$var(managed_extension_id) request_user=$rU call_id=$ci method=$rm\n");
       }
