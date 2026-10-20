@@ -1321,6 +1321,8 @@ controllers:
         env:
           - name: PGSSLMODE
             value: 'verify-full'
+          - name: PGSSLROOTCERT
+            value: '/etc/ssl/certs/ca-certificates.crt'
           - name: PGCONNECT_TIMEOUT
             value: '5'
           - name: PGUSER
