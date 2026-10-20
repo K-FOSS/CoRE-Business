@@ -88,6 +88,38 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-admin-routing-token'
                 key: 'token'
+          {{ if $settings.telephony.enabled }}
+          - name: 'AVOIP_AMI_ADDRESS'
+            value: '{{ $settings.telephony.asterisk.amiAddress }}'
+          - name: 'AVOIP_AMI_USERNAME'
+            value: '{{ $settings.telephony.asterisk.amiUsername }}'
+          - name: 'AVOIP_AMI_SECRET'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ required "Asterisk AMI secret name is required when telephony integrations are enabled" $settings.telephony.asterisk.amiSecret.name }}'
+                key: '{{ $settings.telephony.asterisk.amiSecret.key }}'
+          - name: 'AVOIP_ASTERISK_CDR_URL'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ required "Asterisk CDR connection secret name is required when telephony integrations are enabled" $settings.telephony.asterisk.cdrConnectionSecret.name }}'
+                key: '{{ $settings.telephony.asterisk.cdrConnectionSecret.key }}'
+          - name: 'AVOIP_ASTERISK_CDR_TABLE'
+            value: '{{ $settings.telephony.asterisk.cdrTable }}'
+          - name: 'AVOIP_ESL_ADDRESS'
+            value: '{{ $settings.telephony.freeswitch.eventSocketAddress }}'
+          - name: 'AVOIP_ESL_SECRET'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ required "FreeSWITCH Event Socket secret name is required when telephony integrations are enabled" $settings.telephony.freeswitch.eventSocketSecret.name }}'
+                key: '{{ $settings.telephony.freeswitch.eventSocketSecret.key }}'
+          - name: 'AVOIP_FREESWITCH_CDR_URL'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ required "FreeSWITCH CDR connection secret name is required when telephony integrations are enabled" $settings.telephony.freeswitch.cdrConnectionSecret.name }}'
+                key: '{{ $settings.telephony.freeswitch.cdrConnectionSecret.key }}'
+          - name: 'AVOIP_FREESWITCH_CDR_TABLE'
+            value: '{{ $settings.telephony.freeswitch.cdrTable }}'
+          {{ end }}
         ports:
           - name: 'http'
             containerPort: 8080
@@ -131,7 +163,7 @@ service:
 networkpolicies:
   avoip-admin:
     controller: 'avoip-admin'
-    policyTypes: ['Ingress']
+    policyTypes: ['Ingress'{{ if $settings.telephony.enabled }}, 'Egress'{{ end }}]
     rules:
       ingress:
         - from:

@@ -1549,6 +1549,21 @@ avoipAdmin:
   catalog: null
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.
   sites: {}
+  # Optional live telephony integrations. Secrets must be dedicated read-only
+  # CDR database identities and management-interface credentials.
+  telephony:
+    enabled: false
+    asterisk:
+      amiAddress: ''
+      amiUsername: ''
+      amiSecret: {name: '', key: 'secret'}
+      cdrConnectionSecret: {name: '', key: 'psqlURI'}
+      cdrTable: 'cdr'
+    freeswitch:
+      eventSocketAddress: ''
+      eventSocketSecret: {name: '', key: 'secret'}
+      cdrConnectionSecret: {name: '', key: 'psqlURI'}
+      cdrTable: 'cdr'
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams: []
   routing:

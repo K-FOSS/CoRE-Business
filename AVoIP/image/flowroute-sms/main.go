@@ -259,6 +259,8 @@ func run(logger *slog.Logger) error {
 		mux.HandleFunc("PUT /api/providers/{id}", app.saveProvider)
 		mux.HandleFunc("DELETE /api/providers/{id}", app.deleteProvider)
 		app.registerAdmin(mux)
+		mux.HandleFunc("GET /api/telephony", app.telephony)
+		mux.HandleFunc("POST /api/telephony/hangup", app.hangupCall)
 	}
 	if mode == "admin" {
 		go app.refreshCatalog(ctx)

@@ -68,12 +68,26 @@ PostgreSQL grants must be ready before admin pods can become ready.
 | `POST /api/routing/preview` | Admin-only outbound policy preview using the current extension, destination, caller ID, site and provider catalog |
 | `POST /api/routing/inbound-preview` | Admin-only inbound DID preview using the current DID, provider assignment, optional source IP, site and catalog revision |
 | `GET /api/audit` | Recent protected control-plane audit metadata; no credential values |
+| Telephony tab | Shows live AMI/Event Socket status, active calls, and recent Asterisk/FreeSWITCH CDR rows when `avoipAdmin.telephony.enabled` is configured; `End call` sends an audited, same-origin admin request |
 | `GET /routing/snapshot` | Token-authenticated internal compiled route view; machine listener only |
 | `POST /routing/freeswitch` | Authenticated internal XML dialplan for managed contexts; machine listener only |
 
 SMS provider APIs and webhook configuration are described in
 [SMS messaging](FLOWROUTE-SMS.md). SIP and SMS provider accounts are distinct;
 a shared product name does not make SIP credentials valid for the SMS API.
+
+The telephony viewer is opt-in and disabled by default. Configure dedicated
+read-only PostgreSQL connection Secrets for each CDR table; the Admin's own
+catalog database identity is not a CDR reader. The AMI and FreeSWITCH Event
+Socket adapters also require site-local management endpoints and dedicated
+credentials. The current chart keeps FreeSWITCH's Event Socket on loopback and
+does not configure an Asterisk AMI account, so those interfaces remain
+`not configured` until an approved site layer provisions them and restricts
+network access to the Admin workload. Do not reuse the Asterisk or FreeSWITCH
+service database passwords for CDR access, or expose AMI/Event Socket to general
+cluster or public networks. The CDR query is read-only and returns at most 50
+recent records per database. Active call termination requires the Admin group;
+each accepted request is written to the existing Admin audit table.
 
 A SIP provider has ID/name, canonical SIP hostname, explicit signaling CIDRs,
 per-site provisioned gateway names and reviewed caller-ID records. Each
