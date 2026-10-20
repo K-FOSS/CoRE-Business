@@ -58,6 +58,10 @@ multi-architecture tag started an incompatible root filesystem on the home1
 `amd64` node, causing `exec format error` for both its entrypoint and `/bin/sh`.
 The `4.8.0` release requires the existing `4.7.0` database migration step and
 performs its schema migration during startup.
+Both workloads use their upstream health endpoints for startup, readiness and
+liveness probes. Rollouts keep the existing pod available until the replacement
+passes readiness, retain three ReplicaSets, and allow 30 seconds for graceful
+termination; Zipline has a longer startup budget for database migrations.
 Before changing deployment behavior, review the linked ApplicationSet
 and render the Lovely composition with its injected values. After reconciliation,
 check the User, ExternalSecret, database and dedicated Dragonfly conditions, then

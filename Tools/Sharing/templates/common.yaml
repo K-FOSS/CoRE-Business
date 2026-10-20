@@ -6,8 +6,13 @@ controllers:
     type: 'deployment'
     replicas: 1
     strategy: 'RollingUpdate'
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    revisionHistoryLimit: 3
     pod:
       automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       securityContext:
         seccompProfile:
           type: 'RuntimeDefault'
@@ -30,33 +35,39 @@ controllers:
             path: '/api/v2/health'
             port: 3000
             spec:
-              periodSeconds: 10
+              periodSeconds: 5
               timeoutSeconds: 5
-              failureThreshold: 30
+              failureThreshold: 60
           readiness:
             enabled: true
             type: 'HTTP'
             path: '/api/v2/health'
             port: 3000
             spec:
-              periodSeconds: 10
-              timeoutSeconds: 5
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 3
           liveness:
             enabled: true
             type: 'HTTP'
             path: '/api/v2/health'
             port: 3000
             spec:
-              periodSeconds: 30
+              periodSeconds: 15
               timeoutSeconds: 5
-              failureThreshold: 5
+              failureThreshold: 3
 
   zipline:
     type: 'deployment'
     replicas: 1
     strategy: 'RollingUpdate'
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    revisionHistoryLimit: 3
     pod:
       automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
       securityContext:
         seccompProfile:
           type: 'RuntimeDefault'
@@ -79,26 +90,27 @@ controllers:
             path: '/api/healthcheck'
             port: 3000
             spec:
-              periodSeconds: 10
+              periodSeconds: 5
               timeoutSeconds: 5
-              failureThreshold: 30
+              failureThreshold: 120
           readiness:
             enabled: true
             type: 'HTTP'
             path: '/api/healthcheck'
             port: 3000
             spec:
-              periodSeconds: 10
-              timeoutSeconds: 5
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 3
           liveness:
             enabled: true
             type: 'HTTP'
             path: '/api/healthcheck'
             port: 3000
             spec:
-              periodSeconds: 30
+              periodSeconds: 15
               timeoutSeconds: 5
-              failureThreshold: 5
+              failureThreshold: 3
 
 service:
   app:
