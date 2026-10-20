@@ -112,7 +112,9 @@ spec:
             app.kubernetes.io/instance: '{{ $root.Release.Name }}'
       toPorts:
         - ports:
-          {{- if eq $.Values.rtpengine.control.transport "websocket" }}
+          {{- if or $.Values.rtpengine.control.websocketEnabled (eq $.Values.rtpengine.control.transport "websocket") }}
+            - port: '{{ $.Values.rtpengine.controlPort }}'
+              protocol: 'UDP'
             - port: '{{ $.Values.rtpengine.control.websocketPort }}'
               protocol: 'TCP'
           {{- else }}

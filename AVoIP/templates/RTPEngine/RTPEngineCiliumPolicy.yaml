@@ -28,7 +28,7 @@ spec:
         - ports:
             - port: '{{ $root.Values.rtpengine.controlPort }}'
               protocol: 'UDP'
-            {{- if eq $root.Values.rtpengine.control.transport "websocket" }}
+            {{- if or $root.Values.rtpengine.control.websocketEnabled (eq $root.Values.rtpengine.control.transport "websocket") }}
             - port: '{{ $root.Values.rtpengine.control.websocketPort }}'
               protocol: 'TCP'
             {{- end }}

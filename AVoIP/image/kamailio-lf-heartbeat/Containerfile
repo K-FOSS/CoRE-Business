@@ -7,7 +7,7 @@ ARG KAMAILIO_SOURCE_URL=https://www.kamailio.org/pub/kamailio/6.1.4/src/kamailio
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      bison build-essential ca-certificates curl flex libevent-dev \
+      bison build-essential ca-certificates curl flex libcurl4-openssl-dev libevent-dev \
       libhiredis-dev libjansson-dev libjson-c-dev libpq-dev libssl-dev libunistring-dev \
       libwebsockets-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
@@ -22,15 +22,21 @@ RUN cd /usr/src/kamailio-6.1.4 \
     && patch --batch --fuzz=0 -p1 < /tmp/lf-heartbeat.patch \
     && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
-         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
     && make -j2 all prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
-         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
     && make install prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
+    && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/htable.so \
+    && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/http_client.so \
+    && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/ipops.so \
+    && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/lwsc.so \
+    && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/rtimer.so \
+    && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/rtpengine.so \
     && mkdir -p /out/usr/lib/x86_64-linux-gnu/kamailio/modules \
     && cp /usr/sbin/kamailio /out/usr/sbin-kamailio \
-    && for module in auth auth_db ctl corex db_postgres dialog dispatcher jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
+    && for module in auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
          cp "/usr/lib/x86_64-linux-gnu/kamailio/modules/${module}.so" /out/usr/lib/x86_64-linux-gnu/kamailio/modules/; \
        done
 COPY test-kamailio.cfg /tmp/test-kamailio.cfg

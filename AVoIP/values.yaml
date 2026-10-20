@@ -628,9 +628,11 @@ rtpengine:
   # primary-only Redis endpoint required for shared call-state failover.
   replicas: 1
   control:
-    # Keep NG control on UDP while the WebSocket offer crash is investigated.
-    # The shorter recovery timers below limit stale Service endpoint failures.
+    # Keep UDP as the primary NG control socket. The WebSocket listener is
+    # independently exposed as a secondary control socket for validation and
+    # gradual migration.
     transport: 'udp'
+    websocketEnabled: true
     websocketPort: 22223
     # RTPEngine recommends a 1 MiB HTTP/WS send buffer for high WebSocket
     # activity to avoid protocol hiccups. This affects the HTTP/WS listener only.

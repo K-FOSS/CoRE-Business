@@ -450,8 +450,11 @@ periodic redetection settings recover the node after transient control errors.
 Its media inactivity, muted-stream, unanswered-offer, and total-call timers are
 explicitly set to 120, 3600, 120, and 300 seconds respectively, limiting each
 call to five minutes in RTPEngine.
-The separate RTPEngine WebSocket control path remains disabled following the
-observed process crash during an offer. Its
+UDP remains Kamailio's primary RTPEngine control path, while the chart also
+exposes a private secondary RTPEngine WebSocket control listener on TCP/22223
+for validation and controlled migration. Kamailio's WebSocket control client
+uses the built `lwsc` module and `rtpengine.so` when the WebSocket transport is
+selected. Its
 [RTPEngine configuration](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md)
 uses the site-specific media address and UDP range supplied by the owning
 ApplicationSet. Kamailio fails closed if RTPEngine cannot handle a media-bearing

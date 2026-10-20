@@ -81,7 +81,10 @@ and preserves the configured UDP media range for cluster and external traffic.
 The control listener does not expose the public media Service or change media
 ownership.
 
-When WebSocket control is enabled, the chart sets RTPEngine's HTTP/WS send
+The chart keeps UDP/22222 as the primary control path and exposes the optional
+secondary HTTP/WebSocket NG listener on TCP/22223. Cilium and the RTPEngine
+Service allow both control paths; Kamailio continues using UDP until the
+WebSocket path is explicitly selected. When WebSocket control is enabled, the chart sets RTPEngine's HTTP/WS send
 buffer to 1024 KiB. RTPEngine documents this size for high WebSocket activity
 to improve performance and prevent protocol hiccups
 ([configuration option](https://github.com/sipwise/rtpengine/blob/master/docs/rtpengine.md#http-buf-sizeint)).
