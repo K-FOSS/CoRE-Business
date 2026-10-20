@@ -132,6 +132,20 @@
         # calls use a separate TLS-only gateway and advertise a matching TLS
         # Contact. Retain the Request-URI, Route set, and dialog identifiers.
         if ($var(peer_name) == "carrier") {
+          # SIP Core/Asterisk-owned outbound dialogs return through this
+          # listener after the carrier has stripped the public topology. The
+          # managed_outbound marker is stored on the dialog when the original
+          # Asterisk INVITE is authorized. Send its in-dialog requests back to
+          # Asterisk; only unmarked legacy dialogs use the FreeSWITCH owner.
+          if ($dlg_var(managed_outbound) == "yes") {
+            route(TO_SIPCORE_ASTERISK);
+            xlog(
+              "L_INFO",
+              "SIP dialog route stage=carrier-to-sipcore pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=carrier-originated destination=$du transport=$dP socket=$fsn ruri=$ru route=$hdr(Route) rtpengine_delete=requested-upstream\n"
+            );
+            route(PRIVATE_RELAY);
+            exit;
+          }
           if (!($rd =~ "^[0-9.]+$") ||
               $rp != {{ .Values.freeswitch.flowrouteOutbound.tlsPort }}) {
             xlog(
@@ -417,6 +431,10 @@
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
       if (has_totag() && $dlg_var(managed_outbound) == "yes") {
         if (!loose_route()) { if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist"); exit; }
+        # Asterisk is the originator of this managed dialog. Its BYE (and
+        # other in-dialog requests) must follow the carrier gateway, not the
+        # SIP Core return route back toward the WebSocket contact.
+        route(PRIVATE_TO_CARRIER_GATEWAY);
         route(PRIVATE_RELAY); exit;
       }
       if (!has_totag() && is_method("INVITE") &&
