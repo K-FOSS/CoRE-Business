@@ -219,6 +219,9 @@ RTPEngine. FreeSWITCH includes its configured outbound codec preferences on
 the Flowroute leg so G.711 can be negotiated when the SIP Core leg uses a
 different codec. The private registrar remains disabled in the
 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
+For the YVR public IVR callback, Kamailio checks the main voice DID against
+the provider's verified E.164 caller ID list after normalizing an 11-digit
+FreeSWITCH From user; see the [SIP Core callback route](../AVoIP/docs/SIPCORE-HASS.md).
 YXL uses that carrier link for Admin-managed YVR DID destinations. The exact peer
 allowlist and rollback are documented in the
 [inter-site voice guide](../AVoIP/docs/INTERSITE-VOICE.md).

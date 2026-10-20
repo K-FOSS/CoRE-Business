@@ -193,6 +193,9 @@ FreeSWITCH still originates the carrier leg through the existing Flowroute
 gateway. The authenticated callback route accepts valid NANP destinations in
 E.164, country-code digits without a leading plus, or national form with an
 optional plus, and normalizes them to E.164 for the carrier gateway. The caller
+ID on that carrier leg is checked against the provider's verified E.164 list;
+Kamailio adds the leading plus when FreeSWITCH sends an 11-digit NANP From user.
+Other caller IDs still require an exact verified match. The inbound caller
 identity is not independently verified by this route, so carrier-side ANI
 validation remains an operational trust assumption.
 The YVR opt-in is owned by the [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).

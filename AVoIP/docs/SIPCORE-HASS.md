@@ -413,6 +413,8 @@ behavior.
   leg. Asterisk accepts only an exact configured internal account identity or
   a NANP-shaped caller identity. The external callback presents the configured
   main voice DID and returns through FreeSWITCH's existing Flowroute gateway.
+  Kamailio converts an 11-digit NANP From user to E.164 before checking the
+  provider's verified caller ID list and forwarding the carrier leg.
   A marker header, the authenticated peer identity,
   and the NANP destination pattern are all required by the FreeSWITCH egress
   route. This does not independently attest the caller identity, so deployment

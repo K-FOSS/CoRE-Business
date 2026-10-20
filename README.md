@@ -39,7 +39,7 @@ ApplicationSets under Backplane's `Apps/Business/` select clusters, choose a
 path in this repository and inject environment-specific values. Many use the
 `argocd-lovely-plugin` to combine Helm and Kustomize inputs.
 
-The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The active [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 also provisions a retained, cluster-local RWX sound library shared by its
 Asterisk and FreeSWITCH workloads. The editor is protected on Homer's hostname
 with the existing Authentik access group. See the [sound library guide](AVoIP/docs/avoip/sound-library.md)
@@ -69,13 +69,15 @@ negotiated when the SIP Core leg uses another codec; see the
 [outbound setup](AVoIP/docs/OUTBOUND-PILOT.md). An [opt-in private registrar pilot](AVoIP/docs/INTERNAL-REGISTRAR.md)
 now renders a site-local PostgreSQL service identity and schema migration, but
 credential issuance and live registration for the private registrar are still
-open. The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+open. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 enables the carrier mTLS transport at YXL and YVR using each site's existing
 Vault `core-tls-vault` issuer, and configures YVR account `7101` for standard
 NANP outbound calls with the YVR Asterisk DID as caller ID. The Flowroute
 registration uses the existing Vault record and the West Oregon regional PoP.
-The private
-registrar remains disabled. Certificate issuance and workload rollout require
+The YVR public IVR callback uses the main voice DID; Kamailio normalizes a
+digits-only NANP From user before enforcing the provider's verified caller ID
+list. See the [SIP Core callback route](AVoIP/docs/SIPCORE-HASS.md).
+The private registrar remains disabled. Certificate issuance and workload rollout require
 reconciliation. The configured YXL voice and FaxNumber routes use that carrier
 mTLS link to reach the YVR IVR and Asterisk respectively; see the
 [inter-site transfer guide](AVoIP/docs/INTERSITE-VOICE.md).

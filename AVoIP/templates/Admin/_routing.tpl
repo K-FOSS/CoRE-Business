@@ -237,14 +237,20 @@
       if ($Ts > $var(managed_deadline)) { sl_send_reply("503", "Routing Snapshot Expired"); exit; }
           jansson_get("providers[$var(managed_i)].caller_ids", "$var(managed_json)", "$var(managed_ids)");
           jansson_get("providers[$var(managed_i)].egress_prefix", "$var(managed_json)", "$var(managed_egress_prefix)");
-          $var(managed_match) = "," + $fU + ",";
-          if (!in_list("$fU", "$var(managed_ids)", ",")) {
+          # Sofia can send an 11-digit NANP caller ID without the leading +.
+          # Compare its canonical E.164 form with the provider's verified list.
+          $var(managed_caller_id) = $fU;
+          if ($var(managed_caller_id) =~ "^1[2-9][0-9]{2}[2-9][0-9]{6}$") {
+            $var(managed_caller_id) = "+" + $var(managed_caller_id);
+          }
+          if (!in_list("$var(managed_caller_id)", "$var(managed_ids)", ",")) {
             xlog("L_WARN", "AVOIP_POLICY reject=caller_id_not_verified call_id=$ci extension=$hdr(X-Core-Extension) provider_host=$var(managed_host)\n");
             {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
             hlog("$ci", "kamailio_event=authorization_result policy=provider_caller_id decision=deny reason=caller_id_not_verified extension=$hdr(X-Core-Extension) provider=$var(managed_host) site={{ .Values.region }} call_id=$ci");
             {{- end }}
             sl_send_reply("403", "Caller ID Not Verified"); exit;
           }
+          $fU = $var(managed_caller_id);
           $var(managed_egress) = 1;
           return;
         }
