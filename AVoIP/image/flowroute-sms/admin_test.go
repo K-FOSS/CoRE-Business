@@ -60,14 +60,18 @@ func fixtureCatalog() sipCatalog {
 func TestOutboundRoutePreviewUsesCurrentAuthorization(t *testing.T) {
 	catalog := fixtureCatalog()
 	catalog.Version = 17
-	catalog.Providers[0].EgressPrefix = "9"
 	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "PCMA"}
-	catalog.Extensions[0].AllowedDestinations = []string{"+16505550123"}
 	request := outboundRoutePreviewRequest{Extension: "7101", Destination: "+16505550123", CallerID: "+12065550100", Site: "yvr"}
 	preview := previewOutboundRoute(catalog, request, "yvr")
-	if !preview.Allowed || preview.SelectedProvider != "carrier" || preview.EgressDestination != "9*+16505550123" || preview.PolicyRevision != 17 || len(preview.FailoverOrder) != 1 || preview.ProviderHealth != "not_reported" {
+	if !preview.Allowed || preview.SelectedProvider != "carrier" || preview.EgressDestination != "+16505550123" || preview.NormalizedDestination != "+16505550123" || preview.PolicyRevision != 17 || len(preview.FailoverOrder) != 1 || preview.ProviderHealth != "not_reported" {
 		t.Fatalf("unexpected allowed preview: %+v", preview)
 	}
+	request.Destination = "+11005550123"
+	preview = previewOutboundRoute(catalog, request, "yvr")
+	if !preview.Allowed || preview.EgressDestination != request.Destination {
+		t.Fatalf("canonical +1 destination was filtered or rewritten: %+v", preview)
+	}
+	request.Destination = "+16505550123"
 	for _, tc := range []struct {
 		name   string
 		mutate func(*sipCatalog, *outboundRoutePreviewRequest)
@@ -81,20 +85,14 @@ func TestOutboundRoutePreviewUsesCurrentAuthorization(t *testing.T) {
 			disabled := false
 			c.Extensions[0].OutboundEnabled = &disabled
 		}, "outbound_disabled"},
-		{"blocked destination", func(c *sipCatalog, _ *outboundRoutePreviewRequest) {
-			c.Extensions[0].BlockedDestinations = []string{"+16505550123"}
-		}, "destination_blocked_for_extension"},
-		{"outside allowlist", func(c *sipCatalog, r *outboundRoutePreviewRequest) { r.Destination = "+14155550123" }, "destination_not_in_extension_allowlist"},
 		{"caller ID override", func(_ *sipCatalog, r *outboundRoutePreviewRequest) { r.CallerID = "+14155550100" }, "caller_id_not_authorized_for_extension"},
 		{"wrong site", func(_ *sipCatalog, r *outboundRoutePreviewRequest) { r.Site = "yxl" }, "site_not_available_in_this_admin_context"},
-		{"unsupported destination", func(_ *sipCatalog, r *outboundRoutePreviewRequest) { r.Destination = "+11005550100" }, "destination_not_supported_by_current_nanp_route"},
+		{"destination without canonical prefix", func(_ *sipCatalog, r *outboundRoutePreviewRequest) { r.Destination = "2065550123" }, "destination_must_be_full_plus_one_number"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, r := fixtureCatalog(), request
 			c.Version = 17
-			c.Providers[0].EgressPrefix = "9"
 			c.Providers[0].SupportedCodecs = []string{"PCMU", "PCMA"}
-			c.Extensions[0].AllowedDestinations = []string{"+16505550123"}
 			tc.mutate(&c, &r)
 			got := previewOutboundRoute(c, r, "yvr")
 			if got.Allowed || got.DenialReason != tc.want {
@@ -258,8 +256,6 @@ func TestCatalogOwnership(t *testing.T) {
 		func(c *sipCatalog) { c.Extensions[0].CallerID = "+12065550101" },
 		func(c *sipCatalog) { c.Extensions[0].Site = "unknown" },
 		func(c *sipCatalog) { c.Extensions[0].AssignedUser = "not a valid user id" },
-		func(c *sipCatalog) { c.Extensions[0].AllowedDestinations = []string{"2065550101"} },
-		func(c *sipCatalog) { c.Extensions[0].BlockedDestinations = []string{"+12065550100", "+12065550100"} },
 		func(c *sipCatalog) {
 			c.DIDs[0].Kind = "sip"
 			c.DIDs[0].Destination = "sips:user@example.com;header=injected"
@@ -270,29 +266,6 @@ func TestCatalogOwnership(t *testing.T) {
 		mutate(&c)
 		if c.validate() == nil {
 			t.Errorf("invalid catalog %d accepted", i)
-		}
-	}
-}
-
-func TestProviderEgressPrefix(t *testing.T) {
-	catalog := fixtureCatalog()
-	catalog.Providers[0].EgressPrefix = "12345678"
-	if err := catalog.validate(); err != nil {
-		t.Fatalf("valid provider prefix rejected: %v", err)
-	}
-	encoded, err := json.Marshal(catalog)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var stored sipCatalog
-	if err := json.Unmarshal(encoded, &stored); err != nil || stored.Providers[0].EgressPrefix != "12345678" {
-		t.Fatalf("provider prefix did not survive catalog persistence encoding: %v", err)
-	}
-	for _, invalid := range []string{"123*456", "123;rewrite", "123456789012345678901234567890123"} {
-		catalog := fixtureCatalog()
-		catalog.Providers[0].EgressPrefix = invalid
-		if catalog.validate() == nil {
-			t.Errorf("invalid egress prefix accepted: %q", invalid)
 		}
 	}
 }
@@ -395,13 +368,12 @@ func TestSafeCorrelationID(t *testing.T) {
 	}
 }
 
-func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
+func TestFreeSwitchDynamicRoutePreservesFullPlusOneDestination(t *testing.T) {
 	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
 	t.Setenv("AVOIP_SITE", "yvr")
 	catalog := fixtureCatalog()
 	catalog.Providers[0].Host = "coreinc-yvr.pstn.umatilla.twilio.com"
 	catalog.Providers[0].Gateways["yvr"] = "twilio-west"
-	catalog.Providers[0].EgressPrefix = "12345678"
 	if order := effectiveProviderCodecOrder(catalog.Providers[0]); strings.Join(order, ",") != "PCMU,PCMA" {
 		t.Fatalf("legacy Twilio provider default = %q, want PCMU,PCMA", strings.Join(order, ","))
 	}
@@ -409,7 +381,7 @@ func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
 	s.cacheCatalog(catalog)
 	form := url.Values{
 		"Caller-Context":                  {"core-managed-outbound"},
-		"Caller-Destination-Number":       {"12345678*12065550101"},
+		"Caller-Destination-Number":       {"+12065550101"},
 		"variable_sip_h_X-Core-Extension": {"7101"},
 	}
 	r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
@@ -418,10 +390,10 @@ func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.freeSwitchRoute(w, r)
 	if w.Code != http.StatusOK || freeSwitchActionData(t, w.Body.String(), "export") != "nolocal:absolute_codec_string=PCMU,PCMA" {
-		t.Fatalf("legacy Twilio route did not constrain its upstream SDP to G.711: status=%d body=%s", w.Code, w.Body.String())
+		t.Fatalf("dynamic provider route did not apply its codec policy: status=%d body=%s", w.Code, w.Body.String())
 	}
 	if got := freeSwitchActionData(t, w.Body.String(), "bridge"); got != "sofia/gateway/twilio-west/+12065550101" {
-		t.Fatalf("legacy Twilio route did not select the configured upstream gateway: %s", w.Body.String())
+		t.Fatalf("dynamic provider route changed the destination or missed its gateway: %s", w.Body.String())
 	}
 }
 
@@ -704,8 +676,6 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	catalog.Providers[0].CodecOrder = []string{"PCMU", "G722"}
 	catalog.DIDs[0].CodecOrder = []string{"G722", "PCMU"}
 	catalog.Extensions[0].AssignedUser = "august@example.test"
-	catalog.Extensions[0].AllowedDestinations = []string{"+12065550101"}
-	catalog.Extensions[0].BlockedDestinations = []string{"+12065550102"}
 	s := &server{}
 	s.cacheCatalog(catalog)
 	r := httptest.NewRequest("GET", "http://local/routing/snapshot", nil)
@@ -726,7 +696,7 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	if snapshot.Providers[0]["codec_flags"] != "codec-strip-all codec-offer-PCMU codec-offer-G722 codec-offer-telephone-event" {
 		t.Fatalf("provider codec order missing from snapshot: %#v", snapshot.Providers[0])
 	}
-	didFlags := snapshot.DIDs["12065550100"]["codec_flags_by_provider"].(map[string]any)["carrier"]
+	didFlags := snapshot.DIDs["+12065550100"]["codec_flags_by_provider"].(map[string]any)["carrier"]
 	if didFlags != "codec-strip-all codec-offer-G722 codec-offer-PCMU codec-offer-telephone-event" {
 		t.Fatalf("DID codec override missing from snapshot: %#v", didFlags)
 	}
@@ -735,12 +705,12 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 		t.Fatalf("extension should inherit the caller-ID DID order: %#v", extensionFlags)
 	}
 	extension := snapshot.Extensions["7101"]
-	if _, leaksUserIdentity := extension["assigned_user"]; leaksUserIdentity || extension["allowed_destinations"] != ",+12065550101," || extension["blocked_destinations"] != ",+12065550102," {
-		t.Fatalf("destination restrictions missing or user identity leaked into routing snapshot: %#v", extension)
+	if _, leaksUserIdentity := extension["assigned_user"]; leaksUserIdentity {
+		t.Fatalf("user identity leaked into routing snapshot: %#v", extension)
 	}
 
-	// New list-based policy must publish the same default caller-ID/provider
-	// pair that the live FreeSWITCH lookup and Admin preview choose.
+	// Dynamic authorization must publish the same caller-ID/provider pair that
+	// the live FreeSWITCH lookup and Admin preview choose.
 	withAlternates := fixtureCatalog()
 	withAlternates.Providers = append(withAlternates.Providers, sipProvider{
 		ID: "backup", Host: "sip.backup.example", CIDRs: []string{"198.51.100.0/24"},
