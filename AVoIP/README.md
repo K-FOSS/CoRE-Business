@@ -110,6 +110,9 @@ boundaries, canonical number format and quotas, and the
 verification. The [Flowroute teardown runbook](docs/avoip/runbooks/outbound-flowroute-teardown.md)
 covers the internal Kamailio BYE route, replica-safe TOPOS restoration,
 render regression and live SIP/media acceptance.
+The [SIP route debugging runbook](docs/avoip/runbooks/sip-route-debugging.md)
+maps each logged next hop and wire destination to its Service, EndpointSlice and
+backing pod, and describes how to verify dialog teardown and replica health.
 AVoIP Admin's **Limit Profiles** screen configures rate, concurrency and call
 duration limits for DID/inbound and extension/outbound routing, with direct,
 tenant-default and site-default profiles. Quota counters are currently local

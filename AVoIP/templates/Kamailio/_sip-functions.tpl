@@ -1142,13 +1142,13 @@
       if ($snd(buf) =~ "^(INVITE|BYE|CANCEL|UPDATE) ") {
         xlog(
           "L_INFO",
-          "SIP wire request pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) conn=$conid socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n"
+          "SIP wire request pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) conn=$conid route=$route_uri next_hop=$du socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination_ip=$snd(ip) destination_port=$snd(port) wire_proto=$snd(proto)\n"
         );
       }
       if ($snd(buf) =~ "^BYE ") {
         xlog(
           "L_INFO",
-          "SIP BYE wire attempt pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=BYE from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) connection_id=$conid transport=$snd(proto) local_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n"
+          "SIP BYE wire attempt pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=BYE from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) route=$route_uri next_hop=$du connection_id=$conid transport=$snd(proto) local_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination_ip=$snd(ip) destination_port=$snd(port)\n"
         );
       }
       {{- end }}

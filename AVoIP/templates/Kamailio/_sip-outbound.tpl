@@ -74,10 +74,30 @@
         exit;
       }
 
+      # The managed routing snapshot must provide complete, numeric limits.
+      # Reject an incomplete record before constructing the Redis Lua payload;
+      # otherwise tonumber(nil) can turn a policy error into a SIP 500.
+      $var(outbound_concurrent_valid) = 0;
+      $var(outbound_rate_valid) = 0;
+      $var(outbound_duration_valid) = 0;
+      if ($var(managed_concurrent_calls) =~ "^[1-9][0-9]*$") $var(outbound_concurrent_valid) = 1;
+      if ($var(managed_calls_per_minute) =~ "^[1-9][0-9]*$") $var(outbound_rate_valid) = 1;
+      if ($var(managed_max_duration_seconds) =~ "^[1-9][0-9]*$") $var(outbound_duration_valid) = 1;
+      if ($var(outbound_concurrent_valid) != 1 ||
+          $var(outbound_rate_valid) != 1 ||
+          $var(outbound_duration_valid) != 1) {
+        xlog(
+          "L_ERR",
+          "SIP outbound quota request invalid callid=$ci method=$rm concurrent_valid=$var(outbound_concurrent_valid) rate_valid=$var(outbound_rate_valid) duration_valid=$var(outbound_duration_valid)\n"
+        );
+        sl_send_reply("503", "Outbound Limits Unavailable");
+        exit;
+      }
+
       # Dragonfly executes quota admission atomically across all carrier
       # replicas. A stale call expires after maxDurationSeconds even if a pod
       # disappears before BYE. A failed Redis operation fails closed.
-      $var(quota_script) = "local k=KEYS[1];local id,concurrent_text,rate_text,duration_text=string.match(ARGV[1],'^([^|]+)|([^|]+)|([^|]+)|([^|]+)$');local concurrent=tonumber(concurrent_text);local rate=tonumber(rate_text);local duration=tonumber(duration_text);local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
+      $var(quota_script) = "local k=KEYS[1];local id,concurrent_text,rate_text,duration_text=string.match(ARGV[1],'^([^|]+)|([^|]+)|([^|]+)|([^|]+)$');if not id or not concurrent_text or not rate_text or not duration_text then return -3 end;local concurrent=tonumber(concurrent_text);local rate=tonumber(rate_text);local duration=tonumber(duration_text);if not concurrent or not rate or not duration or concurrent<1 or rate<1 or duration<60 then return -3 end;local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
       $var(quota_payload) = "$ci|$var(managed_concurrent_calls)|$var(managed_calls_per_minute)|$var(managed_max_duration_seconds)";
       if ($var(managed_limit_scope) == "legacy") {
         $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
@@ -92,8 +112,17 @@
         sl_send_reply("503", "Outbound Quota Unavailable");
         exit;
       }
-      if ($redis(outbound_quota=>type) != $redisd(rpl_int) ||
-          $redis(outbound_quota=>value) != 1) {
+      if ($redis(outbound_quota=>type) != $redisd(rpl_int)) {
+        xlog("L_ERR", "SIP outbound quota response invalid callid=$ci method=$rm\n");
+        sl_send_reply("503", "Outbound Limits Unavailable");
+        exit;
+      }
+      if ($redis(outbound_quota=>value) == -3) {
+        xlog("L_ERR", "SIP outbound quota payload invalid callid=$ci method=$rm\n");
+        sl_send_reply("503", "Outbound Limits Unavailable");
+        exit;
+      }
+      if ($redis(outbound_quota=>value) != 1) {
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         $var(outbound_quota_cause) = "unknown";
         if ($redis(outbound_quota=>value) == -2) $var(outbound_quota_cause) = "concurrency_limit";

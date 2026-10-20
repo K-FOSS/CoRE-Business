@@ -796,13 +796,13 @@
       if ($var(private_relay_result) <= 0) {
         xlog(
           "L_ERR",
-          "SIP relay result=failed tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) destination=$du transport=$dP socket=$fsn t_relay_result=$var(private_relay_result)\n"
+          "SIP relay result=failed tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) route=$route_uri next_hop=$du destination_host=$dd destination_port=$dp transport=$dP socket=$fsn t_relay_result=$var(private_relay_result)\n"
         );
         if ($var(side) == "sipcore" && $dP == "ws") {
         {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
             "L_WARN",
-            "SIPCORE FLOW stage=websocket-flow-unavailable pod=$env(POD_NAME) callid=$ci method=$rm destination_host=$dd destination_port=$dp cseq=$hdr(CSeq) response=430\n"
+            "SIPCORE FLOW stage=websocket-flow-unavailable pod=$env(POD_NAME) callid=$ci method=$rm route=$route_uri next_hop=$du destination_host=$dd destination_port=$dp transport=$dP socket=$fsn cseq=$hdr(CSeq) response=430\n"
           );
         {{- end }}
           if (!is_method("ACK")) sl_send_reply("430", "WebSocket Flow Failed");
