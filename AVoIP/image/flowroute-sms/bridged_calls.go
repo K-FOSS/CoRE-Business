@@ -463,6 +463,15 @@ func (s *server) listBridgedCalls(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) bridgedCallWorker(ctx context.Context) {
+	if rows, err := s.pool.Query(ctx, `SELECT id::text FROM public.avoip_bridged_calls WHERE status IN ('Calling you','Awaiting confirmation','Calling extension','Connected')`); err == nil {
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) == nil {
+				go s.reconcileBridgedCall(id)
+			}
+		}
+		rows.Close()
+	}
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 	for {
