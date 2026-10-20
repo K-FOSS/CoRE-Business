@@ -311,8 +311,8 @@ published to FreeSWITCH/Kamailio and used by the managed route. Route preview
 also evaluates another authorized caller ID against each provider and lists
 remaining eligible providers in preference order; FreeSWITCH does not yet retry
 another provider after a failure. Provider health is reported as unknown. The
-editor also records an assigned Authentik user and exact
-E.164 destination allow/block lists. Kamailio enforces configured destination
+editor also records an assigned Authentik user and exact E.164 destination
+allow/block lists. Kamailio enforces configured destination
 restrictions before selecting the upstream; the assignment is administrative
 metadata and does not change an extension's SIP credential. Managed Asterisk
 outbound dialogs pin their return route to the private SIP Core listener so

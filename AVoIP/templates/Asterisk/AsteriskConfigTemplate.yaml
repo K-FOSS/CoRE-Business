@@ -34,6 +34,9 @@
     {{- if or (lt (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 1) (gt (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 300) -}}
       {{- fail "Asterisk external callback ringTimeoutSeconds must be between 1 and 300" -}}
     {{- end -}}
+    {{- if or (lt (int .Values.asterisk.sipCore.externalCallback.delaySeconds) 30) (gt (int .Values.asterisk.sipCore.externalCallback.delaySeconds) 3600) -}}
+      {{- fail "Asterisk external callback delaySeconds must be between 30 and 3600" -}}
+    {{- end -}}
   {{- end -}}
   {{- if not .Values.freeswitch.enabled -}}
     {{- fail "Asterisk SIP Core requires the existing media-enabled AVoIP stack" -}}

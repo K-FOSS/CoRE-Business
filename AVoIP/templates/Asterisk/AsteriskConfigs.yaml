@@ -88,7 +88,7 @@ data:
     {{- if .Values.asterisk.logging.enabled }}
     core set verbose {{ .Values.asterisk.logging.verbose }} = yes
     core set debug {{ .Values.asterisk.logging.debug }} = yes
-    {{- if and .Values.asterisk.logging.pjsip (not .Values.asterisk.sipCore.enabled) (not .Values.freeswitch.enabled) }}
+    {{- if .Values.asterisk.logging.pjsip }}
     pjsip set logger on = yes
     {{- end }}
     {{- end }}
@@ -319,14 +319,15 @@ data:
     ; The hangup handler outlives the inbound IVR leg. Once the external
     ; caller answers, Originate enters the GG-audio bridge context.
     [sipcore-external-callback]
-    exten => s,1,Originate(Local/${ARG1}@sipcore-external-callback-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
+    exten => s,1,Originate(Local/${ARG1}@sipcore-external-callback-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.delaySeconds) (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
       same => n,Return()
     [sipcore-external-callback-internal]
-    exten => s,1,Originate(Local/${ARG1}@sipcore-external-callback-internal-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
+    exten => s,1,Originate(Local/${ARG1}@sipcore-external-callback-internal-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.delaySeconds) (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
       same => n,Return()
     [sipcore-external-callback-contact]
     exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .Values.avoip.did }})
       same => n,Set(CALLERID(name)=Callback)
+      same => n,Wait({{ .Values.asterisk.sipCore.externalCallback.delaySeconds }})
       same => n,Dial(PJSIP/${EXTEN}@freeswitch,{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }},gb(sipcore-external-callback-headers^s^1))
       same => n,Hangup()
     [sipcore-external-callback-headers]
@@ -336,6 +337,7 @@ data:
     {{- range .Values.asterisk.sipCore.extensions }}
     exten => {{ .number }},1,Set(CALLERID(num)={{ $.Values.avoip.did }})
       same => n,Set(CALLERID(name)=Callback)
+      same => n,Wait({{ $.Values.asterisk.sipCore.externalCallback.delaySeconds }})
       same => n,Dial(${PJSIP_DIAL_CONTACTS({{ .number }})},{{ $.Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }})
       same => n,Hangup()
     {{- end }}

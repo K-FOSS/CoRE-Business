@@ -969,6 +969,9 @@ asterisk:
       # The configured main DID is presented as caller ID; FreeSWITCH still
       # anchors the outbound carrier media path.
       enabled: false
+      # Allow the original carrier call to finish clearing before starting
+      # the callback. This is deliberately separate from ringTimeoutSeconds.
+      delaySeconds: 30
       ringTimeoutSeconds: 30
     ggAudioExtension: '66'
     ggAudioDestination: 'gg-audio'
