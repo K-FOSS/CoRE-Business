@@ -437,6 +437,29 @@
       }
 
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      $var(core_managed_from_tag) = "";
+      $var(core_managed_route_processed) = 0;
+      if (has_totag() && is_present_hf("Route")) {
+        $var(core_managed_from_tag) = $(route_uri{uri.param,core_managed_from});
+        if ($var(core_managed_from_tag) != "" && loose_route()) {
+          $var(core_managed_route_processed) = 1;
+        }
+      }
+      if ($var(core_managed_route_processed) == 1) {
+        if ($ft == $var(core_managed_from_tag)) {
+          # The Asterisk-originated leg heads back through the selected
+          # carrier gateway. The Route set, rather than dlg_var, identifies it.
+          route(PRIVATE_TO_CARRIER_GATEWAY);
+          route(PRIVATE_RELAY); exit;
+        } else if ($tt == $var(core_managed_from_tag)) {
+          # A carrier-originated teardown belongs to Asterisk's SIP service;
+          # do not interpret its service Contact as a WebSocket alias.
+          route(TO_SIPCORE_ASTERISK);
+          route(PRIVATE_RELAY); exit;
+        }
+        if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
+        exit;
+      }
       if (has_totag() && $dlg_var(managed_outbound) == "yes") {
         if (!loose_route()) { if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist"); exit; }
         # Asterisk is the originator of this managed dialog. Its BYE (and

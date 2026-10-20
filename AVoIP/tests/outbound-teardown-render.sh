@@ -43,6 +43,15 @@ gateway_line="$(grep -n -m1 'route(PRIVATE_TO_CARRIER_GATEWAY);' <<< "$managed_o
 record_route_line="$(grep -n -m1 'record_route();' <<< "$managed_outbound_setup" | cut -d: -f1)"
 [[ -n "$gateway_line" && -n "$record_route_line" && "$gateway_line" -lt "$record_route_line" ]]
 grep -Fq '$dlg_var(outbound_carrier) = "yes";' <<< "$managed_outbound_setup"
+managed_extension_route="$(sed -n '/route\[MANAGED_EXTENSION\]/,/^    }/p' <<< "$internal_cfg")"
+grep -Fq 'core_managed_from=$ft' <<< "$managed_extension_route"
+grep -Fq '$(route_uri{uri.param,core_managed_from})' <<< "$internal_cfg"
+grep -Fq 'if ($ft == $var(core_managed_from_tag))' <<< "$internal_cfg"
+grep -Fq 'else if ($tt == $var(core_managed_from_tag))' <<< "$internal_cfg"
+grep -Fq 'route(PRIVATE_TO_CARRIER_GATEWAY);' <<< "$internal_cfg"
+grep -Fq 'route(TO_SIPCORE_ASTERISK);' <<< "$internal_cfg"
+managed_dialog_routes="$(sed -n '/$var(core_managed_from_tag) = "";/,/if (has_totag() && $dlg_var(managed_outbound)/p' <<< "$internal_cfg")"
+[[ "$(grep -Fc 'loose_route()' <<< "$managed_dialog_routes")" -eq 1 ]]
 grep -Fq '<param name="tls-bind-params" value="transport=tls"/>' <<< "$flowroute_profile"
 flowroute_settings="$(sed -n '/<settings>/,/<\/settings>/p' <<< "$flowroute_profile")"
 grep -Fq '<param name="rtp-timer-name" value="soft"/>' <<< "$flowroute_settings"

@@ -22,6 +22,14 @@ profile and Kamailio local-Route identity agree. Rendered assertions cover the
 advertised hostname and alias; live acceptance still requires ACK and BYE to
 complete on a fresh call after reconciliation.
 
+Managed SIP Core outbound dialogs also carry the originating Asterisk From-tag
+as a parameter on the hidden Record-Route URI. The SIP Core return handler
+consumes the restored route once, then routes an Asterisk-originated request
+through the configured carrier gateway and a carrier-originated request to the
+Asterisk SIP service. This direction check uses the shared restored Route set
+when replica-local dialog state is absent. Requests outside this managed
+dialog path continue through the existing generic SIP Core handling.
+
 An outbound INVITE crosses both Kamailio tiers. The carrier tier restores its
 TOPOS state and forwards a carrier-originated in-dialog request to the
 authenticated `carrier` peer on the internal tier. The internal tier then

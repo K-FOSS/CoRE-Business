@@ -234,7 +234,9 @@
       # untrusted source. Pin this dialog's route set to the private return
       # Service/listener, independent of the upstream send socket.
       if ($var(side) == "sipcore") {
-        record_route_preset("{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ .Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+        # Carry the originating Asterisk tag in the restored route set so
+        # either replica can route in-dialog requests without pod-local state.
+        record_route_preset("{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ .Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr;core_managed_from=$ft");
       } else {
         record_route();
       }
