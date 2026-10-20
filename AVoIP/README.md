@@ -110,6 +110,12 @@ boundaries, canonical number format and quotas, and the
 verification. The [Flowroute teardown runbook](docs/avoip/runbooks/outbound-flowroute-teardown.md)
 covers the internal Kamailio BYE route, replica-safe TOPOS restoration,
 render regression and live SIP/media acceptance.
+AVoIP Admin's **Limit Profiles** screen configures rate, concurrency and call
+duration limits for DID/inbound and extension/outbound routing, with direct,
+tenant-default and site-default profiles. Quota counters are currently local
+to each telephony site's Dragonfly database; tenant profiles therefore apply
+the same ceiling independently at each site. See the [Admin profile behavior
+and precedence](docs/ADMIN.md#call-limit-profiles).
 The Admin Extensions screen also provides an outbound route preview against
 the current authorization catalog, and DID cards can preview inbound provider
 eligibility and destination without placing a call. Live provider health and DID

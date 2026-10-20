@@ -72,6 +72,8 @@ controllers:
           {{ end }}
           - name: 'AVOIP_SITE'
             value: '{{ .Values.region }}'
+          - name: 'AVOIP_DEFAULT_LIMITS_JSON'
+            value: '{{ dict "calls_per_minute" .Values.kamailio.carrierOutbound.limits.callsPerMinute "concurrent_calls" .Values.kamailio.carrierOutbound.limits.concurrentCalls "max_duration_seconds" .Values.kamailio.carrierOutbound.limits.maxDurationSeconds | toJson | replace "'" "''" }}'
           - name: 'AVOIP_SITES_JSON'
             value: '{{ include "avoip.admin.sites" . | replace "'" "''" }}'
           {{ if ne (kindOf $settings.catalog) "invalid" }}

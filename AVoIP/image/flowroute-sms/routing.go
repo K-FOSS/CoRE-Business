@@ -43,6 +43,8 @@ type didRoute struct {
 	CallerID            string   `json:"caller_id,omitempty"`
 	FaxDetectionEnabled *bool    `json:"fax_detection_enabled,omitempty"`
 	CodecOrder          []string `json:"codec_order,omitempty"`
+	LimitProfileID      string   `json:"limit_profile_id,omitempty"`
+	TenantID            string   `json:"tenant_id,omitempty"`
 }
 
 func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
@@ -58,6 +60,19 @@ type extensionRoute struct {
 	AuthorizedCallerIDs []string `json:"authorized_caller_ids,omitempty"`
 	AuthorizedProviders []string `json:"authorized_providers,omitempty"`
 	Site                string   `json:"site"`
+	LimitProfileID      string   `json:"limit_profile_id,omitempty"`
+	TenantID            string   `json:"tenant_id,omitempty"`
+}
+
+type callLimitProfile struct {
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Scope              string `json:"scope"`
+	Site               string `json:"site,omitempty"`
+	TenantID           string `json:"tenant_id,omitempty"`
+	CallsPerMinute     int    `json:"calls_per_minute"`
+	ConcurrentCalls    int    `json:"concurrent_calls"`
+	MaxDurationSeconds int    `json:"max_duration_seconds"`
 }
 
 // Legacy records carry one caller ID and provider. New records can authorize
@@ -139,6 +154,10 @@ type outboundRoutePreview struct {
 	CodecOrder            []string            `json:"codec_order,omitempty"`
 	PolicyRevision        int64               `json:"policy_revision"`
 	ProviderHealth        string              `json:"provider_health"`
+	LimitProfileID        string              `json:"limit_profile_id,omitempty"`
+	CallsPerMinute        int                 `json:"calls_per_minute"`
+	ConcurrentCalls       int                 `json:"concurrent_calls"`
+	MaxDurationSeconds    int                 `json:"max_duration_seconds"`
 }
 
 type inboundRoutePreviewRequest struct {
@@ -159,6 +178,10 @@ type inboundRoutePreview struct {
 	ProviderEligibility string `json:"provider_eligibility"`
 	ProviderHealth      string `json:"provider_health"`
 	PolicyRevision      int64  `json:"policy_revision"`
+	LimitProfileID      string `json:"limit_profile_id,omitempty"`
+	CallsPerMinute      int    `json:"calls_per_minute"`
+	ConcurrentCalls     int    `json:"concurrent_calls"`
+	MaxDurationSeconds  int    `json:"max_duration_seconds"`
 }
 
 // Existing catalog entries predate these flags and remain enabled until an
@@ -179,11 +202,12 @@ func (e extensionRoute) outboundDisabledReason() string {
 }
 
 type sipCatalog struct {
-	Providers  []sipProvider    `json:"providers"`
-	DIDs       []didRoute       `json:"dids"`
-	Extensions []extensionRoute `json:"extensions"`
-	Version    int64            `json:"version"`
-	Source     string           `json:"source,omitempty"`
+	Providers     []sipProvider      `json:"providers"`
+	DIDs          []didRoute         `json:"dids"`
+	Extensions    []extensionRoute   `json:"extensions"`
+	LimitProfiles []callLimitProfile `json:"limit_profiles,omitempty"`
+	Version       int64              `json:"version"`
+	Source        string             `json:"source,omitempty"`
 }
 type siteTarget struct {
 	Host string `json:"host"`
@@ -240,9 +264,82 @@ func effectiveProviderCodecOrder(provider sipProvider) []string {
 	return nil
 }
 
+func resolvedLimitProfile(c sipCatalog, assignedID, tenantID, site string) callLimitProfile {
+	for _, p := range c.LimitProfiles {
+		if p.ID == assignedID && assignedID != "" {
+			return p
+		}
+	}
+	for _, scope := range []string{"tenant", "site"} {
+		for _, p := range c.LimitProfiles {
+			if scope == "tenant" && p.Scope == scope && tenantID != "" && p.TenantID == tenantID {
+				return p
+			}
+			if scope == "site" && p.Scope == scope && p.Site == site {
+				return p
+			}
+		}
+	}
+	var fallback callLimitProfile
+	if json.Unmarshal([]byte(os.Getenv("AVOIP_DEFAULT_LIMITS_JSON")), &fallback) == nil && fallback.CallsPerMinute > 0 && fallback.ConcurrentCalls > 0 && fallback.MaxDurationSeconds >= 60 {
+		fallback.ID, fallback.Scope, fallback.Site, fallback.Name = "legacy-default", "legacy", site, "Site default"
+	}
+	return fallback
+}
+
 func (c sipCatalog) validate() error {
-	if len(c.Providers) > 50 || len(c.DIDs) > 1000 || len(c.Extensions) > 1000 {
+	if len(c.Providers) > 50 || len(c.DIDs) > 1000 || len(c.Extensions) > 1000 || len(c.LimitProfiles) > 500 {
 		return errors.New("catalog too large")
+	}
+	profiles := map[string]callLimitProfile{}
+	profileTargets := map[string]bool{}
+	for _, p := range c.LimitProfiles {
+		if !providerID.MatchString(p.ID) || strings.TrimSpace(p.Name) == "" || len(p.Name) > 100 || p.CallsPerMinute < 1 || p.CallsPerMinute > 10000 || p.ConcurrentCalls < 1 || p.ConcurrentCalls > 10000 || p.MaxDurationSeconds < 60 || p.MaxDurationSeconds > 86400 {
+			return errors.New("invalid call limit profile")
+		}
+		switch p.Scope {
+		case "site":
+			if (p.Site != "yvr" && p.Site != "yxl") || p.TenantID != "" {
+				return errors.New("site limit profiles require exactly one site")
+			}
+		case "tenant":
+			if !providerID.MatchString(p.TenantID) || p.Site != "" {
+				return errors.New("tenant limit profiles require exactly one tenant")
+			}
+		case "assigned":
+			if p.Site != "" || p.TenantID != "" {
+				return errors.New("assigned limit profiles cannot declare a site or tenant")
+			}
+		default:
+			return errors.New("limit profile scope must be site, tenant or assigned")
+		}
+		if _, exists := profiles[p.ID]; exists {
+			return errors.New("duplicate limit profile")
+		}
+		if p.Scope == "site" || p.Scope == "tenant" {
+			target := p.Scope + ":" + p.Site + p.TenantID
+			if profileTargets[target] {
+				return errors.New("only one default limit profile is allowed per site or tenant")
+			}
+			profileTargets[target] = true
+		}
+		profiles[p.ID] = p
+	}
+	validateAssignment := func(id, tenant, site string) error {
+		if tenant != "" && !providerID.MatchString(tenant) {
+			return errors.New("invalid tenant ID")
+		}
+		if id == "" {
+			return nil
+		}
+		p, ok := profiles[id]
+		if !ok {
+			return errors.New("record refers to an unknown limit profile")
+		}
+		if p.Scope == "site" && p.Site != site || p.Scope == "tenant" && p.TenantID != tenant {
+			return errors.New("assigned limit profile scope does not match the record")
+		}
+		return nil
 	}
 	providers := map[string]sipProvider{}
 	prefixes := map[string][]netip.Prefix{}
@@ -293,6 +390,9 @@ func (c sipCatalog) validate() error {
 	}
 	dids := map[string]bool{}
 	for _, d := range c.DIDs {
+		if err := validateAssignment(d.LimitProfileID, d.TenantID, d.Site); err != nil {
+			return err
+		}
 		number := d.Number
 		if !plusOneNumber.MatchString(number) || dids[number] || len(d.Providers) == 0 || len(d.Providers) > 50 || validateCodecOrder(d.CodecOrder) != nil {
 			return errors.New("invalid/duplicate DID or missing allowed providers")
@@ -349,6 +449,12 @@ func (c sipCatalog) validate() error {
 	}
 	seen := map[string]bool{}
 	for _, e := range c.Extensions {
+		if e.Site != "yvr" && e.Site != "yxl" {
+			return errors.New("extension site must be yvr or yxl")
+		}
+		if err := validateAssignment(e.LimitProfileID, e.TenantID, e.Site); err != nil {
+			return err
+		}
 		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || (e.AssignedUser != "" && !adminUserID.MatchString(e.AssignedUser)) || seen[e.Extension] {
 			return errors.New("invalid or duplicate extension")
 		}
@@ -407,7 +513,7 @@ func codecOrderSubset(requested, supported []string) bool {
 	return true
 }
 func loadConfiguredCatalog() (sipCatalog, error) {
-	c := sipCatalog{Providers: []sipProvider{}, DIDs: []didRoute{}, Extensions: []extensionRoute{}}
+	c := sipCatalog{Providers: []sipProvider{}, DIDs: []didRoute{}, Extensions: []extensionRoute{}, LimitProfiles: []callLimitProfile{}}
 	raw := strings.TrimSpace(os.Getenv("AVOIP_SIP_JSON"))
 	if raw == "" {
 		return c, nil
@@ -443,6 +549,9 @@ func (s *server) catalog(r *http.Request) (sipCatalog, error) {
 	}
 	if json.Unmarshal(raw, &config) != nil {
 		return config, errors.New("invalid stored catalog")
+	}
+	if config.LimitProfiles == nil {
+		config.LimitProfiles = []callLimitProfile{}
 	}
 	config.Version = version
 	config.Source = "admin"
@@ -548,6 +657,8 @@ func previewOutboundRoute(c sipCatalog, request outboundRoutePreviewRequest, act
 	if extension == nil {
 		return deny("extension_not_configured")
 	}
+	limits := resolvedLimitProfile(c, extension.LimitProfileID, extension.TenantID, extension.Site)
+	result.LimitProfileID, result.CallsPerMinute, result.ConcurrentCalls, result.MaxDurationSeconds = limits.ID, limits.CallsPerMinute, limits.ConcurrentCalls, limits.MaxDurationSeconds
 	if !extension.outboundAllowed() {
 		return deny(extension.outboundDisabledReason())
 	}
@@ -646,6 +757,8 @@ func previewInboundRoute(c sipCatalog, request inboundRoutePreviewRequest, activ
 	if route == nil {
 		return deny("did_not_configured")
 	}
+	limits := resolvedLimitProfile(c, route.LimitProfileID, route.TenantID, route.Site)
+	result.LimitProfileID, result.CallsPerMinute, result.ConcurrentCalls, result.MaxDurationSeconds = limits.ID, limits.CallsPerMinute, limits.ConcurrentCalls, limits.MaxDurationSeconds
 	if route.Site != request.Site {
 		return deny("did_site_mismatch")
 	}
@@ -761,7 +874,8 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			}
 			providerFlags[providerID] = flags
 		}
-		dids[d.Number] = map[string]any{"providers": "," + strings.Join(d.Providers, ",") + ",", "site": d.Site, "kind": d.Kind, "destination": d.Destination, "host": t.Host, "port": t.Port, "codec_flags_by_provider": providerFlags}
+		limits := resolvedLimitProfile(c, d.LimitProfileID, d.TenantID, d.Site)
+		dids[d.Number] = map[string]any{"providers": "," + strings.Join(d.Providers, ",") + ",", "site": d.Site, "kind": d.Kind, "destination": d.Destination, "host": t.Host, "port": t.Port, "codec_flags_by_provider": providerFlags, "limit_profile_id": limits.ID, "limit_scope": limits.Scope, "calls_per_minute": limits.CallsPerMinute, "concurrent_calls": limits.ConcurrentCalls, "max_duration_seconds": limits.MaxDurationSeconds}
 	}
 	for _, e := range c.Extensions {
 		t, ok := targets[e.Site]
@@ -783,7 +897,8 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder)}
+		limits := resolvedLimitProfile(c, e.LimitProfileID, e.TenantID, e.Site)
+		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "limit_profile_id": limits.ID, "limit_scope": limits.Scope, "calls_per_minute": limits.CallsPerMinute, "concurrent_calls": limits.ConcurrentCalls, "max_duration_seconds": limits.MaxDurationSeconds}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}

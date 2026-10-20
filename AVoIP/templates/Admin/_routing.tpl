@@ -68,6 +68,34 @@
         sl_send_reply("403", "DID Provider Not Authorized"); exit;
       }
       if (t_check_trans()) exit;
+      jansson_get("limit_profile_id", "$var(managed_route)", "$var(inbound_limit_profile)");
+      jansson_get("calls_per_minute", "$var(managed_route)", "$var(inbound_calls_per_minute)");
+      jansson_get("concurrent_calls", "$var(managed_route)", "$var(inbound_concurrent_calls)");
+      jansson_get("max_duration_seconds", "$var(managed_route)", "$var(inbound_max_duration)");
+      if ($var(inbound_limit_profile) == "legacy-default") {
+        dlg_manage();
+      } else {
+        if ($var(inbound_limit_profile) == $null || $var(inbound_calls_per_minute) < 1 || $var(inbound_concurrent_calls) < 1 || $var(inbound_max_duration) < 60) {
+          sl_send_reply("503", "Inbound Limits Unavailable"); exit;
+        }
+        $var(inbound_limit_key) = "avoip:limit:" + $var(inbound_limit_profile);
+        $var(inbound_limit_script) = "local k=KEYS[1];local id=ARGV[1];local rate=tonumber(ARGV[2]);local concurrent=tonumber(ARGV[3]);local duration=tonumber(ARGV[4]);local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
+        if (!redis_cmd("topos", "EVAL %s 1 %s %s %s %s %s", "$var(inbound_limit_script)", "$var(inbound_limit_key)", "$ci", "$var(inbound_calls_per_minute)", "$var(inbound_concurrent_calls)", "$var(inbound_max_duration)", "inbound_limit")) {
+          sl_send_reply("503", "Inbound Limits Unavailable"); exit;
+        }
+        if ($redis(inbound_limit=>type) != $redisd(rpl_int) || $redis(inbound_limit=>value) != 1) {
+          sl_send_reply("486", "Inbound Limit Reached"); exit;
+        }
+        $dlg_ctx(timeout_route) = "INBOUND_DIALOG_TIMEOUT";
+        dlg_manage();
+        dlg_set_property("timeout-noreset");
+        $dlg_var(inbound_limit_key) = $var(inbound_limit_key);
+        $dlg_var(inbound_limit_callid) = $ci;
+        if (!dlg_set_timeout("$var(inbound_max_duration)")) {
+          route(INBOUND_LIMIT_RELEASE);
+          sl_send_reply("503", "Inbound Limit Setup Failed"); exit;
+        }
+      }
       jansson_get("host", "$var(managed_route)", "$var(managed_host)");
       jansson_get("port", "$var(managed_route)", "$var(managed_port)");
       jansson_get("site", "$var(managed_route)", "$var(managed_site)");
@@ -78,7 +106,7 @@
       append_hf("X-Core-Original-DID: $var(managed_number)\r\n");
       $ru = "sips:" + $var(managed_number) + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";
-      dlg_manage(); $dlg_var(managed_target) = $var(managed_host);
+      $dlg_var(managed_target) = $var(managed_host);
       if ($var(managed_codec_flags) != $null && $var(managed_codec_flags) != "") {
         $dlg_var(managed_codec_flags) = $var(managed_codec_flags);
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -99,6 +127,23 @@
       }
       {{ end }}
       route(RELAY); exit;
+    }
+    route[INBOUND_LIMIT_RELEASE] {
+      $var(inbound_limit_key) = $dlg_var(inbound_limit_key);
+      $var(inbound_limit_callid) = $dlg_var(inbound_limit_callid);
+      if ($var(inbound_limit_key) == $null || $var(inbound_limit_callid) == $null) return;
+      $var(inbound_release_script) = "redis.call('ZREM',KEYS[1],'call:'..ARGV[1]);return 1";
+      if (!redis_cmd("topos", "EVAL %s 1 %s %s", "$var(inbound_release_script)", "$var(inbound_limit_key)", "$var(inbound_limit_callid)", "inbound_release")) {
+        xlog("L_ERR", "Inbound call limit release failed callid=$ci\n");
+      }
+      $dlg_var(inbound_limit_key) = "";
+      $dlg_var(inbound_limit_callid) = "";
+      return;
+    }
+    route[INBOUND_DIALOG_TIMEOUT] {
+      route(INBOUND_LIMIT_RELEASE);
+      dlg_bye("all");
+      return;
     }
     {{- end }}
     route[MANAGED_EXTENSION] {
@@ -151,6 +196,11 @@
       jansson_get("site", "$var(managed_route)", "$var(managed_site)");
       jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");
       jansson_get("codec_flags", "$var(managed_route)", "$var(managed_codec_flags)");
+      jansson_get("limit_profile_id", "$var(managed_route)", "$var(managed_limit_profile_id)");
+      jansson_get("limit_scope", "$var(managed_route)", "$var(managed_limit_scope)");
+      jansson_get("calls_per_minute", "$var(managed_route)", "$var(managed_calls_per_minute)");
+      jansson_get("concurrent_calls", "$var(managed_route)", "$var(managed_concurrent_calls)");
+      jansson_get("max_duration_seconds", "$var(managed_route)", "$var(managed_max_duration_seconds)");
       xlog("L_INFO", "AVOIP_POLICY managed_extension decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider_host=$var(managed_host) request_user=$rU call_id=$ci method=$rm\n");
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider=$var(managed_host) call_id=$ci method=$rm destination_class=nanp");

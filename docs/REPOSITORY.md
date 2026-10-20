@@ -3,6 +3,10 @@
 See [AVoIP administration](../AVoIP/docs/ADMIN.md) for site-local admin access,
 shared provider/DID configuration, verification evidence and routing activation.
 The [UI design specification](../AVoIP/docs/UI-DESIGN.md) covers the inbox and admin pages.
+AVoIP Admin also supports configurable [call Limit Profiles](../AVoIP/docs/ADMIN.md#call-limit-profiles)
+for DID/inbound and extension/outbound calls, including tenant and site defaults;
+the shared catalog uses the existing CoRE-Voice database, while quota counters
+remain local to each telephony site.
 
 The [Caller Intelligence design package](../AVoIP/docs/caller-intelligence/README.md)
 records AVoIP discovery, API/data/cache proposals, provider licensing and budgets,

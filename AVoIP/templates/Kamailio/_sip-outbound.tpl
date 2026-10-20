@@ -77,12 +77,16 @@
       # Dragonfly executes quota admission atomically across all carrier
       # replicas. A stale call expires after maxDurationSeconds even if a pod
       # disappears before BYE. A failed Redis operation fails closed.
-      $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>={{ .Values.kamailio.carrierOutbound.limits.concurrentCalls }} then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>={{ .Values.kamailio.carrierOutbound.limits.callsPerMinute }} or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }},'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,{{ .Values.kamailio.carrierOutbound.limits.maxDurationSeconds }});return 1";
-      $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
+      $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local concurrent=tonumber(ARGV[2]);local rate=tonumber(ARGV[3]);local duration=tonumber(ARGV[4]);local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
+      if ($var(managed_limit_scope) == "legacy") {
+        $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
+      } else {
+        $var(outbound_quota_key) = "avoip:limit:" + $var(managed_limit_profile_id);
+      }
       if (!redis_cmd(
-        "topos", "EVAL %s 1 %s %s", "$var(quota_script)",
+        "topos", "EVAL %s 1 %s %s %s %s %s", "$var(quota_script)",
         "$var(outbound_quota_key)",
-        "$ci", "outbound_quota"
+        "$ci", "$var(managed_concurrent_calls)", "$var(managed_calls_per_minute)", "$var(managed_max_duration_seconds)", "outbound_quota"
       )) {
         sl_send_reply("503", "Outbound Quota Unavailable");
         exit;
@@ -108,6 +112,11 @@
       route(RR_BACKEND_TO_CARRIER);
       $dlg_ctx(timeout_route) = "OUTBOUND_DIALOG_TIMEOUT";
       dlg_manage();
+      dlg_set_property("timeout-noreset");
+      if (!dlg_set_timeout("$var(managed_max_duration_seconds)")) {
+        route(OUTBOUND_RELEASE);
+        sl_send_reply("503", "Outbound Limit Setup Failed"); exit;
+      }
       $dlg_var(core_linkedid) = $hdr(X-Core-Call-Linkedid);
       $dlg_var(core_origin_uniqueid) = $hdr(X-Core-Origin-Uniqueid);
       $dlg_var(outbound_site) = "{{ $.Values.region }}";

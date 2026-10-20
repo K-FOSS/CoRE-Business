@@ -154,6 +154,31 @@ The editor accepts an optional assigned Authentik user ID/username as Admin meta
 
 Each extension card also has a **Preview route** action. It checks the current extension, site, exact caller ID, full-format destination and provider verification, then returns the policy revision, selected provider and effective codec order. Provider health is reported as `not_reported`: the catalog does not yet contain live health or failover state.
 
+### Call Limit Profiles
+
+The **Limit Profiles** screen stores named profiles in the existing shared SIP
+catalog. Each profile sets calls per minute, concurrent calls, and maximum call
+duration. A profile can be assigned directly to an inbound DID or extension,
+or made the default for one site or tenant. On each call, an explicit record
+assignment wins; otherwise the matching tenant profile wins, followed by the
+record's destination/egress site profile. When none is configured, the existing
+site values under `kamailio.carrierOutbound.limits` remain the compatibility
+default; outbound calls retain their legacy caller-ID quota bucket in that
+case.
+
+The assigned profile ID is the quota bucket, so records using the same profile
+share its rate and concurrency ceiling within the local telephony site's
+Dragonfly database. Site and tenant profiles use that same rule. The catalog is
+shared between YVR and YXL, but the call-limit counters are site-local; a
+tenant profile applied at both sites currently enforces the configured ceiling
+independently at each site, not as one cross-site aggregate. Cross-site aggregate
+limits require a globally shared atomic quota service. Call duration is applied
+to the Kamailio dialog timer and expired dialogs are terminated; failed or
+cancelled calls release their reservation, while abandoned reservations expire
+after the configured maximum duration. Changes publish through the normal
+five-second routing snapshot refresh and affect new calls; established calls
+keep their applied duration.
+
 Assignments are evaluated only from the existing authenticated
 Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never
 authorization to select a caller ID. Destinations must use the full `+1` plus ten digit format. The runtime does not apply destination allow/block lists or premium-rate number filters. Extension/provider authorization, caller ID verification and carrier quota remain in force.

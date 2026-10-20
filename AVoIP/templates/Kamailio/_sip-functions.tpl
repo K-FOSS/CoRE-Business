@@ -307,6 +307,9 @@
           # must remain pinned by the L4 gateway to the pod holding that
           # transaction. A CANCEL arriving on another pod correctly misses.
           if (is_method("CANCEL")) {
+            {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
+            route(INBOUND_LIMIT_RELEASE);
+            {{- end }}
             {{- if $.Values.kamailio.carrierOutbound.enabled }}
             route(OUTBOUND_RELEASE);
             {{- end }}
@@ -341,6 +344,9 @@
           "SIP peer decision class=backend authorization=allowed pod=$env(POD_NAME) listener=$Rn/$Ri:$Rp/$proto source=$si:$sp call_id=$ci method=$rm\n"
         );
         if (is_method("CANCEL")) {
+          {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
+          route(INBOUND_LIMIT_RELEASE);
+          {{- end }}
           {{- if .Values.kamailio.carrierOutbound.enabled }}
           route(OUTBOUND_RELEASE);
           {{- end }}
@@ -727,6 +733,11 @@
         route(REJECT_DIALOG);
       }
 
+      if (is_method("BYE")) {
+        {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
+        route(INBOUND_LIMIT_RELEASE);
+        {{- end }}
+      }
       {{- if .Values.kamailio.carrierOutbound.enabled }}
       if (is_method("BYE")) {
         route(OUTBOUND_BYE_PENDING);
@@ -1073,6 +1084,11 @@
       }
       {{- end }}
 
+      if ($rs >= 300 && $rs <= 699 && $rm == "INVITE") {
+        {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
+        route(INBOUND_LIMIT_RELEASE);
+        {{- end }}
+      }
       {{- if .Values.kamailio.carrierOutbound.enabled }}
       if ($rs >= 300 && $rs <= 699 && $rm == "INVITE") {
         route(OUTBOUND_RELEASE);
