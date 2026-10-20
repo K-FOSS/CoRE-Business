@@ -285,6 +285,10 @@ data:
     ; parallel, using the same owner-aware routing as inbound DID fan-out.
     [sipcore-callback-contact-{{ .number }}]
     exten => s,1,Wait({{ $.Values.asterisk.sipCore.ggCallbackDelaySeconds }})
+      ; The delayed callback is an internal service call. Do not inherit the
+      ; original SIP Core caller's number; advertise the callback service's
+      ; own extension just like a normal 1234-originated call.
+      same => n,Set(CALLERID(num)={{ $.Values.asterisk.sipCore.helloCallbackExtension }})
       same => n,Set(CALLERID(name)={{ $.Values.asterisk.sipCore.ggCallbackCallerIdName }})
       same => n,Dial(${PJSIP_DIAL_CONTACTS({{ .number }})},{{ $.Values.asterisk.sipCore.ggCallbackRingTimeoutSeconds }})
       same => n,Hangup()

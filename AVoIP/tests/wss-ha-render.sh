@@ -104,6 +104,7 @@ grep -Fq 'exten => 9090,1,Answer()' "$rendered"
 grep -Fq 'exten => 66,1,Dial(PJSIP/gg-audio@freeswitch,30,g)' "$rendered"
 grep -Fq 'exten => 1234,1,Answer()' "$rendered"
 sed -n '/\[sipcore-callback-contact-7101\]/,/^    \[/p' "$rendered" | grep -Fq 'Dial(${PJSIP_DIAL_CONTACTS(7101)},30)'
+sed -n '/\[sipcore-callback-contact-7101\]/,/^    \[/p' "$rendered" | grep -Fq 'Set(CALLERID(num)=1234)'
 echo 'PASS: callback rings all registered SIP Core contacts in parallel'
 ! grep -Fq 'X-AVOIP-External-Callback' "$rendered"
 echo 'PASS: public-IVR external callback is absent unless explicitly enabled'
