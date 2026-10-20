@@ -963,6 +963,14 @@
       if ($du == $null || $du == "") {
         $du = $ru;
       }
+      # TOPOS restores the private return route for Asterisk-originated
+      # dialogs, but the TLS client profile is not reconstructed from the
+      # Route header. Set SNI from the restored next hop before relaying so
+      # the return listener selects its non-mTLS profile instead of the
+      # strict default profile.
+      if ($du =~ "^sips:") {
+        $xavp(tls=>server_name) = $(du{uri.host});
+      }
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog(
         "$ci",
