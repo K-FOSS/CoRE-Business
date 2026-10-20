@@ -27,6 +27,7 @@ type sipProvider struct {
 	ID              string             `json:"id"`
 	Host            string             `json:"host"`
 	Name            string             `json:"name"`
+	EgressPrefix    string             `json:"egress_prefix,omitempty"`
 	SupportedCodecs []string           `json:"supported_codecs,omitempty"`
 	CodecOrder      []string           `json:"codec_order,omitempty"`
 	CIDRs           []string           `json:"cidrs"`
@@ -219,6 +220,7 @@ var adminUserID = regexp.MustCompile(`^[A-Za-z0-9_.@:-]{1,128}$`)
 var correlationID = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,128}$`)
 var sipHost = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,252}$`)
 var plusOneNumber = regexp.MustCompile(`^\+1[0-9]{10}$`)
+var providerEgressPrefix = regexp.MustCompile(`^[0-9]+$`)
 var upstreamCodecs = map[string]bool{"OPUS": true, "G722": true, "PCMU": true, "PCMA": true}
 
 func validateCodecOrder(codecs []string) error {
@@ -344,7 +346,7 @@ func (c sipCatalog) validate() error {
 	providers := map[string]sipProvider{}
 	prefixes := map[string][]netip.Prefix{}
 	for _, p := range c.Providers {
-		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 || validateCodecOrder(p.SupportedCodecs) != nil || validateCodecOrder(p.CodecOrder) != nil || (len(p.CodecOrder) > 0 && !codecOrderSubset(p.CodecOrder, p.SupportedCodecs)) {
+		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.EgressPrefix) > 32 || (p.EgressPrefix != "" && !providerEgressPrefix.MatchString(p.EgressPrefix)) || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 || validateCodecOrder(p.SupportedCodecs) != nil || validateCodecOrder(p.CodecOrder) != nil || (len(p.CodecOrder) > 0 && !codecOrderSubset(p.CodecOrder, p.SupportedCodecs)) {
 			return errors.New("invalid SIP provider")
 		}
 		if _, ok := providers[p.ID]; ok {
@@ -696,6 +698,9 @@ func previewOutboundRoute(c sipCatalog, request outboundRoutePreviewRequest, act
 	result.SelectedProvider = provider.ID
 	result.FailoverOrder = append(result.FailoverOrder, result.EligibleProviders...)
 	result.EgressDestination = destination
+	if provider.EgressPrefix != "" {
+		result.EgressDestination = provider.EgressPrefix + "*" + strings.TrimPrefix(destination, "+")
+	}
 	result.CodecOrder = effectiveProviderCodecOrder(provider)
 	return result
 }
@@ -857,7 +862,7 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, p := range c.Providers {
 		providerCodecsForRoute := effectiveProviderCodecOrder(p)
-		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "codec_flags": codecRTPEngineFlags(providerCodecsForRoute)})
+		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix, "codec_flags": codecRTPEngineFlags(providerCodecsForRoute)})
 		providerCodecFlags[p.ID] = codecRTPEngineFlags(providerCodecsForRoute)
 	}
 	for _, d := range c.DIDs {
@@ -898,7 +903,7 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		limits := resolvedLimitProfile(c, e.LimitProfileID, e.TenantID, e.Site)
-		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "limit_profile_id": limits.ID, "limit_scope": limits.Scope, "calls_per_minute": limits.CallsPerMinute, "concurrent_calls": limits.ConcurrentCalls, "max_duration_seconds": limits.MaxDurationSeconds}
+		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": provider.EgressPrefix, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "limit_profile_id": limits.ID, "limit_scope": limits.Scope, "calls_per_minute": limits.CallsPerMinute, "concurrent_calls": limits.ConcurrentCalls, "max_duration_seconds": limits.MaxDurationSeconds}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}

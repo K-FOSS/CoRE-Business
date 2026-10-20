@@ -102,6 +102,16 @@ func TestOutboundRoutePreviewUsesCurrentAuthorization(t *testing.T) {
 	}
 }
 
+func TestOutboundRoutePreviewAppliesProviderEgressPrefixOnce(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.Providers[0].EgressPrefix = "12345678"
+	request := outboundRoutePreviewRequest{Extension: "7101", Destination: "+16505550123", CallerID: "+12065550100", Site: "yvr"}
+	preview := previewOutboundRoute(catalog, request, "yvr")
+	if !preview.Allowed || preview.NormalizedDestination != request.Destination || preview.EgressDestination != "12345678*16505550123" {
+		t.Fatalf("provider prefix was not applied at egress: %+v", preview)
+	}
+}
+
 func TestOutboundRoutePreviewSupportsProviderSpecificCallerIDsAndFailoverOrder(t *testing.T) {
 	catalog := fixtureCatalog()
 	catalog.Providers = append(catalog.Providers, sipProvider{
@@ -261,6 +271,7 @@ func TestCatalogOwnership(t *testing.T) {
 			c.DIDs[0].Destination = "sips:user@example.com;header=injected"
 		},
 		func(c *sipCatalog) { c.Providers[0].CIDRs = []string{"0.0.0.0/0"} },
+		func(c *sipCatalog) { c.Providers[0].EgressPrefix = "12*34" },
 	} {
 		c := fixtureCatalog()
 		mutate(&c)
@@ -674,6 +685,7 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	catalog := fixtureCatalog()
 	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "G722"}
 	catalog.Providers[0].CodecOrder = []string{"PCMU", "G722"}
+	catalog.Providers[0].EgressPrefix = "12345678"
 	catalog.DIDs[0].CodecOrder = []string{"G722", "PCMU"}
 	catalog.Extensions[0].AssignedUser = "august@example.test"
 	s := &server{}
@@ -695,6 +707,9 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	}
 	if snapshot.Providers[0]["codec_flags"] != "codec-strip-all codec-offer-PCMU codec-offer-G722 codec-offer-telephone-event" {
 		t.Fatalf("provider codec order missing from snapshot: %#v", snapshot.Providers[0])
+	}
+	if snapshot.Providers[0]["egress_prefix"] != "12345678" || snapshot.Extensions["7101"]["egress_prefix"] != "12345678" {
+		t.Fatalf("provider egress prefix missing from snapshot: providers=%#v extension=%#v", snapshot.Providers, snapshot.Extensions["7101"])
 	}
 	didFlags := snapshot.DIDs["+12065550100"]["codec_flags_by_provider"].(map[string]any)["carrier"]
 	if didFlags != "codec-strip-all codec-offer-G722 codec-offer-PCMU codec-offer-telephone-event" {

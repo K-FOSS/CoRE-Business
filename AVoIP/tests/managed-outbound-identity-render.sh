@@ -57,7 +57,9 @@ grep -Fq 'reason=provider_not_eligible' <<< "$carrier_cfg"
 grep -Fq 'remove_hf("X-Core-Call-Linkedid");' <<< "$carrier_cfg"
 grep -Fq 'remove_hf("X-Core-Origin-Uniqueid");' <<< "$carrier_cfg"
 grep -Fq 'remove_hf("X-Core-Extension");' <<< "$carrier_cfg"
-! grep -Fq 'egress_prefix' <<< "$carrier_cfg"
+grep -Fq 'jansson_get("egress_prefix", "$var(managed_route)", "$var(managed_egress_prefix)");' <<< "$carrier_cfg"
+grep -Fq '$rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});' <<< "$carrier_cfg"
+grep -Fq '$var(side) != "sipcore"' <<< "$carrier_cfg"
 ! grep -Fq 'allowed_destinations' <<< "$carrier_cfg"
 ! grep -Fq 'blocked_destinations' <<< "$carrier_cfg"
 grep -Fq 'if (!($rU =~ "^\\+1[0-9]{10}$"))' <<< "$internal_cfg"
@@ -85,7 +87,7 @@ grep -Fq '"$var(outbound_quota_key)"' <<< "$carrier_cfg"
 ! grep -Fq 'Flowroute Tech Prefix Unavailable' "$render"
 ! grep -Fq 'flowroute-nanp-7101' "$render"
 ! grep -Fq 'asterisk.sipCore.outboundNANP' "$render"
-! grep -Fq 'egress_prefix' "$repo_root/AVoIP/image/flowroute-sms/web/admin.js"
+grep -Fq 'egress_prefix' "$repo_root/AVoIP/image/flowroute-sms/web/admin.js"
 ! grep -Fq 'allowed_destinations' "$repo_root/AVoIP/image/flowroute-sms/web/admin.js"
 ! grep -Fq 'blocked_destinations' "$repo_root/AVoIP/image/flowroute-sms/web/admin.js"
 grep -Fq 'Preferred upstream codec order' "$repo_root/AVoIP/image/flowroute-sms/web/admin.js"
@@ -100,4 +102,4 @@ printf '%s\n' 'PASS: Kamailio looks up the trusted extension and applies the pol
 printf '%s\n' 'PASS: authenticated site handoffs do not reject a rewritten SIP From user'
 printf '%s\n' 'PASS: outbound authorization and registration events are correlated into Homer'
 printf '%s\n' 'PASS: Asterisk trusts the selected site Kamailio CA without disabling TLS verification'
-printf '%s\n' 'PASS: legacy static Flowroute prefixes and egress allowlists are absent'
+printf '%s\n' 'PASS: provider prefixes are dynamic and egress allowlists remain absent'

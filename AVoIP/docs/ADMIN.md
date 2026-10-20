@@ -89,8 +89,9 @@ cluster or public networks. The CDR query is read-only and returns at most 50
 recent records per database. Active call termination requires the Admin group;
 each accepted request is written to the existing Admin audit table.
 
-A SIP provider has ID/name, canonical SIP hostname, explicit signaling CIDRs,
-per-site provisioned gateway names and reviewed caller-ID records. Each
+A SIP provider has ID/name, canonical SIP hostname, an optional digits-only
+egress prefix, explicit signaling CIDRs, per-site provisioned gateway names and
+reviewed caller-ID records. Each
 verification record includes a canonical E.164 number, independent evidence and
 optional absolute expiry. Overlapping signaling networks across providers are
 rejected because the source would be ambiguous. Number ownership evidence is
@@ -150,7 +151,7 @@ against the current catalog, then displays the destination and policy revision.
 Provider health and failover targets are not represented by the current
 catalog, so the preview reports provider health as `not_reported`.
 
-The editor accepts an optional assigned Authentik user ID/username as Admin metadata. It does not change SIP authentication or extension identity. Voice destinations, DIDs and caller IDs must already use the full `+1` plus ten digit representation; the runtime preserves that value across SIP hops. Provider egress prefixes and per-extension destination allow/block lists are not part of the routing catalog.
+The editor accepts an optional assigned Authentik user ID/username as Admin metadata. It does not change SIP authentication or extension identity. Voice destinations, DIDs and caller IDs must already use the full `+1` plus ten digit representation. That value is preserved through Asterisk, internal Kamailio and FreeSWITCH. When the selected provider defines an egress prefix, carrier Kamailio changes only the final upstream Request-URI to `prefix*1AAAAAAAAAA`. Per-extension destination allow/block lists are not part of the routing catalog.
 
 Each extension card also has a **Preview route** action. It checks the current extension, site, exact caller ID, full-format destination and provider verification, then returns the policy revision, selected provider and effective codec order. Provider health is reported as `not_reported`: the catalog does not yet contain live health or failover state.
 

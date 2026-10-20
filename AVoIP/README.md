@@ -96,7 +96,9 @@ client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
 `7101` to place full `+1` plus ten digit calls through the managed extension
 route. AVoIP Admin supplies that extension's caller ID and eligible provider;
-the provider's `caller_ids` policy must authorize it.
+the provider's `caller_ids` policy must authorize it. Optional provider egress
+prefixes are applied once by carrier Kamailio on the final upstream hop, while
+the internal call path retains the full `+1` plus ten digit destination.
 YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
 outbound SIPS TLSRoute stays enabled. The Admin catalog currently sends both
