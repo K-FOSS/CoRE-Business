@@ -48,6 +48,16 @@ requests. The repair adds no fallback to a shared Service, no destination cache,
 and no permission to relay an unvalidated request. RTPEngine offer/answer,
 DTMF classification, session identifiers and BYE cleanup are unchanged.
 
+## Carrier BYE-loss fallback
+
+The outbound carrier endpoint also uses Asterisk's PJSIP `rtp_timeout` as a
+bounded safety net for a provider leg that stops sending media without sending
+its in-dialog BYE. The chart default is 90 seconds. A normal carrier BYE still
+clears the call immediately; the timeout applies only when carrier RTP is
+absent. This does not repair a missing carrier BYE at the SIP layer, so runtime
+validation must still correlate provider signaling, Kamailio relay, and the
+Asterisk hangup separately.
+
 ## Validation
 
 Run the structural/render regression:

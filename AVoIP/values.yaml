@@ -981,6 +981,10 @@ asterisk:
     ggCallbackCallerIdName: 'Important Message'
     ggCallbackDelaySeconds: 120
     ggCallbackRingTimeoutSeconds: 30
+    # Clear a carrier leg when the PSTN provider omits its in-dialog BYE and
+    # stops sending RTP. This is a bounded fallback; normal SIP BYE handling
+    # remains authoritative and is not delayed by this timer.
+    carrierRtpTimeoutSeconds: 90
     secretStoreRef:
       kind: 'ClusterSecretStore'
       name: 'corevault-rootsecrets'
