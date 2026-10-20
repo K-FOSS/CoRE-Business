@@ -7,11 +7,12 @@ pilot="$(mktemp)"
 cutover="$(mktemp)"
 split="$(mktemp)"
 legacy="$(mktemp)"
+legacy_sipcore="$(mktemp)"
 invalid="$(mktemp)"
 compat="$(mktemp)"
 asterisk_file="$(mktemp)"
 external_callback="$(mktemp)"
-trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$legacy" "$invalid" "$compat" "$asterisk_file" "$external_callback"' EXIT
+trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$legacy" "$legacy_sipcore" "$invalid" "$compat" "$asterisk_file" "$external_callback"' EXIT
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
@@ -47,12 +48,21 @@ assert_yq 'select(.kind == "Certificate" and .metadata.name == "core-home1-talos
 config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["kamailio.cfg"]' "$rendered")"
 tls_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-wss-config") | .data["tls.cfg"]' "$rendered")"
 private_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$rendered")"
+helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set asterisk.sipCore.kamailioInstance=internal \
+  --set asterisk.sipCore.ingressKamailioInstance=internal-wss > "$legacy_sipcore"
+legacy_sipcore_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$legacy_sipcore")"
+test "$(grep -Fc 'loadmodule "jansson.so"' <<<"$legacy_sipcore_config")" -eq 1
+echo 'PASS: legacy SIP Core owner loads jansson.so exactly once'
 ! grep -Fq 'listen=tcp:KAMAILIO_POD_IP:8088 name "sipcore_ws"' <<<"$private_config"
 ! grep -Fq 'loadmodule "websocket.so"' <<<"$private_config"
 grep -Fq '#!substdef "/SIPCORE_OWNER_POD/$env(POD_NAME)/"' <<<"$config"
 grep -Fq 'loadmodule "path.so"' <<<"$config"
 grep -Fq 'modparam("path", "use_received", 0)' <<<"$config"
 grep -Fq 'loadmodule "jansson.so"' <<<"$config"
+test "$(grep -Fc 'loadmodule "jansson.so"' <<<"$config")" -eq 1
 grep -Fq 'modparam("topos", "methods_noinitial", "OPTIONS")' <<<"$config"
 grep -Fq 'modparam("websocket", "keepalive_mechanism", 2)' <<<"$config"
 ! grep -Fq 'modparam("websocket", "lf_keepalive_compat", 1)' <<<"$config"
