@@ -30,7 +30,7 @@ RUN cd /usr/src/kamailio-6.1.4 \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
     && mkdir -p /out/usr/lib/x86_64-linux-gnu/kamailio/modules \
     && cp /usr/sbin/kamailio /out/usr/sbin-kamailio \
-    && for module in auth auth_db ctl corex db_postgres dialog jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
+    && for module in auth auth_db ctl corex db_postgres dialog dispatcher jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
          cp "/usr/lib/x86_64-linux-gnu/kamailio/modules/${module}.so" /out/usr/lib/x86_64-linux-gnu/kamailio/modules/; \
        done
 COPY test-kamailio.cfg /tmp/test-kamailio.cfg

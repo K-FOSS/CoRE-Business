@@ -13,6 +13,12 @@ spec:
   name: 'AVoIP {{ $instance.name }} registrar database'
   username: '{{ $database.username }}'
   serviceAccount: true
+  psql:
+    enabled: true
+    hostname: 'psql-local.{{ $root.Values.cluster.name }}.{{ $root.Values.datacenter }}.{{ $root.Values.region }}.mylogin.space'
+    crossplane:
+      terraformProvider: 'psql-{{ $root.Values.datacenter }}-{{ $root.Values.region }}'
+      crossplaneProvider: 'psql-{{ $root.Values.datacenter }}-{{ $root.Values.region }}'
   groups:
     - 'LDAPService'
   psql:

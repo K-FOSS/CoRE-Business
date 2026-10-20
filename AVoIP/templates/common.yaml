@@ -1268,7 +1268,7 @@ controllers:
         args:
           - |
             set -eu
-            psql -v ON_ERROR_STOP=1 -h '{{ $instance.registrar.database.host }}' -p '{{ $instance.registrar.database.port }}' <<'SQL'
+            psql -v ON_ERROR_STOP=1 "$REGISTRAR_DB_URL" <<'SQL'
             BEGIN;
             SELECT pg_advisory_xact_lock(670061, 6104);
             SELECT CASE WHEN to_regclass('public.version') IS NULL THEN 'true' ELSE 'false' END AS create_version \gset
@@ -1340,6 +1340,11 @@ controllers:
               secretKeyRef:
                 name: '{{ $instance.registrar.database.secretName }}'
                 key: 'database'
+          - name: REGISTRAR_DB_URL
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $instance.registrar.database.secretName }}'
+                key: 'psqlURI'
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
