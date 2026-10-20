@@ -77,16 +77,17 @@
       # Dragonfly executes quota admission atomically across all carrier
       # replicas. A stale call expires after maxDurationSeconds even if a pod
       # disappears before BYE. A failed Redis operation fails closed.
-      $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local concurrent=tonumber(ARGV[2]);local rate=tonumber(ARGV[3]);local duration=tonumber(ARGV[4]);local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
+      $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local concurrent_text,rate_text,duration_text=string.match(ARGV[2],'^([^|]+)|([^|]+)|([^|]+)$');local concurrent=tonumber(concurrent_text);local rate=tonumber(rate_text);local duration=tonumber(duration_text);local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
+      $var(quota_values) = "$var(managed_concurrent_calls)|$var(managed_calls_per_minute)|$var(managed_max_duration_seconds)";
       if ($var(managed_limit_scope) == "legacy") {
         $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
       } else {
         $var(outbound_quota_key) = "avoip:limit:" + $var(managed_limit_profile_id);
       }
       if (!redis_cmd(
-        "topos", "EVAL %s 1 %s %s %s %s %s", "$var(quota_script)",
+        "topos", "EVAL %s 1 %s %s %s", "$var(quota_script)",
         "$var(outbound_quota_key)",
-        "$ci", "$var(managed_concurrent_calls)", "$var(managed_calls_per_minute)", "$var(managed_max_duration_seconds)", "outbound_quota"
+        "$ci", "$var(quota_values)", "outbound_quota"
       )) {
         sl_send_reply("503", "Outbound Quota Unavailable");
         exit;
