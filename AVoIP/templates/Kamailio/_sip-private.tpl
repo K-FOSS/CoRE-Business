@@ -233,7 +233,7 @@
           {{- end }}
           sl_send_reply("403", "Destination Not Authorized"); exit;
         }
-        if ($var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
+        if ($var(side) != "sipcore" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
           $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
         }
         remove_hf("Route"); remove_hf("P-Asserted-Identity"); remove_hf("X-Core-Extension"); remove_hf("X-Core-Original-DID");
