@@ -7,6 +7,7 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
+{{- $sipCoreReturnHost := include "avoip.sip.sipCoreReturnHost" (dict "root" .) -}}
 {{- $sipCoreConfigured := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled -}}
 {{- $websocketHA := .Values.kamailio.websocketHA | default dict -}}
 {{- $sipCoreEnabled := and $sipCoreConfigured (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) $websocketHA.enabled $websocketHA.legacyOwner) -}}
@@ -76,7 +77,8 @@ data:
     listen=tls:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "SIPCORE_OWNER_POD.{{ $ownerHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_owner_tls"
     alias="SIPCORE_OWNER_POD.{{ $ownerHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}"
     {{- else }}
-    listen=tls:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $kamailioHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
+    listen=tls:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $sipCoreReturnHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
+    alias="{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}"
     {{- end }}
     {{- end }}
 

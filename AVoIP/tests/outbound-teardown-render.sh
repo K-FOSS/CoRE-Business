@@ -76,6 +76,8 @@ grep -Fq 'certificate = /etc/kamailio/mtls/tls.crt' <<< "$freeswitch_tls"
 # socket, exact SNI, internal trust bundle, and Vault mTLS client identity.
 sipcore_return_host="$(yq -r 'select(.kind == "Certificate") | .spec.dnsNames[] | select(contains("sipcore-return"))' "$render" | head -n1)"
 [[ -n "$sipcore_return_host" ]]
+grep -Fq "advertise \"$sipcore_return_host\":5063 name \"sipcore_private_tls\"" <<< "$internal_cfg"
+grep -Fq "alias=\"$sipcore_return_host:5063\"" <<< "$internal_cfg"
 sipcore_client_profile="$(sed -n "/server_name = ${sipcore_return_host}/,/certificate = \/etc\/kamailio\/mtls\/tls.crt/p" <<< "$carrier_tls")"
 grep -Fq "server_name = $sipcore_return_host" <<< "$sipcore_client_profile"
 grep -Fq 'verify_certificate = yes' <<< "$sipcore_client_profile"

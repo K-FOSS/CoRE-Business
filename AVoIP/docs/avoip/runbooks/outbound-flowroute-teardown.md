@@ -1,12 +1,26 @@
 # Outbound Flowroute dialog teardown
 
-The active [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml)
+The active [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 renders a three-replica carrier Kamailio tier and a separate `internal`
 private-SBC. The tiers use site-local TOPOS stores in Dragonfly databases 51
 and 52. Reconciliation and shared Dragonfly ownership remain in Backplane;
 this chart supplies each tier's routes and Secret references.
 
 ## Routing correction
+
+The SIP Core return listener on port 5063 must advertise and recognize the
+exact `sipcore-return` Service hostname used by its Record-Route URI and TLS
+certificate. A live Home1 trace showed ACK and BYE arriving on that listener
+while `check_flow_token()` returned `-2` (the top Route host was not recognized
+as this Kamailio); the route then consumed repeated local Routes and attempted
+to resolve the Asterisk Service Contact as a WebSocket alias, returning 404.
+The rendered listener previously advertised the generic internal Kamailio
+Service hostname and did not declare the `sipcore-return` hostname as an
+alias. The chart now advertises the exact return hostname and adds it as an
+alias on the dedicated listener. This makes the SIP URI identity, TLS server
+profile and Kamailio local-Route identity agree. Rendered assertions cover the
+advertised hostname and alias; live acceptance still requires ACK and BYE to
+complete on a fresh call after reconciliation.
 
 An outbound INVITE crosses both Kamailio tiers. The carrier tier restores its
 TOPOS state and forwards a carrier-originated in-dialog request to the
