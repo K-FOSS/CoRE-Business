@@ -27,7 +27,6 @@ type sipProvider struct {
 	ID              string             `json:"id"`
 	Host            string             `json:"host"`
 	Name            string             `json:"name"`
-	EgressPrefix    string             `json:"egress_prefix,omitempty"`
 	SupportedCodecs []string           `json:"supported_codecs,omitempty"`
 	CodecOrder      []string           `json:"codec_order,omitempty"`
 	CIDRs           []string           `json:"cidrs"`
@@ -59,8 +58,6 @@ type extensionRoute struct {
 	AuthorizedCallerIDs []string `json:"authorized_caller_ids,omitempty"`
 	AuthorizedProviders []string `json:"authorized_providers,omitempty"`
 	Site                string   `json:"site"`
-	AllowedDestinations []string `json:"allowed_destinations,omitempty"`
-	BlockedDestinations []string `json:"blocked_destinations,omitempty"`
 }
 
 // Legacy records carry one caller ID and provider. New records can authorize
@@ -197,7 +194,7 @@ var extensionID = regexp.MustCompile(`^[0-9]{2,12}$`)
 var adminUserID = regexp.MustCompile(`^[A-Za-z0-9_.@:-]{1,128}$`)
 var correlationID = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,128}$`)
 var sipHost = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,252}$`)
-var nanpE164 = regexp.MustCompile(`^\+1[2-9][0-9]{2}[2-9][0-9]{6}$`)
+var plusOneNumber = regexp.MustCompile(`^\+1[0-9]{10}$`)
 var upstreamCodecs = map[string]bool{"OPUS": true, "G722": true, "PCMU": true, "PCMA": true}
 
 func validateCodecOrder(codecs []string) error {
@@ -250,7 +247,7 @@ func (c sipCatalog) validate() error {
 	providers := map[string]sipProvider{}
 	prefixes := map[string][]netip.Prefix{}
 	for _, p := range c.Providers {
-		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.EgressPrefix) > 32 || (p.EgressPrefix != "" && !regexp.MustCompile(`^[0-9]+$`).MatchString(p.EgressPrefix)) || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 || validateCodecOrder(p.SupportedCodecs) != nil || validateCodecOrder(p.CodecOrder) != nil || (len(p.CodecOrder) > 0 && !codecOrderSubset(p.CodecOrder, p.SupportedCodecs)) {
+		if !providerID.MatchString(p.ID) || !sipHost.MatchString(p.Host) || len(p.Name) > 100 || len(p.CIDRs) > 100 || len(p.CallerIDs) > 1000 || validateCodecOrder(p.SupportedCodecs) != nil || validateCodecOrder(p.CodecOrder) != nil || (len(p.CodecOrder) > 0 && !codecOrderSubset(p.CodecOrder, p.SupportedCodecs)) {
 			return errors.New("invalid SIP provider")
 		}
 		if _, ok := providers[p.ID]; ok {
@@ -276,7 +273,7 @@ func (c sipCatalog) validate() error {
 			}
 		}
 		for _, v := range p.CallerIDs {
-			if n, ok := normalizePhoneNumber(v.Number); !ok || n != v.Number || strings.TrimSpace(v.Evidence) == "" || len(v.Evidence) > 512 {
+			if !plusOneNumber.MatchString(v.Number) || strings.TrimSpace(v.Evidence) == "" || len(v.Evidence) > 512 {
 				return errors.New("verified caller ID needs canonical number and independent evidence")
 			}
 		}
@@ -296,8 +293,8 @@ func (c sipCatalog) validate() error {
 	}
 	dids := map[string]bool{}
 	for _, d := range c.DIDs {
-		number, ok := normalizePhoneNumber(d.Number)
-		if !ok || number != d.Number || dids[number] || len(d.Providers) == 0 || len(d.Providers) > 50 || validateCodecOrder(d.CodecOrder) != nil {
+		number := d.Number
+		if !plusOneNumber.MatchString(number) || dids[number] || len(d.Providers) == 0 || len(d.Providers) > 50 || validateCodecOrder(d.CodecOrder) != nil {
 			return errors.New("invalid/duplicate DID or missing allowed providers")
 		}
 		dids[number] = true
@@ -338,7 +335,7 @@ func (c sipCatalog) validate() error {
 				return errors.New("invalid destination extension")
 			}
 		case "did":
-			if n, ok := normalizePhoneNumber(d.Destination); !ok || n != d.Destination || !verify(d.OutboundProvider, d.CallerID, d.Site) {
+			if !plusOneNumber.MatchString(d.Destination) || !verify(d.OutboundProvider, d.CallerID, d.Site) {
 				return errors.New("DID forwarding needs a valid destination and verified outbound caller ID")
 			}
 		case "sip":
@@ -352,7 +349,7 @@ func (c sipCatalog) validate() error {
 	}
 	seen := map[string]bool{}
 	for _, e := range c.Extensions {
-		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || (e.AssignedUser != "" && !adminUserID.MatchString(e.AssignedUser)) || seen[e.Extension] || len(e.AllowedDestinations) > 100 || len(e.BlockedDestinations) > 100 {
+		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || (e.AssignedUser != "" && !adminUserID.MatchString(e.AssignedUser)) || seen[e.Extension] {
 			return errors.New("invalid or duplicate extension")
 		}
 		callerIDs := e.callerIDs()
@@ -362,8 +359,7 @@ func (c sipCatalog) validate() error {
 		}
 		seenCallerIDs := map[string]bool{}
 		for _, callerID := range callerIDs {
-			number, valid := normalizePhoneNumber(callerID)
-			if !valid || number != callerID || seenCallerIDs[callerID] {
+			if !plusOneNumber.MatchString(callerID) || seenCallerIDs[callerID] {
 				return errors.New("extension caller IDs must be unique canonical E.164 numbers")
 			}
 			seenCallerIDs[callerID] = true
@@ -391,16 +387,6 @@ func (c sipCatalog) validate() error {
 			}
 			if !verifiedSomewhere {
 				return errors.New("each extension caller ID must be verified by an authorized provider at its egress site")
-			}
-		}
-		for _, destinations := range [][]string{e.AllowedDestinations, e.BlockedDestinations} {
-			seenDestinations := make(map[string]bool, len(destinations))
-			for _, destination := range destinations {
-				normalized, valid := normalizePhoneNumber(destination)
-				if !valid || normalized != destination || seenDestinations[destination] {
-					return errors.New("extension destination restrictions must be unique canonical E.164 numbers")
-				}
-				seenDestinations[destination] = true
 			}
 		}
 		seen[e.Extension] = true
@@ -568,22 +554,16 @@ func previewOutboundRoute(c sipCatalog, request outboundRoutePreviewRequest, act
 	if extension.Site != request.Site {
 		return deny("extension_site_mismatch")
 	}
-	destination, validDestination := normalizePhoneNumber(request.Destination)
-	if !validDestination || destination != request.Destination || !nanpE164.MatchString(destination) {
-		return deny("destination_not_supported_by_current_nanp_route")
+	destination := request.Destination
+	if !plusOneNumber.MatchString(destination) {
+		return deny("destination_must_be_full_plus_one_number")
 	}
 	result.NormalizedDestination = destination
-	if len(extension.AllowedDestinations) > 0 && !containsString(extension.AllowedDestinations, destination) {
-		return deny("destination_not_in_extension_allowlist")
-	}
-	if containsString(extension.BlockedDestinations, destination) {
-		return deny("destination_blocked_for_extension")
-	}
 	callerIDs := extension.callerIDs()
 	callerID := callerIDs[0]
 	if request.CallerID != "" {
-		requested, valid := normalizePhoneNumber(request.CallerID)
-		if !valid || requested != request.CallerID {
+		requested := request.CallerID
+		if !plusOneNumber.MatchString(requested) {
 			return deny("invalid_caller_id")
 		}
 		callerID = requested
@@ -605,9 +585,6 @@ func previewOutboundRoute(c sipCatalog, request outboundRoutePreviewRequest, act
 	result.SelectedProvider = provider.ID
 	result.FailoverOrder = append(result.FailoverOrder, result.EligibleProviders...)
 	result.EgressDestination = destination
-	if provider.EgressPrefix != "" {
-		result.EgressDestination = provider.EgressPrefix + "*" + destination
-	}
 	result.CodecOrder = effectiveProviderCodecOrder(provider)
 	return result
 }
@@ -651,8 +628,8 @@ func previewInboundRoute(c sipCatalog, request inboundRoutePreviewRequest, activ
 	if activeSite != "" && request.Site != activeSite {
 		return deny("site_not_available_in_this_admin_context")
 	}
-	number, valid := normalizePhoneNumber(request.DID)
-	if !valid || number != request.DID {
+	number := request.DID
+	if !plusOneNumber.MatchString(number) {
 		return deny("invalid_did")
 	}
 	result.NormalizedDID = number
@@ -767,7 +744,7 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, p := range c.Providers {
 		providerCodecsForRoute := effectiveProviderCodecOrder(p)
-		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "egress_prefix": p.EgressPrefix, "codec_flags": codecRTPEngineFlags(providerCodecsForRoute)})
+		providers = append(providers, map[string]string{"id": p.ID, "cidrs": strings.Join(p.CIDRs, ","), "host": p.Host, "caller_ids": verifiedNumbers(p.CallerIDs), "codec_flags": codecRTPEngineFlags(providerCodecsForRoute)})
 		providerCodecFlags[p.ID] = codecRTPEngineFlags(providerCodecsForRoute)
 	}
 	for _, d := range c.DIDs {
@@ -784,7 +761,7 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			}
 			providerFlags[providerID] = flags
 		}
-		dids[strings.TrimPrefix(d.Number, "+")] = map[string]any{"providers": "," + strings.Join(d.Providers, ",") + ",", "site": d.Site, "kind": d.Kind, "destination": d.Destination, "host": t.Host, "port": t.Port, "codec_flags_by_provider": providerFlags}
+		dids[d.Number] = map[string]any{"providers": "," + strings.Join(d.Providers, ",") + ",", "site": d.Site, "kind": d.Kind, "destination": d.Destination, "host": t.Host, "port": t.Port, "codec_flags_by_provider": providerFlags}
 	}
 	for _, e := range c.Extensions {
 		t, ok := targets[e.Site]
@@ -806,7 +783,7 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
-		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": provider.EgressPrefix, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "allowed_destinations": "," + strings.Join(e.AllowedDestinations, ",") + ",", "blocked_destinations": "," + strings.Join(e.BlockedDestinations, ",") + ","}
+		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder)}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}
@@ -935,25 +912,21 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 					providerID = provider.ID
 					gateway = provider.Gateways[site]
 					codecOrder = effectiveProviderCodecOrder(provider)
-					normalizedDestination := destination
-					if provider.EgressPrefix != "" {
-						normalizedDestination = strings.TrimPrefix(destination, provider.EgressPrefix+"*")
-					}
-					if canonicalDestination, ok := normalizePhoneNumber(normalizedDestination); ok {
+					if plusOneNumber.MatchString(destination) {
 						for _, d := range c.DIDs {
 							if d.Number == callerID && containsString(d.Providers, providerID) && len(d.CodecOrder) > 0 {
 								codecOrder = d.CodecOrder
 								break
 							}
 						}
-						bridge = managedGatewayBridge(gateway, canonicalDestination)
+						bridge = managedGatewayBridge(gateway, destination)
 					}
 				}
 			}
 		}
 	}
 	if context == "core-managed-inbound" {
-		did, _ := normalizePhoneNumber(r.Form.Get("variable_sip_h_X-Core-Original-DID"))
+		did := r.Form.Get("variable_sip_h_X-Core-Original-DID")
 		for _, d := range c.DIDs {
 			if d.Number == did && d.Site == site {
 				detectFax = d.detectFax()

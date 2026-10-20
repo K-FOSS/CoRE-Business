@@ -114,6 +114,8 @@ helm template core-home1-talos-prod "$chart_dir" \
   -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
   --set asterisk.enabled=true \
   --set asterisk.sipCore.externalCallback.enabled=true \
+  --set avoipAdmin.enabled=true \
+  --set avoipAdmin.routing.enabled=true \
   --set freeswitch.ivr.enabled=true \
   --set-string freeswitch.ivr.extensions[0]=1234 \
   --set freeswitch.flowrouteOutbound.enabled=true \
@@ -136,21 +138,17 @@ helm template core-home1-talos-prod "$chart_dir" \
 external_asterisk="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$external_callback")"
 external_freeswitch="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$external_callback")"
 external_public="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$external_callback")"
-grep -Fq 'REGEX("^1[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})' <<<"$external_asterisk"
-grep -Fq 'REGEX("^[+]?[0-9][0-9 .()-]*$" ${CALLERID(num)})' <<<"$external_asterisk"
-grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1(+${AVOIP_CALLBACK_DIGITS}))' <<<"$external_asterisk"
-grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-external-callback-internal,s,1(' <<<"$external_asterisk"
-grep -Fq 'Originate(Local/${ARG1}@sipcore-external-callback-contact/n' <<<"$external_asterisk"
-grep -Fq 'Originate(Local/${ARG1}@sipcore-external-callback-internal-contact/n' <<<"$external_asterisk"
-grep -Fq 'exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)=callback-test-did)' <<<"$external_asterisk"
-grep -Fq 'Dial(PJSIP/${EXTEN}@freeswitch,30,gb(sipcore-external-callback-headers^s^1))' <<<"$external_asterisk"
-grep -Fq 'Dial(${PJSIP_DIAL_CONTACTS(' <<<"$external_asterisk"
-! grep -Fq 'PJSIP/@freeswitch' <<<"$external_asterisk"
-! grep -Fq 'AVOIP_CALLBACK_INTERNAL_TARGET' <<<"$external_asterisk"
-grep -Fq 'Set(PJSIP_HEADER(add,X-AVOIP-External-Callback)=true)' <<<"$external_asterisk"
-grep -Fq 'condition field="${sip_h_X-AVOIP-External-Callback}" expression="^true$"' <<<"$external_freeswitch"
-grep -Fq 'expression="^\+1[2-9][0-9]{2}[2-9][0-9]{6}$"' <<<"$external_freeswitch"
-grep -Fq 'effective_caller_id_number=callback-test-did' <<<"$external_freeswitch"
+grep -Fq 'REGEX("^\\+1[0-9]{10}$" ${CALLERID(num)})' <<<"$external_asterisk"
+grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1(${CALLERID(num)}))' <<<"$external_asterisk"
+grep -Fq 'same => n,Playback(hello-world)' <<<"$external_asterisk"
+grep -Fq 'Originate(Local/${ARG1}@sipcore-external-callback-contact/n,exten,from-external-callback,66,1,70,a)' <<<"$external_asterisk"
+grep -Fq 'exten => _+1XXXXXXXXXX,1,Set(CALLERID(num)=callback-test-did)' <<<"$external_asterisk"
+grep -Fq 'Dial(PJSIP/${EXTEN}@carrier-outbound,30,b(sipcore-managed-outbound-headers^s^1(1234)))' <<<"$external_asterisk"
+grep -Fq 'PJSIP_HEADER(add,X-Core-Extension)=${ARG1}' <<<"$external_asterisk"
+! grep -Fq 'X-AVOIP-External-Callback' <<<"$external_asterisk"
+! grep -Fq 'authenticated-external-callback' <<<"$external_freeswitch"
+! grep -Fq 'flowroute-rendezvous' <<<"$external_freeswitch"
+! grep -Fq 'sofia/gateway/flowroute-tls/' <<<"$external_freeswitch"
 callback_handoff="$(sed -n '/<extension name="silent-ivr-destination-1234">/,/<\/extension>/p' <<<"$external_public")"
 grep -Fq 'AVoIP silent IVR handing callback request to Asterisk' <<<"$callback_handoff"
 grep -Fq 'application="bridge" data="sofia/gateway/asterisk/${destination_number}"' <<<"$callback_handoff"
@@ -172,7 +170,7 @@ grep -Fq 'sofia/gateway/flowroute-tls/+1${destination_number}' <<<"$external_fre
 grep -Fq 'authenticated-external-callback-plus-national-format' <<<"$external_freeswitch"
 grep -Fq 'destination-format=plus-national-nanp' <<<"$external_freeswitch"
 grep -Fq 'sofia/gateway/flowroute-tls/+1${destination_number:1}' <<<"$external_freeswitch"
-echo 'PASS: opt-in external callback validates ANI, marks the authenticated egress request, and presents the configured DID'
+echo 'PASS: external callback preserves full +1 numbers and uses dynamic carrier routing'
 echo 'PASS: callback IVR handoff bypasses the generic GG bridge-failure fallback'
 grep -Fq 'exten => 5550100,1,Dial(${PJSIP_DIAL_CONTACTS(7101)},30)' "$rendered"
 grep -Fq 'exten => 5550101,1,Dial(${PJSIP_DIAL_CONTACTS(7101)},30)' "$rendered"

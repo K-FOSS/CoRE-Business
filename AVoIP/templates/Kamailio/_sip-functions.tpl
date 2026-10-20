@@ -6,7 +6,7 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
+{{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled))) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     {{- if and (or .Values.kamailio.functions.media $sipCoreEnabled) (include "avoip.rtpengine.enabled" . | trim) .Values.freeswitch.enabled }}
     modparam(
@@ -125,7 +125,7 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
+{{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled))) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     request_route {
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
@@ -533,7 +533,7 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
+{{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled))) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
     route[FROM_CARRIER] {
       force_rport();
 
@@ -646,7 +646,7 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
+{{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled))) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     route[RR_CARRIER_TO_BACKEND] {
       # Preserve the transport the carrier used for the dialog. TOPOS derives
@@ -700,7 +700,7 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
+{{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled))) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     route[IN_DIALOG] {
       if (!is_method("ACK|BYE|UPDATE|INVITE|INFO|REFER|PRACK|NOTIFY")) {
@@ -992,7 +992,7 @@
 {{- $kamailioPubHost := include "avoip.sip.kamailioPubHost" . -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) -}}
 {{- $freeswitchHost := default (printf "%s.%s.svc.%s" $backendService $.Release.Namespace (required "cluster.domain is required for SIP backend routing" $.Values.cluster.domain)) .Values.freeswitch.sip.serviceHost -}}
-{{- $carrierTrafficLogging := and (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled)) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
+{{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled))) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     route[RELAY] {
       if (!t_relay()) {

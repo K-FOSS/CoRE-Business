@@ -22,8 +22,8 @@
     {{- fail "Asterisk SIP Core requires a configured enabled private-sbc matching asterisk.sipCore.kamailioInstance" -}}
   {{- end -}}
   {{- if .Values.asterisk.sipCore.externalCallback.enabled -}}
-    {{- if or (not .Values.freeswitch.ivr.enabled) (not .Values.freeswitch.flowrouteOutbound.enabled) -}}
-      {{- fail "Asterisk external callback requires the FreeSWITCH IVR and Flowroute outbound" -}}
+    {{- if or (not .Values.freeswitch.ivr.enabled) (not .Values.avoipAdmin.enabled) (not .Values.avoipAdmin.routing.enabled) -}}
+      {{- fail "Asterisk external callback requires the FreeSWITCH IVR and dynamic AVoIP Admin routing" -}}
     {{- end -}}
     {{- if empty $.Values.avoip.did -}}
       {{- fail "Asterisk external callback requires the configured main voice DID in avoip.did" -}}

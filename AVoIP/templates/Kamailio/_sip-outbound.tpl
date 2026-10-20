@@ -69,22 +69,9 @@
       sl_send_reply("503", "Admin Routing Required");
       exit;
       {{- end }}
-      if ($rU =~ "^[2-9][0-9]{9}$") {
-        $rU = "+1" + $rU;
-      } else if ($rU =~ "^1[2-9][0-9]{9}$") {
-        $rU = "+" + $rU;
-      }
-      if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") ||
-          $rU =~ "^\\+1900" ||
-          $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") {
-        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-        hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=destination_not_allowed extension=$hdr(X-Core-Extension) site={{ $.Values.region }} call_id=$ci method=$rm destination_class=restricted_or_invalid");
-        {{- end }}
+      if (!($rU =~ "^\\+1[0-9]{10}$")) {
         sl_send_reply("403", "Destination Not Authorized");
         exit;
-      }
-      if ($var(side) != "sipcore" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
-        $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
       }
 
       # Dragonfly executes quota admission atomically across all carrier

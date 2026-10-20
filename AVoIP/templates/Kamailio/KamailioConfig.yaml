@@ -13,7 +13,7 @@
 {{- $ownerService := include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") -}}
 {{- $ownerHost := printf "%s.%s.svc.%s" $ownerService .Release.Namespace (required "cluster.domain is required for Kamailio owner addressing" .Values.cluster.domain) -}}
 {{- $rawSipLogging := and (or .Values.kamailio.sipLogging.diagnostics.enabled (default false .Values.kamailio.sipLogging.rawInbound)) (not $sipCoreConfigured) -}}
-{{- $carrierTrafficLogging := and (not $sipCoreConfigured) (default false .Values.kamailio.sipLogging.carrierTraffic) -}}
+{{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not $sipCoreConfigured)) (default false .Values.kamailio.sipLogging.carrierTraffic) -}}
 {{- if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.udpEnabled (not .Values.kamailio.publicExposure.sip.directService.enabled) -}}
 {{- fail "public UDP SIP dialogs require kamailio.publicExposure.sip.directService.enabled so the advertised UDP Contact is reachable" -}}
 {{- end -}}

@@ -408,21 +408,16 @@ behavior.
   fan-out behavior.
   Separately, the public FreeSWITCH IVR callback is controlled by
   `asterisk.sipCore.externalCallback.enabled` and is disabled by default. When
-  enabled, selecting the reserved callback destination returns the call to
-  the caller identity delivered on the authenticated FreeSWITCH-to-Asterisk
-  leg. Asterisk accepts only an exact configured internal account identity or
-  a NANP-shaped caller identity. The external callback presents the configured
-  main voice DID and returns through FreeSWITCH's existing Flowroute gateway.
-  Kamailio converts an 11-digit NANP From user to E.164 before checking the
-  provider's verified caller ID list and forwarding the carrier leg.
-  A marker header, the authenticated peer identity,
-  and the NANP destination pattern are all required by the FreeSWITCH egress
-  route. This does not independently attest the caller identity, so deployment
-  relies on carrier-side ANI validation. The feature is enabled only in the
-  YVR site values. If the received caller identity exactly matches a
-  configured SIP Core account, the callback instead rings that account's
-  registered contacts in parallel. The internal SIP Core callback remains
-  separately available to authenticated extension users.
+  enabled, it returns the caller identity over the authenticated
+  FreeSWITCH-to-Asterisk leg. Asterisk accepts an exact configured internal
+  account identity or a number already in full `+1` plus ten digit form. It
+  passes that value unchanged to Asterisk's `carrier-outbound` endpoint, where
+  Admin's dynamic provider policy selects the authorized provider and caller
+  ID. FreeSWITCH does not select a static provider route or normalize numbers.
+  Carrier-side ANI validation remains an operational trust assumption for the
+  inbound identity. The feature is enabled only in YVR site values. If the
+  received identity exactly matches a configured SIP Core account, the
+  callback instead rings that account's registered contacts in parallel.
   The `gg-audio` route emits correlated start, media-established, and playback
   completion logs with codec and outbound RTP packet/byte counters. It sends a
   configurable 100 ms `silence_stream` RTP lead-in before the remote audio by

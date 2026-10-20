@@ -132,13 +132,11 @@ current verification evidence and a gateway at the selected site. The first
 caller ID is the runtime default; for that identity, the first currently
 eligible provider is used. Route preview can check another authorized caller ID
 and shows each provider removed by verification or missing site gateway. The
-**Extensions** screen also stores assignment metadata, exact destination
-allow/block lists, display name and explicit enabled/outbound-enabled flags.
-Older catalog entries without the list fields keep their singular caller ID and
-provider behavior, and entries without enablement flags retain their prior
-enabled behavior. Disabled entries stay identifiable in the immutable routing
-snapshot, but Kamailio rejects their outbound calls with a distinct reason
-(`extension_disabled` or `outbound_disabled`) in Homer. This screen governs
+**Extensions** screen also stores assignment metadata, display name and
+explicit enabled/outbound-enabled flags. Entries without enablement flags retain
+their prior enabled behavior. Disabled entries stay identifiable in the
+immutable routing snapshot, but Kamailio rejects their outbound calls with a
+distinct reason (`extension_disabled` or `outbound_disabled`) in Homer. This screen governs
 authorization; it does not rewrite Asterisk endpoint credentials or report
 live registration state. Registration attempts and responses are correlated
 in Homer using the SIP Call-ID. The preview's `failover_order` is the remaining
@@ -152,25 +150,13 @@ against the current catalog, then displays the destination and policy revision.
 Provider health and failover targets are not represented by the current
 catalog, so the preview reports provider health as `not_reported`.
 
-The editor also accepts an optional assigned Authentik user ID/username and
-exact E.164 allow/block lists for destinations. When an allow list is present,
-only those exact numbers pass; block-list entries always deny. Empty lists leave
-the existing NANP policy in force. The assigned-user value is Admin metadata,
-not SIP authentication, and is omitted from Kamailio's runtime snapshot. No
-extension secret or authentication identity is changed by these edits.
+The editor accepts an optional assigned Authentik user ID/username as Admin metadata. It does not change SIP authentication or extension identity. Voice destinations, DIDs and caller IDs must already use the full `+1` plus ten digit representation; the runtime preserves that value across SIP hops. Provider egress prefixes and per-extension destination allow/block lists are not part of the routing catalog.
 
-Each extension card also has a **Preview route** action. It applies the current
-extension, site, caller-ID, destination and provider verification rules and
-returns the policy revision, selected provider, provider-specific egress prefix
-and effective codec order. Provider health is reported as `not_reported`: the
-catalog does not yet contain live health or failover state, so the preview does
-not claim that a provider is currently reachable.
+Each extension card also has a **Preview route** action. It checks the current extension, site, exact caller ID, full-format destination and provider verification, then returns the policy revision, selected provider and effective codec order. Provider health is reported as `not_reported`: the catalog does not yet contain live health or failover state.
 
 Assignments are evaluated only from the existing authenticated
 Asterisk/private-SBC path. From/PAI supplied by an untrusted endpoint is never
-authorization to select a caller ID. The existing outbound NANP and premium-rate
-restrictions and carrier quota remain; this change does not authorize unrestricted
-international calling. Emergency/service dialing stays on the existing routes.
+authorization to select a caller ID. Destinations must use the full `+1` plus ten digit format. The runtime does not apply destination allow/block lists or premium-rate number filters. Extension/provider authorization, caller ID verification and carrier quota remain in force.
 On the second Kamailio hop, the site-private peer is accepted only over its
 authenticated TLS identity. That hop revalidates the stamped extension against
 the current Admin snapshot and applies the authorized caller ID; it does not

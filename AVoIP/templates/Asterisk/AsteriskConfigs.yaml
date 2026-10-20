@@ -185,9 +185,8 @@ data:
       same => n,Hangup()
     {{- else if eq (toString .) (toString $.Values.asterisk.sipCore.helloCallbackExtension) }}
     {{- if $.Values.asterisk.sipCore.externalCallback.enabled }}
-    ; Return only to a configured internal account or a valid NANP caller
-    ; identity. This FreeSWITCH peer is TLS-authenticated; external callback
-    ; egress is separately opt-in and header-gated.
+    ; Return only to a configured internal account or an already canonical
+    ; +1 number. Dynamic AVoIP policy authorizes the callback egress leg.
     exten => {{ . }},1,Answer()
       same => n,NoOp(AVoIP callback greeting start uniqueid=${UNIQUEID} native=${CHANNEL(audionativeformat)} read=${CHANNEL(audioreadformat)} write=${CHANNEL(audiowriteformat)})
       same => n,Playback(hello-world)
@@ -196,20 +195,15 @@ data:
       {{- range $.Values.asterisk.sipCore.extensions }}
       same => n,GotoIf($["${CALLERID(num)}" = "{{ .number }}"]?internal-{{ .number }})
       {{- end }}
-      same => n,GotoIf($[${REGEX("^[+]?[0-9][0-9 .()-]*$" ${CALLERID(num)})}]?normalize:reject)
-      same => n(normalize),Set(AVOIP_CALLBACK_DIGITS=${FILTER(0-9,${CALLERID(num)})})
-      same => n,GotoIf($[${REGEX("^1[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})}]?valid)
-      same => n,GotoIf($[${REGEX("^[2-9][0-9]{2}[2-9][0-9]{6}$" ${AVOIP_CALLBACK_DIGITS})}]?national:reject)
-      same => n(national),Set(AVOIP_CALLBACK_DIGITS=1${AVOIP_CALLBACK_DIGITS})
-      ; Pass the validated target as a hangup-handler argument. Do not rely on
-      ; channel-variable inheritance through Originate's paired Local channels.
-      same => n(valid),Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1(+${AVOIP_CALLBACK_DIGITS}))
+      ; Preserve the caller's already canonical +1 E.164 identity unchanged.
+      same => n,GotoIf($[${REGEX("^\\+1[0-9]{10}$" ${CALLERID(num)})}]?valid:reject)
+      same => n(valid),Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1(${CALLERID(num)}))
       same => n,Hangup()
       {{- range $.Values.asterisk.sipCore.extensions }}
       same => n(internal-{{ .number }}),Set(CHANNEL(hangup_handler_push)=sipcore-external-callback-internal,s,1({{ .number }}))
       same => n,Hangup()
       {{- end }}
-      same => n(reject),NoOp(AVoIP external callback rejected: caller identity is not a valid NANP number)
+      same => n(reject),NoOp(AVoIP external callback rejected: caller identity is not in full +1 number format)
       same => n,Hangup(21)
     {{- else }}
     {{- if gt (len $.Values.asterisk.sipCore.extensions) 0 }}
@@ -253,7 +247,7 @@ data:
     {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.routing.enabled }}
     ; Admin mode sends the authenticated extension in a fresh, dialplan-stamped
     ; header. Kamailio selects and applies the authorized caller ID from policy.
-    exten => _+1NXXNXXXXXX,1,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination_class=nanp)
+    exten => _+1XXXXXXXXXX,1,NoOp(AVoIP outbound start linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination_class=nanp)
       same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,120,b(sipcore-managed-outbound-headers^s^1({{ .number }})))
       same => n,NoOp(AVoIP managed outbound result linkedid=${CHANNEL(linkedid)} uniqueid=${UNIQUEID} extension={{ .number }} destination_class=nanp dialstatus=${DIALSTATUS} hangupcause=${HANGUPCAUSE} causekeys=${HANGUPCAUSE_KEYS()})
       same => n,Hangup()
@@ -325,14 +319,11 @@ data:
     exten => s,1,Originate(Local/${ARG1}@sipcore-external-callback-internal-contact/n,exten,from-external-callback,{{ .Values.asterisk.sipCore.ggAudioExtension }},1,{{ add (int .Values.asterisk.sipCore.externalCallback.delaySeconds) (int .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds) 10 }},a)
       same => n,Return()
     [sipcore-external-callback-contact]
-    exten => _+1NXXNXXXXXX,1,Set(CALLERID(num)={{ .Values.avoip.did }})
+    exten => _+1XXXXXXXXXX,1,Set(CALLERID(num)={{ .Values.avoip.did }})
       same => n,Set(CALLERID(name)=Callback)
       same => n,Wait({{ .Values.asterisk.sipCore.externalCallback.delaySeconds }})
-      same => n,Dial(PJSIP/${EXTEN}@freeswitch,{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }},gb(sipcore-external-callback-headers^s^1))
+      same => n,Dial(PJSIP/${EXTEN}@carrier-outbound,{{ .Values.asterisk.sipCore.externalCallback.ringTimeoutSeconds }},b(sipcore-managed-outbound-headers^s^1({{ .Values.asterisk.sipCore.helloCallbackExtension }})))
       same => n,Hangup()
-    [sipcore-external-callback-headers]
-    exten => s,1,Set(PJSIP_HEADER(add,X-AVOIP-External-Callback)=true)
-      same => n,Return()
     [sipcore-external-callback-internal-contact]
     {{- range .Values.asterisk.sipCore.extensions }}
     exten => {{ .number }},1,Set(CALLERID(num)={{ $.Values.avoip.did }})

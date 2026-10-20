@@ -50,8 +50,8 @@
       # A verified inter-site handoff uses the canonical DID in Request-URI.
       if ($var(side) == "inter-site") $var(managed_did_user) = $rU;
       else $var(managed_did_user) = $tU;
-      if (!($var(managed_did_user) =~ "^\\+?[1-9][0-9]{7,14}$")) return;
-      $var(managed_number) = $(var(managed_did_user){re.subst,/^\+//});
+      if (!($var(managed_did_user) =~ "^\\+1[0-9]{10}$")) return;
+      $var(managed_number) = $var(managed_did_user);
       if ($var(managed_json) == $null) {
         sl_send_reply("503", "Routing Snapshot Unavailable"); exit;
       }
@@ -75,14 +75,14 @@
       jansson_get("$var(managed_provider)", "$var(managed_provider_codec_flags)", "$var(managed_codec_flags)");
       remove_hf("X-Core-Original-DID"); remove_hf("X-Core-Extension"); remove_hf("X-Core-Provider");
       append_hf("X-Core-Provider: $var(managed_provider)\r\n");
-      append_hf("X-Core-Original-DID: +$var(managed_number)\r\n");
+      append_hf("X-Core-Original-DID: $var(managed_number)\r\n");
       $ru = "sips:" + $var(managed_number) + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";
       dlg_manage(); $dlg_var(managed_target) = $var(managed_host);
       if ($var(managed_codec_flags) != $null && $var(managed_codec_flags) != "") {
         $dlg_var(managed_codec_flags) = $var(managed_codec_flags);
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=selected direction=inbound did=+$var(managed_number) provider=$var(managed_provider) flags=$var(managed_codec_flags) call_id=$ci");
+        hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=selected direction=inbound did=$var(managed_number) provider=$var(managed_provider) flags=$var(managed_codec_flags) call_id=$ci");
         {{- end }}
       }
       route(RR_CARRIER_TO_BACKEND);
@@ -105,17 +105,16 @@
       # managed_extension_id is populated only by the Asterisk-only TLS
       # listener from its dialplan-stamped identity header, or by a verified
       # inter-site handoff below. SIP From is caller ID, not extension identity.
-      $var(managed_egress_prefix) = "";
       if (!is_method("INVITE") || has_totag() || !($var(managed_extension_id) =~ "^[0-9]{2,12}$")) return;
       xlog("L_INFO", "AVOIP_POLICY managed_extension decision=evaluate extension=$var(managed_extension_id) side=$var(side) request_user=$rU from_user=$fU call_id=$ci method=$rm\n");
-      if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") || $rU =~ "^\\+1900" || $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") {
+      if (!($rU =~ "^\\+1[0-9]{10}$")) {
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=destination_not_allowed extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm destination_class=restricted_or_invalid");
         {{- end }}
         return;
       }
       if ($var(managed_json) == $null) {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_missing call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_missing call_id=$ci extension=$var(managed_extension_id) destination_format=plus1-10\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=snapshot_unavailable extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm");
         {{- end }}
@@ -123,7 +122,7 @@
       }
       $var(managed_path) = "extensions." + $var(managed_extension_id);
       if (!jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)") || $var(managed_route) == $null) {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_missing call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_missing call_id=$ci extension=$var(managed_extension_id) destination_format=plus1-10\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=extension_missing extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm");
         {{- end }}
@@ -131,7 +130,7 @@
       }
       jansson_get("valid_until", "$var(managed_json)", "$var(managed_deadline)");
       if ($Ts > $var(managed_deadline)) {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_expired call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_expired call_id=$ci extension=$var(managed_extension_id) destination_format=plus1-10\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=snapshot_expired extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm");
         {{- end }}
@@ -146,26 +145,13 @@
         {{- end }}
         sl_send_reply("403", "Extension Outbound Disabled"); exit;
       }
-      jansson_get("allowed_destinations", "$var(managed_route)", "$var(managed_allowed_destinations)");
-      jansson_get("blocked_destinations", "$var(managed_route)", "$var(managed_blocked_destinations)");
-      if (($var(managed_allowed_destinations) != $null && $var(managed_allowed_destinations) != ",," &&
-           !in_list("$rU", "$var(managed_allowed_destinations)", ",")) ||
-          ($var(managed_blocked_destinations) != $null && $var(managed_blocked_destinations) != ",," &&
-           in_list("$rU", "$var(managed_blocked_destinations)", ","))) {
-        xlog("L_WARN", "AVOIP_POLICY reject=extension_destination_restricted call_id=$ci extension=$var(managed_extension_id) site={{ .Values.region }} destination_class=restricted\n");
-        {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-        hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=extension_destination_restricted extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm destination_class=restricted");
-        {{- end }}
-        sl_send_reply("403", "Extension Destination Not Authorized"); exit;
-      }
       if (t_check_trans()) exit;
       jansson_get("host", "$var(managed_route)", "$var(managed_host)");
       jansson_get("port", "$var(managed_route)", "$var(managed_port)");
       jansson_get("site", "$var(managed_route)", "$var(managed_site)");
       jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");
-      jansson_get("egress_prefix", "$var(managed_route)", "$var(managed_egress_prefix)");
       jansson_get("codec_flags", "$var(managed_route)", "$var(managed_codec_flags)");
-      xlog("L_INFO", "AVOIP_POLICY managed_extension decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider_host=$var(managed_host) request_user=$rU prefix_present=$var(managed_egress_prefix) call_id=$ci method=$rm\n");
+      xlog("L_INFO", "AVOIP_POLICY managed_extension decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider_host=$var(managed_host) request_user=$rU call_id=$ci method=$rm\n");
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider=$var(managed_host) call_id=$ci method=$rm destination_class=nanp");
       {{- end }}
@@ -173,13 +159,6 @@
       append_hf("X-Core-Extension: $var(managed_extension_id)\r\n");
       $fU = $var(managed_caller_id);
       append_hf("P-Asserted-Identity: <sip:$var(managed_caller_id)@{{ include "avoip.sip.siteHost" . }}>\r\n");
-      # The Asterisk/private leg crosses the carrier-facing managed-handoff
-      # validator. Keep its Request-URI E.164; apply the provider prefix only
-      # after that validator has authenticated the handoff.
-      if ($var(side) != "sipcore" && $var(managed_site) == "{{ .Values.region }}" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
-        $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
-        xlog("L_INFO", "AVOIP_POLICY managed_extension decision=prefix_applied extension=$var(managed_extension_id) request_user=$rU call_id=$ci method=$rm\n");
-      }
       $ru = "sips:" + $rU + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";
       {{ if and (eq .Values.kamailio.role "private-sbc") .Values.asterisk.sipCore.enabled }}
@@ -226,7 +205,6 @@
     }
     route[MANAGED_EGRESS] {
       $var(managed_egress) = 0;
-      $var(managed_egress_prefix) = "";
       if ($var(managed_json) == $null) return;
       jansson_array_size("providers", "$var(managed_json)", "$var(managed_count)");
       $var(managed_i) = 0;
@@ -236,13 +214,7 @@
           jansson_get("valid_until", "$var(managed_json)", "$var(managed_deadline)");
       if ($Ts > $var(managed_deadline)) { sl_send_reply("503", "Routing Snapshot Expired"); exit; }
           jansson_get("providers[$var(managed_i)].caller_ids", "$var(managed_json)", "$var(managed_ids)");
-          jansson_get("providers[$var(managed_i)].egress_prefix", "$var(managed_json)", "$var(managed_egress_prefix)");
-          # Sofia can send an 11-digit NANP caller ID without the leading +.
-          # Compare its canonical E.164 form with the provider's verified list.
           $var(managed_caller_id) = $fU;
-          if ($var(managed_caller_id) =~ "^1[2-9][0-9]{2}[2-9][0-9]{6}$") {
-            $var(managed_caller_id) = "+" + $var(managed_caller_id);
-          }
           if (!in_list("$var(managed_caller_id)", "$var(managed_ids)", ",")) {
             xlog("L_WARN", "AVOIP_POLICY reject=caller_id_not_verified call_id=$ci extension=$hdr(X-Core-Extension) provider_host=$var(managed_host)\n");
             {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -313,11 +285,11 @@
         sl_send_reply("403", "Managed Extension Not Authorized"); exit;
       }
       if ($hdr(X-Core-Original-DID) != $null) {
-        if (!($rU =~ "^\\+?[1-9][0-9]{7,14}$")) {
+        if (!($rU =~ "^\\+1[0-9]{10}$")) {
           sl_send_reply("403", "Managed DID Mismatch"); exit;
         }
-        $var(managed_number) = $(rU{re.subst,/^\+//});
-        $var(expected_did) = "+" + $var(managed_number);
+        $var(managed_number) = $rU;
+        $var(expected_did) = $rU;
         if ($hdr(X-Core-Original-DID) != $var(expected_did)) {
           sl_send_reply("403", "Managed DID Mismatch"); exit;
         }

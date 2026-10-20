@@ -50,8 +50,8 @@
       {{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled .Values.kamailio.carrierOutbound.enabled }}
       # FreeSWITCH presents its Vault-issued SIP identity on the private TLS
       # listener when placing Flowroute-registered outbound calls. Limit this
-      # peer to its exact service SAN and pod CIDR before applying the NANP
-      # caller and destination policy below.
+      # peer to its exact service SAN and pod CIDR before applying the +1
+      # caller-ID verification and full +1 format check below.
       if (src_ip == {{ .Values.kamailio.backend.podCIDR }} &&
           $tls_peer_verified == 1 &&
           $tls_peer_san_hostname == "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}") {
@@ -226,15 +226,12 @@
           {{- end }}
           sl_send_reply("403", "Managed Egress Not Authorized"); exit;
         }
-        if (!is_method("INVITE") || !($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") || $rU =~ "^\\+1900" || $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") {
+        if (!is_method("INVITE") || !($rU =~ "^\\+1[0-9]{10}$")) {
           xlog("L_WARN", "AVOIP_POLICY reject=destination_not_allowed call_id=$ci method=$rm destination_class=restricted_or_invalid\n");
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
           hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=destination_not_allowed site={{ $.Values.region }} call_id=$ci method=$rm destination_class=restricted_or_invalid");
           {{- end }}
           sl_send_reply("403", "Destination Not Authorized"); exit;
-        }
-        if ($var(side) != "sipcore" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
-          $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
         }
         remove_hf("Route"); remove_hf("P-Asserted-Identity"); remove_hf("X-Core-Extension"); remove_hf("X-Core-Original-DID");
         append_hf("P-Asserted-Identity: <sip:$fU@{{ include "avoip.sip.siteHost" . }}>\r\n");
@@ -336,7 +333,7 @@
       }
       $var(sipcore_managed_codec_flags) = "";
       if (is_method("INVITE") && !has_totag() &&
-          $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$" &&
+          $rU =~ "^\\+1[0-9]{10}$" &&
           $hdr(X-Core-Extension) =~ "^[0-9]{2,12}$" && $var(managed_json) != $null) {
         $var(sipcore_managed_extension_path) = "extensions." + $hdr(X-Core-Extension);
         if (jansson_get("$var(sipcore_managed_extension_path)", "$var(managed_json)", "$var(sipcore_managed_extension)")) {
@@ -452,26 +449,25 @@
         route(PRIVATE_RELAY); exit;
       }
       if (!has_totag() && is_method("INVITE") &&
-          $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") {
+          $rU =~ "^\\+1[0-9]{10}$") {
         # This listener is reachable only from the Asterisk workload under
         # Cilium policy. Asterisk creates this header in its locked extension
         # context; never derive the extension from the caller-ID From user.
         if (!($hdr(X-Core-Extension) =~ "^[0-9]{2,12}$")) {
-          xlog("L_WARN", "AVOIP_POLICY reject=trusted_extension_missing call_id=$ci source=asterisk-tls destination_format=nanp\n");
+          xlog("L_WARN", "AVOIP_POLICY reject=trusted_extension_missing call_id=$ci source=asterisk-tls destination_format=plus1-10\n");
           sl_send_reply("403", "Managed Extension Identity Missing"); exit;
         }
         $var(managed_extension_id) = $hdr(X-Core-Extension);
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-        hlog("$ci", "kamailio_event=outbound_attempt component=private_sipcore extension=$var(managed_extension_id) site={{ .Values.region }} linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) call_id=$ci method=$rm destination_class=nanp");
+        hlog("$ci", "kamailio_event=outbound_attempt component=private_sipcore extension=$var(managed_extension_id) site={{ .Values.region }} linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) call_id=$ci method=$rm destination_class=plus1-10");
         {{- end }}
       }
       route(MANAGED_EXTENSION);
-      # Database routing is authoritative for new NANP calls. A missing,
-      # expired, or unauthorized extension mapping must not fall through to
-      # the older static extension/caller-ID allowlist below.
+      # Database routing is authoritative for canonical +1 destinations. A
+      # missing, expired, or unauthorized extension mapping must be rejected.
       if (!has_totag() && is_method("INVITE") &&
-          $rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") {
-        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_unmatched call_id=$ci extension=$var(managed_extension_id) destination_format=nanp\n");
+          $rU =~ "^\\+1[0-9]{10}$") {
+        xlog("L_WARN", "AVOIP_POLICY reject=managed_extension_unmatched call_id=$ci extension=$var(managed_extension_id) destination_format=plus1-10\n");
         sl_send_reply("403", "Managed Extension Not Authorized");
         exit;
       }

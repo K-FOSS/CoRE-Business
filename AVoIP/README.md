@@ -94,10 +94,9 @@ YXL's and YVR's `internal` and `carrier` Kamailio instances are configured
 for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
-`7101` to place standard NANP calls through the managed extension route. The
-AVoIP Admin database supplies that extension's caller ID, and the provider's
-`caller_ids` policy must authorize it. The chart retains the older
-Asterisk-to-FreeSWITCH route only when Admin routing is disabled.
+`7101` to place full `+1` plus ten digit calls through the managed extension
+route. AVoIP Admin supplies that extension's caller ID and eligible provider;
+the provider's `caller_ids` policy must authorize it.
 YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
 outbound SIPS TLSRoute stays enabled. The Admin catalog currently sends both
@@ -105,8 +104,8 @@ sites' inbound DIDs to YVR: the voice DID to extension `67` and the other DID
 to extension `66`. YXL uses the existing authenticated carrier inter-site link
 for that handoff. Admin can instead select the silent YVR FreeSWITCH IVR or
 another configured destination. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
-for the Asterisk-to-FreeSWITCH-to-Flowroute path, codec negotiation, trust
-boundaries, destination filters and quotas, and the
+for the Asterisk-to-Kamailio carrier path, dynamic provider selection, trust
+boundaries, canonical number format and quotas, and the
 [inter-site voice guide](docs/INTERSITE-VOICE.md) for transfer and rollout
 verification. The [Flowroute teardown runbook](docs/avoip/runbooks/outbound-flowroute-teardown.md)
 covers the internal Kamailio BYE route, replica-safe TOPOS restoration,
@@ -181,23 +180,11 @@ of its registered contacts in parallel, like inbound DID fan-out. When one
 contact answers, Asterisk cancels the other attempts. See the
 [SIP Core configuration and behavior](docs/SIPCORE-HASS.md).
 The public-IVR callback is a separate, opt-in route. When enabled, it returns
-the call to an exact configured internal account identity or a valid NANP
-caller identity received over the authenticated FreeSWITCH-to-Asterisk leg.
-Internal accounts ring all of their registered contacts; external callbacks
-use the configured main voice DID as outbound caller ID and connect the
-answered caller to the existing GG audio service.
-The callback selection is a control handoff: Asterisk closes the original
-FreeSWITCH bridge after accepting it, so that normal teardown bypasses the
-generic inbound GG error-audio fallback.
-FreeSWITCH still originates the carrier leg through the existing Flowroute
-gateway. The authenticated callback route accepts valid NANP destinations in
-E.164, country-code digits without a leading plus, or national form with an
-optional plus, and normalizes them to E.164 for the carrier gateway. The caller
-ID on that carrier leg is checked against the provider's verified E.164 list;
-Kamailio adds the leading plus when FreeSWITCH sends an 11-digit NANP From user.
-Other caller IDs still require an exact verified match. The inbound caller
-identity is not independently verified by this route, so carrier-side ANI
-validation remains an operational trust assumption.
+an exact configured internal account identity or a caller identity already in
+full `+1` plus ten digit form. External callbacks use the configured main voice
+DID as caller ID and send the call through Asterisk's managed `carrier-outbound`
+route. The Admin catalog selects the provider and caller ID; FreeSWITCH does not
+normalize the number or select a static provider route.
 The YVR opt-in is owned by the [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
 
 Routr Connect 2.13.6 is integrated as optional workloads in this chart's
@@ -237,11 +224,6 @@ dedicated FreeSWITCH-to-Asterisk profile. For example, set
 change the global outbound preference order. A site can provide these keys in
 the `LOVELY_HELM_MERGE` values of the owning
 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
-The Flowroute outbound bridge has a separate `freeswitch.flowrouteOutbound.codecs`
-policy, defaulting to `['PCMU', 'PCMA']`; it requires PCMU and only changes the
-FreeSWITCH-to-carrier B-leg. Internal and WebRTC codec preferences remain
-unchanged. Flowroute's supported voice codecs are documented on its
-[voice service page](https://flowroute.com/voice/).
 Use Asterisk's lowercase codec names and FreeSWITCH's uppercase names. The
 fax receive dialplan keeps its separately scoped G.711 selection because fax
 modem audio and T.38 negotiation have different requirements.
@@ -273,62 +255,40 @@ The [SIP security probes](tests/README.md#authorization-and-outbound-call-probes
 exercise denied sources, registration, unmatched outbound destinations, and
 bad private-peer credentials on an isolated deployment. Carrier DID calls use
 the source ACL rather than SIP digest authentication.
-FreeSWITCH public inbound DID routing is selected by Admin through Kamailio. YVR's managed
-Asterisk NANP route sends calls directly through private Kamailio using the
-SIP Core `carrier-outbound` PJSIP endpoint. The Admin database maps each
-permitted extension to its caller ID and provider route; the carrier verifies
-the caller ID against that provider's allowlist. YXL keeps PSTN origination
-disabled. The former Asterisk-to-FreeSWITCH route remains available only while
-Admin routing is disabled. FreeSWITCH still registers to the regional
+FreeSWITCH public inbound DID routing is selected by Admin through Kamailio.
+YVR's managed Asterisk route sends full `+1` plus ten digit calls directly
+through private Kamailio using the SIP Core `carrier-outbound` PJSIP endpoint.
+The Admin database maps each permitted extension to its caller ID and provider
+route; the carrier verifies the caller ID against that provider's allowlist.
+YXL keeps PSTN origination disabled. FreeSWITCH still registers to the regional
 Flowroute SIP endpoint using the existing Vault record
 `AVoIP/SIP/FlowRoute` (`Username` and `Password`) for its separate inbound
 role. The managed DID catalog supports IVR and direct extension destinations
 for each number; see the [Admin configuration steps](docs/ADMIN.md#configure-the-current-inbound-numbers-in-admin).
-YXL uses the US-East-VA PoP and YVR uses US-West-OR. The existing
-carrier path and RTPEngine continue to handle signaling and media. The legacy
-Flowroute gateway uses its `outbound-proxy` for the Kamailio INVITE hop,
-following the
-[FreeSWITCH gateway configuration](https://developer.signalwire.com/freeswitch/users-and-endpoints/gateways/)
-and [Flowroute regional PoP configuration](https://developer.flowroute.com/docs/inbound-and-outbound-calling-with-flowroute-new-pops/).
-The outbound `flowroute-tls` gateway sets `from-domain` to the configured or
-derived site SIP hostname (`sip.siteHost`); `caller-id-in-from` retains the
-authorized caller number as the From URI user. Thus the carrier sees the
-site-local SIP route identity as the From host rather than a FreeSWITCH pod
-address. This is set when FreeSWITCH creates the dialog, so subsequent
-in-dialog requests retain the same dialog identity without a Kamailio header
-rewrite.
-The SIP provider editor in AVoIP Admin includes an optional digits-only
-`egress_prefix`. It is saved with the versioned provider catalog in PostgreSQL
-and delivered to Kamailio through the authenticated routing snapshot. Kamailio
-applies a configured prefix as `prefix*destination` after validating the
-extension, verified caller ID, provider, and destination. An empty prefix sends
-the normalized destination unchanged. This replaces the legacy Vault-only
-Flowroute Tech Prefix setting; SIP registration and provider credentials remain
-Vault-backed. Flowroute IP authentication also requires a static public egress
-IP and account-side allowlisting; see its
-[IP-auth setup](https://support.bcmone.com/flowroute-support/docs/set-up-ip-based-authentication-for-outbound-calls).
-The Extensions editor can authorize several verified caller IDs and upstream
-providers in preference order. The first caller ID is the live default; for
-that number, the first provider with current verification and a site gateway is
-published to FreeSWITCH/Kamailio and used by the managed route. Route preview
-also evaluates another authorized caller ID against each provider and lists
-remaining eligible providers in preference order; FreeSWITCH does not yet retry
-another provider after a failure. Provider health is reported as unknown. The
-editor also records an assigned Authentik user and exact E.164 destination
-allow/block lists. Kamailio enforces configured destination
-restrictions before selecting the upstream; the assignment is administrative
+YXL uses the US-East-VA PoP and YVR uses US-West-OR. The carrier path and
+RTPEngine handle signaling and media. The Flowroute gateway profile remains
+transport configuration for inbound registration and for provider routes
+selected by the dynamic Admin catalog. The `sip.siteHost` advertised identity
+is used in the public TLS route and provider-facing Record-Route. Voice numbers
+stay in full `+1` plus ten digit form from Asterisk through carrier Kamailio;
+no number rewriting, provider prefix, or destination allow/block list is
+applied.
+
+The Extensions editor authorizes verified caller IDs and upstream providers
+in preference order. The first eligible provider is selected; live health-based
+failover is not implemented. Route preview reports the policy revision,
+selected provider and effective codec order. It does not apply per-destination
+lists or number rewriting. The optional assigned Authentik user is Admin
 metadata and does not change an extension's SIP credential. Managed Asterisk
-outbound dialogs pin their return route to the private SIP Core listener so
-BYE requests do not return through the public carrier listener. See the
-[managed BYE return runbook](docs/avoip/runbooks/asterisk-managed-bye-return.md).
+outbound dialogs pin their return route to the private SIP Core listener. See
+the [managed BYE return runbook](docs/avoip/runbooks/asterisk-managed-bye-return.md).
 YVR also provisions the `twilio-west` FreeSWITCH gateway for
 [Twilio Elastic SIP Trunking](https://www.twilio.com/docs/sip-trunking) using
 IP ACL authentication and no registration. The Admin provider and extension
 assignment determine whether a call uses it; see the
 [upstream configuration](docs/ADMIN.md).
 The ApplicationSet enables two FreeSWITCH replicas at both sites and disables
-the direct SIP Service. The configured Asterisk SIP Core NANP caller remains
-YVR extension `7101`; YXL has no SIP Core caller configured. This provides
+the direct SIP Service. The configured Asterisk SIP Core caller remains YVR extension `7101`; YXL has no SIP Core caller configured. This provides
 new-call availability after a pod failure;
 an active FreeSWITCH call is not replicated to another pod. The existing fax
 spool claim remains retained; the HA workload uses a separate RWX claim, and
@@ -602,9 +562,9 @@ staged route and Asterisk Path cutover. An
 [outbound service-peer route](docs/OUTBOUND-PILOT.md) uses Vault mTLS
 over the existing SIPS Gateway path and site SNI between internal and carrier
 Kamailio. It reuses the current Flowroute trunk and adds no Gateway route,
-SNI, or Service. YVR enables account `7101` for standard NANP calls with
-the configured Asterisk DID as caller ID, carrier-owned RTPEngine media anchoring, and shared
-rate/concurrency quotas. YXL call origination remains disabled. No live carrier
+SNI, or Service. YVR enables account `7101` for full `+1` plus ten digit calls with
+the configured Asterisk DID as caller ID, carrier-owned RTPEngine media
+anchoring, and shared rate/concurrency quotas. YXL call origination remains disabled. No live carrier
 call has been made. The chart does not
 enable the Kamailio registrar pilot or an OIDC webphone; its current SIP Core
 path uses Asterisk's PJSIP registrar

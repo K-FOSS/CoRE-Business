@@ -318,6 +318,10 @@ kamailio:
   # Map values merge recursively; listeners, destinations and env lists replace.
   roleDefaults:
     carrier-sbc:
+      # Capture complete carrier SIP requests and replies on carrier-facing
+      # sockets, including SDP, for egress call diagnosis.
+      sipLogging:
+        carrierTraffic: true
       functions:
         sanity: true
         classification: true
@@ -965,9 +969,9 @@ asterisk:
     # Optional SIP Core endpoint to ring for inbound calls to the voice DID.
     inboundVoiceExtension: ''
     externalCallback:
-      # Opt-in IVR callback to the authenticated carrier caller's NANP number.
-      # The configured main DID is presented as caller ID; FreeSWITCH still
-      # anchors the outbound carrier media path.
+      # Opt-in IVR callback to the authenticated carrier caller's full +1 plus
+      # ten digit number. The configured main DID is caller ID; Asterisk
+      # originates via dynamic Admin routing.
       enabled: false
       # Allow the original carrier call to finish clearing before starting
       # the callback. This is deliberately separate from ringTimeoutSeconds.
@@ -1080,9 +1084,8 @@ freeswitch:
     # Private TLS listener for Flowroute-profile dialogs. Kamailio routes
     # established carrier requests directly to the FreeSWITCH owner pod here.
     tlsPort: 5081
-    # Used only on the FreeSWITCH-to-Flowroute bridge leg. PCMU is required;
-    # PCMA can be omitted if the carrier trunk policy prefers μ-law only.
-    codecs: ['PCMU', 'PCMA']
+    # Regional Flowroute edge used by its inbound registration and the
+    # Admin-managed dynamic provider catalog.
     regionalHost: ''
     secretStoreRef:
       kind: 'ClusterSecretStore'
