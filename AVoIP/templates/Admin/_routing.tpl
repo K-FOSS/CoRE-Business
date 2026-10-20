@@ -107,6 +107,7 @@
       # inter-site handoff below. SIP From is caller ID, not extension identity.
       $var(managed_egress_prefix) = "";
       if (!is_method("INVITE") || has_totag() || !($var(managed_extension_id) =~ "^[0-9]{2,12}$")) return;
+      xlog("L_INFO", "AVOIP_POLICY managed_extension decision=evaluate extension=$var(managed_extension_id) side=$var(side) request_user=$rU from_user=$fU call_id=$ci method=$rm\n");
       if (!($rU =~ "^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$") || $rU =~ "^\\+1900" || $rU =~ "^\\+1[2-9][0-9]{2}976[0-9]{4}$") {
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=deny reason=destination_not_allowed extension=$var(managed_extension_id) site={{ .Values.region }} call_id=$ci method=$rm destination_class=restricted_or_invalid");
@@ -164,6 +165,7 @@
       jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");
       jansson_get("egress_prefix", "$var(managed_route)", "$var(managed_egress_prefix)");
       jansson_get("codec_flags", "$var(managed_route)", "$var(managed_codec_flags)");
+      xlog("L_INFO", "AVOIP_POLICY managed_extension decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider_host=$var(managed_host) request_user=$rU prefix_present=$var(managed_egress_prefix) call_id=$ci method=$rm\n");
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog("$ci", "kamailio_event=authorization_result policy=outbound decision=authorized extension=$var(managed_extension_id) site=$var(managed_site) provider=$var(managed_host) call_id=$ci method=$rm destination_class=nanp");
       {{- end }}
@@ -173,6 +175,7 @@
       append_hf("P-Asserted-Identity: <sip:$var(managed_caller_id)@{{ include "avoip.sip.siteHost" . }}>\r\n");
       if ($var(managed_site) == "{{ .Values.region }}" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
         $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
+        xlog("L_INFO", "AVOIP_POLICY managed_extension decision=prefix_applied extension=$var(managed_extension_id) request_user=$rU call_id=$ci method=$rm\n");
       }
       $ru = "sips:" + $rU + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";
@@ -249,6 +252,7 @@
       # Called only inside the existing verified inter-site SAN/CIDR branch.
       if (!is_method("INVITE") || has_totag()) return;
       $var(managed_handoff) = 0;
+      xlog("L_INFO", "AVOIP_POLICY managed_handoff decision=evaluate extension=$hdr(X-Core-Extension) side=$var(side) request_user=$rU from_user=$fU call_id=$ci method=$rm\n");
       if ($var(managed_json) == $null) {
         if ($hdr(X-Core-Original-DID) != $null || $hdr(X-Core-Extension) != $null) {
           xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=snapshot_unavailable extension=$hdr(X-Core-Extension) site={{ .Values.region }} peer_side=$var(side) call_id=$ci method=$rm\n");
@@ -279,7 +283,9 @@
             {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
             hlog("$ci", "kamailio_event=managed_handoff decision=authenticated extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm");
             {{- end }}
+            xlog("L_INFO", "AVOIP_POLICY managed_handoff decision=dispatch extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm\n");
             route(MANAGED_EXTENSION);
+            xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=returned reason=$var(managed_handoff_reason) extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm\n");
           } else if ($var(managed_site) != "{{ .Values.region }}" && $var(side) != "internal-outbound") {
             $var(managed_handoff_reason) = "site_mismatch";
             xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=site_mismatch extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm\n");
@@ -322,6 +328,7 @@
         sl_send_reply("403", "Managed DID Not Authorized"); exit;
       }
       if ($hdr(X-Core-Extension) != $null) {
+        xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=extension_header_unhandled extension=$hdr(X-Core-Extension) side=$var(side) request_user=$rU from_user=$fU call_id=$ci method=$rm\n");
         sl_send_reply("403", "Managed Extension Not Authorized"); exit;
       }
     }
