@@ -97,8 +97,7 @@
       # Dragonfly executes quota admission atomically across all carrier
       # replicas. A stale call expires after maxDurationSeconds even if a pod
       # disappears before BYE. A failed Redis operation fails closed.
-      $var(quota_script) = "local k=KEYS[1];local payload=ARGV[1] or '';local p1=string.find(payload,'|',1,true);local p2=p1 and string.find(payload,'|',p1+1,true);local p3=p2 and string.find(payload,'|',p2+1,true);if not p1 or not p2 or not p3 then return -3 end;local concurrent=tonumber(string.sub(payload,1,p1-1));local rate=tonumber(string.sub(payload,p1+1,p2-1));local duration=tonumber(string.sub(payload,p2+1,p3-1));local id=string.sub(payload,p3+1);if id=='' or not concurrent or not rate or not duration or concurrent<1 or rate<1 or duration<60 then return -3 end;local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
-      $var(quota_payload) = "$var(managed_concurrent_calls)|$var(managed_calls_per_minute)|$var(managed_max_duration_seconds)|$ci";
+      $var(quota_script) = "local k=KEYS[1];local id=ARGV[1];local concurrent=tonumber($var(managed_concurrent_calls));local rate=tonumber($var(managed_calls_per_minute));local duration=tonumber($var(managed_max_duration_seconds));if not id or id=='' or not concurrent or not rate or not duration or concurrent<1 or rate<1 or duration<60 then return -3 end;local now=tonumber(redis.call('TIME')[1]);redis.call('ZREMRANGEBYSCORE',k,0,now);redis.call('ZREMRANGEBYSCORE',k,-now,0);if redis.call('ZSCORE',k,'call:'..id) then return 1 end;if redis.call('ZCOUNT',k,now,'+inf')>=concurrent then return -2 end;if redis.call('ZCOUNT',k,'-inf',-now-1)>=rate or redis.call('ZSCORE',k,'rate:'..id) then return -1 end;redis.call('ZADD',k,now+duration,'call:'..id);redis.call('ZADD',k,-(now+60),'rate:'..id);redis.call('EXPIRE',k,duration);return 1";
       if ($var(managed_limit_scope) == "legacy") {
         $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
       } else {
@@ -107,7 +106,7 @@
       if (!redis_cmd(
         "topos", "EVAL %s 1 %s %s", "$var(quota_script)",
         "$var(outbound_quota_key)",
-        "$var(quota_payload)", "outbound_quota"
+        "$ci", "outbound_quota"
       )) {
         sl_send_reply("503", "Outbound Quota Unavailable");
         exit;
