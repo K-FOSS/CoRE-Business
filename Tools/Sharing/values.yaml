@@ -122,7 +122,7 @@ sharing:
       accessGroup: 'Sharing Users'
     image:
       repository: 'ghcr.io/diced/zipline'
-      tag: '4.7.0@sha256:c9cf07b3605634127dbfc965235c4344682812fe0507050896487a7af0a7b89c'
+      tag: '4.8.0@sha256:280421e740e660db04c5c907810a01cb1a53becbefbf8dda2f0e0bb7edeceaca'
       pullPolicy: 'IfNotPresent'
     database:
       userSecret: 'sharing-zipline-database'

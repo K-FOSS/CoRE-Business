@@ -53,9 +53,11 @@ its local TLS bridge when that bridge is enabled.
 Kutt and Zipline are exposed through Gateway API HTTPRoutes and the public
 Forecastle dashboard. Zipline stores uploaded objects in the site-local
 S3-compatible service using path-style requests; PostgreSQL stores metadata.
-Zipline uses the `4.7.0` Linux `amd64` image manifest digest because the
+Zipline uses the pinned `4.8.0` Linux `amd64` image manifest digest because the
 multi-architecture tag started an incompatible root filesystem on the home1
 `amd64` node, causing `exec format error` for both its entrypoint and `/bin/sh`.
+The `4.8.0` release requires the existing `4.7.0` database migration step and
+performs its schema migration during startup.
 Before changing deployment behavior, review the linked ApplicationSet
 and render the Lovely composition with its injected values. After reconciliation,
 check the User, ExternalSecret, database and dedicated Dragonfly conditions, then

@@ -163,6 +163,7 @@ route:
 {{- $_ := required "sharing.kutt.database.crossplane.terraformProvider must be injected or configured" .Values.sharing.kutt.database.crossplane.terraformProvider -}}
 {{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.passwordKey)) -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" .Values.sharing.kutt.database.usernameKey)) -}}
+{{- $dbName := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.database.userSecret "key" "database")) -}}
 {{- $jwt := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.sharing.kutt.jwtSecret.secretName "key" .Values.sharing.kutt.jwtSecret.key)) -}}
 {{- $redisHost := printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region -}}
 {{- if .Values.sharing.kutt.redis.ownDragonfly.enabled }}
@@ -178,7 +179,7 @@ route:
   "DB_CLIENT" "pg"
   "DB_HOST" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.sharing.kutt.database.host)
   "DB_PORT" .Values.sharing.kutt.database.port
-  "DB_NAME" $dbUsername
+  "DB_NAME" $dbName
   "DB_USER" $dbUsername
   "DB_PASSWORD" $dbPassword
   "DB_SSL" .Values.sharing.kutt.database.ssl
@@ -193,7 +194,7 @@ route:
 }}
 {{- $_ := mergeOverwrite $env .Values.sharing.kutt.config -}}
 {{- $_ := set $env "DB_HOST" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) (get .Values.sharing.kutt.config "DB_HOST")) -}}
-{{- $_ := set $env "DB_NAME" $dbUsername -}}
+{{- $_ := set $env "DB_NAME" $dbName -}}
 {{- $_ := set $env "DB_USER" $dbUsername -}}
 {{- $_ := set $env "DB_PASSWORD" $dbPassword -}}
 {{- $_ := set $env "JWT_SECRET" $jwt -}}
