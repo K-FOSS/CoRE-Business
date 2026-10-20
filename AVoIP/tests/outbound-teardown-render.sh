@@ -36,6 +36,12 @@ grep -Fq '$xavp(tls=>server_name) =' <<< "$internal_cfg"
 grep -Fq 'topos_result=route-restored' <<< "$internal_cfg"
 grep -Fq 'route=$hdr(Route)' <<< "$internal_cfg"
 ! grep -Fq '$du = $ru;' <<< "$internal_cfg"
+! grep -Fq 'stage=asterisk-to-carrier-fallback' <<< "$internal_cfg"
+managed_outbound_setup="$(sed -n '/Select the actual carrier next hop before building Record-Route/,/route(PRIVATE_RELAY); exit;/p' <<< "$internal_cfg")"
+gateway_line="$(grep -n -m1 'route(PRIVATE_TO_CARRIER_GATEWAY);' <<< "$managed_outbound_setup" | cut -d: -f1)"
+record_route_line="$(grep -n -m1 'record_route();' <<< "$managed_outbound_setup" | cut -d: -f1)"
+[[ -n "$gateway_line" && -n "$record_route_line" && "$gateway_line" -lt "$record_route_line" ]]
+grep -Fq '$dlg_var(outbound_carrier) = "yes";' <<< "$managed_outbound_setup"
 grep -Fq '<param name="tls-bind-params" value="transport=tls"/>' <<< "$flowroute_profile"
 flowroute_settings="$(sed -n '/<settings>/,/<\/settings>/p' <<< "$flowroute_profile")"
 grep -Fq '<param name="rtp-timer-name" value="soft"/>' <<< "$flowroute_settings"
@@ -105,6 +111,7 @@ grep -Fq 'rtpengine_delete_result=$var(rtpengine_delete_result)' <<< "$carrier_c
 
 printf '%s\n' 'PASS: outbound teardown route renders the carrier-to-internal mTLS path with independent TOPOS stores'
 printf '%s\n' 'PASS: carrier BYEs use TLS to the restored FreeSWITCH owner; the Helm bootstrap contains no legacy provider-specific outbound route'
+printf '%s\n' 'PASS: SIP Core carrier BYEs follow the dialog route; outbound Record-Route is built after selecting the carrier socket'
 printf '%s\n' 'PASS: relay results and topology decisions are logged; retransmissions exit before teardown side effects'
 printf '%s\n' 'PASS: private Kamailio retains its ready pod until a replacement passes startup validation'
 printf '%s\n' 'PASS: internal Kamailio may send TLS signaling only to the FreeSWITCH dialog listener on port 5081'

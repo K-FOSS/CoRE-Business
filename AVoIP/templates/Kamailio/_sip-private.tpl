@@ -238,8 +238,16 @@
         }
         remove_hf("Route"); remove_hf("P-Asserted-Identity"); remove_hf("X-Core-Extension"); remove_hf("X-Core-Original-DID");
         append_hf("P-Asserted-Identity: <sip:$fU@{{ include "avoip.sip.siteHost" . }}>\r\n");
-        record_route(); dlg_manage(); $dlg_var(outbound_carrier) = "yes";
-        route(PRIVATE_TO_CARRIER_GATEWAY); route(PRIVATE_RELAY); exit;
+        # Select the actual carrier next hop before building Record-Route so
+        # Kamailio records both the private egress socket and SIP Core return
+        # listener for this dialog. dlg_manage() adds its dialog cookie to
+        # both Record-Route headers; recording before socket selection can
+        # leave only one RR lump and prevent dialog state from being created.
+        route(PRIVATE_TO_CARRIER_GATEWAY);
+        record_route();
+        dlg_manage();
+        $dlg_var(outbound_carrier) = "yes";
+        route(PRIVATE_RELAY); exit;
         {{- else }}
         xlog("L_WARN", "AVOIP_POLICY reject=admin_routing_required call_id=$ci method=$rm destination_class=nanp\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -435,20 +443,6 @@
         # other in-dialog requests) must follow the carrier gateway, not the
         # SIP Core return route back toward the WebSocket contact.
         route(PRIVATE_TO_CARRIER_GATEWAY);
-        route(PRIVATE_RELAY); exit;
-      }
-      # A dialog-management failure on the initial Asterisk INVITE can leave
-      # the managed_outbound dialog variable unset. Asterisk's carrier leg
-      # still has no WebSocket flow token, so route its in-dialog requests by
-      # the dedicated SIP Core return listener instead of entering the browser
-      # alias loop.
-      if (has_totag() && check_flow_token() != 1) {
-        if (!loose_route()) { if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist"); exit; }
-        route(PRIVATE_TO_CARRIER_GATEWAY);
-        xlog(
-          "L_WARN",
-          "SIP dialog route stage=asterisk-to-carrier-fallback pod=$env(POD_NAME) callid=$ci method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) reason=no-flow-token destination=$du ruri=$ru route=$hdr(Route)\n"
-        );
         route(PRIVATE_RELAY); exit;
       }
       if (!has_totag() && is_method("INVITE") &&
