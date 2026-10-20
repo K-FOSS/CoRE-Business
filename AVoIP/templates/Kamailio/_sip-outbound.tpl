@@ -73,6 +73,12 @@
         sl_send_reply("403", "Destination Not Authorized");
         exit;
       }
+      # Preserve full +1 E.164 through Asterisk, FreeSWITCH, and the private
+      # Kamailio hop. Apply the selected provider prefix only at carrier egress.
+      if ($var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
+        $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\\+//});
+        xlog("L_INFO", "AVOIP_POLICY managed_egress decision=prefix_applied provider_host=$var(managed_host) request_user=$rU call_id=$ci method=$rm\n");
+      }
 
       # The managed routing snapshot must provide complete, numeric limits.
       # Reject an incomplete record before constructing the Redis Lua payload;

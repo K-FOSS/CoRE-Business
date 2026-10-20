@@ -165,7 +165,6 @@
       # managed_extension_id is populated only by the Asterisk-only TLS
       # listener from its dialplan-stamped identity header, or by a verified
       # inter-site handoff below. SIP From is caller ID, not extension identity.
-      $var(managed_egress_prefix) = "";
       if (!is_method("INVITE") || has_totag() || !($var(managed_extension_id) =~ "^[0-9]{2,12}$")) return;
       xlog("L_INFO", "AVOIP_POLICY managed_extension decision=evaluate extension=$var(managed_extension_id) side=$var(side) request_user=$rU from_user=$fU call_id=$ci method=$rm\n");
       if (!($rU =~ "^\\+1[0-9]{10}$")) {
@@ -211,7 +210,6 @@
       jansson_get("port", "$var(managed_route)", "$var(managed_port)");
       jansson_get("site", "$var(managed_route)", "$var(managed_site)");
       jansson_get("caller_id", "$var(managed_route)", "$var(managed_caller_id)");
-      jansson_get("egress_prefix", "$var(managed_route)", "$var(managed_egress_prefix)");
       jansson_get("codec_flags", "$var(managed_route)", "$var(managed_codec_flags)");
       jansson_get("limit_profile_id", "$var(managed_route)", "$var(managed_limit_profile_id)");
       jansson_get("limit_scope", "$var(managed_route)", "$var(managed_limit_scope)");
@@ -226,12 +224,6 @@
       append_hf("X-Core-Extension: $var(managed_extension_id)\r\n");
       $fU = $var(managed_caller_id);
       append_hf("P-Asserted-Identity: <sip:$var(managed_caller_id)@{{ include "avoip.sip.siteHost" . }}>\r\n");
-      # Keep full +1 E.164 on Asterisk and FreeSWITCH hops. The carrier-facing
-      # instance applies the selected provider's technical prefix exactly once.
-      if ($var(side) != "sipcore" && $var(managed_site) == "{{ .Values.region }}" && $var(managed_egress_prefix) != $null && $var(managed_egress_prefix) != "") {
-        $rU = $var(managed_egress_prefix) + "*" + $(rU{re.subst,/^\+//});
-        xlog("L_INFO", "AVOIP_POLICY managed_extension decision=prefix_applied extension=$var(managed_extension_id) provider_host=$var(managed_host) request_user=$rU call_id=$ci method=$rm\n");
-      }
       $ru = "sips:" + $rU + "@" + $var(managed_host);
       $du = "sip:" + $var(managed_host) + ":" + $var(managed_port) + ";transport=tls";
       {{ if and (eq .Values.kamailio.role "private-sbc") .Values.asterisk.sipCore.enabled }}
@@ -280,6 +272,7 @@
     }
     route[MANAGED_EGRESS] {
       $var(managed_egress) = 0;
+      $var(managed_egress_prefix) = "";
       if ($var(managed_json) == $null) return;
       jansson_array_size("providers", "$var(managed_json)", "$var(managed_count)");
       $var(managed_i) = 0;
@@ -289,6 +282,7 @@
           jansson_get("valid_until", "$var(managed_json)", "$var(managed_deadline)");
       if ($Ts > $var(managed_deadline)) { sl_send_reply("503", "Routing Snapshot Expired"); exit; }
           jansson_get("providers[$var(managed_i)].caller_ids", "$var(managed_json)", "$var(managed_ids)");
+          jansson_get("providers[$var(managed_i)].egress_prefix", "$var(managed_json)", "$var(managed_egress_prefix)");
           $var(managed_caller_id) = $fU;
           if (!in_list("$var(managed_caller_id)", "$var(managed_ids)", ",")) {
             xlog("L_WARN", "AVOIP_POLICY reject=caller_id_not_verified call_id=$ci extension=$hdr(X-Core-Extension) provider_host=$var(managed_host)\n");
