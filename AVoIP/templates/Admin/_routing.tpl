@@ -251,6 +251,7 @@
       $var(managed_handoff) = 0;
       if ($var(managed_json) == $null) {
         if ($hdr(X-Core-Original-DID) != $null || $hdr(X-Core-Extension) != $null) {
+          xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=snapshot_unavailable extension=$hdr(X-Core-Extension) site={{ .Values.region }} peer_side=$var(side) call_id=$ci method=$rm\n");
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
           hlog("$ci", "kamailio_event=authorization_result policy=managed_handoff decision=deny reason=snapshot_unavailable extension=$hdr(X-Core-Extension) call_id=$ci site={{ .Values.region }} method=$rm");
           {{- end }}
@@ -274,18 +275,23 @@
               ($var(side) == "internal-outbound" || $fU == $var(managed_caller_id))) {
             $var(managed_handoff_reason) = "extension_policy_rejected";
             $fU = $hdr(X-Core-Extension);
+            xlog("L_INFO", "AVOIP_POLICY managed_handoff decision=authenticated extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm\n");
             {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
             hlog("$ci", "kamailio_event=managed_handoff decision=authenticated extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm");
             {{- end }}
             route(MANAGED_EXTENSION);
           } else if ($var(managed_site) != "{{ .Values.region }}" && $var(side) != "internal-outbound") {
             $var(managed_handoff_reason) = "site_mismatch";
+            xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=site_mismatch extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm\n");
           } else {
             $var(managed_handoff_reason) = "caller_id_mismatch";
+            xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=caller_id_mismatch extension=$hdr(X-Core-Extension) site=$var(managed_site) peer_side=$var(side) call_id=$ci method=$rm\n");
           }
         } else {
           $var(managed_handoff_reason) = "extension_missing";
+          xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=extension_missing extension=$hdr(X-Core-Extension) site={{ .Values.region }} peer_side=$var(side) call_id=$ci method=$rm\n");
         }
+        xlog("L_WARN", "AVOIP_POLICY managed_handoff decision=deny reason=$var(managed_handoff_reason) extension=$hdr(X-Core-Extension) site={{ .Values.region }} peer_side=$var(side) call_id=$ci method=$rm\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
         hlog("$ci", "kamailio_event=authorization_result policy=managed_handoff decision=deny reason=$var(managed_handoff_reason) extension=$hdr(X-Core-Extension) site={{ .Values.region }} peer_side=$var(side) call_id=$ci method=$rm");
         {{- end }}
