@@ -248,6 +248,7 @@
         # Restart Kamailio when its generated routing/TLS configuration or the
         # shared certificate material changes so listeners and media routes are
         # loaded from one consistent configuration set.
+        checksum/kamailio-config: '{{ include "avoip.kamailio.render.KamailioConfig" . | sha256sum }}'
         configmap.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "config") }}'
         secret.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}{{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-mtls") }},{{ .Values.kamailio.carrierOutbound.peer.secretName }}{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
 {{- with .Values.kamailio.podAnnotations }}

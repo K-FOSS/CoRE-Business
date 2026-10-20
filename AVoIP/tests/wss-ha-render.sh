@@ -32,6 +32,7 @@ assert_yq() {
 }
 
 assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.replicas == 3 and .spec.serviceName == "core-home1-talos-prod-avoip-kamailio-internal-wss-owner" and .spec.template.spec.securityContext.fsGroup == 1000' 'three stable WSS StatefulSet replicas use their own headless owner service and writable non-root drain volume'
+assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | (.spec.template.metadata.annotations["checksum/kamailio-config"] | length) == 64' 'WSS pods roll when the rendered Kamailio configuration changes'
 assert_yq 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal") | .spec.replicas == 1' 'the existing private-sbc remains a separate single-replica Deployment'
 assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .lifecycle.preStop.exec.command[-1] | test("touch /tmp/kamailio-draining;.*ws.disable.*sleep 130")' 'preStop marks the owner draining, disables new websocket handshakes and waits through the configured grace interval'
 assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .readinessProbe.exec.command[-1] | contains("kamailio-draining")' 'readiness removes draining owners from new Envoy selection'
