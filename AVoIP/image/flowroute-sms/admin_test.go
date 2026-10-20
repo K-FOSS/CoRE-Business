@@ -409,7 +409,7 @@ func TestFreeSwitchTwilioLegacyRouteDefaultsToSupportedG711(t *testing.T) {
 	s.cacheCatalog(catalog)
 	form := url.Values{
 		"Caller-Context":                  {"core-managed-outbound"},
-		"Caller-Destination-Number":       {"12345678*+12065550101"},
+		"Caller-Destination-Number":       {"12345678*12065550101"},
 		"variable_sip_h_X-Core-Extension": {"7101"},
 	}
 	r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))

@@ -939,7 +939,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 					if provider.EgressPrefix != "" {
 						normalizedDestination = strings.TrimPrefix(destination, provider.EgressPrefix+"*")
 					}
-					if _, ok := normalizePhoneNumber(normalizedDestination); ok {
+					if normalizedDestination, ok = normalizePhoneNumber(normalizedDestination); ok {
 						for _, d := range c.DIDs {
 							if d.Number == callerID && containsString(d.Providers, providerID) && len(d.CodecOrder) > 0 {
 								codecOrder = d.CodecOrder
