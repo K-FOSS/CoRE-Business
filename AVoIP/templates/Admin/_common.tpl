@@ -126,13 +126,15 @@ controllers:
               secretKeyRef:
                 name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) $settings.telephony.managementSecret.name }}'
                 key: '{{ $settings.telephony.managementSecret.key }}'
+          {{ if $settings.telephony.asterisk.cdrConnectionSecret.name }}
           - name: 'AVOIP_ASTERISK_CDR_URL'
             valueFrom:
               secretKeyRef:
-                name: '{{ default (printf "%s-asterisk" (include "avoip.fullname" .)) $settings.telephony.asterisk.cdrConnectionSecret.name }}'
+                name: '{{ $settings.telephony.asterisk.cdrConnectionSecret.name }}'
                 key: '{{ $settings.telephony.asterisk.cdrConnectionSecret.key }}'
           - name: 'AVOIP_ASTERISK_CDR_TABLE'
             value: '{{ $settings.telephony.asterisk.cdrTable }}'
+          {{ end }}
           - name: 'AVOIP_ESL_ADDRESS'
             value: '{{ default (printf "%s:%d" (include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch")) (int $settings.telephony.freeswitchEventSocket.port)) $settings.telephony.freeswitch.eventSocketAddress }}'
           - name: 'AVOIP_ESL_SECRET'
@@ -140,13 +142,15 @@ controllers:
               secretKeyRef:
                 name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) $settings.telephony.managementSecret.name }}'
                 key: '{{ $settings.telephony.managementSecret.key }}'
+          {{ if $settings.telephony.freeswitch.cdrConnectionSecret.name }}
           - name: 'AVOIP_FREESWITCH_CDR_URL'
             valueFrom:
               secretKeyRef:
-                name: '{{ default (printf "%s-freeswitch" (include "avoip.fullname" .)) $settings.telephony.freeswitch.cdrConnectionSecret.name }}'
+                name: '{{ $settings.telephony.freeswitch.cdrConnectionSecret.name }}'
                 key: '{{ $settings.telephony.freeswitch.cdrConnectionSecret.key }}'
           - name: 'AVOIP_FREESWITCH_CDR_TABLE'
             value: '{{ $settings.telephony.freeswitch.cdrTable }}'
+          {{ end }}
           {{ end }}
         ports:
           - name: 'http'

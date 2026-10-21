@@ -77,8 +77,10 @@ SMS provider APIs and webhook configuration are described in
 a shared product name does not make SIP credentials valid for the SMS API.
 
 The telephony viewer is opt-in and disabled by default. Configure dedicated
-read-only PostgreSQL connection Secrets for each CDR table; the Admin's own
-catalog database identity is not a CDR reader. The AMI and FreeSWITCH Event
+read-only PostgreSQL connection Secrets for each CDR table if CDR viewing is
+needed; leaving those references empty enables management connections without
+granting CDR access. The Admin's own catalog database identity is not a CDR
+reader. The AMI and FreeSWITCH Event
 Socket adapters use the retained generated `avoipAdmin.telephony.managementSecret`.
 The chart publishes that password to Vault, writes the Asterisk AMI user file
 at container startup, and binds both management interfaces only to private
