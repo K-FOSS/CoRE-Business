@@ -51,7 +51,7 @@ controllers:
             value: '{{ $mode }}'
           {{- if or (eq $mode "api") (eq $mode "media") (eq $mode "webhook") }}
           - name: 'MEDIA_S3_ENDPOINT'
-            value: 'https://s3.{{ $.Values.cluster.name }}.{{ $.Values.datacenter }}.{{ $.Values.region }}.mylogin.space'
+            value: '{{ default (printf "https://s3.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $settings.media.endpoint }}'
           - name: 'MEDIA_S3_BUCKET'
             value: '{{ $settings.media.bucket }}'
           - name: 'MEDIA_S3_REGION'
@@ -62,12 +62,12 @@ controllers:
             valueFrom:
               secretKeyRef:
                 name: '{{ $settings.media.credentialsSecretName }}'
-                key: 'AccessKey'
+                key: '{{ $settings.media.accessKeyKey }}'
           - name: 'MEDIA_S3_SECRET_KEY'
             valueFrom:
               secretKeyRef:
                 name: '{{ $settings.media.credentialsSecretName }}'
-                key: 'SecretAccessKey'
+                key: '{{ $settings.media.secretKeyKey }}'
           - name: 'MEDIA_PROXY_SECRET'
             valueFrom:
               secretKeyRef:

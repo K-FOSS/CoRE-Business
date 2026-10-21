@@ -86,6 +86,14 @@ expire, so attachments are copied into site-local S3 on receipt. Twilio's API
 redirects are followed only over HTTPS to approved Twilio/S3 media hosts, and
 credentials are not forwarded to the redirected host. See the
 [Flowroute inbound MMS callback format](https://developer.flowroute.com/api/messages/v2.2/receive-an-mms/).
+
+The YXL AVoIP Admin/SMS workload uses the YVR TenantLab S3 endpoint through the
+existing CoRE-Backplane peer. Its endpoint and credential Secret are injected by
+the [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml),
+while the [TenantLab storage ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/S3/TenantLab.yaml)
+owns the peer and credential publication. The AVoIP `User` claim therefore does
+not create a second YXL bucket or credentials for that deployment. The YVR
+deployment retains its existing site-local S3 provisioning.
 Messages and pictures are personal data and are retained in PostgreSQL backups
 with the cluster's normal database lifecycle. There is no automatic retention
 deletion; define a retention policy before using this for long-term archiving.

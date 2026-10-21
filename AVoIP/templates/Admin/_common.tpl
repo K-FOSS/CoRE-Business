@@ -111,7 +111,7 @@ controllers:
                 name: '{{ include "avoip.fullname" . }}-admin-routing-token'
                 key: 'token'
           - name: 'MEDIA_S3_ENDPOINT'
-            value: 'https://s3.{{ $.Values.cluster.name }}.{{ $.Values.datacenter }}.{{ $.Values.region }}.mylogin.space'
+            value: '{{ default (printf "https://s3.%s.%s.%s.mylogin.space" $.Values.cluster.name $.Values.datacenter $.Values.region) $.Values.flowrouteSMS.media.endpoint }}'
           - name: 'MEDIA_S3_BUCKET'
             value: '{{ $.Values.flowrouteSMS.media.bucket }}'
           - name: 'MEDIA_S3_REGION'
@@ -122,12 +122,12 @@ controllers:
             valueFrom:
               secretKeyRef:
                 name: '{{ $.Values.flowrouteSMS.media.credentialsSecretName }}'
-                key: 'AccessKey'
+                key: '{{ $.Values.flowrouteSMS.media.accessKeyKey }}'
           - name: 'MEDIA_S3_SECRET_KEY'
             valueFrom:
               secretKeyRef:
                 name: '{{ $.Values.flowrouteSMS.media.credentialsSecretName }}'
-                key: 'SecretAccessKey'
+                key: '{{ $.Values.flowrouteSMS.media.secretKeyKey }}'
           - name: 'MEDIA_PROXY_SECRET'
             valueFrom:
               secretKeyRef:

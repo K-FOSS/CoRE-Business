@@ -19,6 +19,7 @@ spec:
       terraformProvider: 'psql'
       crossplaneProvider: 'psql-main'
 
+  {{- if not .Values.flowrouteSMS.media.existingCredentials }}
   s3:
     enabled: true
     createBuckets: true
@@ -36,6 +37,8 @@ spec:
     writeCredentialsSecretRef:
       name: '{{ .Values.flowrouteSMS.media.sessionCredentialsSecretName }}'
       namespace: '{{ .Release.Namespace }}'
+
+  {{- end }}
 
   writeConnectionSecretToRef:
     name: '{{ $fullName }}-core-voice-sms'

@@ -258,9 +258,16 @@ flowrouteSMS:
   media:
     enabled: true
     hostname: 'sms-media.resolvemy.host'
+    # Override this when the workload uses a peered TenantLab S3 service.
+    # Empty preserves the site-local endpoint derived by the chart.
+    endpoint: ''
     bucket: 'sms-media'
     region: 'yvr'
     credentialsSecretName: 'core-voice-sms-media-s3'
+    accessKeyKey: 'AccessKey'
+    secretKeyKey: 'SecretAccessKey'
+    # Set when the credentials and bucket are provisioned outside this chart.
+    existingCredentials: false
     sessionCredentialsSecretName: 'core-voice-sms-media-session'
     proxySecretName: 'core-voice-sms-media-proxy'
   inbox:
