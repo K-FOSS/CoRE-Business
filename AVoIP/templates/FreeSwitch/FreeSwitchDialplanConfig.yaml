@@ -96,7 +96,11 @@ data:
               <action application="set" data="bridge_answer_timeout={{ $.Values.avoipAdmin.bridgedCalls.extensionRingTimeoutSeconds }}"/>
               <action application="sched_hangup" data="+{{ $.Values.avoipAdmin.bridgedCalls.maximumDurationSeconds }} NORMAL_CLEARING"/>
               <action application="export" data="nolocal:api_on_answer=uuid_setvar ${uuid} bridged_call_stage connected"/>
-              <action application="bridge" data="${bridged_call_target}"/>
+              <!-- Stamp the managed extension identity on the actual B-leg.
+                   FreeSWITCH export inheritance is not sufficient across the
+                   Kamailio/Asterisk B2BUA boundary; Kamailio must receive the
+                   trusted header on this new INVITE to load its limit profile. -->
+              <action application="bridge" data="{sip_h_X-Core-Extension=${bridged_call_extension},sip_h_X-Core-Call-Linkedid=${bridged_call_id},sip_h_X-Core-Origin-Uniqueid=${origination_uuid}}${bridged_call_target}"/>
             </condition>
           </condition>
         </extension>
@@ -107,7 +111,9 @@ data:
               <action application="set" data="bridge_answer_timeout={{ $.Values.avoipAdmin.bridgedCalls.extensionRingTimeoutSeconds }}"/>
               <action application="sched_hangup" data="+{{ $.Values.avoipAdmin.bridgedCalls.maximumDurationSeconds }} NORMAL_CLEARING"/>
               <action application="export" data="nolocal:api_on_answer=uuid_setvar ${uuid} bridged_call_stage connected"/>
-              <action application="bridge" data="${bridged_call_target}"/>
+              <!-- See the equivalent no-confirmation branch above: the
+                   extension identity belongs on the new bridge B-leg. -->
+              <action application="bridge" data="{sip_h_X-Core-Extension=${bridged_call_extension},sip_h_X-Core-Call-Linkedid=${bridged_call_id},sip_h_X-Core-Origin-Uniqueid=${origination_uuid}}${bridged_call_target}"/>
               <anti-action application="hangup" data="NO_USER_RESPONSE"/>
             </condition>
             <anti-action application="hangup" data="NO_USER_RESPONSE"/>

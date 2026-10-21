@@ -705,7 +705,7 @@ func bridgedOriginateCommand(call bridgedCall, gateway, target string, confirmat
 	if timeout == "" {
 		timeout = "30"
 	}
-	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_call_prompt_file=%s,bridged_confirmation_required=%t,sip_h_X-Core-Extension=%s,sip_h_X-Core-Call-Linkedid=%s,sip_h_X-Core-Origin-Uniqueid=%s}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, call.PromptFile, confirmation, call.Extension, call.ID, call.CallbackUUID, gateway, call.CallbackDestination)
+	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_extension=%s,bridged_call_target=%s,bridged_call_prompt_file=%s,bridged_confirmation_required=%t,sip_h_X-Core-Extension=%s,sip_h_X-Core-Call-Linkedid=%s,sip_h_X-Core-Origin-Uniqueid=%s}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, call.Extension, target, call.PromptFile, confirmation, call.Extension, call.ID, call.CallbackUUID, gateway, call.CallbackDestination)
 }
 
 func (s *server) fetchBridgedCallPrompt(ctx context.Context, call bridgedCall) (string, error) {
