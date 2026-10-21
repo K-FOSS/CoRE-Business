@@ -677,7 +677,7 @@ func (s *server) dispatchBridgedCall(ctx context.Context, id string) {
 		confirmation = false
 	}
 	if confirmation {
-		prompt, err := fetchBridgedCallPrompt(ctx, call)
+		prompt, err := s.fetchBridgedCallPrompt(ctx, call)
 		if err != nil {
 			s.logger.Error("bridged call prompt generation failed", "call_id", id, "reason", telephonyErrorClass(err))
 			s.failCall(ctx, id, "confirmation_prompt_unavailable")
@@ -708,41 +708,51 @@ func bridgedOriginateCommand(call bridgedCall, gateway, target string, confirmat
 	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_call_prompt_file=%s,bridged_confirmation_required=%t}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, call.PromptFile, confirmation, gateway, call.CallbackDestination)
 }
 
-func fetchBridgedCallPrompt(ctx context.Context, call bridgedCall) (string, error) {
+func (s *server) fetchBridgedCallPrompt(ctx context.Context, call bridgedCall) (string, error) {
+	started := time.Now()
 	endpoint := strings.TrimRight(strings.TrimSpace(os.Getenv("AVOIP_BRIDGED_TTS_CACHE_URL")), "/")
 	token := strings.TrimSpace(os.Getenv("AVOIP_BRIDGED_TTS_INTERNAL_TOKEN"))
 	if endpoint == "" || token == "" {
+		s.logger.Error("bridged call prompt request not configured", "call_id", call.ID, "endpoint_configured", endpoint != "", "internal_token_configured", token != "")
 		return "", errors.New("tts cache is not configured")
 	}
 	body, err := json.Marshal(map[string]string{"text": fmt.Sprintf("To accept a call from %s, press 1.", call.InitiatorDisplayName)})
 	if err != nil {
+		s.logger.Error("bridged call prompt request could not be encoded", "call_id", call.ID, "error_class", fmt.Sprintf("%T", err))
 		return "", err
 	}
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/v1/tts", bytes.NewReader(body))
 	if err != nil {
+		s.logger.Error("bridged call prompt request could not be created", "call_id", call.ID, "error_class", fmt.Sprintf("%T", err))
 		return "", err
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-AVoIP-TTS-Internal", token)
+	s.logger.Debug("bridged call prompt request started", "call_id", call.ID, "text_bytes", len([]byte(fmt.Sprintf("To accept a call from %s, press 1.", call.InitiatorDisplayName))))
 	client := &http.Client{Timeout: 35 * time.Second}
 	response, err := client.Do(request)
 	if err != nil {
+		s.logger.Error("bridged call prompt request failed", "call_id", call.ID, "failure_stage", "http_request", "duration_ms", time.Since(started).Milliseconds(), "error_class", fmt.Sprintf("%T", err))
 		return "", err
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		s.logger.Error("bridged call prompt request returned failure", "call_id", call.ID, "failure_stage", "http_response", "http_status", response.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 		return "", fmt.Errorf("tts cache returned status %d", response.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, 4096))
 	if err != nil {
+		s.logger.Error("bridged call prompt response could not be read", "call_id", call.ID, "failure_stage", "read_response", "http_status", response.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "error_class", fmt.Sprintf("%T", err))
 		return "", err
 	}
 	var result struct {
 		Path string `json:"path"`
 	}
 	if json.Unmarshal(data, &result) != nil || !strings.HasPrefix(result.Path, "/usr/share/freeswitch/sounds/avoip-shared/tts-cache-") || !strings.HasSuffix(result.Path, ".wav") {
+		s.logger.Error("bridged call prompt response invalid", "call_id", call.ID, "failure_stage", "validate_response", "http_status", response.StatusCode, "response_bytes", len(data), "duration_ms", time.Since(started).Milliseconds())
 		return "", errors.New("tts cache returned invalid path")
 	}
+	s.logger.Info("bridged call prompt ready", "call_id", call.ID, "http_status", response.StatusCode, "response_bytes", len(data), "duration_ms", time.Since(started).Milliseconds())
 	return result.Path, nil
 }
 

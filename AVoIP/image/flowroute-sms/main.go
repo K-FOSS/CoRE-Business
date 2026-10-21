@@ -202,7 +202,7 @@ func run(logger *slog.Logger) error {
 		return http.ListenAndServe(":8080", mux)
 	}
 	if mode == "tts-cache" {
-		return runTTSCache()
+		return runTTSCache(logger)
 	}
 	if mode != "api" && mode != "webhook" && mode != "admin" {
 		return errors.New("SMS_SERVICE_MODE must be api, web, webhook, admin, media, or tts-cache")
