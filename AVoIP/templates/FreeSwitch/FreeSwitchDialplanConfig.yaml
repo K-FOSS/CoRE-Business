@@ -78,9 +78,14 @@ data:
             <action application="set" data="bridge_early_media=false"/>
             <action application="set" data="bridged_call_stage=awaiting_confirmation"/>
             <condition field="${bridged_confirmation_required}" expression="^true$">
-              <condition field="${bridged_call_prompt_file}" expression="^/.+\.wav$">
-                <action application="playback" data="${bridged_call_prompt_file}"/>
-              </condition>
+              <!-- The Admin worker only originates a confirmation call after it
+                   has received and validated a safe absolute WAV path from the
+                   TTS cache. Do not gate playback on a second XML condition:
+                   that condition was being skipped on the carrier leg while
+                   play_and_get_digits still ran, producing silence. -->
+              <action application="log" data="INFO AVoIP bridged confirmation prompt start uuid=${uuid} call_id=${bridged_call_id}"/>
+              <action application="playback" data="${bridged_call_prompt_file}"/>
+              <action application="log" data="INFO AVoIP bridged confirmation prompt complete uuid=${uuid} call_id=${bridged_call_id}"/>
               <action application="play_and_get_digits" data="1 1 1 {{ $.Values.avoipAdmin.bridgedCalls.confirmationTimeoutSeconds }}000 '' silence_stream://1000 silence_stream://1000 bridged_call_confirmation ^1$ 1000"/>
               <action application="transfer" data="bridged-call-confirmed XML public"/>
             </condition>
