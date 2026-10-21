@@ -221,19 +221,21 @@ data:
       {{- if $.Values.freeswitch.ivr.enabled }}
       <context name="silent-ivr">
         <extension name="silent-ivr-entry">
-          <action application="answer"/>
-          <action application="log" data="INFO AVoIP silent extension IVR ready caller=${caller_id_number}"/>
-          {{- $ivrDestinations := $.Values.freeswitch.ivr.extensions -}}
-          {{- if $.Values.asterisk.sipCore.enabled }}
-          {{- $ivrDestinations = uniq (append $ivrDestinations (toString $.Values.asterisk.sipCore.soundClipExtension)) -}}
-          {{- end }}
-          {{- $ivrPattern := join "|" $ivrDestinations -}}
-          {{- if $voicemailEnabled }}
-          {{- $voicemailDigits := trimPrefix "*" $voicemailAccessCode -}}
-          {{- $ivrPattern = printf "%s|%s|\\%s" $ivrPattern $voicemailDigits $voicemailAccessCode -}}
-          {{- end }}
-          <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # {{ $.Values.freeswitch.ivr.greeting }} silence_stream://1000 ivr_extension ^({{ $ivrPattern }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
-          <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
+          <condition field="destination_number" expression="^silent-ivr-entry$">
+            <action application="answer"/>
+            <action application="log" data="INFO AVoIP silent extension IVR ready caller=${caller_id_number}"/>
+            {{- $ivrDestinations := $.Values.freeswitch.ivr.extensions -}}
+            {{- if $.Values.asterisk.sipCore.enabled }}
+            {{- $ivrDestinations = uniq (append $ivrDestinations (toString $.Values.asterisk.sipCore.soundClipExtension)) -}}
+            {{- end }}
+            {{- $ivrPattern := join "|" $ivrDestinations -}}
+            {{- if $voicemailEnabled }}
+            {{- $voicemailDigits := trimPrefix "*" $voicemailAccessCode -}}
+            {{- $ivrPattern = printf "%s|%s|\\%s" $ivrPattern $voicemailDigits $voicemailAccessCode -}}
+            {{- end }}
+            <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # {{ $.Values.freeswitch.ivr.greeting }} silence_stream://1000 ivr_extension ^({{ $ivrPattern }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
+            <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
+          </condition>
         </extension>
       </context>
       <context name="silent-ivr-targets">
