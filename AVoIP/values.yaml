@@ -236,8 +236,8 @@ flowrouteSMS:
       digest: 'sha256:a1bb5373b24f5d0f428bb8d8983bed4881f5c32911af0a6b7384e51723511335'
     'tts-cache':
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-tts-cache'
-      tag: '1-262758477513cec6d4005a0f1c607fd35b543050'
-      digest: 'sha256:05366fe47b0ef9646f70e6b82e93c80fe606a251206e8bf1699a8a981047ac99'
+      tag: '1-29c8a087a91e6bd36da07eb5d2891d5228e0d031'
+      digest: 'sha256:056b313fffdf362cd3f1aca66c7999b4b723aed5042d03844944f53becca4'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
