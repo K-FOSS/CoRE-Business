@@ -82,7 +82,10 @@ controllers:
           - name: 'AVOIP_BRIDGED_TTS_VOICE'
             value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.voice }}'
           - name: 'AVOIP_BRIDGED_TTS_TOKEN'
-            value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.token }}'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ default (printf "%s-bridged-tts-gpustack" (include "avoip.fullname" $)) $.Values.avoipAdmin.bridgedCalls.tts.secret.name }}'
+                key: '{{ $.Values.avoipAdmin.bridgedCalls.tts.secret.key }}'
           - name: 'AVOIP_BRIDGED_TTS_INTERNAL_TOKEN'
             valueFrom:
               secretKeyRef:
