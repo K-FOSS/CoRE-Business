@@ -123,7 +123,7 @@
       if (!response.ok) throw new Error(`File list request failed (${response.status})`);
       const entries = await response.json();
       const sounds = entries
-        .filter(entry => entry.type === 'file' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}\.wav$/i.test(entry.name))
+        .filter(entry => entry.type === 'file' && !entry.name.startsWith('tts-cache-') && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}\.wav$/i.test(entry.name))
         .sort((a, b) => a.name.localeCompare(b.name));
       knownFiles = new Set(sounds.map(sound => sound.name));
       fileList.replaceChildren();

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -52,6 +54,7 @@ type bridgedCall struct {
 	ID                    string     `json:"id"`
 	Owner                 string     `json:"owner,omitempty"`
 	InitiatorDisplayName  string     `json:"-"`
+	PromptFile            string     `json:"-"`
 	CallbackKind          string     `json:"callback_kind"`
 	CallbackDestination   string     `json:"callback_destination"`
 	CallbackLabel         string     `json:"callback_label"`
@@ -673,6 +676,15 @@ func (s *server) dispatchBridgedCall(ctx context.Context, id string) {
 	if call.CallbackKind == "internal" && os.Getenv("AVOIP_BRIDGED_INTERNAL_CONFIRMATION_REQUIRED") == "false" {
 		confirmation = false
 	}
+	if confirmation {
+		prompt, err := fetchBridgedCallPrompt(ctx, call)
+		if err != nil {
+			s.logger.Error("bridged call prompt generation failed", "call_id", id, "reason", telephonyErrorClass(err))
+			s.failCall(ctx, id, "confirmation_prompt_unavailable")
+			return
+		}
+		call.PromptFile = prompt
+	}
 	target := "sofia/gateway/asterisk/" + e.Extension
 	command := bridgedOriginateCommand(call, gateway, target, confirmation)
 	result, err := eslCommand(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"), telephonyEnv("AVOIP_ESL_SECRET"), "bgapi "+command)
@@ -693,7 +705,45 @@ func bridgedOriginateCommand(call bridgedCall, gateway, target string, confirmat
 	if timeout == "" {
 		timeout = "30"
 	}
-	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_call_initiator_name=%s,bridged_confirmation_required=%t}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, call.InitiatorDisplayName, confirmation, gateway, call.CallbackDestination)
+	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_call_prompt_file=%s,bridged_confirmation_required=%t}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, call.PromptFile, confirmation, gateway, call.CallbackDestination)
+}
+
+func fetchBridgedCallPrompt(ctx context.Context, call bridgedCall) (string, error) {
+	endpoint := strings.TrimRight(strings.TrimSpace(os.Getenv("AVOIP_BRIDGED_TTS_CACHE_URL")), "/")
+	token := strings.TrimSpace(os.Getenv("AVOIP_BRIDGED_TTS_INTERNAL_TOKEN"))
+	if endpoint == "" || token == "" {
+		return "", errors.New("tts cache is not configured")
+	}
+	body, err := json.Marshal(map[string]string{"text": fmt.Sprintf("To accept a call from %s, press 1.", call.InitiatorDisplayName)})
+	if err != nil {
+		return "", err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/v1/tts", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-AVoIP-TTS-Internal", token)
+	client := &http.Client{Timeout: 35 * time.Second}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return "", fmt.Errorf("tts cache returned status %d", response.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(response.Body, 4096))
+	if err != nil {
+		return "", err
+	}
+	var result struct {
+		Path string `json:"path"`
+	}
+	if json.Unmarshal(data, &result) != nil || !strings.HasPrefix(result.Path, "/usr/share/freeswitch/sounds/avoip-shared/tts-cache-") || !strings.HasSuffix(result.Path, ".wav") {
+		return "", errors.New("tts cache returned invalid path")
+	}
+	return result.Path, nil
 }
 
 func (s *server) failCall(ctx context.Context, id, reason string) {

@@ -234,6 +234,10 @@ flowrouteSMS:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-media'
       tag: '1-f2cbfe7e1e7091c776f51fb4ee5b8ca0b31db5e6'
       digest: 'sha256:a1bb5373b24f5d0f428bb8d8983bed4881f5c32911af0a6b7384e51723511335'
+    'tts-cache':
+      repository: 'slop.writemy.codes/core/core-business/flowroute-sms-tts-cache'
+      tag: '1-f2cbfe7e1e7091c776f51fb4ee5b8ca0b31db5e6'
+      digest: ''
   callbackSecret:
     name: ''
     key: 'CallbackToken'
@@ -1604,6 +1608,11 @@ avoipAdmin:
     schedulingHorizonDays: 30
     latenessGraceSeconds: 900
     perUserConcurrency: 2
+    tts:
+      enabled: true
+      endpoint: 'https://gpustack.mylogin.space/v1/audio/speech'
+      model: 'CoRE-AI-TTS'
+      voice: 'af_bella'
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams: []
   routing:

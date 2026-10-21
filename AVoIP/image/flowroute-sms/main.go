@@ -201,8 +201,11 @@ func run(logger *slog.Logger) error {
 		mux.HandleFunc("GET /media/{token}", (&server{mediaStore: store}).serveProxyMedia)
 		return http.ListenAndServe(":8080", mux)
 	}
+	if mode == "tts-cache" {
+		return runTTSCache()
+	}
 	if mode != "api" && mode != "webhook" && mode != "admin" {
-		return errors.New("SMS_SERVICE_MODE must be api, web, webhook, admin, or media")
+		return errors.New("SMS_SERVICE_MODE must be api, web, webhook, admin, media, or tts-cache")
 	}
 	if databaseURL == "" || (mode == "webhook" && os.Getenv("FLOWROUTE_ENABLED") != "false" && callbackToken == "") {
 		return errors.New("DATABASE_URL and webhook callback token are required for the selected mode")

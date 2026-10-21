@@ -18,6 +18,9 @@
 {{- if and $settings.bridgedCalls.enabled (or (not $settings.telephony.enabled) (not $settings.routing.enabled)) }}
 {{- fail "avoipAdmin.bridgedCalls requires telephony integrations and managed routing" }}
 {{- end }}
+{{- if and $settings.bridgedCalls.enabled $settings.bridgedCalls.tts.enabled (or (not $.Values.homer.soundLibrary.enabled) (not $.Values.homer.storage.persistence.enabled)) }}
+{{- fail "avoipAdmin.bridgedCalls.tts requires the shared Homer audio library and persistence" }}
+{{- end }}
 {{- if and $settings.bridgedCalls.enabled (or (lt (int $settings.bridgedCalls.callbackRingTimeoutSeconds) 1) (gt (int $settings.bridgedCalls.callbackRingTimeoutSeconds) 300) (lt (int $settings.bridgedCalls.confirmationTimeoutSeconds) 1) (gt (int $settings.bridgedCalls.confirmationTimeoutSeconds) 30) (lt (int $settings.bridgedCalls.extensionRingTimeoutSeconds) 1) (gt (int $settings.bridgedCalls.extensionRingTimeoutSeconds) 300) (lt (int $settings.bridgedCalls.maximumDurationSeconds) 60) (gt (int $settings.bridgedCalls.maximumDurationSeconds) 86400) (lt (int $settings.bridgedCalls.schedulingHorizonDays) 1) (gt (int $settings.bridgedCalls.schedulingHorizonDays) 90) (lt (int $settings.bridgedCalls.perUserConcurrency) 1) (gt (int $settings.bridgedCalls.perUserConcurrency) 20)) }}
 {{- fail "avoipAdmin.bridgedCalls timeout, duration, horizon, or concurrency setting is outside its allowed range" }}
 {{- end }}
@@ -98,6 +101,13 @@ controllers:
             value: '{{ $settings.bridgedCalls.latenessGraceSeconds }}'
           - name: 'AVOIP_BRIDGED_PER_USER_CONCURRENCY'
             value: '{{ $settings.bridgedCalls.perUserConcurrency }}'
+          - name: 'AVOIP_BRIDGED_TTS_CACHE_URL'
+            value: 'http://{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "flowroute-sms-tts-cache") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:8080'
+          - name: 'AVOIP_BRIDGED_TTS_INTERNAL_TOKEN'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" . }}-admin-routing-token'
+                key: 'token'
           - name: 'MEDIA_S3_ENDPOINT'
             value: 'https://s3.{{ $.Values.cluster.name }}.{{ $.Values.datacenter }}.{{ $.Values.region }}.mylogin.space'
           - name: 'MEDIA_S3_BUCKET'
@@ -264,6 +274,22 @@ networkpolicies:
                   app.kubernetes.io/controller: 'freeswitch'
           ports:
             - port: {{ $settings.telephony.freeswitchEventSocket.port }}
+              protocol: 'TCP'
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                  app.kubernetes.io/controller: 'audio-library'
+          ports:
+            - port: {{ $.Values.homer.soundLibrary.port }}
+              protocol: 'TCP'
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                  app.kubernetes.io/controller: 'flowroute-sms-tts-cache'
+          ports:
+            - port: 8080
               protocol: 'TCP'
 {{- end }}
 {{- if $settings.routing.enabled }}

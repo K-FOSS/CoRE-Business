@@ -8,7 +8,7 @@
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $callbackSecretName := default (include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sms-callback")) $settings.callbackSecret.name -}}
 controllers:
-  {{- range $mode := list "web" "api" "webhook" "media" }}
+  {{- range $mode := list "web" "api" "webhook" "media" "tts-cache" }}
   {{- if or (ne $mode "web") $settings.inbox.enabled }}
   {{- $suffix := printf "flowroute-sms-%s" $mode }}
   {{- $name := include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" $suffix) }}
@@ -74,11 +74,26 @@ controllers:
                 name: '{{ $settings.media.proxySecretName }}'
                 key: 'secret'
           {{- end }}
+          {{- if eq $mode "tts-cache" }}
+          - name: 'AVOIP_BRIDGED_TTS_URL'
+            value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.endpoint }}'
+          - name: 'AVOIP_BRIDGED_TTS_MODEL'
+            value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.model }}'
+          - name: 'AVOIP_BRIDGED_TTS_VOICE'
+            value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.voice }}'
+          - name: 'AVOIP_BRIDGED_TTS_INTERNAL_TOKEN'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.fullname" $ }}-admin-routing-token'
+                key: 'token'
+          - name: 'AVOIP_BRIDGED_AUDIO_LIBRARY_URL'
+            value: 'http://{{ include "avoip.fullname" $ }}-audio-library.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.homer.soundLibrary.port }}{{ $.Values.homer.soundLibrary.path }}/files'
+          {{- end }}
           {{- if eq $mode "web" }}
           - name: 'SMS_FRAME_ANCESTOR'
             value: '{{ $settings.inbox.frameAncestor }}'
           {{- end }}
-          {{- if ne $mode "web" }}
+          {{- if and (ne $mode "web") (ne $mode "tts-cache") }}
           {{ if and $.Values.avoipAdmin.enabled $.Values.freeswitch.enabled }}
           - name: 'AVOIP_ADMIN_URL'
             value: 'https://{{ include "avoip.admin.hostname" $ }}'
@@ -169,7 +184,7 @@ controllers:
   {{- end }}
   {{- end }}
 service:
-  {{- range $mode := list "web" "api" "webhook" "media" }}
+  {{- range $mode := list "web" "api" "webhook" "media" "tts-cache" }}
   {{- if or (ne $mode "web") $settings.inbox.enabled }}
   {{- $suffix := printf "flowroute-sms-%s" $mode }}
   {{ $suffix }}:
@@ -183,7 +198,7 @@ service:
   {{- end }}
   {{- end }}
 networkpolicies:
-  {{- range $mode := list "web" "api" "webhook" "media" }}
+  {{- range $mode := list "web" "api" "webhook" "media" "tts-cache" }}
   {{- if or (ne $mode "web") $settings.inbox.enabled }}
   {{- $suffix := printf "flowroute-sms-%s" $mode }}
   {{ $suffix }}-ingress:
@@ -193,6 +208,12 @@ networkpolicies:
     rules:
       ingress:
         - from:
+          {{- if eq $mode "tts-cache" }}
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/controller: 'avoip-admin'
+                  app.kubernetes.io/instance: '{{ $.Release.Name }}'
+          {{- else }}
             - namespaceSelector:
                 matchLabels:
                   kubernetes.io/metadata.name: '{{ $settings.gatewayPods.namespace }}'
@@ -201,6 +222,7 @@ networkpolicies:
                   app.kubernetes.io/name: 'envoy'
                   gateway.envoyproxy.io/owning-gateway-name: '{{ $.Values.gateway.name }}'
                   gateway.envoyproxy.io/owning-gateway-namespace: '{{ $.Values.gateway.namespace }}'
+          {{- end }}
           ports:
             - protocol: 'TCP'
               port: 8080

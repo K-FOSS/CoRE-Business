@@ -821,6 +821,14 @@ networkpolicies:
           ports:
             - protocol: TCP
               port: {{ .Values.homer.soundLibrary.port }}
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                  app.kubernetes.io/controller: 'flowroute-sms-tts-cache'
+          ports:
+            - protocol: TCP
+              port: {{ .Values.homer.soundLibrary.port }}
 {{- end }}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
 {{- if $instance.enabled -}}
