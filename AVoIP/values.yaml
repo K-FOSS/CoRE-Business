@@ -236,8 +236,8 @@ flowrouteSMS:
       digest: 'sha256:a1bb5373b24f5d0f428bb8d8983bed4881f5c32911af0a6b7384e51723511335'
     'tts-cache':
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-tts-cache'
-      tag: '1-f2cbfe7e1e7091c776f51fb4ee5b8ca0b31db5e6'
-      digest: ''
+      tag: '1-b19aa2675e4a5af25b0c5f35fb8f7264707d8799'
+      digest: 'sha256:b1033dea8a9efcaee6625afa2c3d7476647f867f969161a60dc60c5887b4b72c'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
@@ -1562,8 +1562,8 @@ avoipAdmin:
       key: 'Token'
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
-    tag: '1-f2cbfe7e1e7091c776f51fb4ee5b8ca0b31db5e6'
-    digest: 'sha256:aabd6e2788bb93ce682f047ea4650e70acb865a063d1fe070fa930b4a5573d5c'
+    tag: '1-b19aa2675e4a5af25b0c5f35fb8f7264707d8799'
+    digest: 'sha256:f7f6aff0baa0912e51342cfa758322b27ce9395079d89678d87fa00b320d29be'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.
