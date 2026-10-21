@@ -79,13 +79,12 @@ a shared product name does not make SIP credentials valid for the SMS API.
 The telephony viewer is opt-in and disabled by default. Configure dedicated
 read-only PostgreSQL connection Secrets for each CDR table; the Admin's own
 catalog database identity is not a CDR reader. The AMI and FreeSWITCH Event
-Socket adapters also require site-local management endpoints and dedicated
-credentials. The current chart keeps FreeSWITCH's Event Socket on loopback and
-does not configure an Asterisk AMI account, so those interfaces remain
-`not configured` until an approved site layer provisions them and restricts
-network access to the Admin workload. Do not reuse the Asterisk or FreeSWITCH
-service database passwords for CDR access, or expose AMI/Event Socket to general
-cluster or public networks. The CDR query is read-only and returns at most 50
+Socket adapters use the retained generated `avoipAdmin.telephony.managementSecret`.
+The chart publishes that password to Vault, writes the Asterisk AMI user file
+at container startup, and binds both management interfaces only to private
+ClusterIP Services. NetworkPolicy permits the Admin workload to reach those
+ports; do not expose AMI/Event Socket through a Gateway or public Service. The
+CDR query is read-only and returns at most 50
 recent records per database. Active call termination requires the Admin group;
 each accepted request is written to the existing Admin audit table.
 

@@ -60,20 +60,22 @@ avoipAdmin:
     enabled: true
   telephony:
     enabled: true
-    freeswitch:
-      eventSocketAddress: 'private-freeswitch:8021'
-      eventSocketSecret: {name: 'existing-secret', key: 'secret'}
+    managementSecret:
+      remoteKey: 'AVoIP/Telephony/YVR/Home1'
+    asteriskManager:
+      username: 'avoip-admin-yvr'
+    freeswitchEventSocket:
+      listenAddress: '0.0.0.0'
   bridgedCalls:
     enabled: true
     confirmationRequired: true
 ```
 
-The example secret name is illustrative only and must be replaced by an
-existing protected Secret reference; no credential belongs in Git. The chart
-validates that bridging cannot be enabled without both managed routing and the
-private Event Socket configuration. The internal Event Socket remains bound to
-loopback in the FreeSWITCH pod and is reached only through the existing private
-management path; it is not exposed through the Gateway.
+The chart creates a retained random hexadecimal management password, publishes
+it to the configured Vault path with PushSecret, and mounts it only into the
+Admin, Asterisk, and FreeSWITCH workloads. The AMI and Event Socket Services
+are ClusterIP-only and NetworkPolicy permits the Admin pod to reach their
+management ports; neither interface is exposed through the Gateway.
 
 ## Manual acceptance test
 
