@@ -50,6 +50,27 @@ func TestBridgedOriginateCommandIsStructured(t *testing.T) {
 	}
 }
 
+func TestBridgedCallDoesNotMarkNoAnswerBeforeCallbackRingWindow(t *testing.T) {
+	started := time.Now().Add(-5 * time.Second)
+	if bridgedCallMayFinalizeNoAnswer(started, "") {
+		t.Fatal("call was allowed to finalize before the callback ring window elapsed")
+	}
+}
+
+func TestBridgedCallCanFinalizeAfterCallbackRingWindow(t *testing.T) {
+	started := time.Now().Add(-35 * time.Second)
+	if !bridgedCallMayFinalizeNoAnswer(started, "") {
+		t.Fatal("call was not allowed to finalize after the callback ring window elapsed")
+	}
+}
+
+func TestBridgedCallStageAllowsImmediateTerminalMapping(t *testing.T) {
+	started := time.Now()
+	if !bridgedCallMayFinalizeNoAnswer(started, "calling_extension") {
+		t.Fatal("observed call stage should allow terminal mapping")
+	}
+}
+
 func TestAuthorizedExtensionHonorsDisablement(t *testing.T) {
 	disabled := false
 	catalog := sipCatalog{Extensions: []extensionRoute{{Extension: "7101", Enabled: &disabled}}}

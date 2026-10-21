@@ -769,7 +769,8 @@ func (s *server) reconcileBridgedCall(id string) {
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			var callback, extension, status string
-			err := s.pool.QueryRow(ctx, `SELECT callback_uuid,extension_uuid,status FROM public.avoip_bridged_calls WHERE id=$1`, id).Scan(&callback, &extension, &status)
+			var startedAt time.Time
+			err := s.pool.QueryRow(ctx, `SELECT callback_uuid,extension_uuid,status,started_at FROM public.avoip_bridged_calls WHERE id=$1`, id).Scan(&callback, &extension, &status, &startedAt)
 			if err != nil || status == callCancelled || status == callCompleted || status == callFailed || status == callNoAnswer || status == callBusy {
 				cancel()
 				return
@@ -786,7 +787,11 @@ func (s *server) reconcileBridgedCall(id string) {
 				cancel()
 				continue
 			}
-			if !callbackExists && !extensionExists {
+			// FreeSWITCH accepts bgapi originate before the callback channel is
+			// necessarily visible to uuid_exists. Do not turn that short window
+			// into a false No answer result. Once a stage has been stamped, the
+			// channel was observed and normal terminal mapping is safe.
+			if !callbackExists && !extensionExists && bridgedCallMayFinalizeNoAnswer(startedAt, stage) {
 				_, _ = s.pool.Exec(ctx, `UPDATE public.avoip_bridged_calls SET status=CASE WHEN cancellation_requested THEN $2 WHEN status='Connected' THEN $3 ELSE $4 END,completed_at=now(),cancelled_at=CASE WHEN cancellation_requested THEN now() ELSE cancelled_at END,updated_at=now(),version=version+1 WHERE id=$1 AND status NOT IN ('Completed','Cancelled','Failed','Busy','No answer')`, id, callCancelled, callCompleted, callNoAnswer)
 			}
 			cancel()
@@ -794,4 +799,18 @@ func (s *server) reconcileBridgedCall(id string) {
 			return
 		}
 	}
+}
+
+func bridgedCallMayFinalizeNoAnswer(startedAt time.Time, stage string) bool {
+	if strings.TrimSpace(stage) != "" {
+		return true
+	}
+	if startedAt.IsZero() {
+		return false
+	}
+	timeout := 30
+	if value, err := strconv.Atoi(strings.TrimSpace(os.Getenv("AVOIP_BRIDGED_CALLBACK_RING_TIMEOUT_SECONDS"))); err == nil && value > 0 {
+		timeout = value
+	}
+	return time.Now().After(startedAt.Add(time.Duration(timeout+2) * time.Second))
 }
