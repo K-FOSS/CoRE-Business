@@ -220,20 +220,20 @@ flowrouteSMS:
   images:
     web:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-web'
-      tag: '1-5830f181f2279933d2cd33a317d596c2575cbc05'
-      digest: 'sha256:2b395bbc8d795d4a7de81f8fa23b5dc042363743fd51cc703d053b12c980c7d1'
+      tag: '1-a4893aaa505adc77eb73c1cd827faddab0428e7f'
+      digest: 'sha256:4a30f2631b5c7c66d51864ff7424d944ade3b40b945b3930e5db954308c5f149'
     api:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-api'
-      tag: '1-5830f181f2279933d2cd33a317d596c2575cbc05'
-      digest: 'sha256:7ba803a9495906cbd6f0f1090521674fe1ff2495ca6339a8b733610b10fd16bf'
+      tag: '1-a4893aaa505adc77eb73c1cd827faddab0428e7f'
+      digest: 'sha256:506538582775902407086ab13a5b0cb2d701edd53ff1b7f1c6def1133400f025'
     webhook:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-webhook'
-      tag: '1-5830f181f2279933d2cd33a317d596c2575cbc05'
-      digest: 'sha256:cfa31c363127f08225d62d2100c3ab3c061db525d7de8190d2931e5b204840ef'
+      tag: '1-a4893aaa505adc77eb73c1cd827faddab0428e7f'
+      digest: 'sha256:b029ffe903a666d4675ddb4f7b85a24eb15cdf1f8c19664fcd255c95bec436ab'
     media:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-media'
-      tag: '1-5830f181f2279933d2cd33a317d596c2575cbc05'
-      digest: 'sha256:31ea7622e5b0ab97fd8eae289d2188dd8f0e75d0e32efc82c0d76bc0564b5893'
+      tag: '1-a4893aaa505adc77eb73c1cd827faddab0428e7f'
+      digest: 'sha256:c5815d7dea9fcd15f66ef5ec7e7e4246c1930c0c6a518b64571428c9cf74ab8c'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
@@ -1558,8 +1558,8 @@ avoipAdmin:
       key: 'Token'
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
-    tag: '1-d84bb7a870e708bd7b2e85f901714b25b9501abf'
-    digest: 'sha256:e6aa629157dc58146fd3616631fcc57b489e386262d21908e4a3a8fcc2d1e750'
+    tag: '1-a4893aaa505adc77eb73c1cd827faddab0428e7f'
+    digest: 'sha256:b1667660f41c490ee1961d2e8dfa5247cc614ccfcd1307d3db053d96ffc3449c'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.
