@@ -1105,6 +1105,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		text += `<action application="export" data="nolocal:absolute_codec_string=` + escape(strings.Join(codecOrder, ",")) + `"/>`
 	}
 	if context == "core-managed-outbound" {
+		text += `<action application="export" data="nolocal:sip_h_X-Core-Extension=` + escape(extension) + `"/>`
 		if callLinkedID != "" {
 			text += `<action application="export" data="nolocal:sip_h_X-Core-Call-Linkedid=` + escape(callLinkedID) + `"/>`
 		}

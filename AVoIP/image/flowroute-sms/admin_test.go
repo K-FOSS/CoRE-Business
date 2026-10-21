@@ -351,7 +351,7 @@ func TestFreeSwitchOutboundDialplanAppliesProviderAndDIDCodecOrder(t *testing.T)
 	if !strings.Contains(xml, "provider=carrier codecs=PCMA,PCMU") {
 		t.Fatalf("FreeSWITCH route selection diagnostics did not include provider and codec order: %s", xml)
 	}
-	if !strings.Contains(xml, `data="nolocal:sip_h_X-Core-Call-Linkedid=avoip-asterisk-1792442113.215"`) || !strings.Contains(xml, `data="nolocal:sip_h_X-Core-Origin-Uniqueid=avoip-asterisk-1792442113.216"`) {
+	if !strings.Contains(xml, `data="nolocal:sip_h_X-Core-Extension=7101"`) || !strings.Contains(xml, `data="nolocal:sip_h_X-Core-Call-Linkedid=avoip-asterisk-1792442113.215"`) || !strings.Contains(xml, `data="nolocal:sip_h_X-Core-Origin-Uniqueid=avoip-asterisk-1792442113.216"`) {
 		t.Fatalf("FreeSWITCH B-leg did not inherit the trusted Asterisk correlation identifiers: %s", xml)
 	}
 
