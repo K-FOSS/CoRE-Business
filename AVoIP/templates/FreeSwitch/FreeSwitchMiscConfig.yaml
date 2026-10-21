@@ -150,6 +150,9 @@ data:
         <param name="listen-ip" value="{{ default "127.0.0.1" .Values.avoipAdmin.telephony.freeswitchEventSocket.listenAddress }}"/>
         <param name="listen-port" value="{{ default 8021 .Values.avoipAdmin.telephony.freeswitchEventSocket.port }}"/>
         <param name="password" value="{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}$${event_socket_password}{{ else }}$${password}{{ end }}"/>
+        {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+        <param name="apply-inbound-acl" value="avoip-admin-event-socket"/>
+        {{- end }}
       </settings>
     </configuration>
 
@@ -205,6 +208,13 @@ data:
           <node type="allow" cidr="10.0.0.0/8"/>
           <node type="allow" cidr="172.16.0.0/12"/>
         </list>
+      {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled }}
+        <list name="avoip-admin-event-socket" default="deny">
+          {{- range $.Values.avoipAdmin.telephony.freeswitchEventSocket.allowedCIDRs }}
+          <node type="allow" cidr="{{ . }}"/>
+          {{- end }}
+        </list>
+      {{- end }}
       <list name="flowroute" default="deny">
         {{- range $.Values.flowroute.signalingCIDRs }}
         <node type="allow" cidr="{{ . }}"/>

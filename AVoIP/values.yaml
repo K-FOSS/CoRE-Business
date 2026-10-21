@@ -1578,6 +1578,10 @@ avoipAdmin:
     freeswitchEventSocket:
       listenAddress: '127.0.0.1'
       port: 8021
+      # Explicit source networks for the authenticated AVoIP Admin event
+      # socket. Keep this empty by default so a remotely enabled listener
+      # cannot accidentally become reachable without an operator allowlist.
+      allowedCIDRs: []
     asterisk:
       amiAddress: ''
       amiUsername: ''
