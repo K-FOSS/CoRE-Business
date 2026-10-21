@@ -1074,7 +1074,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 				detectFax = d.detectFax()
 				switch d.Kind {
 				case "ivr":
-					transfer = "silent-ivr-entry XML public"
+					transfer = "silent-ivr-entry XML silent-ivr"
 				case "extension":
 					bridge = "sofia/gateway/asterisk/" + d.Destination
 				case "sip":
@@ -1127,7 +1127,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if transfer != "" {
-		text += `<action application="execute_extension" data="` + escape(transfer) + `"/>`
+		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
 	} else {
 		text += `<action application="set" data="hangup_after_bridge=true"/><action application="bridge" data="` + escape(bridge) + `"/>`
 	}

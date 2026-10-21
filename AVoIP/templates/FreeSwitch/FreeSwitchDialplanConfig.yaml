@@ -142,7 +142,7 @@ data:
                  after the delay. Do not pre_answer before that handoff. -->
             <action application="sleep" data="{{ $.Values.freeswitch.interSite.ivrAnswerDelayMs }}"/>
             {{- end }}
-            <action application="execute_extension" data="silent-ivr-entry XML public"/>
+            <action application="transfer" data="silent-ivr-entry XML silent-ivr"/>
           </condition>
         </extension>
         {{- end }}
@@ -167,8 +167,8 @@ data:
           </condition>
         </extension>
         {{- if $.Values.freeswitch.ivr.enabled }}
-        <extension name="silent-ivr-entry">
-          <condition field="destination_number" expression="^silent-ivr-entry$">
+        <context name="silent-ivr">
+          <extension name="silent-ivr-entry">
             <action application="answer"/>
             <action application="log" data="INFO AVoIP silent extension IVR ready caller=${caller_id_number}"/>
             {{- $ivrDestinations := $.Values.freeswitch.ivr.extensions -}}
@@ -182,8 +182,8 @@ data:
             {{- end }}
             <action application="play_and_get_digits" data="2 8 1 {{ $.Values.freeswitch.ivr.timeoutMs }} # {{ $.Values.freeswitch.ivr.greeting }} silence_stream://1000 ivr_extension ^({{ $ivrPattern }})$ {{ $.Values.freeswitch.ivr.digitTimeoutMs }}"/>
             <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
-          </condition>
-        </extension>
+          </extension>
+        </context>
         <extension name="silent-ivr-invalid">
           <condition field="destination_number" expression="^$">
             <action application="log" data="INFO AVoIP silent extension IVR received no valid destination caller=${caller_id_number}"/>
