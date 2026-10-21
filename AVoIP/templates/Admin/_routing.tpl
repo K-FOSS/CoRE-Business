@@ -271,8 +271,21 @@
       {{ end }}
     }
     route[MANAGED_EGRESS] {
+      # Kamailio $var() values are process-local and survive the end of a SIP
+      # transaction. Reset every value populated by the managed route before
+      # evaluating this request, otherwise a callback without an extension
+      # handoff can inherit another call's quota or provider state.
       $var(managed_egress) = 0;
       $var(managed_egress_prefix) = "";
+      $var(managed_host) = "";
+      $var(managed_caller_id) = "";
+      $var(managed_route) = "";
+      $var(managed_site) = "";
+      $var(managed_limit_profile_id) = "";
+      $var(managed_limit_scope) = "";
+      $var(managed_calls_per_minute) = "";
+      $var(managed_concurrent_calls) = "";
+      $var(managed_max_duration_seconds) = "";
       if ($var(managed_json) == $null) return;
       jansson_array_size("providers", "$var(managed_json)", "$var(managed_count)");
       $var(managed_i) = 0;
