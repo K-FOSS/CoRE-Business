@@ -74,6 +74,7 @@ data:
         <extension name="bridged-call-callback">
           <condition field="destination_number" expression="^bridged-call-callback$">
             <action application="answer"/>
+            <action application="sleep" data="{{ $.Values.avoipAdmin.bridgedCalls.confirmationPromptDelayMilliseconds }}"/>
             <action application="set" data="hangup_after_bridge=true"/>
             <action application="set" data="bridge_early_media=false"/>
             <action application="set" data="bridged_call_stage=awaiting_confirmation"/>
@@ -82,11 +83,12 @@ data:
                    has received and validated a safe absolute WAV path from the
                    TTS cache. Do not gate playback on a second XML condition:
                    that condition was being skipped on the carrier leg while
-                   play_and_get_digits still ran, producing silence. -->
+                   play_and_get_digits still ran, producing silence. The
+                   prompt is supplied directly to play_and_get_digits so a
+                   person can confirm while it is playing. -->
               <action application="log" data="INFO AVoIP bridged confirmation prompt start uuid=${uuid} call_id=${bridged_call_id}"/>
-              <action application="playback" data="${bridged_call_prompt_file}"/>
+              <action application="play_and_get_digits" data="1 1 1 {{ $.Values.avoipAdmin.bridgedCalls.confirmationTimeoutSeconds }}000 '' ${bridged_call_prompt_file} silence_stream://1000 bridged_call_confirmation ^1$ 1000"/>
               <action application="log" data="INFO AVoIP bridged confirmation prompt complete uuid=${uuid} call_id=${bridged_call_id}"/>
-              <action application="play_and_get_digits" data="1 1 1 {{ $.Values.avoipAdmin.bridgedCalls.confirmationTimeoutSeconds }}000 '' silence_stream://1000 silence_stream://1000 bridged_call_confirmation ^1$ 1000"/>
               <action application="transfer" data="bridged-call-confirmed XML public"/>
             </condition>
             <condition field="${bridged_confirmation_required}" expression="^false$">
