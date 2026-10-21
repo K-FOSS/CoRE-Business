@@ -1609,7 +1609,7 @@ avoipAdmin:
     confirmationRequired: true
     internalConfirmationRequired: true
     callbackRingTimeoutSeconds: 30
-    confirmationPromptDelayMilliseconds: 1000
+    confirmationPromptDelayMilliseconds: 2000
     confirmationTimeoutSeconds: 5
     extensionRingTimeoutSeconds: 30
     maximumDurationSeconds: 7200
