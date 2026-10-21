@@ -1128,10 +1128,11 @@ freeswitch:
     # ingress only. The active consumer is YXL's voice DID.
     ivrAnswerDelayMs: 0
   ivr:
-    # Extension dialer, enabled only where a local Asterisk SIP Core is
-    # configured to accept the selected internal destinations.
-    enabled: false
-    extensions: []
+    # The built-in audio destination is safe to enable by default. Site
+    # overlays may add authorized Asterisk destinations when those endpoints
+    # are configured.
+    enabled: true
+    extensions: ['66']
     timeoutMs: 15000
     digitTimeoutMs: 2000
     greeting: '/usr/share/freeswitch/sounds/avoip-shared/IVRGreet.wav'

@@ -221,6 +221,10 @@ are enabled. Detected faxes enter the existing `fax-receive` path. SpanDSP
 color fax negotiation remains enabled through `freeswitch.fax.colour.enabled`. See the
 [current inbound call path](docs/PHONE-TREE.md).
 
+The chart enables the IVR by default with the built-in `66` audio destination;
+site overlays may add only destinations backed by their configured Asterisk
+SIP Core or voicemail policy.
+
 Inter-site voice uses the carrier Service on TLS/5061 and its public TLS
 listener, with a site-specific optional-client-certificate TLS profile. The
 request is authorized by the configured peer CIDR, verified client certificate

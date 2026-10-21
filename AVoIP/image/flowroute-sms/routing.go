@@ -1127,7 +1127,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if transfer != "" {
-		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
+		text += `<action application="execute_extension" data="` + escape(transfer) + `"/>`
 	} else {
 		text += `<action application="set" data="hangup_after_bridge=true"/><action application="bridge" data="` + escape(bridge) + `"/>`
 	}
