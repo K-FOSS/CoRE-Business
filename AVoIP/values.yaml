@@ -1616,11 +1616,11 @@ avoipAdmin:
       secret:
         name: ''
         key: 'token'
-        remoteKey: 'AI/GPUStack'
-        remoteProperty: 'Token'
+        remoteKey: 'AVoIP/SIPCore/AI/GPUStack'
+        remoteProperty: 'APIToken'
         secretStoreRef:
           kind: 'ClusterSecretStore'
-          name: 'mainvault-core'
+          name: 'corevault-rootsecrets'
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams: []
   routing:
