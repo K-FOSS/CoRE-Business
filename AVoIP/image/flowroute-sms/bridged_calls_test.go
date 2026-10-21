@@ -35,9 +35,9 @@ func TestBridgedCallValidationPrimitives(t *testing.T) {
 }
 
 func TestBridgedOriginateCommandIsStructured(t *testing.T) {
-	call := bridgedCall{ID: "call-1", CallbackUUID: "callback-1", CallerID: "+16045550100", CallbackDestination: "+16045550101"}
+	call := bridgedCall{ID: "call-1", CallbackUUID: "callback-1", CallerID: "+16045550100", CallbackDestination: "+16045550101", Extension: "7101"}
 	command := bridgedOriginateCommand(call, "carrier-gateway", "sofia/gateway/asterisk/7101", true)
-	for _, value := range []string{"originate", "origination_uuid=callback-1", "bridged_call_id=call-1", "bridged_confirmation_required=true", "sofia/gateway/carrier-gateway/+16045550101", "bridged-call-callback XML public"} {
+	for _, value := range []string{"originate", "origination_uuid=callback-1", "bridged_call_id=call-1", "bridged_confirmation_required=true", "sip_h_X-Core-Extension=7101", "sip_h_X-Core-Call-Linkedid=call-1", "sip_h_X-Core-Origin-Uniqueid=callback-1", "sofia/gateway/carrier-gateway/+16045550101", "bridged-call-callback XML public"} {
 		if !strings.Contains(command, value) {
 			t.Fatalf("command missing %q: %s", value, command)
 		}
