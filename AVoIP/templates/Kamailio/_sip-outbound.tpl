@@ -48,7 +48,8 @@
       route(MANAGED_EGRESS);
       {{- end }}
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
-      route(MANAGED_HANDOFF);
+      if ($var(managed_egress) == 1) route(MANAGED_CARRIER_IDENTITY);
+      else route(MANAGED_HANDOFF);
       {{- end }}
 
       # New calls require the configured service identity and caller policy.

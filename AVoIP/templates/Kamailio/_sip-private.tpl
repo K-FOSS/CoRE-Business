@@ -236,7 +236,10 @@
           {{- end }}
           sl_send_reply("403", "Destination Not Authorized"); exit;
         }
-        remove_hf("Route"); remove_hf("P-Asserted-Identity"); remove_hf("X-Core-Extension"); remove_hf("X-Core-Original-DID");
+        # Preserve the extension stamped on the authenticated FreeSWITCH
+        # carrier leg. The carrier tier rechecks it against the Admin snapshot
+        # before loading quota and strips it before the provider hop.
+        remove_hf("Route"); remove_hf("P-Asserted-Identity"); remove_hf("X-Core-Original-DID");
         append_hf("P-Asserted-Identity: <sip:$fU@{{ include "avoip.sip.siteHost" . }}>\r\n");
         # Select the actual carrier next hop before building Record-Route so
         # Kamailio records both the private egress socket and SIP Core return

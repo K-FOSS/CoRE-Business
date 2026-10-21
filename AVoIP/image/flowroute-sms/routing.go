@@ -918,7 +918,14 @@ func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		limits := resolvedLimitProfile(c, e.LimitProfileID, e.TenantID, e.Site)
-		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": provider.EgressPrefix, "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "limit_profile_id": limits.ID, "limit_scope": limits.Scope, "calls_per_minute": limits.CallsPerMinute, "concurrent_calls": limits.ConcurrentCalls, "max_duration_seconds": limits.MaxDurationSeconds}
+		egressAuthorizations := []string{}
+		for _, authorizedCallerID := range e.callerIDs() {
+			eligible, _ := eligibleExtensionProviders(c, e, authorizedCallerID, e.Site)
+			for _, eligibleProvider := range eligible {
+				egressAuthorizations = append(egressAuthorizations, eligibleProvider.ID+"|"+authorizedCallerID)
+			}
+		}
+		route := map[string]any{"caller_id": callerID, "provider": provider.ID, "site": e.Site, "host": t.Host, "port": t.Port, "egress_prefix": provider.EgressPrefix, "egress_authorizations": "," + strings.Join(egressAuthorizations, ",") + ",", "codec_order": codecOrder, "codec_flags": codecRTPEngineFlags(codecOrder), "limit_profile_id": limits.ID, "limit_scope": limits.Scope, "calls_per_minute": limits.CallsPerMinute, "concurrent_calls": limits.ConcurrentCalls, "max_duration_seconds": limits.MaxDurationSeconds}
 		if !e.outboundAllowed() {
 			route["disabled_reason"] = e.outboundDisabledReason()
 		}

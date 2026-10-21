@@ -275,7 +275,10 @@ FreeSWITCH public inbound DID routing is selected by Admin through Kamailio.
 YVR's managed Asterisk route sends full `+1` plus ten digit calls directly
 through private Kamailio using the SIP Core `carrier-outbound` PJSIP endpoint.
 The Admin database maps each permitted extension to its caller ID and provider
-route; the carrier verifies the caller ID against that provider's allowlist.
+route. The authenticated FreeSWITCH carrier leg carries the extension identity
+through private Kamailio; carrier Kamailio rechecks the extension, selected
+provider, verified caller ID, and limit profile against the Admin snapshot
+before admission. The identity header is removed before the provider hop.
 YXL keeps PSTN origination disabled. FreeSWITCH still registers to the regional
 Flowroute SIP endpoint using the existing Vault record
 `AVoIP/SIP/FlowRoute` (`Username` and `Password`) for its separate inbound

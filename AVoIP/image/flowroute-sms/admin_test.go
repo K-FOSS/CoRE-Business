@@ -772,6 +772,9 @@ func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	if snapshot.Extensions["7101"]["caller_id"] != "+12065550101" || snapshot.Extensions["7101"]["provider"] != "backup" {
 		t.Fatalf("runtime snapshot did not select the first eligible authorized route: %#v", snapshot.Extensions["7101"])
 	}
+	if got := snapshot.Extensions["7101"]["egress_authorizations"]; got != ",backup|+12065550101,carrier|+12065550100," {
+		t.Fatalf("carrier egress policy must contain only verified extension/provider/caller-ID pairs: %v", got)
+	}
 }
 
 func TestUnmanagedXMLFallbackWithoutDatabase(t *testing.T) {

@@ -281,6 +281,7 @@
       $var(managed_caller_id) = "";
       $var(managed_route) = "";
       $var(managed_site) = "";
+      $var(managed_provider) = "";
       $var(managed_limit_profile_id) = "";
       $var(managed_limit_scope) = "";
       $var(managed_calls_per_minute) = "";
@@ -293,9 +294,10 @@
         jansson_get("providers[$var(managed_i)].host", "$var(managed_json)", "$var(managed_host)");
         if ($rd == $var(managed_host)) {
           jansson_get("valid_until", "$var(managed_json)", "$var(managed_deadline)");
-      if ($Ts > $var(managed_deadline)) { sl_send_reply("503", "Routing Snapshot Expired"); exit; }
+          if ($Ts > $var(managed_deadline)) { sl_send_reply("503", "Routing Snapshot Expired"); exit; }
           jansson_get("providers[$var(managed_i)].caller_ids", "$var(managed_json)", "$var(managed_ids)");
           jansson_get("providers[$var(managed_i)].egress_prefix", "$var(managed_json)", "$var(managed_egress_prefix)");
+          jansson_get("providers[$var(managed_i)].id", "$var(managed_json)", "$var(managed_provider)");
           $var(managed_caller_id) = $fU;
           if (!in_list("$var(managed_caller_id)", "$var(managed_ids)", ",")) {
             xlog("L_WARN", "AVOIP_POLICY reject=caller_id_not_verified call_id=$ci extension=$hdr(X-Core-Extension) provider_host=$var(managed_host)\n");
@@ -310,6 +312,38 @@
         }
         $var(managed_i) = $var(managed_i) + 1;
       }
+    }
+    route[MANAGED_CARRIER_IDENTITY] {
+      # This is the carrier B-leg from the mTLS-authenticated FreeSWITCH peer.
+      # Recheck the same extension/provider/caller-ID policy used for the
+      # Asterisk handoff without routing the B-leg back to FreeSWITCH.
+      if (!($hdr(X-Core-Extension) =~ "^[0-9]{2,12}$")) {
+        xlog("L_WARN", "AVOIP_POLICY reject=carrier_extension_missing call_id=$ci\n");
+        sl_send_reply("403", "Managed Extension Identity Missing"); exit;
+      }
+      $var(managed_extension_id) = $hdr(X-Core-Extension);
+      $var(managed_path) = "extensions." + $var(managed_extension_id);
+      if (!jansson_get("$var(managed_path)", "$var(managed_json)", "$var(managed_route)")) {
+        sl_send_reply("403", "Managed Extension Not Authorized"); exit;
+      }
+      jansson_get("site", "$var(managed_route)", "$var(managed_site)");
+      $var(managed_disabled_reason) = "";
+      $var(managed_allowed) = "";
+      jansson_get("disabled_reason", "$var(managed_route)", "$var(managed_disabled_reason)");
+      jansson_get("egress_authorizations", "$var(managed_route)", "$var(managed_allowed)");
+      $var(managed_auth) = $var(managed_provider) + "|" + $fU;
+      if ($var(managed_site) != "{{ .Values.region }}" ||
+          ($var(managed_disabled_reason) != $null && $var(managed_disabled_reason) != "") ||
+          !in_list("$var(managed_auth)", "$var(managed_allowed)", ",")) {
+        xlog("L_WARN", "AVOIP_POLICY reject=carrier_extension_policy call_id=$ci extension=$var(managed_extension_id) provider=$var(managed_provider)\n");
+        sl_send_reply("403", "Managed Extension Not Authorized"); exit;
+      }
+      jansson_get("limit_profile_id", "$var(managed_route)", "$var(managed_limit_profile_id)");
+      jansson_get("limit_scope", "$var(managed_route)", "$var(managed_limit_scope)");
+      jansson_get("calls_per_minute", "$var(managed_route)", "$var(managed_calls_per_minute)");
+      jansson_get("concurrent_calls", "$var(managed_route)", "$var(managed_concurrent_calls)");
+      jansson_get("max_duration_seconds", "$var(managed_route)", "$var(managed_max_duration_seconds)");
+      xlog("L_INFO", "AVOIP_POLICY carrier_extension decision=authorized extension=$var(managed_extension_id) provider=$var(managed_provider) call_id=$ci\n");
     }
     route[MANAGED_HANDOFF] {
       # Called only inside the existing verified inter-site SAN/CIDR branch.
