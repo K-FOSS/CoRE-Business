@@ -213,9 +213,16 @@ data:
           {{- $eventSocketCIDRs := $.Values.avoipAdmin.telephony.freeswitchEventSocket.allowedCIDRs }}
           {{- if not $eventSocketCIDRs }}
             {{- range $.Values.kamailio.instances }}
-              {{- with .carrierOutbound.peer.cidr }}
+              {{- with .carrierOutbound }}
+                {{- with .peer }}
+                  {{- with .cidr }}
           <node type="allow" cidr="{{ . }}"/>
+                  {{- end }}
+                {{- end }}
               {{- end }}
+            {{- end }}
+            {{- if eq $.Values.region "yvr" }}
+          <node type="allow" cidr="172.20.56.0/21"/>
             {{- end }}
           {{- end }}
           {{- range $eventSocketCIDRs }}
