@@ -482,11 +482,13 @@ YVR cluster. The web route serves the responsive conversation UI, the API
 checks Authentik number entitlements for reads and sends, and the public
 `/flowroute/` route remains callback-token protected. The API receives Flowroute
 send keys from an ExternalSecret backed by the existing SMS Vault record.
-Twilio provider accounts can also send MMS from the inbox using publicly
-reachable HTTPS media URLs; the service does not retain those outbound files.
-Signed inbound Twilio MMS callbacks download and store image attachments under
-the same size cap as the Flowroute inbox; video and other non-image media are
-rejected.
+Twilio provider accounts can also send MMS from the inbox using uploaded image
+files. Files are stored in the site-local S3 bucket and exposed to Twilio only
+through short-lived signed media-proxy URLs. Signed inbound Twilio MMS
+callbacks download and store image attachments in the same S3 bucket under the
+same size cap as the Flowroute inbox; video and other non-image media are
+rejected. The chat UI renders images inline, opens them in an accessible dialog,
+and provides Download under the attachment three-dot menu.
 See the [SMS provider and MMS guide](docs/FLOWROUTE-SMS.md#groups-administrative-access-and-providers)
 for provider limits and the current inbound MMS support boundary.
 The web response allows framing only by `https://office.mylogin.space` and

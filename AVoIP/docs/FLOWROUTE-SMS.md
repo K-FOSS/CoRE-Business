@@ -73,14 +73,18 @@ missing media.
 
 The database credential is read from the `psqlURI` key in the `CoRE-Voice`
 connection Secret. Messages are stored in `public.flowroute_inbound_messages`;
-MMS image bytes are stored as PostgreSQL `bytea` rows in
-`public.flowroute_inbound_media`, linked to their message. The receiver fetches
-only HTTPS signed media URLs from Flowroute's documented media host
+new MMS image attachments are stored in the site-local S3 bucket as objects
+under `sms-media/inbound/`, with object keys and metadata in
+`public.flowroute_inbound_media`. Legacy PostgreSQL `bytea` rows remain
+readable during migration. The receiver fetches only HTTPS signed media URLs
+from Flowroute's documented media host
 (`mms-media-prod.s3.amazonaws.com`) or its observed regional S3 endpoint
 (`s3.us-west-2.amazonaws.com`), accepts
 image MIME types, limits attachments to ten per message and 750 KiB total, and
-commits message and media rows together. Flowroute's signed download links
-expire, so attachments are copied into PostgreSQL on receipt. See the
+commits message and media metadata together. Flowroute's signed download links
+expire, so attachments are copied into site-local S3 on receipt. Twilio's API
+redirects are followed only over HTTPS to approved Twilio/S3 media hosts, and
+credentials are not forwarded to the redirected host. See the
 [Flowroute inbound MMS callback format](https://developer.flowroute.com/api/messages/v2.2/receive-an-mms/).
 Messages and pictures are personal data and are retained in PostgreSQL backups
 with the cluster's normal database lifecycle. There is no automatic retention
@@ -109,9 +113,11 @@ The API filters inbound messages by recipient and outbound messages by sender;
 media downloads require an authorized recipient. The API checks the Authentik
 number allowlist on each read and send, and requires the Authentik username for
 send auditing. Requests without a valid number scope are denied. Do not bypass the authenticated
-Gateway route to expose the service directly. The responsive conversation UI renders message text as text, uses 15 second
-polling and paginated history, and displays stored images without exposing Flowroute's expiring signed
-URLs.
+Gateway route to expose the service directly. The responsive conversation UI
+renders message text as text, uses 15 second polling and paginated history,
+and displays stored images without exposing provider-signed URLs. Selecting an
+attachment opens an in-app dialog; its three-dot menu provides a download
+action.
 
 Each SMS workload has an ingress NetworkPolicy allowing port 8080 only from
 the main Envoy Gateway pods in `flowrouteSMS.gatewayPods.namespace`. The
@@ -204,21 +210,20 @@ The stack now supports multiple configured accounts using these adapters:
 | Provider | Sending | Inbound authentication and scope |
 | --- | --- | --- |
 | [Flowroute](https://www.flowroute.com/), [Messages v2.2](https://developer.flowroute.com/api/messages/v2.2/send-an-sms/) | JSON:API SMS; legacy account remains compatible | Existing token callback and MMS/image persistence; additional named accounts currently support outbound SMS only |
-| [Twilio](https://www.twilio.com/), [Messages resource](https://www.twilio.com/docs/messaging/api/message-resource) | Form-encoded SMS and MMS using account SID and Auth Token | [Signed form webhook](https://www.twilio.com/docs/usage/webhooks/webhooks-security), exact configured URL, account and destination validation; inbound images are downloaded with account authentication and stored in PostgreSQL |
+| [Twilio](https://www.twilio.com/), [Messages resource](https://www.twilio.com/docs/messaging/api/message-resource) | Form-encoded SMS and MMS using account SID and Auth Token; uploaded images are served through the site media proxy | [Signed form webhook](https://www.twilio.com/docs/usage/webhooks/webhooks-security), exact configured URL, account and destination validation; inbound images are downloaded with account authentication and stored in site-local S3 |
 | [Telnyx](https://telnyx.com/), [messaging API](https://developers.telnyx.com/docs/messaging/messages/send-message) | JSON SMS with bearer API key | [Ed25519 webhook](https://developers.telnyx.com/docs/messaging/messages/receiving-webhooks), five-minute timestamp bound and destination validation; SMS text only |
 
 Twilio/Telnyx callbacks use `/providers/{id}/inbound`. Configure that exact HTTPS
 URL without query parameters. Twilio outbound MMS is available in the inbox by
-selecting the Twilio provider and entering one or more publicly accessible
-HTTPS media URLs (up to ten). Twilio fetches and stores those media resources;
-the inbox stores the outbound message record and MMS flag, but does not copy or
-retain those outbound files. Twilio requires media URLs to be reachable without
-authentication and applies file type, size, geography, and carrier limits; see
+selecting the Twilio provider and uploading one or more image files (up to ten).
+The service stores the files in site-local S3 and gives Twilio short-lived
+public HTTPS media-proxy URLs. Twilio applies file type, size, geography, and
+carrier limits; see
 its [MMS sending guide](https://www.twilio.com/docs/messaging/tutorials/how-to-send-sms-messages)
 and [accepted media types](https://www.twilio.com/docs/messaging/guides/accepted-mime-types).
 Do not use private URLs or URLs containing credentials. Inbound Twilio MMS
 supports up to ten image attachments, fetched from Twilio's authenticated media
-resource and stored with the message in PostgreSQL. The existing 750 KiB total
+resource and stored with the message in site-local S3. The existing 750 KiB total
 message-plus-media cap applies; non-image media types are rejected. Twilio's
 webhook signature, account, Message SID, Media SIDs, and exact media resource
 paths are checked before fetching. Inbound Telnyx MMS remains unsupported and
