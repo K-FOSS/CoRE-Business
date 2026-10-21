@@ -49,7 +49,7 @@ controllers:
         env:
           - name: 'SMS_SERVICE_MODE'
             value: '{{ $mode }}'
-          {{- if or (eq $mode "api") (eq $mode "media") }}
+          {{- if or (eq $mode "api") (eq $mode "media") (eq $mode "webhook") }}
           - name: 'MEDIA_S3_ENDPOINT'
             value: 'https://s3.{{ $.Values.cluster.name }}.{{ $.Values.datacenter }}.{{ $.Values.region }}.mylogin.space'
           - name: 'MEDIA_S3_BUCKET'

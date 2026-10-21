@@ -803,3 +803,12 @@ func TestVerifiedGroupsOverrideCustomHeaders(t *testing.T) {
 		}
 	}
 }
+
+func TestFlowrouteIsReceiveOnly(t *testing.T) {
+	if providerCanSend(smsProvider{Type: "flowroute", Enabled: true}, "access", "secret") {
+		t.Fatal("Flowroute must not be eligible for outbound sending")
+	}
+	if !providerCanSend(smsProvider{Type: "twilio", Enabled: true}, "account", "token") {
+		t.Fatal("Twilio with credentials should remain eligible for outbound sending")
+	}
+}

@@ -101,6 +101,10 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 422)
 		return
 	}
+	if !provider.CanSend {
+		http.Error(w, "provider is receive-only", http.StatusUnprocessableEntity)
+		return
+	}
 	if len(input.MediaIDs) > 0 && provider.Type != "twilio" {
 		http.Error(w, "MMS media is currently supported for Twilio providers", 422)
 		return

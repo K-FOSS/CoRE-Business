@@ -214,12 +214,18 @@ func (s *server) providers(ctx context.Context) ([]smsProvider, error) {
 	providers := make([]smsProvider, 0, len(result))
 	for _, p := range result {
 		key, secret := p.credentials()
-		p.CanSend = p.Enabled && key != "" && (p.Type == "telnyx" || secret != "")
+		p.CanSend = providerCanSend(p, key, secret)
 		p.CanReceive = p.Enabled && p.WebhookURL != "" && (p.Type == "twilio" && secret != "" || p.Type == "telnyx" && os.Getenv(p.PublicKeyEnv) != "")
 		providers = append(providers, p)
 	}
 	sort.Slice(providers, func(i, j int) bool { return providers[i].ID < providers[j].ID })
 	return providers, nil
+}
+
+func providerCanSend(p smsProvider, key, secret string) bool {
+	// Flowroute remains an inbound-only compatibility provider. Its
+	// credentials are still available for webhook validation and receiving.
+	return p.Enabled && p.Type != "flowroute" && key != "" && (p.Type == "telnyx" || secret != "")
 }
 func (s *server) listProviders(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r, false) {
