@@ -126,6 +126,7 @@ type server struct {
 	token           []byte
 	logger          *slog.Logger
 	mediaClient     *http.Client
+	mediaStore      *mediaStore
 	sendKey         string
 	sendSecret      string
 	sendClient      *http.Client
@@ -184,8 +185,19 @@ func run(logger *slog.Logger) error {
 	}
 	databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	callbackToken := os.Getenv("FLOWROUTE_CALLBACK_TOKEN")
+	if mode == "media" {
+		store, err := newMediaStore(context.Background())
+		if err != nil {
+			return err
+		}
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /healthz", (&server{mediaStore: store}).health)
+		mux.HandleFunc("GET /readyz", (&server{mediaStore: store}).mediaReady)
+		mux.HandleFunc("GET /media/{token}", (&server{mediaStore: store}).serveProxyMedia)
+		return http.ListenAndServe(":8080", mux)
+	}
 	if mode != "api" && mode != "webhook" && mode != "admin" {
-		return errors.New("SMS_SERVICE_MODE must be api, web, webhook, or admin")
+		return errors.New("SMS_SERVICE_MODE must be api, web, webhook, admin, or media")
 	}
 	if databaseURL == "" || (mode == "webhook" && os.Getenv("FLOWROUTE_ENABLED") != "false" && callbackToken == "") {
 		return errors.New("DATABASE_URL and webhook callback token are required for the selected mode")
@@ -236,7 +248,11 @@ func run(logger *slog.Logger) error {
 		return errors.New("schema initialization failed")
 	}
 
-	app := &server{pool: pool, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendKey: os.Getenv("FLOWROUTE_SMS_ACCESS_KEY"), sendSecret: os.Getenv("FLOWROUTE_SMS_SECRET_KEY"), lastSend: make(map[string]time.Time)}
+	store, err := newOptionalMediaStore(ctx)
+	if err != nil {
+		return err
+	}
+	app := &server{pool: pool, mediaStore: store, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendKey: os.Getenv("FLOWROUTE_SMS_ACCESS_KEY"), sendSecret: os.Getenv("FLOWROUTE_SMS_SECRET_KEY"), lastSend: make(map[string]time.Time)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", app.health)
 	mux.HandleFunc("GET /readyz", app.ready)
@@ -250,6 +266,7 @@ func run(logger *slog.Logger) error {
 		mux.HandleFunc("GET /api/messages", app.listMessages)
 		mux.HandleFunc("GET /api/numbers", app.listNumbers)
 		mux.HandleFunc("POST /api/messages", app.sendMessage)
+		mux.HandleFunc("POST /api/media", app.uploadMedia)
 		mux.HandleFunc("GET /media/{id}", app.getMedia)
 		mux.HandleFunc("DELETE /api/messages/{id}", app.deleteMessage)
 	}
@@ -378,6 +395,14 @@ func inboundPathClass(path string) string {
 }
 
 func (s *server) health(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *server) mediaReady(w http.ResponseWriter, _ *http.Request) {
+	if s.mediaStore == nil {
+		http.Error(w, "not ready", http.StatusServiceUnavailable)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -772,7 +797,7 @@ func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if name != "admin.js" && name != "app.css" && name != "app.js" && name != "bridged-calls.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
+	if name != "admin.js" && name != "app.css" && name != "app.js" && name != "attachments.js" && name != "bridged-calls.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
 		http.NotFound(w, r)
 		return
 	}

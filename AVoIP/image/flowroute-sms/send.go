@@ -53,11 +53,11 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		From      string   `json:"from"`
-		To        string   `json:"to"`
-		Body      string   `json:"body"`
-		Provider  string   `json:"provider_id"`
-		MediaURLs []string `json:"media_urls"`
+		From     string   `json:"from"`
+		To       string   `json:"to"`
+		Body     string   `json:"body"`
+		Provider string   `json:"provider_id"`
+		MediaIDs []string `json:"media_ids"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 32768)).Decode(&input); err != nil {
 		http.Error(w, "invalid request", 400)
@@ -74,15 +74,9 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "number unavailable", 403)
 		return
 	}
-	if (strings.TrimSpace(input.Body) == "" && len(input.MediaURLs) == 0) || len(input.Body) > 1600 || len(input.MediaURLs) > 10 || from == to {
+	if (strings.TrimSpace(input.Body) == "" && len(input.MediaIDs) == 0) || len(input.Body) > 1600 || len(input.MediaIDs) > 10 || from == to {
 		http.Error(w, "invalid message", 400)
 		return
-	}
-	for _, mediaURL := range input.MediaURLs {
-		if !validTwilioMediaURL(mediaURL) {
-			http.Error(w, "media URLs must be public HTTPS URLs", 400)
-			return
-		}
 	}
 	identity := r.Header.Get("X-Authentik-Username")
 	if identity == "" {
@@ -107,17 +101,26 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 422)
 		return
 	}
-	if len(input.MediaURLs) > 0 && provider.Type != "twilio" {
+	if len(input.MediaIDs) > 0 && provider.Type != "twilio" {
 		http.Error(w, "MMS media is currently supported for Twilio providers", 422)
 		return
 	}
-	id, err := s.transmit(r.Context(), provider, from, to, input.Body, input.MediaURLs)
+	mediaURLs := make([]string, 0, len(input.MediaIDs))
+	for _, mediaID := range input.MediaIDs {
+		mediaURL, mediaErr := s.mediaURL(r.Context(), mediaID, identity)
+		if mediaErr != nil {
+			http.Error(w, "attachment unavailable", http.StatusBadRequest)
+			return
+		}
+		mediaURLs = append(mediaURLs, mediaURL)
+	}
+	id, err := s.transmit(r.Context(), provider, from, to, input.Body, mediaURLs)
 	if err != nil {
 		s.logger.Warn("SMS send failed", "actor", identity, "provider_id", provider.ID)
 		http.Error(w, err.Error(), 502)
 		return
 	}
-	_, err = s.pool.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_messages (message_id,sender,recipient,body,direction,is_mms,received_at,provider_id) VALUES ($1,$2,$3,$4,'outbound',$5,$6,$7) ON CONFLICT (message_id) DO NOTHING`, id, from, to, input.Body, len(input.MediaURLs) > 0, time.Now().UTC(), provider.ID)
+	_, err = s.pool.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_messages (message_id,sender,recipient,body,direction,is_mms,received_at,provider_id) VALUES ($1,$2,$3,$4,'outbound',$5,$6,$7) ON CONFLICT (message_id) DO NOTHING`, id, from, to, input.Body, len(mediaURLs) > 0, time.Now().UTC(), provider.ID)
 	if err != nil {
 		s.logger.Error("sent SMS could not be stored", "message_id", id, "user", identity, "from", from)
 		w.Header().Set("Content-Type", "application/json")
@@ -125,7 +128,7 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]any{"id": id, "stored": false})
 		return
 	}
-	s.logger.Info("message sent", "message_id", id, "user", identity, "from", from, "to", to, "is_mms", len(input.MediaURLs) > 0, "media_count", len(input.MediaURLs))
+	s.logger.Info("message sent", "message_id", id, "user", identity, "from", from, "to", to, "is_mms", len(mediaURLs) > 0, "media_count", len(mediaURLs))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]any{"id": id, "stored": true})

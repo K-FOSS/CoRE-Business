@@ -8,7 +8,7 @@
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $callbackSecretName := default (include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sms-callback")) $settings.callbackSecret.name -}}
 controllers:
-  {{- range $mode := list "web" "api" "webhook" }}
+  {{- range $mode := list "web" "api" "webhook" "media" }}
   {{- if or (ne $mode "web") $settings.inbox.enabled }}
   {{- $suffix := printf "flowroute-sms-%s" $mode }}
   {{- $name := include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" $suffix) }}
@@ -42,13 +42,38 @@ controllers:
     containers:
       {{ $suffix }}:
         image:
-          repository: '{{ required (printf "flowrouteSMS.images.%s.repository is required" $mode) (index $settings.images $mode).repository }}'
+          repository: '{{ default (printf "%s-%s" $settings.image.repository $mode) (index $settings.images $mode).repository }}'
           tag: '{{ (index $settings.images $mode).tag }}'
           digest: '{{ (index $settings.images $mode).digest }}'
           pullPolicy: '{{ $settings.image.pullPolicy }}'
         env:
           - name: 'SMS_SERVICE_MODE'
             value: '{{ $mode }}'
+          {{- if or (eq $mode "api") (eq $mode "media") }}
+          - name: 'MEDIA_S3_ENDPOINT'
+            value: 'https://s3.{{ $.Values.cluster.name }}.{{ $.Values.datacenter }}.{{ $.Values.region }}.mylogin.space'
+          - name: 'MEDIA_S3_BUCKET'
+            value: '{{ $settings.media.bucket }}'
+          - name: 'MEDIA_S3_REGION'
+            value: '{{ $settings.media.region }}'
+          - name: 'MEDIA_PROXY_BASE_URL'
+            value: 'https://{{ $settings.media.hostname }}'
+          - name: 'MEDIA_S3_ACCESS_KEY'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $settings.media.credentialsSecretName }}'
+                key: 'AccessKey'
+          - name: 'MEDIA_S3_SECRET_KEY'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $settings.media.credentialsSecretName }}'
+                key: 'SecretAccessKey'
+          - name: 'MEDIA_PROXY_SECRET'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $settings.media.proxySecretName }}'
+                key: 'secret'
+          {{- end }}
           {{- if eq $mode "web" }}
           - name: 'SMS_FRAME_ANCESTOR'
             value: '{{ $settings.inbox.frameAncestor }}'
@@ -144,7 +169,7 @@ controllers:
   {{- end }}
   {{- end }}
 service:
-  {{- range $mode := list "web" "api" "webhook" }}
+  {{- range $mode := list "web" "api" "webhook" "media" }}
   {{- if or (ne $mode "web") $settings.inbox.enabled }}
   {{- $suffix := printf "flowroute-sms-%s" $mode }}
   {{ $suffix }}:
@@ -158,7 +183,7 @@ service:
   {{- end }}
   {{- end }}
 networkpolicies:
-  {{- range $mode := list "web" "api" "webhook" }}
+  {{- range $mode := list "web" "api" "webhook" "media" }}
   {{- if or (ne $mode "web") $settings.inbox.enabled }}
   {{- $suffix := printf "flowroute-sms-%s" $mode }}
   {{ $suffix }}-ingress:

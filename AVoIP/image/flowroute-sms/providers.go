@@ -70,6 +70,15 @@ CREATE TABLE IF NOT EXISTS public.avoip_callback_destinations(
     created_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE(owner, label, destination)
 );
+CREATE TABLE IF NOT EXISTS public.sms_outbound_media(
+    id text PRIMARY KEY,
+    owner text NOT NULL,
+    object_key text NOT NULL UNIQUE,
+    file_name text NOT NULL,
+    mime_type text NOT NULL,
+    size_bytes integer NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
 `
 
 var providerID = regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)

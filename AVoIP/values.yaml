@@ -230,6 +230,10 @@ flowrouteSMS:
       repository: 'slop.writemy.codes/core/core-business/flowroute-sms-webhook'
       tag: '1-41646a7a2eb4e44db6ee8ff0a6747e68a7cb2a5c'
       digest: 'sha256:615ecf68803f775b456df9f05f931b8abb4ca43ed29745e2df47d7ec4b52a040'
+    media:
+      repository: 'slop.writemy.codes/core/core-business/flowroute-sms-media'
+      tag: '1-41646a7a2eb4e44db6ee8ff0a6747e68a7cb2a5c'
+      digest: 'sha256:615ecf68803f775b456df9f05f931b8abb4ca43ed29745e2df47d7ec4b52a040'
   callbackSecret:
     name: ''
     key: 'CallbackToken'
@@ -247,6 +251,13 @@ flowrouteSMS:
   providerCredentials: {}
   diagnostics:
     enabled: true
+  media:
+    enabled: true
+    hostname: 'sms-media.resolvemy.host'
+    bucket: 'sms-media'
+    region: 'yvr'
+    credentialsSecretName: 'core-voice-sms-media-s3'
+    proxySecretName: 'core-voice-sms-media-proxy'
   inbox:
     enabled: true
     frameAncestor: 'https://office.mylogin.space'

@@ -19,6 +19,20 @@ spec:
       terraformProvider: 'psql'
       crossplaneProvider: 'psql-main'
 
+  s3:
+    enabled: true
+    createBuckets: true
+    createServiceAccount: true
+    region: '{{ .Values.flowrouteSMS.media.region }}'
+    buckets:
+      - '{{ .Values.flowrouteSMS.media.bucket }}'
+    crossplane:
+      terraformProvider: 's3-{{ .Values.region }}-{{ .Values.datacenter }}-core'
+      crossplaneProvider: 's3-{{ .Values.region }}-{{ .Values.datacenter }}-core'
+    writeServiceAccountCredentialsSecretRef:
+      name: '{{ .Values.flowrouteSMS.media.credentialsSecretName }}'
+      namespace: '{{ .Release.Namespace }}'
+
   writeConnectionSecretToRef:
     name: '{{ $fullName }}-core-voice-sms'
 {{- end }}

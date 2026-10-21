@@ -1,0 +1,165 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"io"
+	"mime"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+)
+
+const maxUploadBytes = 750 << 10
+
+type mediaStore struct {
+	client    *s3.Client
+	bucket    string
+	secret    []byte
+	proxyBase string
+}
+
+func newOptionalMediaStore(ctx context.Context) (*mediaStore, error) {
+	if strings.TrimSpace(os.Getenv("MEDIA_S3_ENDPOINT")) == "" {
+		return nil, nil
+	}
+	return newMediaStore(ctx)
+}
+
+func newMediaStore(ctx context.Context) (*mediaStore, error) {
+	endpoint := strings.TrimSpace(os.Getenv("MEDIA_S3_ENDPOINT"))
+	bucket := strings.TrimSpace(os.Getenv("MEDIA_S3_BUCKET"))
+	region := strings.TrimSpace(os.Getenv("MEDIA_S3_REGION"))
+	accessKey := os.Getenv("MEDIA_S3_ACCESS_KEY")
+	secretKey := os.Getenv("MEDIA_S3_SECRET_KEY")
+	proxySecret := os.Getenv("MEDIA_PROXY_SECRET")
+	if endpoint == "" || bucket == "" || region == "" || accessKey == "" || secretKey == "" || len(proxySecret) < 32 {
+		return nil, fmt.Errorf("media S3 and proxy configuration is incomplete")
+	}
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region), awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")))
+	if err != nil {
+		return nil, fmt.Errorf("load media S3 configuration: %w", err)
+	}
+	client := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(endpoint)
+		options.UsePathStyle = true
+	})
+	return &mediaStore{client: client, bucket: bucket, secret: []byte(proxySecret), proxyBase: strings.TrimRight(strings.TrimSpace(os.Getenv("MEDIA_PROXY_BASE_URL")), "/")}, nil
+}
+
+func (s *server) uploadMedia(w http.ResponseWriter, r *http.Request) {
+	if s.mediaStore == nil || strings.TrimSpace(r.Header.Get("X-Authentik-Username")) == "" || !sameOrigin(r) {
+		http.Error(w, "media upload unavailable", http.StatusForbidden)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes+32<<10)
+	if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
+		http.Error(w, "attachment is too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "attachment is required", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+	content, err := io.ReadAll(io.LimitReader(file, maxUploadBytes+1))
+	if err != nil || len(content) == 0 || len(content) > maxUploadBytes {
+		http.Error(w, "attachment is too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	mimeType := mime.TypeByExtension(strings.ToLower(filepath.Ext(header.Filename)))
+	if mimeType == "" {
+		mimeType = http.DetectContentType(content)
+	}
+	if !strings.HasPrefix(mimeType, "image/") {
+		http.Error(w, "only image attachments are supported", http.StatusUnsupportedMediaType)
+		return
+	}
+	id := newUUID()
+	key := "sms-media/" + id
+	if _, err = s.mediaStore.client.PutObject(r.Context(), &s3.PutObjectInput{Bucket: aws.String(s.mediaStore.bucket), Key: aws.String(key), Body: bytes.NewReader(content), ContentType: aws.String(mimeType)}); err != nil {
+		http.Error(w, "attachment storage unavailable", http.StatusBadGateway)
+		return
+	}
+	name := filepath.Base(header.Filename)
+	if name == "." || name == "/" || name == "" {
+		name = id
+	}
+	_, err = s.pool.Exec(r.Context(), `INSERT INTO public.sms_outbound_media(id,owner,object_key,file_name,mime_type,size_bytes) VALUES($1,$2,$3,$4,$5,$6)`, id, r.Header.Get("X-Authentik-Username"), key, name, mimeType, len(content))
+	if err != nil {
+		_, _ = s.mediaStore.client.DeleteObject(r.Context(), &s3.DeleteObjectInput{Bucket: aws.String(s.mediaStore.bucket), Key: aws.String(key)})
+		http.Error(w, "attachment could not be recorded", http.StatusServiceUnavailable)
+		return
+	}
+	writeJSON(w, map[string]any{"id": id, "file_name": name, "mime_type": mimeType, "size": len(content)})
+}
+
+func (s *server) mediaURL(ctx context.Context, id, owner string) (string, error) {
+	if s.mediaStore == nil || s.mediaStore.proxyBase == "" {
+		return "", fmt.Errorf("media proxy is not configured")
+	}
+	var key, mimeType string
+	if err := s.pool.QueryRow(ctx, `SELECT object_key,mime_type FROM public.sms_outbound_media WHERE id=$1 AND owner=$2`, id, owner).Scan(&key, &mimeType); err != nil {
+		return "", err
+	}
+	expires := time.Now().Add(15 * time.Minute).Unix()
+	payload := strconv.FormatInt(expires, 10) + "\n" + key + "\n" + mimeType
+	encoded := base64.RawURLEncoding.EncodeToString([]byte(payload))
+	mac := hmac.New(sha256.New, s.mediaStore.secret)
+	mac.Write([]byte(encoded))
+	signature := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return s.mediaStore.proxyBase + "/media/" + encoded + "." + signature, nil
+}
+
+func (s *server) serveProxyMedia(w http.ResponseWriter, r *http.Request) {
+	if s.mediaStore == nil {
+		http.NotFound(w, r)
+		return
+	}
+	parts := strings.Split(r.PathValue("token"), ".")
+	if len(parts) != 2 {
+		http.NotFound(w, r)
+		return
+	}
+	mac := hmac.New(sha256.New, s.mediaStore.secret)
+	mac.Write([]byte(parts[0]))
+	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil || !hmac.Equal(signature, mac.Sum(nil)) {
+		http.NotFound(w, r)
+		return
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[0])
+	fields := strings.Split(string(payload), "\n")
+	if err != nil || len(fields) != 3 || len(fields[1]) == 0 || len(fields[2]) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	expires, err := strconv.ParseInt(fields[0], 10, 64)
+	if err != nil || time.Now().After(time.Unix(expires, 0)) {
+		http.NotFound(w, r)
+		return
+	}
+	object, err := s.mediaStore.client.GetObject(r.Context(), &s3.GetObjectInput{Bucket: aws.String(s.mediaStore.bucket), Key: aws.String(fields[1])})
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer object.Body.Close()
+	w.Header().Set("Content-Type", fields[2])
+	w.Header().Set("Cache-Control", "private, max-age=60")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	io.CopyN(w, object.Body, maxUploadBytes)
+}

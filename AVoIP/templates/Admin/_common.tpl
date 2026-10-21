@@ -98,6 +98,29 @@ controllers:
             value: '{{ $settings.bridgedCalls.latenessGraceSeconds }}'
           - name: 'AVOIP_BRIDGED_PER_USER_CONCURRENCY'
             value: '{{ $settings.bridgedCalls.perUserConcurrency }}'
+          - name: 'MEDIA_S3_ENDPOINT'
+            value: 'https://s3.{{ $.Values.cluster.name }}.{{ $.Values.datacenter }}.{{ $.Values.region }}.mylogin.space'
+          - name: 'MEDIA_S3_BUCKET'
+            value: '{{ $.Values.flowrouteSMS.media.bucket }}'
+          - name: 'MEDIA_S3_REGION'
+            value: '{{ $.Values.flowrouteSMS.media.region }}'
+          - name: 'MEDIA_PROXY_BASE_URL'
+            value: 'https://{{ $.Values.flowrouteSMS.media.hostname }}'
+          - name: 'MEDIA_S3_ACCESS_KEY'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $.Values.flowrouteSMS.media.credentialsSecretName }}'
+                key: 'AccessKey'
+          - name: 'MEDIA_S3_SECRET_KEY'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $.Values.flowrouteSMS.media.credentialsSecretName }}'
+                key: 'SecretAccessKey'
+          - name: 'MEDIA_PROXY_SECRET'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $.Values.flowrouteSMS.media.proxySecretName }}'
+                key: 'secret'
           - name: 'AVOIP_DEFAULT_LIMITS_JSON'
             value: '{{ dict "calls_per_minute" .Values.kamailio.defaults.carrierOutbound.limits.callsPerMinute "concurrent_calls" .Values.kamailio.defaults.carrierOutbound.limits.concurrentCalls "max_duration_seconds" .Values.kamailio.defaults.carrierOutbound.limits.maxDurationSeconds | toJson | replace "'" "''" }}'
           - name: 'AVOIP_SITES_JSON'

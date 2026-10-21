@@ -404,7 +404,8 @@ func eslCommand(ctx context.Context, address, secret, command string) (string, e
 	if err != nil || !strings.Contains(auth, "+OK accepted") {
 		return "", errors.New("event socket authentication failed")
 	}
-	if _, err = fmt.Fprintf(conn, "api %s\n\n", command); err != nil {
+	request := eslWireCommand(command)
+	if _, err = fmt.Fprintf(conn, "%s\n\n", request); err != nil {
 		return "", err
 	}
 	result, err := readESLFrame(reader)
@@ -415,6 +416,16 @@ func eslCommand(ctx context.Context, address, secret, command string) (string, e
 		return "", errors.New("event socket command failed")
 	}
 	return result, nil
+}
+
+func eslWireCommand(command string) string {
+	if strings.HasPrefix(command, "bgapi ") {
+		// bgapi is an ESL command, not an API command. Prefixing it with
+		// `api` produces `api bgapi ...`, which FreeSWITCH rejects instead of
+		// starting the requested asynchronous job.
+		return command
+	}
+	return "api " + command
 }
 func readESLFrame(r *bufio.Reader) (string, error) {
 	headers := map[string]string{}
