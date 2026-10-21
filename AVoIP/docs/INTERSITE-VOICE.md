@@ -33,7 +33,7 @@ port 46016. YXL's SDP advertised
 `172.20.49.211:11062` and RTCP `11063`; YVR's advertised
 `172.20.57.236:11134` and RTCP `11135`. These are offer rewrites, with no
 answer or demonstrated RTP on this attempt. The configured next route for
-`7102` is FreeSWITCH's silent IVR, which accepts digits `7101`, `9090`,
+`7102` is FreeSWITCH's IVR, which accepts digits `7101`, `9090`,
 `66` or `1234`. Its accepted destinations use the authenticated local
 Asterisk gateway; Asterisk can then dial the `7101` SIP Core registration or
 handle its PostgreSQL-backed voicemail path. The captured attempt never

@@ -69,10 +69,10 @@ context = root.find("context[@name='public']")
 ingress = context.find("extension[@name='authorized-inter-site-ivr']")
 actions = ingress.findall('.//action')
 assert [(a.get('application'), a.get('data')) for a in actions if a.get('application') != 'log'] == [
-    ('ring_ready', None), ('transfer', 'silent-ivr-entry XML silent-ivr')]
+    ('ring_ready', None), ('transfer', 'ivr-entry XML ivr')]
 assert not ingress.findall(".//action[@application='pre_answer']")
-ivr_context = root.find("context[@name='silent-ivr']")
-entry = ivr_context.find("extension[@name='silent-ivr-entry']")
+ivr_context = root.find("context[@name='ivr']")
+entry = ivr_context.find("extension[@name='ivr-entry']")
 assert entry.find('.//action').get('application') == 'answer'
 assert not entry.findall(".//action[@application='sleep']")
 voice = context.find("extension[@name='flowroute-did']")

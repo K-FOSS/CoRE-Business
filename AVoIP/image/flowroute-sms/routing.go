@@ -1074,7 +1074,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 				detectFax = d.detectFax()
 				switch d.Kind {
 				case "ivr":
-					transfer = "silent-ivr-entry XML silent-ivr"
+					transfer = "ivr-entry XML ivr"
 				case "extension":
 					bridge = "sofia/gateway/asterisk/" + d.Destination
 				case "sip":

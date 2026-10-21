@@ -28,7 +28,7 @@ The owning ApplicationSet supplies the voice `avoip.did` and legacy FaxNumber
 Secret value in this page.
 
 The Admin catalog currently sends the voice DID to YVR extension `67` and the
-other DID to YVR extension `66` at both sites. To use the silent IVR, set a
+other DID to YVR extension `66` at both sites. To use the IVR, set a
 DID's Admin destination type to `ivr`. That IVR accepts only its configured
 DTMF extensions and transfers the caller to the selected service. Personal
 SIP Core extensions ring all registered contacts in parallel.
