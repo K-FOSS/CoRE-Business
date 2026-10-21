@@ -83,6 +83,10 @@ controllers:
           {{ end }}
           - name: 'AVOIP_SITE'
             value: '{{ .Values.region }}'
+          {{ if and $.Values.homer.soundLibrary.enabled $.Values.homer.storage.persistence.enabled }}
+          - name: 'AVOIP_AUDIO_LIBRARY_URL'
+            value: 'http://{{ include "avoip.fullname" $ }}-audio-library.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.homer.soundLibrary.port }}{{ $.Values.homer.soundLibrary.path }}/files'
+          {{ end }}
           - name: 'AVOIP_BRIDGED_CALLS_ENABLED'
             value: '{{ $settings.bridgedCalls.enabled }}'
           - name: 'AVOIP_BRIDGED_CONFIRMATION_REQUIRED'
@@ -235,7 +239,7 @@ service:
 networkpolicies:
   avoip-admin:
     controller: 'avoip-admin'
-    policyTypes: ['Ingress'{{ if $settings.telephony.enabled }}, 'Egress'{{ end }}]
+    policyTypes: ['Ingress'{{ if or $settings.telephony.enabled (and $.Values.homer.soundLibrary.enabled $.Values.homer.storage.persistence.enabled) }}, 'Egress'{{ end }}]
     rules:
       ingress:
         - from:
@@ -264,8 +268,9 @@ networkpolicies:
           ports:
             - port: 8081
               protocol: 'TCP'
-{{- if $settings.telephony.enabled }}
+      {{- if or $settings.telephony.enabled (and $.Values.homer.soundLibrary.enabled $.Values.homer.storage.persistence.enabled) }}
       egress:
+        {{- if $settings.telephony.enabled }}
         - to:
             - podSelector:
                 matchLabels:
@@ -286,19 +291,22 @@ networkpolicies:
             - podSelector:
                 matchLabels:
                   app.kubernetes.io/instance: '{{ .Release.Name }}'
-                  app.kubernetes.io/controller: 'audio-library'
-          ports:
-            - port: {{ $.Values.homer.soundLibrary.port }}
-              protocol: 'TCP'
-        - to:
-            - podSelector:
-                matchLabels:
-                  app.kubernetes.io/instance: '{{ .Release.Name }}'
                   app.kubernetes.io/controller: 'flowroute-sms-tts-cache'
           ports:
             - port: 8080
               protocol: 'TCP'
-{{- end }}
+        {{- end }}
+        {{- if and $.Values.homer.soundLibrary.enabled $.Values.homer.storage.persistence.enabled }}
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                  app.kubernetes.io/controller: 'audio-library'
+          ports:
+            - port: {{ $.Values.homer.soundLibrary.port }}
+              protocol: 'TCP'
+        {{- end }}
+      {{- end }}
 {{- if $settings.routing.enabled }}
   managed-sip:
     controller: 'freeswitch'

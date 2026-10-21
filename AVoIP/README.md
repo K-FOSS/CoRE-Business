@@ -109,7 +109,7 @@ Service remains disabled, so public TCP SIP is disabled there while the
 outbound SIPS TLSRoute stays enabled. The Admin catalog currently sends both
 sites' inbound DIDs to YVR: the voice DID to extension `67` and the other DID
 to extension `66`. YXL uses the existing authenticated carrier inter-site link
-for that handoff. Admin can instead select the silent YVR FreeSWITCH IVR or
+for that handoff. Admin can instead select the configured YVR FreeSWITCH IVR or
 another configured destination. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
 for the Asterisk-to-Kamailio carrier path, dynamic provider selection, trust
 boundaries, canonical number format and quotas, and the
@@ -213,7 +213,7 @@ patched images built from the pinned Routr source to select those databases.
 See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
 The Admin catalog currently routes the voice DID to YVR extension `67` and
-the other DID to YVR extension `66` at both sites. It can select the silent
+the other DID to YVR extension `66` at both sites. It can select the configured
 FreeSWITCH IVR instead; that IVR accepts configured Asterisk destinations and
 voicemail access. Managed inbound calls preserve the post-answer fax detector
 when the DID's **Detect fax after answer** switch and the site-wide fax settings
@@ -221,9 +221,13 @@ are enabled. Detected faxes enter the existing `fax-receive` path. SpanDSP
 color fax negotiation remains enabled through `freeswitch.fax.colour.enabled`. See the
 [current inbound call path](docs/PHONE-TREE.md).
 
-The chart enables the IVR by default with the built-in `66` audio destination;
-site overlays may add only destinations backed by their configured Asterisk
-SIP Core or voicemail policy.
+The chart enables the legacy IVR by default with the built-in `66` audio
+destination; site overlays may add only destinations backed by their configured
+Asterisk SIP Core or voicemail policy. Admin now supports catalog-managed IVR
+definitions, shared-library greetings, and validated digit routes. These
+definitions are persisted but are not live-routed until the dedicated IVR
+FreeSWITCH runtime and snapshot handoff are deployed; see the
+[managed IVR migration](docs/IVR-ADMIN-MANAGED.md).
 
 Inter-site voice uses the carrier Service on TLS/5061 and its public TLS
 listener, with a site-specific optional-client-certificate TLS profile. The

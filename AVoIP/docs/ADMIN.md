@@ -60,11 +60,12 @@ PostgreSQL grants must be ready before admin pods can become ready.
 | `flowrouteSMS.providerCredentials` | Map `SMS_PROVIDER_*` environment names to existing Secret `name`/`key` references; inject into API, webhook and administration where needed |
 | `flowrouteSMS.localNumbers` | Explicit legacy Flowroute number inventory; admins also see historical local senders/recipients and other configured provider numbers |
 | `avoipAdmin.catalog: null` | Administrators manage the shared SIP catalog in PostgreSQL |
-| `avoipAdmin.catalog: {providers, dids, extensions, version}` | Entire catalog is Git-managed and read only in UI; configure consistently across sites |
+| `avoipAdmin.catalog: {providers, dids, extensions, limit_profiles, ivrs, version}` | Entire catalog is Git-managed and read only in UI; configure consistently across sites |
 | `avoipAdmin.upstreams` | Provision additional FreeSWITCH gateways with Vault-backed credentials or `authentication: 'ip-acl'`; registration is explicitly enabled per gateway |
 | `avoipAdmin.sites` | Optional site-target overrides; normally derived from local FreeSWITCH and existing authenticated inter-site carrier peers |
 | `avoipAdmin.routing.upstreamCIDRs` | Explicit network egress approval for additional carrier TLS destinations; an admin catalog edit cannot widen Kubernetes network policy |
 | `GET/PUT /api/sip` | Read/replace catalog, admin-only with version conflict detection |
+| `GET /api/ivr/media` | Admin-authenticated proxy to the site's shared audio-library WAV index; does not disclose the internal service address |
 | `POST /api/routing/preview` | Admin-only outbound policy preview using the current extension, destination, caller ID, site and provider catalog |
 | `POST /api/routing/inbound-preview` | Admin-only inbound DID preview using the current DID, provider assignment, optional source IP, site and catalog revision |
 | `GET /api/audit` | Recent protected control-plane audit metadata; no credential values |
@@ -201,9 +202,16 @@ record per inbound number, using canonical `+1…` format and the provider ID in
 | Voice DID | `yvr` | `extension` | `67` |
 | Other DID | `yvr` | `extension` | `66` |
 
-To send a DID to the IVR, change its destination type to `ivr`, leave the
-destination empty, and choose a site with `freeswitch.ivr.enabled`. Its digit
-choices still come from the site's FreeSWITCH IVR configuration. An extension
+To send a DID to a catalog-managed IVR, change its destination type to `ivr`
+and enter the matching IVR ID (for example, `main-menu`). The IVR tab selects a
+greeting from the site's shared audio library and defines digit routes as
+structured destination types; DID routes must use the existing authorized
+provider and verified caller ID. Legacy records with an empty IVR destination
+continue to use the static `freeswitch.ivr` configuration. IVR catalog edits
+are validated and saved through the versioned `/api/sip` API, but are not yet
+activated by the call-routing FreeSWITCH: the dedicated IVR FreeSWITCH runtime
+and its snapshot handoff remain a separate rollout dependency. See
+[managed IVR status and migration](IVR-ADMIN-MANAGED.md). An extension
 destination must exist in Asterisk SIP Core. Add or verify the **Caller ID
 assignments** record for `7101` separately: select its outbound provider,
 verified caller-ID number,

@@ -281,6 +281,63 @@ func TestCatalogOwnership(t *testing.T) {
 	}
 }
 
+func TestIVRDefinitionsUseConfiguredAndAuthorizedDestinations(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.IVRs = []ivrDefinition{{ID: "main-menu", Name: "Main menu", Site: "yvr", GreetingAsset: "welcome", TimeoutMs: 15000, DigitTimeoutMs: 2000, MaxDigits: 4, InvalidRetries: 1, Routes: []ivrDigitRoute{{Digits: "1", Kind: "extension", Destination: "7101"}, {Digits: "2", Kind: "did", Destination: "+16505550123", Provider: "carrier", CallerID: "+12065550100"}}}}
+	catalog.DIDs[0].Kind = "ivr"
+	catalog.DIDs[0].Destination = "main-menu"
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("valid managed IVR rejected: %v", err)
+	}
+
+	bad := catalog
+	bad.IVRs = append([]ivrDefinition(nil), catalog.IVRs...)
+	bad.IVRs[0].Routes = append([]ivrDigitRoute(nil), catalog.IVRs[0].Routes...)
+	bad.IVRs[0].Routes[0].Destination = "sofia/gateway/untrusted/100"
+	if err := bad.validate(); err == nil {
+		t.Fatal("raw bridge destination accepted")
+	}
+
+	bad = catalog
+	bad.IVRs = append([]ivrDefinition(nil), catalog.IVRs...)
+	bad.IVRs[0].Routes = append([]ivrDigitRoute(nil), catalog.IVRs[0].Routes...)
+	bad.IVRs[0].Routes[1].Provider = "other-carrier"
+	if err := bad.validate(); err == nil {
+		t.Fatal("unauthorized trunk accepted")
+	}
+
+	bad = catalog
+	bad.DIDs = append([]didRoute(nil), catalog.DIDs...)
+	bad.DIDs[0].Destination = "missing-menu"
+	if err := bad.validate(); err == nil {
+		t.Fatal("DID linked to missing IVR accepted")
+	}
+}
+
+func TestIVRMediaProxyRequiresAdminAndFiltersUnsafeAssets(t *testing.T) {
+	library := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `[{"name":"welcome.wav","type":"file"},{"name":"bad name.wav","type":"file"},{"name":"folder","type":"directory"},{"name":"clip.mp3","type":"file"}]`)
+	}))
+	defer library.Close()
+	t.Setenv("AVOIP_AUDIO_LIBRARY_URL", library.URL)
+	s := &server{}
+	admin := httptest.NewRequest("GET", "https://admin.example/api/ivr/media", nil)
+	admin.Header.Set("X-Authentik-Username", "fixture-admin")
+	admin.Header.Set("X-Auth-Groups", `["AVoIP Admins"]`)
+	w := httptest.NewRecorder()
+	s.listIVRMedia(w, admin)
+	if w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != `[{"id":"welcome","name":"welcome.wav"}]` {
+		t.Fatalf("unexpected media response: %d %s", w.Code, w.Body.String())
+	}
+	denied := httptest.NewRequest("GET", "https://admin.example/api/ivr/media", nil)
+	w = httptest.NewRecorder()
+	s.listIVRMedia(w, denied)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("unauthenticated media request status = %d", w.Code)
+	}
+}
+
 func TestProviderAndDIDCodecOrder(t *testing.T) {
 	catalog := fixtureCatalog()
 	catalog.Providers[0].SupportedCodecs = []string{"PCMU", "G722"}

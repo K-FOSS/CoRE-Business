@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"encoding/xml"
@@ -46,6 +47,29 @@ type didRoute struct {
 	CodecOrder          []string `json:"codec_order,omitempty"`
 	LimitProfileID      string   `json:"limit_profile_id,omitempty"`
 	TenantID            string   `json:"tenant_id,omitempty"`
+}
+
+// IVR definitions use stable IDs and asset names, never dialplan fragments.
+// Route destinations are resolved against the same catalog as ordinary DID
+// routing so IVR cannot introduce a second outbound authorization policy.
+type ivrDefinition struct {
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Site           string          `json:"site"`
+	GreetingAsset  string          `json:"greeting_asset"`
+	TimeoutMs      int             `json:"timeout_ms"`
+	DigitTimeoutMs int             `json:"digit_timeout_ms"`
+	MaxDigits      int             `json:"max_digits"`
+	InvalidRetries int             `json:"invalid_retries"`
+	Routes         []ivrDigitRoute `json:"routes"`
+}
+
+type ivrDigitRoute struct {
+	Digits      string `json:"digits"`
+	Kind        string `json:"kind"`
+	Destination string `json:"destination"`
+	Provider    string `json:"provider,omitempty"`
+	CallerID    string `json:"caller_id,omitempty"`
 }
 
 func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
@@ -207,6 +231,7 @@ type sipCatalog struct {
 	DIDs          []didRoute         `json:"dids"`
 	Extensions    []extensionRoute   `json:"extensions"`
 	LimitProfiles []callLimitProfile `json:"limit_profiles,omitempty"`
+	IVRs          []ivrDefinition    `json:"ivrs,omitempty"`
 	Version       int64              `json:"version"`
 	Source        string             `json:"source,omitempty"`
 }
@@ -221,6 +246,8 @@ var correlationID = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,128}$`)
 var sipHost = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,252}$`)
 var plusOneNumber = regexp.MustCompile(`^\+1[0-9]{10}$`)
 var providerEgressPrefix = regexp.MustCompile(`^[0-9]+$`)
+var ivrAssetID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`)
+var ivrDigits = regexp.MustCompile(`^[0-9*#]{1,8}$`)
 var upstreamCodecs = map[string]bool{"OPUS": true, "G722": true, "PCMU": true, "PCMA": true}
 
 func validateCodecOrder(codecs []string) error {
@@ -290,7 +317,7 @@ func resolvedLimitProfile(c sipCatalog, assignedID, tenantID, site string) callL
 }
 
 func (c sipCatalog) validate() error {
-	if len(c.Providers) > 50 || len(c.DIDs) > 1000 || len(c.Extensions) > 1000 || len(c.LimitProfiles) > 500 {
+	if len(c.Providers) > 50 || len(c.DIDs) > 1000 || len(c.Extensions) > 1000 || len(c.LimitProfiles) > 500 || len(c.IVRs) > 500 {
 		return errors.New("catalog too large")
 	}
 	profiles := map[string]callLimitProfile{}
@@ -390,6 +417,54 @@ func (c sipCatalog) validate() error {
 		}
 		return false
 	}
+	ivrs := map[string]ivrDefinition{}
+	for _, ivr := range c.IVRs {
+		if !providerID.MatchString(ivr.ID) || strings.TrimSpace(ivr.Name) == "" || len(ivr.Name) > 100 || (ivr.Site != "yvr" && ivr.Site != "yxl") || !ivrAssetID.MatchString(ivr.GreetingAsset) || ivr.TimeoutMs < 1000 || ivr.TimeoutMs > 60000 || ivr.DigitTimeoutMs < 250 || ivr.DigitTimeoutMs > 10000 || ivr.MaxDigits < 1 || ivr.MaxDigits > 8 || ivr.InvalidRetries < 0 || ivr.InvalidRetries > 3 || len(ivr.Routes) == 0 || len(ivr.Routes) > 64 {
+			return errors.New("invalid IVR definition")
+		}
+		if _, exists := ivrs[ivr.ID]; exists {
+			return errors.New("duplicate IVR definition")
+		}
+		routes := map[string]bool{}
+		for _, route := range ivr.Routes {
+			if !ivrDigits.MatchString(route.Digits) || len(route.Digits) > ivr.MaxDigits || routes[route.Digits] {
+				return errors.New("IVR digits must be unique and fit the configured digit limit")
+			}
+			routes[route.Digits] = true
+			switch route.Kind {
+			case "extension", "relayed":
+				if !extensionID.MatchString(route.Destination) || route.Provider != "" || route.CallerID != "" {
+					return errors.New("IVR extension routes require a configured extension number")
+				}
+				found := false
+				for _, e := range c.Extensions {
+					if e.Extension == route.Destination && e.Site == ivr.Site {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return errors.New("IVR route refers to an unknown extension at its site")
+				}
+			case "sip":
+				u, err := url.Parse(route.Destination)
+				if err != nil || u.Scheme != "sips" || !regexp.MustCompile(`^sips:[A-Za-z0-9_.+-]+@[a-z0-9.-]+(:[0-9]{2,5})?$`).MatchString(route.Destination) || route.Provider != "" || route.CallerID != "" {
+					return errors.New("IVR SIP routes require an explicit SIPS endpoint")
+				}
+			case "did", "relayed_did":
+				if !plusOneNumber.MatchString(route.Destination) || !verify(route.Provider, route.CallerID, ivr.Site) {
+					return errors.New("IVR DID routes require an authorized provider and verified caller ID")
+				}
+			case "media":
+				if !ivrAssetID.MatchString(route.Destination) || route.Provider != "" || route.CallerID != "" {
+					return errors.New("IVR media route requires a valid shared-library asset ID")
+				}
+			default:
+				return errors.New("unsupported IVR route kind")
+			}
+		}
+		ivrs[ivr.ID] = ivr
+	}
 	dids := map[string]bool{}
 	for _, d := range c.DIDs {
 		if err := validateAssignment(d.LimitProfileID, d.TenantID, d.Site); err != nil {
@@ -430,7 +505,10 @@ func (c sipCatalog) validate() error {
 		switch d.Kind {
 		case "ivr":
 			if d.Destination != "" {
-				return errors.New("IVR destination must be empty")
+				ivr, ok := ivrs[d.Destination]
+				if !ok || ivr.Site != d.Site {
+					return errors.New("DID refers to an unknown IVR at its site")
+				}
 			}
 		case "extension":
 			if !extensionID.MatchString(d.Destination) {
@@ -985,9 +1063,57 @@ func (s *server) registerAdmin(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("GET /api/sip", s.getCatalog)
 	mux.HandleFunc("PUT /api/sip", s.saveCatalog)
+	mux.HandleFunc("GET /api/ivr/media", s.listIVRMedia)
 	mux.HandleFunc("POST /api/routing/preview", s.previewOutboundRoute)
 	mux.HandleFunc("POST /api/routing/inbound-preview", s.previewInboundRoute)
 	mux.HandleFunc("GET /api/audit", s.audit)
+}
+
+// listIVRMedia proxies the site's shared sound-library index after checking
+// Admin access; browser clients never receive an infrastructure service URL.
+func (s *server) listIVRMedia(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r, false) {
+		return
+	}
+	base := strings.TrimRight(strings.TrimSpace(os.Getenv("AVOIP_AUDIO_LIBRARY_URL")), "/")
+	if base == "" {
+		http.Error(w, "shared audio library is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/", nil)
+	if err != nil {
+		http.Error(w, "audio library unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		http.Error(w, "audio library unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, "audio library unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	var entries []struct {
+		Name string `json:"name"`
+		Type string `json:"type"`
+	}
+	dec := json.NewDecoder(io.LimitReader(resp.Body, 1<<20))
+	if dec.Decode(&entries) != nil {
+		http.Error(w, "audio library response invalid", http.StatusBadGateway)
+		return
+	}
+	assets := make([]map[string]string, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Type != "file" || !strings.HasSuffix(entry.Name, ".wav") || !ivrAssetID.MatchString(strings.TrimSuffix(entry.Name, ".wav")) {
+			continue
+		}
+		assets = append(assets, map[string]string{"id": strings.TrimSuffix(entry.Name, ".wav"), "name": entry.Name})
+	}
+	writeJSON(w, assets)
 }
 func (s *server) adminPage(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r, false) {
