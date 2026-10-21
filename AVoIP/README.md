@@ -818,6 +818,10 @@ returns the local FreeSWITCH path. The audio-library browser filters these
 files from its normal sound list. FreeSWITCH therefore plays a carrier-safe
 local WAV and does not need language packs or a direct AI connection.
 
+The service uses the same Vault-backed GPUStack inference token as Wyoming:
+`CORE0_SITE1/data/AI/GPUStack#Token`. Lovely resolves this reference during
+deployment; the token is not sent to the browser or written to service logs.
+
 TODO: add a separate Speaches-backed STT cache/service for future spoken
 commands and transcription. Speaches remains STT-only; it is not used for
 callback confirmation TTS.

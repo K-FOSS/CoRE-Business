@@ -79,6 +79,9 @@ func handleTTSRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	request.Header.Set("Content-Type", "application/json")
+	if token := strings.TrimSpace(os.Getenv("AVOIP_BRIDGED_TTS_TOKEN")); token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
+	}
 	response, err := client.Do(request)
 	if err != nil || response.StatusCode < 200 || response.StatusCode >= 300 {
 		if response != nil {

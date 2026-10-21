@@ -81,6 +81,8 @@ controllers:
             value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.model }}'
           - name: 'AVOIP_BRIDGED_TTS_VOICE'
             value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.voice }}'
+          - name: 'AVOIP_BRIDGED_TTS_TOKEN'
+            value: '{{ $.Values.avoipAdmin.bridgedCalls.tts.token }}'
           - name: 'AVOIP_BRIDGED_TTS_INTERNAL_TOKEN'
             valueFrom:
               secretKeyRef:

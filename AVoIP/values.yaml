@@ -1613,6 +1613,8 @@ avoipAdmin:
       endpoint: 'https://gpustack.mylogin.space/v1/audio/speech'
       model: 'CoRE-AI-TTS'
       voice: 'af_bella'
+      # Same Vault-backed GPUStack inference token path used by Wyoming.
+      token: '<path:CORE0_SITE1/data/AI/GPUStack#Token>'
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams: []
   routing:
