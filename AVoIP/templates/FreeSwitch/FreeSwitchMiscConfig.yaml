@@ -210,7 +210,15 @@ data:
         </list>
       {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled }}
         <list name="avoip-admin-event-socket" default="deny">
-          {{- range $.Values.avoipAdmin.telephony.freeswitchEventSocket.allowedCIDRs }}
+          {{- $eventSocketCIDRs := $.Values.avoipAdmin.telephony.freeswitchEventSocket.allowedCIDRs }}
+          {{- if not $eventSocketCIDRs }}
+            {{- range $.Values.kamailio.instances }}
+              {{- with .carrierOutbound.peer.cidr }}
+          <node type="allow" cidr="{{ . }}"/>
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- range $eventSocketCIDRs }}
           <node type="allow" cidr="{{ . }}"/>
           {{- end }}
         </list>
