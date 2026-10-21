@@ -236,12 +236,6 @@ data:
           <action application="transfer" data="${ivr_extension} XML silent-ivr-targets"/>
         </extension>
       </context>
-      <extension name="silent-ivr-invalid">
-        <condition field="destination_number" expression="^$">
-          <action application="log" data="INFO AVoIP silent IVR received no valid destination caller=${caller_id_number}"/>
-          <action application="hangup" data="NO_USER_RESPONSE"/>
-        </condition>
-      </extension>
       <context name="silent-ivr-targets">
         {{- if $voicemailEnabled }}
         <extension name="silent-ivr-voicemail">
