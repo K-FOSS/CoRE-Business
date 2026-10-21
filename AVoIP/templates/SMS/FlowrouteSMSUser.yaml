@@ -22,6 +22,7 @@ spec:
   s3:
     enabled: true
     createBuckets: true
+    createCredentials: true
     createServiceAccount: true
     region: '{{ .Values.flowrouteSMS.media.region }}'
     buckets:
