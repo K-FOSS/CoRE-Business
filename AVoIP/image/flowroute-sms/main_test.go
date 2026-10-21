@@ -46,6 +46,17 @@ func TestInboxEscapesBodiesInClient(t *testing.T) {
 	}
 }
 
+func TestBridgedCallsAssetIsServed(t *testing.T) {
+	app := &server{}
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/assets/bridged-calls.js", nil)
+	r.SetPathValue("name", "bridged-calls.js")
+	app.asset(w, r)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "loadCalls") {
+		t.Fatal("bridged calls client asset must be served")
+	}
+}
+
 func TestAllowedFlowrouteMediaURL(t *testing.T) {
 	tests := []struct {
 		name string

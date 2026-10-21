@@ -772,7 +772,7 @@ func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if name != "admin.js" && name != "app.css" && name != "app.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
+	if name != "admin.js" && name != "app.css" && name != "app.js" && name != "bridged-calls.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
 		http.NotFound(w, r)
 		return
 	}
