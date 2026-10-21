@@ -23,6 +23,16 @@ data:
     entityid={{ .Values.asterisk.entityID }}
     systemname=avoip-asterisk
 
+  manager.conf: |
+    [general]
+    enabled = {{ if .Values.avoipAdmin.telephony.enabled }}yes{{ else }}no{{ end }}
+    port = {{ .Values.avoipAdmin.telephony.asteriskManager.port }}
+    bindaddr = 0.0.0.0
+    displayconnects = no
+    {{- if .Values.avoipAdmin.telephony.enabled }}
+    #include /tmp/avoip-manager-users.conf
+    {{- end }}
+
   modules.conf: |
     [modules]
     autoload=yes

@@ -118,32 +118,32 @@ controllers:
                 key: 'token'
           {{ if $settings.telephony.enabled }}
           - name: 'AVOIP_AMI_ADDRESS'
-            value: '{{ $settings.telephony.asterisk.amiAddress }}'
+            value: '{{ default (printf "%s:%d" (include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk")) (int $settings.telephony.asteriskManager.port)) $settings.telephony.asterisk.amiAddress }}'
           - name: 'AVOIP_AMI_USERNAME'
-            value: '{{ $settings.telephony.asterisk.amiUsername }}'
+            value: '{{ default (printf "avoip-admin-%s" .Values.region) $settings.telephony.asteriskManager.username }}'
           - name: 'AVOIP_AMI_SECRET'
             valueFrom:
               secretKeyRef:
-                name: '{{ required "Asterisk AMI secret name is required when telephony integrations are enabled" $settings.telephony.asterisk.amiSecret.name }}'
-                key: '{{ $settings.telephony.asterisk.amiSecret.key }}'
+                name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) $settings.telephony.managementSecret.name }}'
+                key: '{{ $settings.telephony.managementSecret.key }}'
           - name: 'AVOIP_ASTERISK_CDR_URL'
             valueFrom:
               secretKeyRef:
-                name: '{{ required "Asterisk CDR connection secret name is required when telephony integrations are enabled" $settings.telephony.asterisk.cdrConnectionSecret.name }}'
+                name: '{{ default (printf "%s-asterisk" (include "avoip.fullname" .)) $settings.telephony.asterisk.cdrConnectionSecret.name }}'
                 key: '{{ $settings.telephony.asterisk.cdrConnectionSecret.key }}'
           - name: 'AVOIP_ASTERISK_CDR_TABLE'
             value: '{{ $settings.telephony.asterisk.cdrTable }}'
           - name: 'AVOIP_ESL_ADDRESS'
-            value: '{{ $settings.telephony.freeswitch.eventSocketAddress }}'
+            value: '{{ default (printf "%s:%d" (include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch")) (int $settings.telephony.freeswitchEventSocket.port)) $settings.telephony.freeswitch.eventSocketAddress }}'
           - name: 'AVOIP_ESL_SECRET'
             valueFrom:
               secretKeyRef:
-                name: '{{ required "FreeSWITCH Event Socket secret name is required when telephony integrations are enabled" $settings.telephony.freeswitch.eventSocketSecret.name }}'
-                key: '{{ $settings.telephony.freeswitch.eventSocketSecret.key }}'
+                name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) $settings.telephony.managementSecret.name }}'
+                key: '{{ $settings.telephony.managementSecret.key }}'
           - name: 'AVOIP_FREESWITCH_CDR_URL'
             valueFrom:
               secretKeyRef:
-                name: '{{ required "FreeSWITCH CDR connection secret name is required when telephony integrations are enabled" $settings.telephony.freeswitch.cdrConnectionSecret.name }}'
+                name: '{{ default (printf "%s-freeswitch" (include "avoip.fullname" .)) $settings.telephony.freeswitch.cdrConnectionSecret.name }}'
                 key: '{{ $settings.telephony.freeswitch.cdrConnectionSecret.key }}'
           - name: 'AVOIP_FREESWITCH_CDR_TABLE'
             value: '{{ $settings.telephony.freeswitch.cdrTable }}'
@@ -220,6 +220,25 @@ networkpolicies:
           ports:
             - port: 8081
               protocol: 'TCP'
+{{- if $settings.telephony.enabled }}
+      egress:
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                  app.kubernetes.io/controller: 'asterisk'
+          ports:
+            - port: {{ $settings.telephony.asteriskManager.port }}
+              protocol: 'TCP'
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                  app.kubernetes.io/controller: 'freeswitch'
+          ports:
+            - port: {{ $settings.telephony.freeswitchEventSocket.port }}
+              protocol: 'TCP'
+{{- end }}
 {{- if $settings.routing.enabled }}
   managed-sip:
     controller: 'freeswitch'

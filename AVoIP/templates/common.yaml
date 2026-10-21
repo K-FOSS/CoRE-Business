@@ -1050,6 +1050,14 @@ controllers:
         args:
           - |
             umask 077
+            {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+            ami_password="$(cat /run/avoip/telephony-management/password)"
+            case "$ami_password" in
+              ''|*[!0123456789abcdefABCDEF]*) echo 'AVoIP telephony management password must be hexadecimal' >&2; exit 1 ;;
+            esac
+            printf '[{{ default (printf "avoip-admin-%s" .Values.region) .Values.avoipAdmin.telephony.asteriskManager.username }}]\nsecret = %s\nread = system,call,log,verbose,command,agent,user,originate\nwrite = system,call,log,verbose,command,agent,user,originate\npermit = 0.0.0.0/0.0.0.0\n' "$ami_password" > /tmp/avoip-manager-users.conf
+            unset ami_password
+            {{- end }}
             {{- if .Values.asterisk.sipCore.enabled }}
             if [ ! -s /etc/asterisk/sipcore-ca/ca.crt ]; then
               printf '%s\n' 'Site SIP CA bundle is missing; refusing unverified Asterisk TLS' >&2
@@ -1206,6 +1214,11 @@ controllers:
           - name: tls-sips
             containerPort: 5061
             protocol: TCP
+{{- if .Values.avoipAdmin.telephony.enabled }}
+          - name: ami
+            containerPort: {{ .Values.avoipAdmin.telephony.asteriskManager.port }}
+            protocol: TCP
+{{- end }}
 {{- $asteriskRtpPorts := untilStep (.Values.asterisk.rtp.min | int) (.Values.asterisk.rtp.max | int) 1 -}}
 {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled -}}
 {{- $asteriskRtpPorts = untilStep (.Values.asterisk.rtp.min | int) (add (.Values.asterisk.rtp.max | int) 1 | int) 1 -}}
@@ -1748,6 +1761,13 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
+        {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+          - name: EVENT_SOCKET_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) .Values.avoipAdmin.telephony.managementSecret.name }}'
+                key: '{{ .Values.avoipAdmin.telephony.managementSecret.key }}'
+        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1875,6 +1895,11 @@ controllers:
           - name: tls-asterisk
             containerPort: {{ .Values.freeswitch.asterisk.tlsPort }}
             protocol: TCP
+          {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+          - name: event-socket
+            containerPort: {{ .Values.avoipAdmin.telephony.freeswitchEventSocket.port }}
+            protocol: TCP
+          {{- end }}
           {{- if .Values.freeswitch.flowrouteOutbound.enabled }}
           - name: tls-flowroute
             containerPort: {{ .Values.freeswitch.flowrouteOutbound.tlsPort }}
@@ -2092,6 +2117,12 @@ service:
         port: 5061
         targetPort: tls-sips
         protocol: TCP
+{{- if .Values.avoipAdmin.telephony.enabled }}
+      ami:
+        port: {{ .Values.avoipAdmin.telephony.asteriskManager.port }}
+        targetPort: ami
+        protocol: TCP
+{{- end }}
 {{- end }}
 {{- if and .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.media.enabled }}
   asterisk-rtp:
@@ -2160,6 +2191,12 @@ service:
         port: {{ .Values.freeswitch.asterisk.tlsPort }}
         targetPort: tls-asterisk
         protocol: TCP
+{{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+      event-socket:
+        port: {{ .Values.avoipAdmin.telephony.freeswitchEventSocket.port }}
+        targetPort: event-socket
+        protocol: TCP
+{{- end }}
 {{- if and .Values.freeswitch.publicExposure.enabled (or (not (include "avoip.rtpengine.enabled" . | trim)) (not (include "avoip.kamailio.carrier.enabled" . | trim))) }}
   freeswitch-rtp:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch-rtp'
@@ -2380,6 +2417,21 @@ persistence:
             subPath: modules.conf
           - path: /etc/asterisk/asterisk.conf
             subPath: asterisk.conf
+          - path: /etc/asterisk/manager.conf
+            subPath: manager.conf
+{{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+  asterisk-telephony-management:
+    type: secret
+    name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) .Values.avoipAdmin.telephony.managementSecret.name }}'
+    items:
+      - key: '{{ .Values.avoipAdmin.telephony.managementSecret.key }}'
+        path: password
+    advancedMounts:
+      asterisk:
+        asterisk:
+          - path: /run/avoip/telephony-management
+            readOnly: true
+{{- end }}
   asterisk-pjsip-config:
     type: configMap
     name: '{{ include "avoip.fullname" . }}-asterisk-config-tpl'

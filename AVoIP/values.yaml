@@ -1556,6 +1556,16 @@ avoipAdmin:
   # CDR database identities and management-interface credentials.
   telephony:
     enabled: false
+    managementSecret:
+      name: ''
+      remoteKey: ''
+      key: 'password'
+    asteriskManager:
+      username: ''
+      port: 5038
+    freeswitchEventSocket:
+      listenAddress: '127.0.0.1'
+      port: 8021
     asterisk:
       amiAddress: ''
       amiUsername: ''
