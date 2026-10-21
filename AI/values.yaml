@@ -430,7 +430,7 @@ pubgateway:
 
 oauth:
   indexKey: openwebui
-  scopes: ''
+  scopes: 'email openid profile offline_access'
   groups: []
   authentik:
     urlBase: https://idp.mylogin.space
