@@ -1761,13 +1761,6 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
-        {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
-          - name: EVENT_SOCKET_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) .Values.avoipAdmin.telephony.managementSecret.name }}'
-                key: '{{ .Values.avoipAdmin.telephony.managementSecret.key }}'
-        {{- end }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -1833,6 +1826,13 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
+        {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+          - name: EVENT_SOCKET_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) .Values.avoipAdmin.telephony.managementSecret.name }}'
+                key: '{{ .Values.avoipAdmin.telephony.managementSecret.key }}'
+        {{- end }}
         {{- if .Values.asterisk.enabled }}
           - name: ASTERISK_PEER_PASSWORD
             valueFrom:
