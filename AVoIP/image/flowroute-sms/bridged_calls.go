@@ -721,39 +721,51 @@ func (s *server) fetchBridgedCallPrompt(ctx context.Context, call bridgedCall) (
 		s.logger.Error("bridged call prompt request could not be encoded", "call_id", call.ID, "error_class", fmt.Sprintf("%T", err))
 		return "", err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/v1/tts", bytes.NewReader(body))
-	if err != nil {
-		s.logger.Error("bridged call prompt request could not be created", "call_id", call.ID, "error_class", fmt.Sprintf("%T", err))
-		return "", err
-	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-AVoIP-TTS-Internal", token)
 	s.logger.Debug("bridged call prompt request started", "call_id", call.ID, "text_bytes", len([]byte(fmt.Sprintf("To accept a call from %s, press 1.", call.InitiatorDisplayName))))
-	client := &http.Client{Timeout: 35 * time.Second}
-	response, err := client.Do(request)
-	if err != nil {
-		s.logger.Error("bridged call prompt request failed", "call_id", call.ID, "failure_stage", "http_request", "duration_ms", time.Since(started).Milliseconds(), "error_class", fmt.Sprintf("%T", err))
-		return "", err
+	client := s.promptClient
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		s.logger.Error("bridged call prompt request returned failure", "call_id", call.ID, "failure_stage", "http_response", "http_status", response.StatusCode, "duration_ms", time.Since(started).Milliseconds())
-		return "", fmt.Errorf("tts cache returned status %d", response.StatusCode)
+	var lastErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/v1/tts", bytes.NewReader(body))
+		if err != nil {
+			return "", err
+		}
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-AVoIP-TTS-Internal", token)
+		response, err := client.Do(request)
+		if err != nil {
+			lastErr = err
+			s.logger.Warn("bridged call prompt request failed; retrying", "call_id", call.ID, "attempt", attempt, "failure_stage", "http_request", "error_class", fmt.Sprintf("%T", err))
+		} else {
+			data, readErr := io.ReadAll(io.LimitReader(response.Body, 4096))
+			status := response.StatusCode
+			response.Body.Close()
+			if status >= 200 && status < 300 && readErr == nil {
+				var result struct {
+					Path string `json:"path"`
+				}
+				if json.Unmarshal(data, &result) == nil && strings.HasPrefix(result.Path, "/usr/share/freeswitch/sounds/avoip-shared/tts-cache-") && strings.HasSuffix(result.Path, ".wav") {
+					s.logger.Info("bridged call prompt ready", "call_id", call.ID, "http_status", status, "attempt", attempt, "response_bytes", len(data), "duration_ms", time.Since(started).Milliseconds())
+					return result.Path, nil
+				}
+				lastErr = errors.New("tts cache returned invalid path")
+			} else {
+				lastErr = fmt.Errorf("tts cache returned status %d", status)
+			}
+			s.logger.Warn("bridged call prompt request returned failure; retrying", "call_id", call.ID, "attempt", attempt, "http_status", status, "failure_stage", "http_response")
+		}
+		if attempt < 3 {
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(time.Duration(attempt) * 500 * time.Millisecond):
+			}
+		}
 	}
-	data, err := io.ReadAll(io.LimitReader(response.Body, 4096))
-	if err != nil {
-		s.logger.Error("bridged call prompt response could not be read", "call_id", call.ID, "failure_stage", "read_response", "http_status", response.StatusCode, "duration_ms", time.Since(started).Milliseconds(), "error_class", fmt.Sprintf("%T", err))
-		return "", err
-	}
-	var result struct {
-		Path string `json:"path"`
-	}
-	if json.Unmarshal(data, &result) != nil || !strings.HasPrefix(result.Path, "/usr/share/freeswitch/sounds/avoip-shared/tts-cache-") || !strings.HasSuffix(result.Path, ".wav") {
-		s.logger.Error("bridged call prompt response invalid", "call_id", call.ID, "failure_stage", "validate_response", "http_status", response.StatusCode, "response_bytes", len(data), "duration_ms", time.Since(started).Milliseconds())
-		return "", errors.New("tts cache returned invalid path")
-	}
-	s.logger.Info("bridged call prompt ready", "call_id", call.ID, "http_status", response.StatusCode, "response_bytes", len(data), "duration_ms", time.Since(started).Milliseconds())
-	return result.Path, nil
+	s.logger.Error("bridged call prompt generation failed", "call_id", call.ID, "failure_stage", "exhausted_retries", "duration_ms", time.Since(started).Milliseconds(), "error_class", fmt.Sprintf("%T", lastErr))
+	return "", lastErr
 }
 
 func (s *server) failCall(ctx context.Context, id, reason string) {

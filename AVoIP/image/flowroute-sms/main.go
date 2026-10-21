@@ -135,6 +135,7 @@ type server struct {
 	sendKey         string
 	sendSecret      string
 	sendClient      *http.Client
+	promptClient    *http.Client
 	sendMu          sync.Mutex
 	lastSend        map[string]time.Time
 }
@@ -260,7 +261,7 @@ func run(logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	app := &server{pool: pool, mediaStore: store, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendKey: os.Getenv("FLOWROUTE_SMS_ACCESS_KEY"), sendSecret: os.Getenv("FLOWROUTE_SMS_SECRET_KEY"), lastSend: make(map[string]time.Time)}
+	app := &server{pool: pool, mediaStore: store, token: []byte(callbackToken), logger: logger, mediaClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, promptClient: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, sendKey: os.Getenv("FLOWROUTE_SMS_ACCESS_KEY"), sendSecret: os.Getenv("FLOWROUTE_SMS_SECRET_KEY"), lastSend: make(map[string]time.Time)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", app.health)
 	mux.HandleFunc("GET /readyz", app.ready)
