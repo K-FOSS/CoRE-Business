@@ -1099,6 +1099,11 @@ freeswitch:
     enabled: false
     replicas: 2
     minAvailable: 1
+    # Required anti-affinity means a surge pod may have nowhere to schedule.
+    # Replace one pod at a time while another HA replica remains available.
+    rollingUpdate:
+      surge: '0'
+      unavailable: 1
   flowrouteOutbound:
     # Flowroute registration is separate from its SIP-REG inbound DID route.
     # Outbound INVITEs use the existing private-to-carrier Kamailio path so

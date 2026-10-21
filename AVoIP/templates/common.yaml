@@ -1657,8 +1657,8 @@ controllers:
     forceRename: '{{ include "avoip.fullname" . }}-freeswitch'
     strategy: RollingUpdate
     rollingUpdate:
-      surge: 1
-      unavailable: '0'
+      surge: '{{ if .Values.freeswitch.highAvailability.enabled }}{{ .Values.freeswitch.highAvailability.rollingUpdate.surge }}{{ else }}1{{ end }}'
+      unavailable: '{{ if .Values.freeswitch.highAvailability.enabled }}{{ .Values.freeswitch.highAvailability.rollingUpdate.unavailable }}{{ else }}0{{ end }}'
     replicas: {{ ternary .Values.freeswitch.highAvailability.replicas 1 .Values.freeswitch.highAvailability.enabled }}
     {{- if .Values.freeswitch.highAvailability.enabled }}
     podDisruptionBudget:
