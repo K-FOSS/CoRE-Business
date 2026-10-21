@@ -705,7 +705,12 @@ func bridgedOriginateCommand(call bridgedCall, gateway, target string, confirmat
 	if timeout == "" {
 		timeout = "30"
 	}
-	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_call_prompt_file=%s,bridged_confirmation_required=%t,sip_h_X-Core-Extension=%s,sip_h_X-Core-Call-Linkedid=%s,sip_h_X-Core-Origin-Uniqueid=%s}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, call.PromptFile, confirmation, call.Extension, call.ID, call.CallbackUUID, gateway, call.CallbackDestination)
+	// Keep the sip_h_ variables for FreeSWITCH channel state and explicitly add
+	// the same values to the initial INVITE. Some mod_sofia gateway paths do
+	// not serialize sip_h_ variables until a later bridge, which made Kamailio
+	// receive the callback INVITE without the extension authorization context.
+	extraHeaders := fmt.Sprintf("X-Core-Extension: %s\\nX-Core-Call-Linkedid: %s\\nX-Core-Origin-Uniqueid: %s", call.Extension, call.ID, call.CallbackUUID)
+	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_call_prompt_file=%s,bridged_confirmation_required=%t,sip_h_X-Core-Extension=%s,sip_h_X-Core-Call-Linkedid=%s,sip_h_X-Core-Origin-Uniqueid=%s,sip_invite_extra_headers=%s}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, call.PromptFile, confirmation, call.Extension, call.ID, call.CallbackUUID, extraHeaders, gateway, call.CallbackDestination)
 }
 
 func (s *server) fetchBridgedCallPrompt(ctx context.Context, call bridgedCall) (string, error) {
