@@ -106,6 +106,7 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		eslCalls, err := freeSwitchCalls(ctx, address, telephonyEnv("AVOIP_ESL_SECRET"))
 		state := "connected"
 		if err != nil {
+			s.logger.Warn("freeswitch event socket health check failed", "reason", telephonyErrorClass(err), "detail", safeInterfaceError(err))
 			state = "unavailable"
 		} else {
 			calls = append(calls, eslCalls...)
