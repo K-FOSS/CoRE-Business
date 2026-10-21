@@ -11,7 +11,7 @@
   <main class="app" id="app">
     <aside class="sidebar" aria-label="Conversations">
       <header class="sidebar-head"><h1>Messages</h1><button id="compose" class="icon-button primary" aria-label="New message" title="New message">＋</button></header>
-      <div class="sidebar-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search conversations" aria-label="Search conversations"></label><label class="number-label" for="number">SMS number</label><select id="number" aria-label="SMS number"></select></div>
+      <div class="sidebar-tools"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Search conversations" aria-label="Search conversations"></label><label class="number-label" for="number">SMS number</label><select id="number" aria-label="SMS number"></select><p id="provider-status" class="provider-status" role="status" hidden></p></div>
       <div id="conversations" class="conversations" aria-live="polite"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
       <footer class="sidebar-footer"><a id="admin-link" class="text-button" target="_blank" rel="noopener" hidden>Administration</a><button id="theme" class="text-button">Toggle theme</button></footer>
     </aside>

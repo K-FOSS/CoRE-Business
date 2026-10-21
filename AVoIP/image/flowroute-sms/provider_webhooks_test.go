@@ -10,6 +10,12 @@ func TestAllowedTwilioMediaRedirect(t *testing.T) {
 	if !allowedTwilioMediaRedirect(allowed) {
 		t.Fatal("Twilio S3 media redirect should be allowed")
 	}
+	for _, raw := range []string{"https://mms.twiliocdn.com/object", "https://media.twiliocdn.com/object"} {
+		parsed, _ := url.Parse(raw)
+		if !allowedTwilioMediaRedirect(parsed) {
+			t.Fatalf("Twilio CDN media redirect %q should be allowed", raw)
+		}
+	}
 	for _, raw := range []string{
 		"http://mms-media-prod.s3.amazonaws.com/object",
 		"https://127.0.0.1/object",

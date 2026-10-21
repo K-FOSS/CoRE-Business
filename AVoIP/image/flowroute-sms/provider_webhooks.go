@@ -136,14 +136,14 @@ func (s *server) downloadTwilioMedia(ctx context.Context, accountSID, authToken,
 	for redirect := 0; redirect < 4; redirect++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 		if err != nil {
-			return errors.New("could not build Twilio media request")
+			return &twilioMediaDownloadError{stage: "build_request"}
 		}
 		if redirect == 0 {
 			req.SetBasicAuth(accountSID, authToken)
 		}
 		resp, err = s.mediaClient.Do(req)
 		if err != nil {
-			return errors.New("Twilio media request failed")
+			return &twilioMediaDownloadError{stage: "request"}
 		}
 		if resp.StatusCode < http.StatusMultipleChoices || resp.StatusCode >= http.StatusBadRequest {
 			break
@@ -152,28 +152,28 @@ func (s *server) downloadTwilioMedia(ctx context.Context, accountSID, authToken,
 		resp.Body.Close()
 		parsed, parseErr := url.Parse(location)
 		if parseErr != nil || !allowedTwilioMediaRedirect(parsed) {
-			return errors.New("Twilio media redirect was not allowed")
+			return &twilioMediaDownloadError{stage: "redirect", host: safeTwilioMediaHost(parsed)}
 		}
 		requestURL = parsed.String()
 	}
 	if resp == nil {
-		return errors.New("Twilio media request failed")
+		return &twilioMediaDownloadError{stage: "request"}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("Twilio media request returned an error")
+		return &twilioMediaDownloadError{stage: "response", status: resp.StatusCode, host: safeTwilioMediaHostFromResponse(resp)}
 	}
 	responseType, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
-	if err != nil || !strings.EqualFold(responseType, media.contentType) {
-		return errors.New("Twilio media content type did not match webhook")
+	if err != nil || (responseType != "" && !strings.EqualFold(responseType, media.contentType) && responseType != "application/octet-stream") {
+		return &twilioMediaDownloadError{stage: "content_type", host: safeTwilioMediaHostFromResponse(resp), contentType: responseType, expectedType: media.contentType}
 	}
 	content, err := io.ReadAll(io.LimitReader(resp.Body, maxMediaBytes+1))
 	if err != nil || len(content) == 0 || len(content) > maxMediaBytes {
-		return errors.New("Twilio media exceeded the size limit")
+		return &twilioMediaDownloadError{stage: "read_body", host: safeTwilioMediaHostFromResponse(resp)}
 	}
 	detectedType, _, err := mime.ParseMediaType(http.DetectContentType(content))
 	if err != nil || !strings.HasPrefix(detectedType, "image/") || !strings.EqualFold(detectedType, media.contentType) {
-		return errors.New("Twilio media was not an image")
+		return &twilioMediaDownloadError{stage: "content_validation", host: safeTwilioMediaHostFromResponse(resp), contentType: detectedType, expectedType: media.contentType}
 	}
 	media.content = content
 	if extensions, err := mime.ExtensionsByType(media.contentType); err == nil && len(extensions) > 0 {
@@ -182,6 +182,30 @@ func (s *server) downloadTwilioMedia(ctx context.Context, accountSID, authToken,
 		media.fileName = "twilio-" + media.sid
 	}
 	return nil
+}
+
+type twilioMediaDownloadError struct {
+	stage        string
+	status       int
+	host         string
+	contentType  string
+	expectedType string
+}
+
+func (e *twilioMediaDownloadError) Error() string { return "Twilio media download failed" }
+
+func safeTwilioMediaHost(parsed *url.URL) string {
+	if parsed == nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+}
+
+func safeTwilioMediaHostFromResponse(resp *http.Response) string {
+	if resp == nil || resp.Request == nil {
+		return ""
+	}
+	return safeTwilioMediaHost(resp.Request.URL)
 }
 
 func allowedTwilioMediaRedirect(parsed *url.URL) bool {
@@ -195,7 +219,7 @@ func allowedTwilioMediaRedirect(parsed *url.URL) bool {
 	if ip := net.ParseIP(host); ip != nil {
 		return !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsMulticast() && !ip.IsUnspecified()
 	}
-	return host == "mms-media-prod.s3.amazonaws.com" || host == "s3.us-west-2.amazonaws.com" || host == "api.twilio.com" || strings.HasSuffix(host, ".twilio.com")
+	return host == "mms-media-prod.s3.amazonaws.com" || host == "s3.us-west-2.amazonaws.com" || host == "api.twilio.com" || host == "mms.twiliocdn.com" || host == "media.twiliocdn.com" || strings.HasSuffix(host, ".twilio.com")
 }
 
 func validTelnyxSignature(p smsProvider, r *http.Request, body []byte) bool {
@@ -395,6 +419,14 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 			result := <-results
 			if result.err != nil {
 				stage = "download_twilio_media_failed"
+				if s.logger != nil {
+					fields := []any{"message_id", id, "attachment_index", result.index}
+					var downloadErr *twilioMediaDownloadError
+					if errors.As(result.err, &downloadErr) {
+						fields = append(fields, "download_stage", downloadErr.stage, "response_status", downloadErr.status, "media_host", downloadErr.host)
+					}
+					s.logger.Warn("Twilio MMS media download failed", fields...)
+				}
 				http.Error(w, "media unavailable", 502)
 				return
 			}

@@ -864,7 +864,14 @@ func (s *server) listNumbers(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeJSON(w, map[string]any{"numbers": sortedCanonical(values), "groups": s.groups(r), "is_admin": s.isAdmin(r), "can_delete": s.isAdmin(r), "admin_url": s.adminURL(r), "can_send": canSend, "senders": senders})
+	receiveOnly := false
+	for _, p := range providers {
+		if p.Enabled && !p.CanSend && (p.CanReceive || p.ID == "flowroute") {
+			receiveOnly = true
+			break
+		}
+	}
+	writeJSON(w, map[string]any{"numbers": sortedCanonical(values), "groups": s.groups(r), "is_admin": s.isAdmin(r), "can_delete": s.isAdmin(r), "admin_url": s.adminURL(r), "can_send": canSend, "senders": senders, "receive_only": receiveOnly})
 }
 
 func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
