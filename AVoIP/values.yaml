@@ -257,6 +257,7 @@ flowrouteSMS:
     bucket: 'sms-media'
     region: 'yvr'
     credentialsSecretName: 'core-voice-sms-media-s3'
+    sessionCredentialsSecretName: 'core-voice-sms-media-session'
     proxySecretName: 'core-voice-sms-media-proxy'
   inbox:
     enabled: true

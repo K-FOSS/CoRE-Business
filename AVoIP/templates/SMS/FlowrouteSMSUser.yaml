@@ -33,6 +33,9 @@ spec:
     writeServiceAccountCredentialsSecretRef:
       name: '{{ .Values.flowrouteSMS.media.credentialsSecretName }}'
       namespace: '{{ .Release.Namespace }}'
+    writeCredentialsSecretRef:
+      name: '{{ .Values.flowrouteSMS.media.sessionCredentialsSecretName }}'
+      namespace: '{{ .Release.Namespace }}'
 
   writeConnectionSecretToRef:
     name: '{{ $fullName }}-core-voice-sms'
