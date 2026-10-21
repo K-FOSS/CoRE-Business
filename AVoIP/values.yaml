@@ -1558,8 +1558,8 @@ avoipAdmin:
       key: 'Token'
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
-    tag: '1-5830f181f2279933d2cd33a317d596c2575cbc05'
-    digest: 'sha256:ca04182f5fb1b0dbfdf7a862d3b62fd4003fcad578c5ef7195e2aa559e24f9ba'
+    tag: '1-53b4f0b89a815c9ac0b1ae954995f482aabeac6f'
+    digest: 'sha256:56841ceaa1c9a511f719df446abc1891e1afcea0aac8a80fed66b6cb5c38fd0d'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.
