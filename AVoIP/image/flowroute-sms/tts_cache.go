@@ -93,6 +93,7 @@ func handleTTSRequest(logger *slog.Logger, w http.ResponseWriter, r *http.Reques
 		return
 	}
 	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "audio/wav")
 	if token := strings.TrimSpace(os.Getenv("AVOIP_BRIDGED_TTS_TOKEN")); token != "" {
 		request.Header.Set("Authorization", "Bearer "+token)
 	}

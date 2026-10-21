@@ -1620,7 +1620,7 @@ avoipAdmin:
         remoteProperty: 'Token'
         secretStoreRef:
           kind: 'ClusterSecretStore'
-          name: 'corevault-rootsecrets'
+          name: 'mainvault-core'
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams: []
   routing:
