@@ -342,7 +342,7 @@ func TestFreeSwitchOutboundDialplanAppliesProviderAndDIDCodecOrder(t *testing.T)
 	}
 
 	xml := lookup()
-	if got := freeSwitchActionData(t, xml, "bridge"); got != "sofia/gateway/carrier-tls/+12065550101" {
+	if got := freeSwitchActionData(t, xml, "bridge"); got != "{sip_h_X-Core-Extension=7101,sip_h_X-Core-Call-Linkedid=avoip-asterisk-1792442113.215,sip_h_X-Core-Origin-Uniqueid=avoip-asterisk-1792442113.216}sofia/gateway/carrier-tls/+12065550101" {
 		t.Fatalf("DID codec order was not applied to the FreeSWITCH upstream bridge: %s", xml)
 	}
 	if got := freeSwitchActionData(t, xml, "export"); got != "nolocal:absolute_codec_string=PCMA,PCMU" {
@@ -403,7 +403,7 @@ func TestFreeSwitchDynamicRoutePreservesFullPlusOneDestination(t *testing.T) {
 	if w.Code != http.StatusOK || freeSwitchActionData(t, w.Body.String(), "export") != "nolocal:absolute_codec_string=PCMU,PCMA" {
 		t.Fatalf("dynamic provider route did not apply its codec policy: status=%d body=%s", w.Code, w.Body.String())
 	}
-	if got := freeSwitchActionData(t, w.Body.String(), "bridge"); got != "sofia/gateway/twilio-west/+12065550101" {
+	if got := freeSwitchActionData(t, w.Body.String(), "bridge"); got != "{sip_h_X-Core-Extension=7101}sofia/gateway/twilio-west/+12065550101" {
 		t.Fatalf("dynamic provider route changed the destination or missed its gateway: %s", w.Body.String())
 	}
 }

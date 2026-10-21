@@ -1054,7 +1054,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 								break
 							}
 						}
-						bridge = managedGatewayBridge(gateway, destination)
+						bridge = managedOutboundGatewayBridge(gateway, destination, extension, callLinkedID, originUniqueID)
 					}
 				}
 			}
@@ -1130,6 +1130,20 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 
 func managedGatewayBridge(gateway, destination string) string {
 	return "sofia/gateway/" + gateway + "/" + destination
+}
+
+// mod_sofia receives a new B-leg for the carrier. Stamp the extension selected
+// from the authenticated managed route on that leg; an A-leg export alone does
+// not reliably become a SIP header on gateway-originated INVITEs.
+func managedOutboundGatewayBridge(gateway, destination, extension, linkedID, originID string) string {
+	headers := "sip_h_X-Core-Extension=" + extension
+	if linkedID != "" {
+		headers += ",sip_h_X-Core-Call-Linkedid=" + linkedID
+	}
+	if originID != "" {
+		headers += ",sip_h_X-Core-Origin-Uniqueid=" + originID
+	}
+	return "{" + headers + "}" + managedGatewayBridge(gateway, destination)
 }
 
 func safeCorrelationID(value string) string {
