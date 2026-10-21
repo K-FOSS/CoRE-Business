@@ -78,7 +78,7 @@ data:
             <action application="set" data="bridge_early_media=false"/>
             <action application="set" data="bridged_call_stage=awaiting_confirmation"/>
             <condition field="${bridged_confirmation_required}" expression="^true$">
-              <action application="play_and_get_digits" data="1 1 1 {{ $.Values.avoipAdmin.bridgedCalls.confirmationTimeoutSeconds }}000 '' silence_stream://1000 bridged_call_confirmation ^1$ 1000"/>
+              <action application="play_and_get_digits" data="1 1 1 {{ $.Values.avoipAdmin.bridgedCalls.confirmationTimeoutSeconds }}000 '' silence_stream://1000 silence_stream://1000 bridged_call_confirmation ^1$ 1000"/>
               <condition field="${bridged_call_confirmation}" expression="^1$">
                 <action application="set" data="bridged_call_stage=calling_extension"/>
                 <action application="set" data="bridge_answer_timeout={{ $.Values.avoipAdmin.bridgedCalls.extensionRingTimeoutSeconds }}"/>
