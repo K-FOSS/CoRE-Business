@@ -54,6 +54,28 @@ func safeInterfaceError(err error) string {
 	return "Connection or query failed"
 }
 
+// telephonyErrorClass is deliberately coarse: it gives operators enough
+// information to diagnose the private control path without putting ESL
+// addresses, credentials, or dial strings in logs.
+func telephonyErrorClass(err error) string {
+	if err == nil {
+		return ""
+	}
+	message := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(message, "authentication") || strings.Contains(message, "auth"):
+		return "authentication_failed"
+	case strings.Contains(message, "deadline") || strings.Contains(message, "timeout"):
+		return "connection_timeout"
+	case strings.Contains(message, "connect") || strings.Contains(message, "dial"):
+		return "connection_failed"
+	case strings.Contains(message, "command") || strings.Contains(message, "-err"):
+		return "command_rejected"
+	default:
+		return "control_path_failed"
+	}
+}
+
 func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r, false) {
 		return

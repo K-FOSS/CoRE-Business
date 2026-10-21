@@ -482,6 +482,7 @@ func (s *server) bridgedCallWorker(ctx context.Context) {
 		case <-ticker.C:
 			rows, err := s.pool.Query(ctx, `WITH claimed AS (SELECT id FROM public.avoip_bridged_calls WHERE status=$1 AND scheduled_at <= now() AND scheduled_at >= now() - interval '15 minutes' ORDER BY scheduled_at FOR UPDATE SKIP LOCKED LIMIT 8) UPDATE public.avoip_bridged_calls c SET status=$2,started_at=COALESCE(started_at,now()),updated_at=now(),version=version+1 FROM claimed WHERE c.id=claimed.id RETURNING c.id::text`, callScheduled, callCallingYou)
 			if err != nil {
+				s.logger.Error("bridged call scheduler claim failed", "reason", safeInterfaceError(err))
 				continue
 			}
 			ids := []string{}
@@ -621,11 +622,13 @@ func (s *server) dispatchBridgedCall(ctx context.Context, id string) {
 	}
 	catalog, _, err := s.cachedCatalog()
 	if err != nil {
+		s.logger.Warn("bridged call dispatch policy lookup failed", "call_id", id, "reason", safeInterfaceError(err))
 		s.failCall(ctx, id, "policy_unavailable")
 		return
 	}
 	e, err := authorizedExtension(catalog, call.Extension)
 	if err != nil {
+		s.logger.Warn("bridged call extension authorization failed", "call_id", id, "reason", safeInterfaceError(err))
 		s.failCall(ctx, id, "extension_not_authorized")
 		return
 	}
@@ -651,6 +654,7 @@ func (s *server) dispatchBridgedCall(ctx context.Context, id string) {
 	command := bridgedOriginateCommand(call, gateway, target, confirmation)
 	result, err := eslCommand(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"), telephonyEnv("AVOIP_ESL_SECRET"), "bgapi "+command)
 	if err != nil {
+		s.logger.Error("bridged call origination failed", "call_id", id, "reason", telephonyErrorClass(err), "detail", safeInterfaceError(err))
 		s.failCall(ctx, id, "origination_failed")
 		return
 	}
