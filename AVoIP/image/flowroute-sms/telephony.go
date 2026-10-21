@@ -103,13 +103,11 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		systems = append(systems, telephonyStatus{Name: "Asterisk AMI", State: "not configured"})
 	}
 	if address := telephonyEnv("AVOIP_ESL_ADDRESS"); address != "" {
-		eslCalls, err := freeSwitchCalls(ctx, address, telephonyEnv("AVOIP_ESL_SECRET"))
+		_, err := freeSwitchStatus(ctx, address, telephonyEnv("AVOIP_ESL_SECRET"))
 		state := "connected"
 		if err != nil {
 			s.logger.Warn("freeswitch event socket health check failed", "reason", telephonyErrorClass(err), "detail", safeInterfaceError(err))
 			state = "unavailable"
-		} else {
-			calls = append(calls, eslCalls...)
 		}
 		detail := ""
 		if err != nil {
@@ -142,6 +140,10 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 	}
 	result["systems"], result["calls"], result["cdr"] = systems, calls, cdr
 	writeJSON(w, result)
+}
+
+func freeSwitchStatus(ctx context.Context, address, secret string) (string, error) {
+	return eslCommand(ctx, address, secret, "status")
 }
 
 func (s *server) hangupCall(w http.ResponseWriter, r *http.Request) {
@@ -397,6 +399,17 @@ func freeSwitchHangup(ctx context.Context, address, secret, id string) error {
 	}
 	_, err := eslCommand(ctx, address, secret, "uuid_kill "+id+" NORMAL_CLEARING")
 	return err
+}
+
+func freeSwitchUUIDExists(ctx context.Context, address, secret, uuid string) (bool, error) {
+	if uuid == "" || !correlationID.MatchString(uuid) {
+		return false, errors.New("invalid UUID")
+	}
+	response, err := eslCommand(ctx, address, secret, "uuid_exists "+uuid)
+	if err != nil {
+		return false, err
+	}
+	return strings.EqualFold(strings.TrimSpace(response), "true"), nil
 }
 
 func freeSwitchVariable(ctx context.Context, address, secret, uuid, name string) (string, error) {

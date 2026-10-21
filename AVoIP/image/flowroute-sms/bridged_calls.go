@@ -697,19 +697,13 @@ func (s *server) reconcileBridgedCall(id string) {
 			if stageStatus != "" {
 				_, _ = s.pool.Exec(ctx, `UPDATE public.avoip_bridged_calls SET status=$2,answered_at=COALESCE(answered_at,now()),connected_at=CASE WHEN $2='Connected' THEN COALESCE(connected_at,now()) ELSE connected_at END,updated_at=now(),version=version+1 WHERE id=$1 AND status NOT IN ('Completed','Cancelled','Failed','Busy','No answer')`, id, stageStatus)
 			}
-			channels, e := freeSwitchCalls(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"), telephonyEnv("AVOIP_ESL_SECRET"))
-			if e != nil {
+			callbackExists, callbackErr := freeSwitchUUIDExists(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"), telephonyEnv("AVOIP_ESL_SECRET"), callback)
+			extensionExists, extensionErr := freeSwitchUUIDExists(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"), telephonyEnv("AVOIP_ESL_SECRET"), extension)
+			if callbackErr != nil || extensionErr != nil {
 				cancel()
 				continue
 			}
-			found := false
-			for _, ch := range channels {
-				if ch.ID == callback || ch.ID == extension {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if !callbackExists && !extensionExists {
 				_, _ = s.pool.Exec(ctx, `UPDATE public.avoip_bridged_calls SET status=CASE WHEN cancellation_requested THEN $2 WHEN status='Connected' THEN $3 ELSE $4 END,completed_at=now(),cancelled_at=CASE WHEN cancellation_requested THEN now() ELSE cancelled_at END,updated_at=now(),version=version+1 WHERE id=$1 AND status NOT IN ('Completed','Cancelled','Failed','Busy','No answer')`, id, callCancelled, callCompleted, callNoAnswer)
 			}
 			cancel()
