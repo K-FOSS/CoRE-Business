@@ -20,16 +20,16 @@ func TestBridgedCallValidationPrimitives(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := time.ParseInLocation(time.RFC3339, "2026-03-08T02:30:00-08:00", loc); err != nil {
+	if _, err := time.ParseInLocation(time.RFC3339, "2025-03-09T02:30:00-08:00", loc); err != nil {
 		t.Fatal("RFC3339 input should parse before policy comparison")
 	}
-	if _, err := parseScheduleLocal("2026-03-08T02:30", loc); err == nil {
+	if _, err := parseScheduleLocal("2025-03-09T02:30", loc); err == nil {
 		t.Fatal("accepted nonexistent DST time")
 	}
-	if _, err := parseScheduleLocal("2026-11-01T01:30", loc); err == nil {
+	if _, err := parseScheduleLocal("2025-11-02T01:30", loc); err == nil {
 		t.Fatal("accepted ambiguous DST time")
 	}
-	if _, err := parseScheduleLocal("2026-11-01T03:30", loc); err != nil {
+	if _, err := parseScheduleLocal("2025-11-02T03:30", loc); err != nil {
 		t.Fatal("rejected unambiguous DST time")
 	}
 }
