@@ -42,8 +42,11 @@ func TestBridgedOriginateCommandIsStructured(t *testing.T) {
 			t.Fatalf("command missing %q: %s", value, command)
 		}
 	}
-	if strings.Contains(command, "api ") || strings.Contains(command, "eval ") {
+	if strings.Contains(command, "&transfer(") || strings.Contains(command, "api ") || strings.Contains(command, "eval ") {
 		t.Fatal("command unexpectedly contains an arbitrary control expression")
+	}
+	if !strings.HasSuffix(command, " bridged-call-callback XML public") {
+		t.Fatalf("command did not specify the public callback context: %s", command)
 	}
 }
 

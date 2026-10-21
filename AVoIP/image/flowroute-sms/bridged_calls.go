@@ -670,7 +670,7 @@ func bridgedOriginateCommand(call bridgedCall, gateway, target string, confirmat
 	if timeout == "" {
 		timeout = "30"
 	}
-	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_confirmation_required=%t}sofia/gateway/%s/%s &transfer(bridged-call-callback XML public)`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, confirmation, gateway, call.CallbackDestination)
+	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_confirmation_required=%t}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, confirmation, gateway, call.CallbackDestination)
 }
 
 func (s *server) failCall(ctx context.Context, id, reason string) {
