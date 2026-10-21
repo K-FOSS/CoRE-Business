@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.avoip_admin_audit(id bigint GENERATED ALWAYS A
 CREATE TABLE IF NOT EXISTS public.avoip_bridged_calls(
     id uuid PRIMARY KEY,
     owner text NOT NULL,
+    initiator_display_name text NOT NULL DEFAULT '',
     callback_kind text NOT NULL,
     callback_destination text NOT NULL,
     callback_label text NOT NULL DEFAULT '',
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.avoip_bridged_calls(
     updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE(owner, idempotency_key)
 );
+ALTER TABLE public.avoip_bridged_calls ADD COLUMN IF NOT EXISTS initiator_display_name text NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS avoip_bridged_calls_owner_schedule_idx ON public.avoip_bridged_calls(owner, scheduled_at DESC);
 CREATE INDEX IF NOT EXISTS avoip_bridged_calls_dispatch_idx ON public.avoip_bridged_calls(status, scheduled_at);
 CREATE TABLE IF NOT EXISTS public.avoip_bridged_call_events(

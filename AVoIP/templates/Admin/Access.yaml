@@ -153,6 +153,7 @@ spec:
     http:
       headersToBackend:
         - 'x-authentik-username'
+        - 'x-authentik-name'
         - 'x-authentik-groups'
         - 'x-authentik-uid'
         - 'x-auth-numbers'

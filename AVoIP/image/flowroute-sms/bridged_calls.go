@@ -51,6 +51,7 @@ type bridgedCallCreate struct {
 type bridgedCall struct {
 	ID                    string     `json:"id"`
 	Owner                 string     `json:"owner,omitempty"`
+	InitiatorDisplayName  string     `json:"-"`
 	CallbackKind          string     `json:"callback_kind"`
 	CallbackDestination   string     `json:"callback_destination"`
 	CallbackLabel         string     `json:"callback_label"`
@@ -244,6 +245,7 @@ func (s *server) createBridgedCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := r.Header.Get("X-Authentik-Username")
+	displayName := authenticatedDisplayName(r)
 	r.Body = http.MaxBytesReader(w, r.Body, 8192)
 	var input bridgedCallCreate
 	if json.NewDecoder(r.Body).Decode(&input) != nil || !idempotencyKey.MatchString(input.IdempotencyKey) {
@@ -330,9 +332,9 @@ func (s *server) createBridgedCall(w http.ResponseWriter, r *http.Request) {
 		status = callScheduled
 		executeAt = time.Now().UTC()
 	}
-	query := `INSERT INTO public.avoip_bridged_calls(id,owner,callback_kind,callback_destination,callback_label,extension,caller_id,provider_id,scheduled_at,timezone,status,idempotency_key,callback_uuid,extension_uuid) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT(owner,idempotency_key) DO NOTHING RETURNING id`
+	query := `INSERT INTO public.avoip_bridged_calls(id,owner,initiator_display_name,callback_kind,callback_destination,callback_label,extension,caller_id,provider_id,scheduled_at,timezone,status,idempotency_key,callback_uuid,extension_uuid) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT(owner,idempotency_key) DO NOTHING RETURNING id`
 	var inserted string
-	err = s.pool.QueryRow(r.Context(), query, callID, user, input.CallbackKind, callback, input.CallbackLabel, extension.Extension, input.CallerID, provider.ID, executeAt, input.Timezone, status, input.IdempotencyKey, callbackUUID, extensionUUID).Scan(&inserted)
+	err = s.pool.QueryRow(r.Context(), query, callID, user, displayName, input.CallbackKind, callback, input.CallbackLabel, extension.Extension, input.CallerID, provider.ID, executeAt, input.Timezone, status, input.IdempotencyKey, callbackUUID, extensionUUID).Scan(&inserted)
 	if errors.Is(err, pgx.ErrNoRows) {
 		if s.pool.QueryRow(r.Context(), `SELECT id::text FROM public.avoip_bridged_calls WHERE owner=$1 AND idempotency_key=$2`, user, input.IdempotencyKey).Scan(&inserted) == nil {
 			s.writeCallByID(w, r, inserted)
@@ -351,6 +353,27 @@ func (s *server) createBridgedCall(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logger.Info("bridged call created", "call_id", callID, "owner", user, "extension", extension.Extension, "callback_kind", input.CallbackKind, "status", status)
 	s.writeCallByID(w, r, inserted)
+}
+
+func authenticatedDisplayName(r *http.Request) string {
+	value := strings.TrimSpace(r.Header.Get("X-Authentik-Name"))
+	if value == "" {
+		value = strings.TrimSpace(r.Header.Get("X-Authentik-Username"))
+	}
+	value = strings.Map(func(ch rune) rune {
+		if ch < 0x20 || strings.ContainsRune(",={}\r\n", ch) {
+			return -1
+		}
+		return ch
+	}, value)
+	value = strings.TrimSpace(value)
+	if len(value) > 80 {
+		value = value[:80]
+	}
+	if value == "" {
+		return "CoRE user"
+	}
+	return value
 }
 
 func parseScheduleLocal(value string, loc *time.Location) (time.Time, error) {
@@ -440,10 +463,10 @@ func (s *server) listBridgedCalls(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := r.Header.Get("X-Authentik-Username")
-	query := `SELECT id::text,owner,callback_kind,callback_destination,callback_label,extension,caller_id,scheduled_at,timezone,status,cancellation_requested,failure_code,hangup_cause,created_at,started_at,answered_at,connected_at,completed_at,cancelled_at,callback_uuid,extension_uuid FROM public.avoip_bridged_calls WHERE owner=$1`
+	query := `SELECT id::text,owner,initiator_display_name,callback_kind,callback_destination,callback_label,extension,caller_id,scheduled_at,timezone,status,cancellation_requested,failure_code,hangup_cause,created_at,started_at,answered_at,connected_at,completed_at,cancelled_at,callback_uuid,extension_uuid FROM public.avoip_bridged_calls WHERE owner=$1`
 	args := []any{user}
 	if s.isAdmin(r) && r.URL.Query().Get("all") == "true" {
-		query = `SELECT id::text,owner,callback_kind,callback_destination,callback_label,extension,caller_id,scheduled_at,timezone,status,cancellation_requested,failure_code,hangup_cause,created_at,started_at,answered_at,connected_at,completed_at,cancelled_at,callback_uuid,extension_uuid FROM public.avoip_bridged_calls`
+		query = `SELECT id::text,owner,initiator_display_name,callback_kind,callback_destination,callback_label,extension,caller_id,scheduled_at,timezone,status,cancellation_requested,failure_code,hangup_cause,created_at,started_at,answered_at,connected_at,completed_at,cancelled_at,callback_uuid,extension_uuid FROM public.avoip_bridged_calls`
 		args = nil
 	}
 	query += ` ORDER BY scheduled_at DESC LIMIT 100`
@@ -456,7 +479,7 @@ func (s *server) listBridgedCalls(w http.ResponseWriter, r *http.Request) {
 	result := []bridgedCall{}
 	for rows.Next() {
 		var call bridgedCall
-		if rows.Scan(&call.ID, &call.Owner, &call.CallbackKind, &call.CallbackDestination, &call.CallbackLabel, &call.Extension, &call.CallerID, &call.ScheduledAt, &call.Timezone, &call.Status, &call.CancellationRequested, &call.FailureCode, &call.HangupCause, &call.CreatedAt, &call.StartedAt, &call.AnsweredAt, &call.ConnectedAt, &call.CompletedAt, &call.CancelledAt, &call.CallbackUUID, &call.ExtensionUUID) == nil {
+		if rows.Scan(&call.ID, &call.Owner, &call.InitiatorDisplayName, &call.CallbackKind, &call.CallbackDestination, &call.CallbackLabel, &call.Extension, &call.CallerID, &call.ScheduledAt, &call.Timezone, &call.Status, &call.CancellationRequested, &call.FailureCode, &call.HangupCause, &call.CreatedAt, &call.StartedAt, &call.AnsweredAt, &call.ConnectedAt, &call.CompletedAt, &call.CancelledAt, &call.CallbackUUID, &call.ExtensionUUID) == nil {
 			result = append(result, call)
 		}
 	}
@@ -506,7 +529,7 @@ func (s *server) dispatchClaimedBridgedCall(ctx context.Context, id string) {
 
 func (s *server) writeCallByID(w http.ResponseWriter, r *http.Request, id string) {
 	var call bridgedCall
-	err := s.pool.QueryRow(r.Context(), `SELECT id::text,owner,callback_kind,callback_destination,callback_label,extension,caller_id,scheduled_at,timezone,status,cancellation_requested,failure_code,hangup_cause,created_at,started_at,answered_at,connected_at,completed_at,cancelled_at,callback_uuid,extension_uuid FROM public.avoip_bridged_calls WHERE id=$1 AND (owner=$2 OR $3)`, id, r.Header.Get("X-Authentik-Username"), s.isAdmin(r)).Scan(&call.ID, &call.Owner, &call.CallbackKind, &call.CallbackDestination, &call.CallbackLabel, &call.Extension, &call.CallerID, &call.ScheduledAt, &call.Timezone, &call.Status, &call.CancellationRequested, &call.FailureCode, &call.HangupCause, &call.CreatedAt, &call.StartedAt, &call.AnsweredAt, &call.ConnectedAt, &call.CompletedAt, &call.CancelledAt, &call.CallbackUUID, &call.ExtensionUUID)
+	err := s.pool.QueryRow(r.Context(), `SELECT id::text,owner,initiator_display_name,callback_kind,callback_destination,callback_label,extension,caller_id,scheduled_at,timezone,status,cancellation_requested,failure_code,hangup_cause,created_at,started_at,answered_at,connected_at,completed_at,cancelled_at,callback_uuid,extension_uuid FROM public.avoip_bridged_calls WHERE id=$1 AND (owner=$2 OR $3)`, id, r.Header.Get("X-Authentik-Username"), s.isAdmin(r)).Scan(&call.ID, &call.Owner, &call.InitiatorDisplayName, &call.CallbackKind, &call.CallbackDestination, &call.CallbackLabel, &call.Extension, &call.CallerID, &call.ScheduledAt, &call.Timezone, &call.Status, &call.CancellationRequested, &call.FailureCode, &call.HangupCause, &call.CreatedAt, &call.StartedAt, &call.AnsweredAt, &call.ConnectedAt, &call.CompletedAt, &call.CancelledAt, &call.CallbackUUID, &call.ExtensionUUID)
 	if err != nil {
 		http.Error(w, "call unavailable", 404)
 		return
@@ -616,7 +639,7 @@ func (s *server) dispatchBridgedCall(ctx context.Context, id string) {
 	var call bridgedCall
 	var gateway string
 	var confirmation bool = true
-	err := s.pool.QueryRow(ctx, `UPDATE public.avoip_bridged_calls SET status=$2,started_at=COALESCE(started_at,now()),updated_at=now(),version=version+1 WHERE id=$1 AND status IN ($3,$4) AND telephony_job_id='' AND scheduled_at <= now() RETURNING id::text,callback_destination,callback_kind,extension,caller_id,callback_uuid,extension_uuid,provider_id`, id, callCallingYou, callScheduled, callCallingYou).Scan(&call.ID, &call.CallbackDestination, &call.CallbackKind, &call.Extension, &call.CallerID, &call.CallbackUUID, &call.ExtensionUUID, &gateway)
+	err := s.pool.QueryRow(ctx, `UPDATE public.avoip_bridged_calls SET status=$2,started_at=COALESCE(started_at,now()),updated_at=now(),version=version+1 WHERE id=$1 AND status IN ($3,$4) AND telephony_job_id='' AND scheduled_at <= now() RETURNING id::text,initiator_display_name,callback_destination,callback_kind,extension,caller_id,callback_uuid,extension_uuid,provider_id`, id, callCallingYou, callScheduled, callCallingYou).Scan(&call.ID, &call.InitiatorDisplayName, &call.CallbackDestination, &call.CallbackKind, &call.Extension, &call.CallerID, &call.CallbackUUID, &call.ExtensionUUID, &gateway)
 	if err != nil {
 		return
 	}
@@ -670,7 +693,7 @@ func bridgedOriginateCommand(call bridgedCall, gateway, target string, confirmat
 	if timeout == "" {
 		timeout = "30"
 	}
-	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_confirmation_required=%t}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, confirmation, gateway, call.CallbackDestination)
+	return fmt.Sprintf(`originate {origination_uuid=%s,origination_caller_id_number=%s,origination_caller_id_name=CoRE,originate_timeout=%s,bridged_call_id=%s,bridged_call_target=%s,bridged_call_initiator_name=%s,bridged_confirmation_required=%t}sofia/gateway/%s/%s bridged-call-callback XML public`, call.CallbackUUID, call.CallerID, timeout, call.ID, target, call.InitiatorDisplayName, confirmation, gateway, call.CallbackDestination)
 }
 
 func (s *server) failCall(ctx context.Context, id, reason string) {

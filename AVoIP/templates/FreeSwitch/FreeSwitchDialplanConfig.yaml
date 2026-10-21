@@ -78,6 +78,9 @@ data:
             <action application="set" data="bridge_early_media=false"/>
             <action application="set" data="bridged_call_stage=awaiting_confirmation"/>
             <condition field="${bridged_confirmation_required}" expression="^true$">
+              <action application="say" data="en name pronounced To accept a call from"/>
+              <action application="say" data="en name pronounced ${bridged_call_initiator_name}"/>
+              <action application="say" data="en name pronounced press 1"/>
               <action application="play_and_get_digits" data="1 1 1 {{ $.Values.avoipAdmin.bridgedCalls.confirmationTimeoutSeconds }}000 '' silence_stream://1000 silence_stream://1000 bridged_call_confirmation ^1$ 1000"/>
               <action application="transfer" data="bridged-call-confirmed XML public"/>
             </condition>
