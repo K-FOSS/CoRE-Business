@@ -467,7 +467,10 @@ func readESLFrame(r *bufio.Reader) (string, error) {
 	}
 	n, _ := strconv.Atoi(headers["Content-Length"])
 	if n <= 0 {
-		return "", nil
+		// Authentication and command replies commonly carry their result in
+		// Reply-Text rather than a body. Preserve it for callers such as the
+		// ESL auth handshake and bgapi originate acknowledgement.
+		return headers["Reply-Text"], nil
 	}
 	buf := make([]byte, n)
 	_, err := io.ReadFull(r, buf)
