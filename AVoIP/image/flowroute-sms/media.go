@@ -107,6 +107,26 @@ func (s *server) uploadMedia(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"id": id, "file_name": name, "mime_type": mimeType, "size": len(content)})
 }
 
+func inboundMediaObjectKey(mediaID string) string {
+	digest := sha256.Sum256([]byte(mediaID))
+	return "sms-media/inbound/" + fmt.Sprintf("%x", digest[:])
+}
+
+func (s *server) storeInboundMedia(ctx context.Context, mediaID, fileName, mimeType string, content []byte) (string, error) {
+	if s.mediaStore == nil {
+		return "", fmt.Errorf("media S3 is not configured")
+	}
+	key := inboundMediaObjectKey(mediaID)
+	_, err := s.mediaStore.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.mediaStore.bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(content),
+		ContentType: aws.String(mimeType),
+		Metadata:    map[string]string{"file-name": safeFileName(fileName)},
+	})
+	return key, err
+}
+
 func (s *server) mediaURL(ctx context.Context, id, owner string) (string, error) {
 	if s.mediaStore == nil || s.mediaStore.proxyBase == "" {
 		return "", fmt.Errorf("media proxy is not configured")

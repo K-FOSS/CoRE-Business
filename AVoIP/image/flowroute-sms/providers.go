@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS public.sms_outbound_media(
     size_bytes integer NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.sms_outbound_media ADD COLUMN IF NOT EXISTS message_id text;
+CREATE INDEX IF NOT EXISTS sms_outbound_media_message_idx ON public.sms_outbound_media(message_id);
 `
 
 var providerID = regexp.MustCompile(`^[a-z][a-z0-9-]{0,39}$`)

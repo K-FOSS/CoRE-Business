@@ -128,6 +128,11 @@ func (s *server) sendMessage(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]any{"id": id, "stored": false})
 		return
 	}
+	if len(input.MediaIDs) > 0 {
+		if _, err = s.pool.Exec(r.Context(), `UPDATE public.sms_outbound_media SET message_id=$1 WHERE owner=$2 AND id=ANY($3)`, id, identity, input.MediaIDs); err != nil {
+			s.logger.Warn("sent SMS attachment association failed", "message_id", id, "user", identity)
+		}
+	}
 	s.logger.Info("message sent", "message_id", id, "user", identity, "from", from, "to", to, "is_mms", len(mediaURLs) > 0, "media_count", len(mediaURLs))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

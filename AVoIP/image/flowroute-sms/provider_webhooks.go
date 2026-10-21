@@ -11,6 +11,7 @@ import (
 	"io"
 	"log/slog"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -130,13 +131,32 @@ func twilioMediaFromWebhook(values url.Values, accountSID, messageSID string, co
 
 func (s *server) downloadTwilioMedia(ctx context.Context, accountSID, authToken, messageSID string, media *twilioInboundMedia) error {
 	mediaURL := "https://api.twilio.com/2010-04-01/Accounts/" + accountSID + "/Messages/" + messageSID + "/Media/" + media.sid
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, mediaURL, nil)
-	if err != nil {
-		return errors.New("could not build Twilio media request")
+	requestURL := mediaURL
+	var resp *http.Response
+	for redirect := 0; redirect < 4; redirect++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+		if err != nil {
+			return errors.New("could not build Twilio media request")
+		}
+		if redirect == 0 {
+			req.SetBasicAuth(accountSID, authToken)
+		}
+		resp, err = s.mediaClient.Do(req)
+		if err != nil {
+			return errors.New("Twilio media request failed")
+		}
+		if resp.StatusCode < http.StatusMultipleChoices || resp.StatusCode >= http.StatusBadRequest {
+			break
+		}
+		location := resp.Header.Get("Location")
+		resp.Body.Close()
+		parsed, parseErr := url.Parse(location)
+		if parseErr != nil || !allowedTwilioMediaRedirect(parsed) {
+			return errors.New("Twilio media redirect was not allowed")
+		}
+		requestURL = parsed.String()
 	}
-	req.SetBasicAuth(accountSID, authToken)
-	resp, err := s.mediaClient.Do(req)
-	if err != nil {
+	if resp == nil {
 		return errors.New("Twilio media request failed")
 	}
 	defer resp.Body.Close()
@@ -162,6 +182,20 @@ func (s *server) downloadTwilioMedia(ctx context.Context, accountSID, authToken,
 		media.fileName = "twilio-" + media.sid
 	}
 	return nil
+}
+
+func allowedTwilioMediaRedirect(parsed *url.URL) bool {
+	if parsed == nil || !strings.EqualFold(parsed.Scheme, "https") || parsed.User != nil || parsed.Fragment != "" {
+		return false
+	}
+	if port := parsed.Port(); port != "" && port != "443" {
+		return false
+	}
+	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	if ip := net.ParseIP(host); ip != nil {
+		return !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsMulticast() && !ip.IsUnspecified()
+	}
+	return host == "mms-media-prod.s3.amazonaws.com" || host == "s3.us-west-2.amazonaws.com" || host == "api.twilio.com" || strings.HasSuffix(host, ".twilio.com")
 }
 
 func validTelnyxSignature(p smsProvider, r *http.Request, body []byte) bool {
@@ -372,6 +406,16 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	mediaKeys := make([]string, len(media))
+	for index, attachment := range media {
+		key, storeErr := s.storeInboundMedia(r.Context(), id+":"+attachment.sid, attachment.fileName, attachment.contentType, attachment.content)
+		if storeErr != nil {
+			stage = "store_twilio_media"
+			http.Error(w, "media unavailable", http.StatusBadGateway)
+			return
+		}
+		mediaKeys[index] = key
+	}
 	id = p.ID + ":" + id
 	stage = "database_begin"
 	tx, err := s.pool.Begin(r.Context())
@@ -389,10 +433,10 @@ func (s *server) receiveProvider(w http.ResponseWriter, r *http.Request) {
 			err = nil
 		}
 		if err == nil && inserted {
-			for _, attachment := range media {
+			for index, attachment := range media {
 				stage = "database_insert_media"
 				mediaID := id + ":" + attachment.sid
-				if _, err = tx.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_media(media_id,message_id,file_name,mime_type,content) VALUES($1,$2,$3,$4,$5)`, mediaID, id, attachment.fileName, attachment.contentType, attachment.content); err != nil {
+				if _, err = tx.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_media(media_id,message_id,file_name,mime_type,content,object_key) VALUES($1,$2,$3,$4,NULL,$5)`, mediaID, id, attachment.fileName, attachment.contentType, mediaKeys[index]); err != nil {
 					break
 				}
 			}

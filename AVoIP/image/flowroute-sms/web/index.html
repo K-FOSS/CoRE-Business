@@ -22,6 +22,7 @@
     </section>
   </main>
   <dialog id="new-message"><form method="dialog" id="new-message-form"><h2>New message</h2><label for="new-from">Send from</label><select id="new-from" required></select><label for="new-to">Recipient number</label><input id="new-to" type="tel" inputmode="tel" autocomplete="tel" placeholder="+1 206 555 0123" required><p>Enter the recipient in international format.</p><div class="dialog-actions"><button type="button" id="cancel-new">Cancel</button><button type="submit" class="dialog-primary">Continue</button></div></form></dialog>
+  <dialog id="media-preview" class="media-dialog"><form method="dialog"><header><h2 id="media-preview-title">Attachment</h2><button class="icon-button" value="cancel" aria-label="Close attachment">×</button></header><div id="media-preview-content"></div><footer><details class="attachment-menu"><summary aria-label="Attachment options">⋮</summary><a id="media-download" download>Download</a></details><button value="cancel" class="dialog-primary">Close</button></footer></form></dialog>
   <dialog id="confirm-action"><form method="dialog"><h2>Confirm deletion</h2><p id="confirm-description"></p><div class="dialog-actions"><button value="cancel">Cancel</button><button value="delete" class="text-button danger">Delete</button></div></form></dialog>
   <div id="snackbar" class="snackbar" role="status" aria-live="polite"></div>
   <script src="/assets/app.js" defer></script>

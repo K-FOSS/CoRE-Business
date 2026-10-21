@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -103,9 +105,12 @@ CREATE TABLE IF NOT EXISTS public.flowroute_inbound_media (
     message_id text NOT NULL REFERENCES public.flowroute_inbound_messages(message_id) ON DELETE CASCADE,
     file_name text NOT NULL,
     mime_type text NOT NULL,
-    content bytea NOT NULL,
+    content bytea,
+    object_key text,
     stored_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.flowroute_inbound_media ADD COLUMN IF NOT EXISTS object_key text;
+ALTER TABLE public.flowroute_inbound_media ALTER COLUMN content DROP NOT NULL;
 `
 
 const createMessagesIndex = `
@@ -550,6 +555,16 @@ func (s *server) receive(w http.ResponseWriter, r *http.Request) {
 	if message.Timestamp.IsZero() {
 		message.Timestamp = time.Now().UTC()
 	}
+	mediaKeys := make([]string, len(message.Media))
+	for i, media := range message.Media {
+		key, storeErr := s.storeInboundMedia(r.Context(), media.ID, media.Attributes.FileName, media.Attributes.MIMEType, mediaContent[i])
+		if storeErr != nil {
+			s.logger.Error("MMS attachment storage failed", "message_id", message.ID, "attachment_index", i, "failure_stage", "store_media")
+			s.reply(w, r, message.ID, "media_storage_failed", http.StatusBadGateway)
+			return
+		}
+		mediaKeys[i] = key
+	}
 
 	var inserted bool
 	tx, err := s.pool.Begin(r.Context())
@@ -586,7 +601,7 @@ RETURNING true`, message.ID, message.From, message.To, nullableBody(message.Body
 	if err == nil && inserted {
 		for i, media := range message.Media {
 			persistStage = "insert_media"
-			if _, err = tx.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_media (media_id,message_id,file_name,mime_type,content) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (media_id) DO NOTHING`, media.ID, message.ID, safeFileName(media.Attributes.FileName), media.Attributes.MIMEType, mediaContent[i]); err != nil {
+			if _, err = tx.Exec(r.Context(), `INSERT INTO public.flowroute_inbound_media (media_id,message_id,file_name,mime_type,content,object_key) VALUES ($1,$2,$3,$4,NULL,$5) ON CONFLICT (media_id) DO NOTHING`, media.ID, message.ID, safeFileName(media.Attributes.FileName), media.Attributes.MIMEType, mediaKeys[i]); err != nil {
 				break
 			}
 		}
@@ -927,7 +942,7 @@ func (s *server) listMessages(w http.ResponseWriter, r *http.Request) {
 		messageIDs = append(messageIDs, result[i].ID)
 	}
 	if len(messageIDs) > 0 {
-		mediaRows, err := s.pool.Query(r.Context(), `SELECT message_id,media_id,file_name,mime_type FROM public.flowroute_inbound_media WHERE message_id=ANY($1) ORDER BY media_id`, messageIDs)
+		mediaRows, err := s.pool.Query(r.Context(), `SELECT message_id,media_id,file_name,mime_type FROM public.flowroute_inbound_media WHERE message_id=ANY($1) UNION ALL SELECT message_id,id,file_name,mime_type FROM public.sms_outbound_media WHERE message_id=ANY($1) ORDER BY media_id`, messageIDs)
 		if err != nil {
 			s.logger.Warn("inbox message list failed", "failure_stage", "query_media_metadata", "message_count", len(messageIDs), "response_status", http.StatusInternalServerError)
 			http.Error(w, "database error", http.StatusInternalServerError)
@@ -972,9 +987,15 @@ func (s *server) getMedia(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", 403)
 		return
 	}
-	var mimeType, fileName string
+	var mimeType, fileName, objectKey string
 	var content []byte
-	err := s.pool.QueryRow(r.Context(), `SELECT m.mime_type,m.file_name,m.content FROM public.flowroute_inbound_media m JOIN public.flowroute_inbound_messages msg USING(message_id) WHERE m.media_id=$1 AND ((msg.direction='inbound' AND msg.recipient=ANY($2)) OR (msg.direction='outbound' AND msg.sender=ANY($2)))`, r.PathValue("id"), numbers).Scan(&mimeType, &fileName, &content)
+	err := s.pool.QueryRow(r.Context(), `SELECT mime_type,file_name,object_key,content FROM (
+SELECT m.media_id,m.mime_type,m.file_name,COALESCE(m.object_key,'') AS object_key,m.content,msg.direction,msg.sender,msg.recipient
+FROM public.flowroute_inbound_media m JOIN public.flowroute_inbound_messages msg USING(message_id)
+UNION ALL
+SELECT m.id,m.mime_type,m.file_name,m.object_key,NULL,msg.direction,msg.sender,msg.recipient
+FROM public.sms_outbound_media m JOIN public.flowroute_inbound_messages msg ON msg.message_id=m.message_id
+) media WHERE media.media_id=$1 AND ((direction='inbound' AND recipient=ANY($2)) OR (direction='outbound' AND sender=ANY($2)))`, r.PathValue("id"), numbers).Scan(&mimeType, &fileName, &objectKey, &content)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Debug("MMS media not found or unauthorized", "response_status", http.StatusNotFound)
@@ -989,7 +1010,26 @@ func (s *server) getMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("inline", map[string]string{"filename": safeFileName(fileName)}))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	written, err := io.Copy(w, bytes.NewReader(content))
+	var source io.Reader = bytes.NewReader(content)
+	var object io.ReadCloser
+	if objectKey != "" {
+		if s.mediaStore == nil {
+			http.Error(w, "media unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		stored, storeErr := s.mediaStore.client.GetObject(r.Context(), &s3.GetObjectInput{Bucket: aws.String(s.mediaStore.bucket), Key: aws.String(objectKey)})
+		if storeErr != nil {
+			http.Error(w, "media unavailable", http.StatusNotFound)
+			return
+		}
+		object = stored.Body
+		defer object.Close()
+		source = object
+	}
+	written, err := io.CopyN(w, source, maxMediaBytes+1)
+	if err == io.EOF {
+		err = nil
+	}
 	if err != nil {
 		s.logger.Warn("MMS media response failed", "media_id", r.PathValue("id"), "failure_stage", "stream_media", "mime_type", mimeType, "content_bytes", len(content), "bytes_written", written, "response_status", http.StatusOK)
 		return
