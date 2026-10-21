@@ -291,6 +291,7 @@ func run(logger *slog.Logger) error {
 		go app.refreshCatalog(ctx)
 		go app.bridgedCallWorker(ctx)
 		internalMux := http.NewServeMux()
+		internalMux.HandleFunc("GET /routing/readyz", app.routingReady)
 		internalMux.HandleFunc("GET /routing/snapshot", app.routingSnapshot)
 		internalMux.HandleFunc("POST /routing/freeswitch", app.freeSwitchRoute)
 		internalServer := &http.Server{Addr: ":8081", Handler: internalMux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second, MaxHeaderBytes: 16 << 10}

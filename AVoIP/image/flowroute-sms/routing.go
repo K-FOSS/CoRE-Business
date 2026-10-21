@@ -837,6 +837,21 @@ func routingAuthorized(r *http.Request) bool {
 	}
 	return len(token) >= 16 && subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+token)) == 1
 }
+
+// routingReady is intentionally unauthenticated because it is used only as a
+// Kubernetes readiness probe. It exposes no policy data or credentials. A pod
+// is not placed behind the routing Service until its local, validated snapshot
+// is available, preventing Kamailio from receiving a cold Admin replica during
+// a rollout or after a restart.
+func (s *server) routingReady(w http.ResponseWriter, _ *http.Request) {
+	c, _, err := s.cachedCatalog()
+	if err != nil || c.validate() != nil {
+		http.Error(w, "routing snapshot unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (s *server) routingSnapshot(w http.ResponseWriter, r *http.Request) {
 	if !routingAuthorized(r) {
 		http.Error(w, "forbidden", 403)

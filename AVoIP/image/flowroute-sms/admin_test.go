@@ -678,6 +678,29 @@ func TestRoutingCacheFailsClosedWithoutDatabase(t *testing.T) {
 	}
 }
 
+func TestRoutingReadyRequiresFreshValidatedSnapshot(t *testing.T) {
+	s := &server{}
+	w := httptest.NewRecorder()
+	s.routingReady(w, httptest.NewRequest("GET", "http://local/routing/readyz", nil))
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("cold routing readiness status %d", w.Code)
+	}
+
+	s.cacheCatalog(fixtureCatalog())
+	w = httptest.NewRecorder()
+	s.routingReady(w, httptest.NewRequest("GET", "http://local/routing/readyz", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("valid routing readiness status %d: %s", w.Code, w.Body.String())
+	}
+
+	s.routingDeadline = time.Now().Add(-time.Second)
+	w = httptest.NewRecorder()
+	s.routingReady(w, httptest.NewRequest("GET", "http://local/routing/readyz", nil))
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expired routing readiness status %d", w.Code)
+	}
+}
+
 func TestRoutingSnapshotIncludesOrderedProviderDIDCodecs(t *testing.T) {
 	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
 	t.Setenv("AVOIP_SITE", "yvr")

@@ -33,6 +33,8 @@ controllers:
     rollingUpdate:
       unavailable: '0'
       surge: 1
+    podDisruptionBudget:
+      minAvailable: 1
     pod:
       automountServiceAccountToken: false
       securityContext:
@@ -207,8 +209,13 @@ controllers:
             custom: true
             spec:
               httpGet:
+                {{ if $settings.routing.enabled }}
+                path: '/routing/readyz'
+                port: 'routing'
+                {{ else }}
                 path: '/readyz'
                 port: 'http'
+                {{ end }}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

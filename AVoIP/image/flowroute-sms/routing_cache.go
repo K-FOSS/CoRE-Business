@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -27,10 +28,14 @@ func (s *server) refreshCatalog(ctx context.Context) {
 		defer cancel()
 		r, _ := http.NewRequestWithContext(queryCtx, "GET", "http://local/catalog", nil)
 		c, err := s.catalog(r)
-		if err == nil && c.validate() == nil {
+		if err == nil {
+			err = c.validate()
+		}
+		if err == nil {
 			s.cacheCatalog(c)
+			s.logger.Info("routing snapshot refreshed", "site", os.Getenv("AVOIP_SITE"), "version", c.Version)
 		} else {
-			s.logger.Warn("routing snapshot refresh failed")
+			s.logger.Warn("routing snapshot refresh failed", "error", err)
 		}
 	}
 	refresh()
