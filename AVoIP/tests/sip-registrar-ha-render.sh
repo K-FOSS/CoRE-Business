@@ -13,6 +13,7 @@ helm template core-home1-talos-prod "$chart_dir" \
 yq -e 'select(.kind == "User" and (.metadata.name | contains("internal-wss-registrar-db"))) | .spec.username == "kamailio-test-wss"' "$rendered" >/dev/null
 yq -e 'select(.kind == "User" and (.metadata.name | contains("internal-registrar-db"))) | .spec.username == "kamailio-test"' "$rendered" >/dev/null
 yq -e 'select(.kind == "CronJob" and (.metadata.name | contains("reg-sync-7101"))) | .spec.jobTemplate.spec.template.spec.containers[0].env | any(.name == "SIP_PASSWORD" and .valueFrom.secretKeyRef.name != "")' "$rendered" >/dev/null
+yq -e 'select(.kind == "StatefulSet" and (.metadata.name | contains("internal-wss"))) | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .env | any(.name == "PGSSLROOTCERT" and .value == "/etc/ssl/certs/ca-certificates.crt")' "$rendered" >/dev/null
 yq -e 'select(.kind == "CiliumNetworkPolicy" and (.metadata.name | contains("internal-wss-sip-policy"))) | (.spec.ingress | any(.fromEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss")) and (.spec.egress | any(.toEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss"))' "$rendered" >/dev/null
 freeswitch_sip_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-sip-configs"))) | .data["kamailio.xml"]' "$rendered")"
 grep -Fq '<gateway name="sipcore-registrar">' <<<"$freeswitch_sip_config"

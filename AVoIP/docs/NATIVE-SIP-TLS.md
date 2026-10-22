@@ -6,6 +6,10 @@ PostgreSQL-backed Kamailio registrar rollout. The owning deployment is the
 Its Lovely-injected site values, not chart defaults, select the three-replica
 client-facing Kamailio instance, registrar, FreeSWITCH call control, and
 Asterisk voicemail. AVoIP Admin remains the operational configuration owner.
+The registrar uses the site PostgreSQL `User` claim and libpq's system CA
+bundle with `verify-full`; the credential-sync Job and the serving Kamailio
+container must both receive that CA path. A missing path prevents pods from
+starting even when schema creation succeeds.
 The public TLSRoute and Gateway listener pass TLS through Envoy with PROXY v2;
 Kamailio presents the dedicated public certificate for
 `sipcore.mylogin.space:8443`. Browser WSS signaling keeps its own listener.
