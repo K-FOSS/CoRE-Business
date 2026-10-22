@@ -14,6 +14,7 @@ k8gb:
 cyberchef:
   domains:
     - 'cyberchef.mylogin.space'
+    - 'cyberchef.gslb.mylogin.space'
   replicas: 2
 
   image:
