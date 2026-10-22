@@ -464,6 +464,11 @@
           - name: sipcore-ws
             containerPort: {{ $.Values.asterisk.sipCore.httpPort }}
             protocol: TCP
+          {{- if and $.Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.name (default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance)) }}
+          - name: sipcore-tls-in
+            containerPort: {{ $.Values.asterisk.sipCore.tls.port }}
+            protocol: TCP
+          {{- end }}
           - name: sipcore-tls
             containerPort: {{ $.Values.asterisk.sipCore.privateEgressPort }}
             protocol: TCP
@@ -528,6 +533,12 @@
         targetPort: sipcore-ws
         protocol: TCP
         appProtocol: kubernetes.io/ws
+    {{- if and $.Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.name (default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance)) }}
+      sipcore-tls-in:
+        port: {{ $.Values.asterisk.sipCore.tls.port }}
+        targetPort: sipcore-tls-in
+        protocol: TCP
+    {{- end }}
       sipcore-tls:
         port: {{ $.Values.asterisk.sipCore.privateEgressPort }}
         targetPort: sipcore-tls

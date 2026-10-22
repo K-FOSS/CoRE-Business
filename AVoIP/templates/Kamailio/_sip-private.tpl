@@ -14,6 +14,15 @@
       }
 
       {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) }}
+      {{- if .Values.asterisk.sipCore.tls.enabled }}
+      # Public TLSRoute passthrough arrives with PROXY protocol v2; TLS and
+      # SIP Digest remain end-to-end between the client and this Kamailio edge.
+      if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+        $var(side) = "sipcore";
+        route(FROM_SIPCORE);
+        exit;
+      }
+      {{- end }}
       # SIP Core WebSocket signaling has its own listener and handshake policy.
       if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
         $var(side) = "sipcore";

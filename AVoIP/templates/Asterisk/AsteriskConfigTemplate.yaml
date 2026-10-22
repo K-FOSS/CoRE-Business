@@ -62,6 +62,9 @@
   {{- if or (eq (int .Values.asterisk.sipCore.privateEgressPort) 5060) (eq (int .Values.asterisk.sipCore.privateEgressPort) 5061) (eq (int .Values.asterisk.sipCore.privateEgressPort) 5062) (eq (int .Values.asterisk.sipCore.privateEgressPort) (int .Values.asterisk.sipCore.httpPort)) -}}
     {{- fail "asterisk.sipCore.privateEgressPort must not collide with the existing SIP or WebSocket ports" -}}
   {{- end -}}
+  {{- if and .Values.asterisk.sipCore.tls.enabled (or (lt (int .Values.asterisk.sipCore.tls.port) 1024) (gt (int .Values.asterisk.sipCore.tls.port) 65535) (eq (int .Values.asterisk.sipCore.tls.port) 5060) (eq (int .Values.asterisk.sipCore.tls.port) 5061) (eq (int .Values.asterisk.sipCore.tls.port) 5062) (eq (int .Values.asterisk.sipCore.tls.port) (int .Values.asterisk.sipCore.privateEgressPort)) (eq (int .Values.asterisk.sipCore.tls.port) (int .Values.asterisk.sipCore.httpPort))) -}}
+    {{- fail "asterisk.sipCore.tls.port must be a unique TCP port from 1024 through 65535" -}}
+  {{- end -}}
   {{- if not (regexMatch "^[1-9][0-9]*(s|m|h)$" (toString .Values.asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout)) -}}
     {{- fail "asterisk.sipCore.backendTrafficPolicy.streamIdleTimeout must be a positive duration in seconds, minutes, or hours" -}}
   {{- end -}}

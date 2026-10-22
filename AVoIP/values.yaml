@@ -970,6 +970,12 @@ asterisk:
     ingressKamailioInstance: ''
     hostname: ''
     gatewaySectionName: ''
+    # Adds a TLS passthrough route on the Gateway's sips-tls listener. The
+    # dedicated Kamailio backend port keeps client TLS separate from mTLS peers.
+    tls:
+      enabled: true
+      port: 5064
+      gatewaySectionName: 'sips-tls'
     allowedOrigins: []
     httpPort: 8088
     backendTrafficPolicy:

@@ -46,6 +46,11 @@ see the [SIP Core Contact alias repair](docs/SIPCORE-REMOTE-HANGUP.md).
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the
 [SIP HA integration baseline](docs/SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-09).
+Native SIP clients can also register over TLS through a Gateway `TLSRoute`
+selected by the `sipcore.mylogin.space` SNI. The route shares SIP Core's
+per-extension Digest accounts; current accounts retain their WebRTC media
+requirements. See the [SIP Core client guide](docs/SIPCORE-HASS.md) for
+connection settings and compatibility limits.
 The chart supports a separate `internal-wss` Kamailio instance for the opt-in
 three-replica WSS edge. The ordinary `internal` private-SBC remains its own
 one-replica Deployment. Home1's active ApplicationSet uses the instance name

@@ -43,6 +43,25 @@ remain on the carrier instance. The HTTP `X-Forwarded-For` header belongs to
 the upgrade request; it is not part of the SIP messages carried inside the
 WebSocket connection.
 
+The same SIP Core hostname also has a `TLSRoute` on `main-gw`'s `sips-tls`
+listener. A native SIP client connects to `sips:<extension>@<hostname>` using
+TLS on port `5061`; the hostname in TLS SNI selects the route. TLS passes
+through Envoy to the selected Kamailio SIP Core ingress listener on its
+dedicated backend port `5064`. Kamailio preserves the client source with
+PROXY protocol v2 and relays SIP to Asterisk, which uses the same per-extension
+Digest credential as WSS. Configure the extension as both the SIP username and
+authentication username, and use its existing SIP Core password. The route is
+publicly reachable through `main-gw`; SIP Digest and the extension's existing
+dialplan allowlist remain the authorization checks. Configure the SIP address
+as `sips:<extension>@<hostname>`, the registrar as `<hostname>`, and TLS
+transport on port `5061`.
+
+The current PJSIP endpoints are generated with Asterisk's `webrtc=yes`
+settings, and Kamailio applies the WebRTC RTPEngine profile to SIP Core SDP.
+Registration over TLS is supported by this route; a native client also needs
+compatible ICE and DTLS-SRTP media for calls to work. Basic TLS signaling with
+plain RTP alone is not established by this configuration.
+
 When a contact's browser WebSocket has closed, its owner replica cannot relay
 to that local flow. For non-ACK requests the WSS edge returns SIP `430 Flow
 Failed` so Asterisk can treat the specific contact as failed; ACK receives no

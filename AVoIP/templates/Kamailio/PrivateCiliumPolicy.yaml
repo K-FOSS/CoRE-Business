@@ -15,6 +15,16 @@ spec:
     {{- if and (not $instance.privateRouting.peers) (not (and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) $instance.websocketHA.enabled $instance.websocketHA.legacyOwner))) }} []
     {{- else }}
     {{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled (or (eq $instance.name $.Values.asterisk.sipCore.kamailioInstance) $instance.websocketHA.enabled $instance.websocketHA.legacyOwner) }}
+    {{- if and $.Values.asterisk.sipCore.tls.enabled (eq $instance.name (default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance)) }}
+    - fromEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': '{{ $instance.networkPolicy.envoy.namespace }}'
+            app.kubernetes.io/name: '{{ $instance.networkPolicy.envoy.podName }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.asterisk.sipCore.tls.port }}'
+              protocol: 'TCP'
+    {{- end }}
     - fromEndpoints:
         - matchLabels:
             'k8s:io.kubernetes.pod.namespace': '{{ $instance.networkPolicy.envoy.namespace }}'

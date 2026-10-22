@@ -43,4 +43,40 @@ spec:
       timeouts:
         backendRequest: '{{ .Values.asterisk.sipCore.routeTimeouts.backendRequest }}'
         request: '{{ .Values.asterisk.sipCore.routeTimeouts.request }}'
+{{- if .Values.asterisk.sipCore.tls.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: TLSRoute
+metadata:
+  name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sipcore-tls") }}'
+  labels:
+    wan-mode: 'public'
+spec:
+  parentRefs:
+    - kind: 'Gateway'
+      name: '{{ .Values.gateway.name }}'
+      namespace: '{{ .Values.gateway.namespace }}'
+      sectionName: '{{ .Values.asterisk.sipCore.tls.gatewaySectionName }}'
+  hostnames:
+    - '{{ $hostname }}'
+  rules:
+    - backendRefs:
+        - group: ''
+          kind: 'Service'
+          name: '{{ required "SIP Core TLS requires the enabled private Kamailio Service" $kamailioService }}'
+          port: {{ .Values.asterisk.sipCore.tls.port }}
+          weight: 1
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sipcore-tls-proxy-protocol") }}'
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: TLSRoute
+      name: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "sipcore-tls") }}'
+  proxyProtocol:
+    version: V2
+{{- end }}
 {{- end }}
