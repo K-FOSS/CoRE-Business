@@ -19,6 +19,8 @@ For remote hangups, also check the [retransmitted-answer Contact alias
 repair](../AVoIP/docs/SIPCORE-REMOTE-HANGUP.md).
 For native SIP-over-TLS ACK loss, Envoy flow reuse and retransmitted SDP,
 use the [TLS dialog runbook](../AVoIP/docs/NATIVE-SIP-TLS.md).
+Its Home1-only FreeSWITCH AVP/SDES compatibility setting must be verified
+with a live Groundwire call after the scoped rollout.
 
 CoRE Business is organized by application domain. Most top-level deployment
 directories are Helm charts, but some also include Kustomize input or raw

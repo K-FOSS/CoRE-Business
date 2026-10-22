@@ -126,6 +126,27 @@ continues to use its separate DTLS/ICE policy. Recheck both `m=` sections and
 the answer after this change; do not treat a 488 disappearing as proof that
 audio or dialog routing works.
 
+Two more Groundwire attempts at 22:36:41 and 22:36:53 UTC on 2026-10-22
+still ended with FreeSWITCH `488/INCOMPATIBLE_DESTINATION`; the latter has
+Call-ID `F090BB22B7DAB978D2A1F48259976BE4E7C44014`. The later internal
+offer had only two SDES suites per audio section, so suite expansion was
+corrected but did **not** resolve the 488. The phone's `RTP/AVP` alternative
+and RTPEngine's forwarded `RTP/AVP` alternative both carried two `a=crypto`
+attributes. FreeSWITCH 1.11.3 [rejects crypto in AVP by default](https://github.com/signalwire/freeswitch/blob/v1.11.3/src/switch_core_media.c)
+and has an [explicit profile compatibility parameter](https://github.com/signalwire/freeswitch/blob/v1.11.3/src/mod/endpoints/mod_sofia/sofia.c)
+for this nonstandard offer. Home1 enables `NDLB-allow-crypto-in-avp` only on
+the Kamailio-facing `core-managed` FreeSWITCH profile through
+`freeswitch.sipCore.allowCryptoInAvp`; the default remains off. This widens
+accepted media syntax on that trusted signaling leg, not on the carrier or
+Asterisk profiles, and does not bypass SIP authentication or TLS verification.
+The deployed offer also still contained ICE and DTLS attributes. The warning
+`NO candidate ACL defined, Defaulting to wan.auto` is emitted when a candidate
+is parsed, not proof that ICE caused the 488. The exact FreeSWITCH failing
+branch was not logged, so success of this compatibility setting and whether
+ICE/DTLS needs separate normalization remain live-verification questions.
+Only SDP structure, suite names and counts were queried; no SRTP keys or ICE
+passwords were printed.
+
 ## Signaling and ownership
 
 Groundwire connects to `sipcore.mylogin.space:8443` through the main Gateway
@@ -167,6 +188,10 @@ client-facing Contact/SDP and actual selected outbound connection, not just
 alias creation or pod readiness. Check that no new connect targets an Envoy
 ephemeral port, no FreeSWITCH 407 recurs after frontend authentication, and no
 `sipcore` integer-conversion warning recurs.
+For the AVP compatibility rollout, verify the live `core-managed` Sofia
+profile has the setting, that the same Groundwire offer no longer gets an
+immediate 488, and that the answer's selected media mode and cipher actually
+work in both directions.
 
 ## Recovery and limits
 
@@ -181,3 +206,8 @@ runtime assumptions—Envoy connection lifetime, TOPOS route restoration on a
 different replica, final Contact/SDP, and RTPEngine's exact native-SRTP
 negotiation—require the live checks above; static rendering does not prove a
 successful call.
+To roll back only the AVP compatibility change, set Home1's
+`freeswitchSipCoreAllowCryptoInAvp` site value to `false` in the owning
+[AVoIP ApplicationSet](https://slop.writemy.codes/K-FOSS/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml),
+publish and scoped-sync the resulting FreeSWITCH ConfigMap and Deployment.
+The previous immediate 488 may return for Groundwire's mixed AVP/SAVP offer.

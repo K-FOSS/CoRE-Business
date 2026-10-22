@@ -175,6 +175,11 @@ data:
         <param name="inbound-late-negotiation" value="true"/>
         <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
         <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
+        {{- if $.Values.freeswitch.sipCore.allowCryptoInAvp }}
+        <!-- Groundwire offers SDES in both RTP/AVP and RTP/SAVP. This
+             compatibility flag applies only to the Kamailio-facing profile. -->
+        <param name="NDLB-allow-crypto-in-avp" value="true"/>
+        {{- end }}
       </settings>
     </profile>
 {{- end }}

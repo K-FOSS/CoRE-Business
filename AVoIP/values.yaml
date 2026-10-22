@@ -1121,6 +1121,10 @@ asterisk:
 
 freeswitch:
   enabled: true
+  sipCore:
+    # Compatibility for native SIP phones that place SDES a=crypto in an
+    # RTP/AVP alternative. Scope this to the Kamailio-facing Sofia profile.
+    allowCryptoInAvp: false
   highAvailability:
     # Active/active FreeSWITCH supports new-call routing on a surviving pod.
     # Enable only with an RWX fax spool and at least two eligible nodes.

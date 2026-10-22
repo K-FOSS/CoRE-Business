@@ -5,6 +5,8 @@ datacenter: 'home1'
 region: 'yvr'
 freeswitch:
   enabled: true
+  sipCore:
+    allowCryptoInAvp: true
 avoipAdmin:
   enabled: true
   routing:

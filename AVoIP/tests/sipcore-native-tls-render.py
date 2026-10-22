@@ -14,6 +14,7 @@ import socket
 import subprocess
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -33,6 +34,23 @@ configs = [obj["data"]["kamailio.cfg"] for obj in objects if obj and
            "internal-wss-config" in obj.get("metadata", {}).get("name", "")]
 assert len(configs) == 1
 config = configs[0]
+freeswitch_configs = [obj["data"]["kamailio.xml"] for obj in objects if obj and
+                      obj.get("kind") == "ConfigMap" and
+                      "freeswitch-sip-configs" in obj.get("metadata", {}).get("name", "")]
+assert len(freeswitch_configs) == 1
+freeswitch_profile = ET.fromstring(freeswitch_configs[0])
+assert freeswitch_profile.attrib["name"] == "kamailio"
+assert len(freeswitch_profile.findall("./settings/param[@name='NDLB-allow-crypto-in-avp'][@value='true']")) == 1
+disabled_render = subprocess.check_output([
+    "helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
+    "--namespace", "core-prod", "-f",
+    str(root / "AVoIP/tests/fixtures/wss-ha-registrar.yaml"),
+    "--set", "freeswitch.sipCore.allowCryptoInAvp=false", "--show-only",
+    "templates/FreeSwitch/FreeSwitchSIPConfig.yaml",
+])
+disabled_objects = json.loads(subprocess.check_output(["yq", "-s", "."], input=disabled_render))
+assert len(disabled_objects) == 1
+assert "NDLB-allow-crypto-in-avp" not in disabled_objects[0]["data"]["kamailio.xml"]
 modules = re.findall(r'^loadmodule "([^"]+)"', config, re.MULTILINE)
 assert modules[0] == 'tls.so', 'TLS must initialize before forked registrar DB clients'
 block = runpy.run_path(str(Path(__file__).with_name("sipcore-info-routing.py")))["block"]
@@ -98,7 +116,7 @@ jobs = [obj for obj in objects if obj and obj.get("kind") == "CronJob" and
         "reg-sync-7101" in obj.get("metadata", {}).get("name", "")]
 assert len(jobs) == 1
 assert "email_address" not in json.dumps(jobs[0])
-print("PASS: public TOPOS Contact, replica owner, pinned TLS flow, retransmitted media, string types and registrar SQL render")
+print("PASS: public TOPOS Contact, replica owner, pinned TLS flow, retransmitted media, FreeSWITCH AVP compatibility, string types and registrar SQL render")
 
 if args.runtime_image:
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as client:

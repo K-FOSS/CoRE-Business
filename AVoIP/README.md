@@ -58,7 +58,10 @@ duration constraint are documented in the
 Native SIP clients can also register over TLS through a Gateway `TLSRoute`
 selected by the `sipcore.mylogin.space` SNI. The route shares SIP Core's
 per-extension Digest accounts. Native TLS offers no longer receive the
-browser-only WebRTC media flags. See the [SIP Core client guide](docs/SIPCORE-HASS.md)
+browser-only WebRTC media flags. Home1 opts into FreeSWITCH's
+`NDLB-allow-crypto-in-avp` only on the Kamailio-facing profile for
+Groundwire's mixed AVP/SAVP offer; the chart default is off and live call
+acceptance still requires verification. See the [SIP Core client guide](docs/SIPCORE-HASS.md)
 for connection settings and the [TLS runbook](docs/NATIVE-SIP-TLS.md) for
 compatibility and live verification limits.
 The chart supports a separate `internal-wss` Kamailio instance for the opt-in

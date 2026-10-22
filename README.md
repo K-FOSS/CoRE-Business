@@ -22,6 +22,8 @@ The [SIP Core remote hangup guide](AVoIP/docs/SIPCORE-REMOTE-HANGUP.md)
 describes the separate Contact-alias loss caused by retransmitted answers.
 The [native SIP-over-TLS troubleshooting guide](AVoIP/docs/NATIVE-SIP-TLS.md)
 covers public dialog Contacts, owner-flow reuse and retransmitted SDP.
+Home1's native-phone AVP/SDES compatibility setting is scoped to the
+Kamailio-facing FreeSWITCH profile and awaits a post-rollout call test.
 The [AVoIP chart](AVoIP/README.md) now includes an opt-in PostgreSQL-backed
 HA Kamailio registrar and FreeSWITCH call-control path. The
 [YVR ApplicationSet](https://slop.writemy.codes/K-FOSS/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
