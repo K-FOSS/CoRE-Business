@@ -15,7 +15,7 @@ spec:
   resourceRef:
     apiVersion: gateway.networking.k8s.io/v1
     kind: HTTPRoute
-    name: {{ $.Release.Name | quote }}
+    name: {{ printf "%s-cyberchef-k8gb" $.Release.Name | quote }}
   strategy:
     type: {{ $.Values.k8gb.strategy | quote }}
     dnsTtlSeconds: {{ $.Values.k8gb.dnsTtlSeconds }}

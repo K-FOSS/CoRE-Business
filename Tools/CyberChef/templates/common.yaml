@@ -119,6 +119,7 @@ route:
     annotations:
       {{- toYaml .Values.route.cyberchef.annotations | nindent 6 }}
       {{- if .Values.k8gb.enabled }}
+      external-dns.alpha.kubernetes.io/hostname: {{ (first .Values.cyberchef.domains) | quote }}
       external-dns.alpha.kubernetes.io/target: {{ printf "%s.%s" (first (splitList "." (first .Values.cyberchef.domains))) .Values.k8gb.domain | quote }}
       {{- end }}
 
@@ -135,12 +136,6 @@ route:
     hostnames:
       {{- range $domain := .Values.cyberchef.domains }}
       - {{ $domain | quote }}
-      {{- if $.Values.k8gb.enabled }}
-      {{- $gslbDomain := printf "%s.%s" (first (splitList "." $domain)) $.Values.k8gb.domain }}
-      {{- if ne $domain $gslbDomain }}
-      - {{ $gslbDomain | quote }}
-      {{- end }}
-      {{- end }}
       {{- end }}
 
     rules:
@@ -153,6 +148,35 @@ route:
             identifier: cyberchef
             port: 80
             weight: 1
+  {{- if .Values.k8gb.enabled }}
+  cyberchef-k8gb:
+    enabled: true
+    kind: HTTPRoute
+    annotations:
+      {{- toYaml (index .Values.route "cyberchef-k8gb").annotations | nindent 6 }}
+    labels:
+      {{- toYaml (index .Values.route "cyberchef-k8gb").labels | nindent 6 }}
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      {{- range $domain := .Values.cyberchef.domains }}
+      - {{ printf "%s.%s" (first (splitList "." $domain)) $.Values.k8gb.domain | quote }}
+      {{- end }}
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - kind: Service
+            identifier: cyberchef
+            port: 80
+            weight: 1
+  {{- end }}
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
 
