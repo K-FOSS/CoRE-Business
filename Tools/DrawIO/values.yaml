@@ -1,137 +1,36 @@
-controllers:
-  drawio:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
-    strategy: RollingUpdate
+global:
+  createDefaultServiceAccount: true
 
-    revisionHistoryLimit: 3
+gateway:
+  name: 'main-gw'
+  namespace: 'core-prod'
+  sectionName: 'https-myloginspace'
 
-    nameOverride: drawio
+k8gb:
+  enabled: true
+  strategy: 'roundRobin'
+  dnsTtlSeconds: 30
+  domain: gslb.mylogin.space
 
-    containers:
-      drawio:
-        image:
-          repository: jgraph/drawio
+drawio:
+  domains:
+    - 'draw.mylogin.space'
+  replicas: 2
 
-          #
-          # TODO: Get this fully automated with Renovate or similar
-          #
-          tag: latest
-          pullPolicy: IfNotPresent
+  image:
+    repository: jgraph/drawio
+    tag: '32.5.5'
+    digest: 'sha256:16296fe9fd09eff92a3808cc674ce1883712c1b0bae5d48ccc30f9abf13c578b'
+    pullPolicy: 'IfNotPresent'
 
-
-        # -- Probe configuration
-        # -- [[ref]](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
-        # @default -- See below
-        probes:
-          # -- Liveness probe configuration
-          # @default -- See below
-          liveness:
-            # -- Enable the liveness probe
-            enabled: false
-
-          # -- Redainess probe configuration
-          # @default -- See below
-          readiness:
-            # -- Enable the readiness probe
-            enabled: false
-
-          # -- Startup probe configuration
-          # @default -- See below
-          startup:
-            # -- Enable the startup probe
-            enabled: false
-
-service:
-  drawio:
-    # -- Enables or disables the service
-    enabled: true
-
-    # -- Configure which controller this service should target
-    controller: drawio
-
-    nameOverride: drawio
-
-    # -- Make this the primary service for this controller (used in probes, notes, etc...).
-    # If there is more than 1 service targeting the controller, make sure that only 1 service is
-    # marked as primary.
-    primary: true
-
-    # -- Set the service type
-    type: ClusterIP
-
-
-
-
-    ports:
-      http:
-        # -- Enables or disables the port
-        enabled: true
-
-        primary: true
-      
-        # -- The port number
-        port: 80
-
-        targetPort: 8080
-
-        # -- Port protocol.
-        # Support values are `HTTP`, `HTTPS`, `TCP` and `UDP`.
-        # HTTP and HTTPS spawn a TCP service and get used for internal URL and name generation
-        protocol: HTTP
-
-
-# -- Configure the gateway routes for the chart here.
-# Additional routes can be added by adding a dictionary key similar to the 'main' route.
-# [[ref]](https://gateway-api.sigs.k8s.io/references/spec/)
-# @default -- See below
 route:
   drawio:
-    # -- Enables or disables the route
-    enabled: true
-
-    # -- Set the route kind
-    # Valid options are GRPCRoute, HTTPRoute, TCPRoute, TLSRoute, UDPRoute
-    kind: HTTPRoute
-
-    # -- Provide additional annotations which may be required.
     annotations:
       forecastle.stakater.com/expose: 'true'
       forecastle.stakater.com/instance: 'core'
       forecastle.stakater.com/group: 'Tools'
       forecastle.stakater.com/appName: 'DrawIO'
-
-    # -- Provide additional labels which may be required.
-    labels:
-      wan-mode: 'public'
-      lan-mode: 'private'
-
-
-    # -- Configure the resource the route attaches to.
-    parentRefs:
-      - # Group of the referent resource.
-        group: gateway.networking.k8s.io
-        # Kind of the referent resource.
-        kind: Gateway
-        # Name of the referent resource
-        name: main-gw
-        # Namespace of the referent resource
-        namespace: core-prod
-        sectionName: https-myloginspace
-
-    # -- Host addresses. Helm template can be passed.
-    hostnames:
-      - draw.mylogin.space
-
-    # -- Configure rules for routing. Defaults to the primary service.
-    rules:
-      - matches:
-          - path:
-              type: PathPrefix
-              value: /
-        backendRefs:
-          - kind: Service
-            port: 80
-            name: drawio
-            weight: 1
+    labels: {}
+  drawio-k8gb:
+    annotations: {}
+    labels: {}

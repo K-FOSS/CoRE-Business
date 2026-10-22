@@ -1,0 +1,24 @@
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  requestBuffer:
+    limit: 100Mi
+  timeout:
+    http:
+      requestTimeout: 60s
+  compressor:
+    - minContentLength: 4096
+      type: Zstd
+      zstd: {}
+    - brotli: {}
+      minContentLength: 4096
+      type: Brotli
+    - gzip: {}
+      minContentLength: 4096
+      type: Gzip
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ .Release.Name }}

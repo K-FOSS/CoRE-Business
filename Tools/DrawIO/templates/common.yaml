@@ -1,14 +1,171 @@
 ---
 {{- include "bjw-s.common.loader.init" . }}
 
+{{- if empty .Values.drawio.domains }}
+{{- fail "drawio.domains must contain at least one hostname" }}
+{{- end }}
+
 {{- define "app-template.hardcodedValues" -}}
-# Set the nameOverride based on the release name if no override has been set
-{{ if not .Values.global.nameOverride }}
 global:
+{{ if not .Values.global.nameOverride }}
   nameOverride: "{{ .Release.Name }}"
 {{ end }}
+
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+controllers:
+  drawio:
+    strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    revisionHistoryLimit: 3
+    nameOverride: drawio
+    replicas: {{ .Values.drawio.replicas }}
+
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: drawio
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+
+    podDisruptionBudget:
+      minAvailable: 1
+
+    containers:
+      drawio:
+        image:
+          repository: {{ .Values.drawio.image.repository | quote }}
+          tag: {{ .Values.drawio.image.tag | quote }}
+          digest: {{ .Values.drawio.image.digest | quote }}
+          pullPolicy: {{ .Values.drawio.image.pullPolicy | quote }}
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+        probes:
+          liveness:
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8080
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 3
+          readiness:
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8080
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 3
+          startup:
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8080
+            spec:
+              periodSeconds: 5
+              timeoutSeconds: 5
+              failureThreshold: 12
+
+service:
+  drawio:
+    enabled: true
+    controller: drawio
+    nameOverride: drawio
+    primary: true
+    type: ClusterIP
+    ports:
+      http:
+        enabled: true
+        primary: true
+        port: 80
+        targetPort: 8080
+        protocol: HTTP
+
+networkpolicies:
+  drawio:
+    enabled: true
+    controller: drawio
+    policyTypes:
+      - Egress
+    rules:
+      egress: []
+
+route:
+  drawio:
+    enabled: true
+    kind: HTTPRoute
+    annotations:
+      {{- toYaml .Values.route.drawio.annotations | nindent 6 }}
+    labels:
+      {{- toYaml .Values.route.drawio.labels | nindent 6 }}
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      {{- range $domain := .Values.drawio.domains }}
+      - {{ $domain | quote }}
+      {{- end }}
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - kind: Service
+            identifier: drawio
+            port: 80
+            weight: 1
+  {{- if .Values.k8gb.enabled }}
+  drawio-k8gb:
+    enabled: true
+    kind: HTTPRoute
+    annotations:
+      {{- toYaml (index .Values.route "drawio-k8gb").annotations | nindent 6 }}
+    labels:
+      {{- toYaml (index .Values.route "drawio-k8gb").labels | nindent 6 }}
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      {{- range $domain := .Values.drawio.domains }}
+      - {{ printf "%s.%s" (first (splitList "." $domain)) $.Values.k8gb.domain | quote }}
+      {{- end }}
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - kind: Service
+            identifier: drawio
+            port: 80
+            weight: 1
+  {{- end }}
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
 
-{{/* Render the templates */}}
 {{ include "bjw-s.common.loader.generate" . }}
