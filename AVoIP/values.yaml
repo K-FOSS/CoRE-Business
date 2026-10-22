@@ -380,6 +380,12 @@ kamailio:
         podDisruptionBudget:
           minAvailable: 2
         rolloutPartition: 0
+        sipLogging:
+          diagnostics:
+            enabled: true
+            # Increase core diagnostics only on the dedicated WSS edge.
+            # Do not enable raw SIP dumps, which can expose Digest responses.
+            coreDebug: 3
         # Send unsolicited Pong frames to keep the upgraded stream active
         # without evicting clients that do not return Ping frames through an
         # intermediary. Asterisk OPTIONS remains the SIP flow health check.
@@ -970,12 +976,13 @@ asterisk:
     ingressKamailioInstance: ''
     hostname: ''
     gatewaySectionName: ''
-    # Adds a TLS passthrough route on the Gateway's sips-tls listener. The
+    # Adds a TLS passthrough route on the Gateway's tls-mqtt listener. The
     # dedicated Kamailio backend port keeps client TLS separate from mTLS peers.
     tls:
       enabled: true
       port: 5064
-      gatewaySectionName: 'sips-tls'
+      gatewaySectionName: 'tls-mqtt'
+      gatewayPort: 8443
     allowedOrigins: []
     httpPort: 8088
     backendTrafficPolicy:
