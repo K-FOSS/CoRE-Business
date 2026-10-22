@@ -311,11 +311,12 @@
       }
 
       force_rport();
-      # Every front-end registration must retain the client flow through this
-      # Kamailio owner. A private Contact can equal the PROXY-preserved source,
-      # so nat_uac_test(64) alone misses it even though Asterisk cannot reach it.
+      # Every front-end registration and initial client dialog must retain the
+      # client flow through this Kamailio owner. set_contact_alias() is
+      # unconditional: add_contact_alias() skips a Contact that already equals
+      # the PROXY-preserved source, which Asterisk still cannot reach directly.
       if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
-        if (!add_contact_alias()) {
+        if (!set_contact_alias("1")) {
           sl_send_reply("400", "Bad Contact");
           exit;
         }
@@ -325,8 +326,8 @@
           "SIPCORE FLOW stage=frontend-contact-aliased pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp transport=$proto cseq=$hdr(CSeq)\n"
         );
         {{- end }}
-      } else if (nat_uac_test(64) && !has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
-        if (!add_contact_alias()) {
+      } else if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
+        if (!set_contact_alias("1")) {
           sl_send_reply("400", "Bad Contact");
           exit;
         }
@@ -734,7 +735,7 @@
       if ((($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) ||
            ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }})) &&
           !is_method("REGISTER") && is_present_hf("Contact")) {
-        if (add_contact_alias()) {
+        if (set_contact_alias("1")) {
           {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
             "L_INFO",

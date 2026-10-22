@@ -41,7 +41,9 @@ Runtime alias resolution still requires LDAP-backed verification. Its existing
 attributes, including shared `sms_numbers`, are retained when these values are
 reconciled.
 For inbound-call ACKs or remote BYEs rejected after a retransmitted answer,
-see the [SIP Core Contact alias repair](docs/SIPCORE-REMOTE-HANGUP.md).
+see the [SIP Core Contact alias repair](docs/SIPCORE-REMOTE-HANGUP.md). Client
+registrations and initial calls over TLS or WSS force an owner-flow alias even
+when the advertised Contact already matches the private transport source.
 
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the

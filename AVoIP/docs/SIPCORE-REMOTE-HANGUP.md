@@ -1,9 +1,9 @@
 # SIP Core remote hangup and retransmitted answers
 
 The Home1 path is owned by the
-[AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/AVoIP.yaml).
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
 It selects Lovely, the `AVoIP` chart, namespace `core-prod`, the legacy
-`internal` SBC and three `internal-websocket` connection owners. This repair
+`internal` SBC and three `internal-websocket` connection owners. The repair
 changes their Kamailio source template, not Asterisk, media, identity or storage
 configuration.
 
@@ -29,20 +29,32 @@ change Contact aliasing or the return-dialog checks. This failure is also
 separate from the previously observed carrier-to-FreeSWITCH teardown delay
 documented in [remote hangup latency](../../docs/remote-hangup-latency.md).
 
+A second failure was reproduced on 2026-10-22 with a native SIP/TLS client
+originating a call. Its Contact used the same private IP and port Kamailio saw
+as the TLS source. `add_contact_alias()` intentionally adds no alias in that
+case; the `FROM_SIPCORE` route therefore forwarded the client Contact to
+Asterisk unchanged. On hangup, Asterisk's BYE reached the correct owner pod but
+had no alias for the live TLS flow and received `404 Frontend Contact Not
+Found`.
+
 ## Source repair
 
 [Kamailio](https://www.kamailio.org/)'s
 [core reply route](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/core/#reply_route)
 runs for network responses before TM's named handler. Browser Contact aliasing
 now runs there, including on retransmitted answers. It is limited to the
-existing SIP Core WebSocket listener and excludes REGISTER replies so AOR
-contact lists remain intact. The named reply handlers retain their SDP and
-response diagnostics. An explicit `return` leaves core response processing
-successful; no local BYE acknowledgment is introduced.
+SIP Core WebSocket and TLS listeners and excludes REGISTER replies so AOR
+contact lists remain intact. Client-facing REGISTERs and initial INVITEs also
+use `set_contact_alias("1")`, which always writes the received flow address
+even when it equals the Contact and replaces a client-supplied alias. This lets
+Asterisk return BYE/OPTIONS traffic through the owning TLS connection. The
+named reply handlers retain their SDP and response diagnostics. An explicit
+`return` leaves core response processing successful; no local BYE
+acknowledgment is introduced.
 
 The [6.1.4 TOPOS implementation](https://github.com/kamailio/kamailio/blob/6.1.4/src/modules/topos/tps_msg.c)
 still stores and restores the aliased Contact. The existing
-[nathelper alias handler](https://www.kamailio.org/docs/modules/6.1.x/modules/nathelper.html#nathelper.f.handle_ruri_alias)
+[nathelper alias functions](https://www.kamailio.org/docs/modules/6.1.x/modules/nathelper.html#nathelper.f.handle_ruri_alias)
 and owning-pod/flow-token validation remain authoritative for subsequent
 requests. The repair adds no fallback to a shared Service, no destination cache,
 and no permission to relay an unvalidated request. RTPEngine offer/answer,
@@ -76,25 +88,28 @@ does not match its rebuilt binary; use the ordinary internal SBC image for
 this isolated harness and the actual heartbeat image for configuration checks.
 Do not bypass the module version check or use production Redis for the test.
 
-The regression extracts the actual rendered core reply route. Only its WS
-listener guard is adapted to an ephemeral UDP loopback listener; the test
-uses actual Kamailio TM, TOPOS and nathelper with a temporary SQLite database.
-Its negative control reproduces alias loss by putting the same handler in
-TM's named reply route. The fixed case verifies the persisted alias survives
-the repeated 200, both ACKs and the remote BYE reach the synthetic browser
-with original Call-ID/tags/CSeq, and the browser's BYE 200 returns to the
-synthetic Asterisk endpoint. It does not itself prove WebSocket delivery or
-production Redis behavior.
+The regression extracts the actual rendered core reply route. It adapts the
+listener guard to an ephemeral UDP loopback listener and makes the synthetic
+Contact equal the response source, reproducing the condition where
+`add_contact_alias()` did nothing. It uses actual Kamailio TM, TOPOS and
+nathelper with a temporary SQLite database. Its negative control reproduces
+alias loss by putting the same handler in TM's named reply route. The fixed
+case verifies the persisted alias survives the repeated 200, both ACKs and the
+remote BYE reach the synthetic browser with original Call-ID/tags/CSeq, and the
+browser's BYE 200 returns to the synthetic Asterisk endpoint. Static checks
+also verify that client REGISTER and initial INVITE routes forcibly set aliases.
+It does not itself prove TLS/WebSocket delivery or production Redis behavior.
 
 Render the actual Application value layer through Lovely and check both
 affected configurations with the deployed Kamailio 6.1.4 checker. Reconcile
 only the reviewed Home1 Kamailio ConfigMaps; the existing Reloader performs
 the owner rollout. Schema hooks and database provisioning do not need replay.
-Wait for all owners to load the new core reply route, reconnect clients, then
-test both an inbound and an outbound answered call with the remote party
-hanging up. Correlate carrier/PBX teardown, Asterisk's BYE, owner ingress and
-WebSocket egress, and the browser's BYE 200. Also confirm local hangup and INFO
-DTMF. Log only dialog metadata, never SIP credentials, DTMF bodies or PINs.
+Wait for all owners to load the contact alias changes and for clients to
+re-register, then test both a native TLS-originated and a WSS-originated
+answered call with the remote party hanging up. Correlate Asterisk's BYE,
+owner ingress, alias resolution, client delivery, and the BYE 200. Also confirm
+local hangup and INFO DTMF. Log only dialog metadata, never SIP credentials,
+DTMF bodies or PINs.
 
 Rollback is a scoped corrective/revert commit and the same reconciliation;
 it returns the alias-loss defect but requires no persistent data rollback.

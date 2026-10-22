@@ -24,11 +24,14 @@ def inspect(config, block):
     assert '$proto == "tls" && $Rp ==' in reply
     assert '!is_method("REGISTER")' in reply
     assert 'is_present_hf("Contact")' in reply
-    assert 'add_contact_alias()' in reply
+    assert 'set_contact_alias("1")' in reply
     assert 'return;' in reply
     assert 'rtpengine_' not in reply and 't_relay(' not in reply
     for name in ("SIPCORE_ASTERISK_REPLY", "SIPCORE_WS_REPLY"):
-        assert 'add_contact_alias()' not in block(config, f"onreply_route[{name}]")
+        assert 'set_contact_alias("1")' not in block(config, f"onreply_route[{name}]")
+    frontend = block(config, "route[FROM_SIPCORE]")
+    assert frontend.count('set_contact_alias("1")') == 2
+    assert 'nat_uac_test(64)' not in frontend
     return reply
 
 
@@ -144,7 +147,8 @@ request_route {{
                         if name == b"to":
                             value += b";tag=browser-tag"
                         fields.append(name + b": " + value)
-                fields += [b"Contact: <sip:browser@synthetic.invalid;transport=udp>", b"Content-Length: 0"]
+                fields += [f"Contact: <sip:browser@127.0.0.1:{browser.getsockname()[1]};transport=udp>".encode(),
+                           b"Content-Length: 0"]
                 response = b"\r\n".join(fields) + b"\r\n\r\n"
                 browser.sendto(response, ("127.0.0.1", port))
                 answer = headers(receive(ast, b"SIP/2.0 200"))
@@ -221,7 +225,7 @@ def main():
         if args.runtime:
             exercise(reply, args.schema, negative=True)
             exercise(reply, args.schema)
-    print("PASS: legacy and HA browser Contact aliasing runs before TM, on the dedicated listener, without changing SDP or request authorization")
+    print("PASS: same-source client Contacts are forcibly aliased, including retransmitted 2xx responses before TM")
 
 
 if __name__ == "__main__":
