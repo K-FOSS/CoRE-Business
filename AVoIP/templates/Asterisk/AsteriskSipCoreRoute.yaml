@@ -7,9 +7,14 @@
 {{- end -}}
 {{- $kamailioService := "" -}}
 {{- $routeInstanceName := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
+{{- $tlsRouteInstanceName := default $routeInstanceName .Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
+{{- $tlsKamailioService := "" -}}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
   {{- if and $instance.enabled (eq $instance.name $routeInstanceName) (eq $instance.role "private-sbc") -}}
     {{- $kamailioService = include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance) -}}
+  {{- end -}}
+  {{- if and $instance.enabled (eq $instance.name $tlsRouteInstanceName) (eq $instance.role "private-sbc") -}}
+    {{- $tlsKamailioService = include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance) -}}
   {{- end -}}
 {{- end -}}
 ---
@@ -63,7 +68,7 @@ spec:
     - backendRefs:
         - group: ''
           kind: 'Service'
-          name: '{{ required "SIP Core TLS requires the enabled private Kamailio Service" $kamailioService }}'
+          name: '{{ required "SIP Core TLS requires the enabled private Kamailio Service" $tlsKamailioService }}'
           port: {{ .Values.asterisk.sipCore.tls.port }}
           weight: 1
 ---

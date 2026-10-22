@@ -11,7 +11,7 @@
 {{- $sipCoreConfigured := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled -}}
 {{- $websocketHA := .Values.kamailio.websocketHA | default dict -}}
 {{- $sipCoreEnabled := and $sipCoreConfigured (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) $websocketHA.enabled $websocketHA.legacyOwner) -}}
-{{- $sipCoreTlsIngress := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
+{{- $sipCoreTlsIngress := default (default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance) .Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
 {{- $sipCoreTlsEnabled := and $sipCoreEnabled .Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.name $sipCoreTlsIngress) -}}
 {{- $ownerService := include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") -}}
 {{- $ownerHost := printf "%s.%s.svc.%s" $ownerService .Release.Namespace (required "cluster.domain is required for Kamailio owner addressing" .Values.cluster.domain) -}}

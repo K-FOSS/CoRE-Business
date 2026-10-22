@@ -948,7 +948,8 @@
 
     {{- if .Values.kamailio.registrar.enabled }}
     route[PRIVATE_REGISTER] {
-      if ($var(peer_name) != "{{ .Values.kamailio.registrar.accessPeerName }}" ||
+      if (($var(side) == "sipcore" && $proto != "tls") ||
+          ($var(side) != "sipcore" && $var(peer_name) != "{{ .Values.kamailio.registrar.accessPeerName }}") ||
           $tU == $null || $tU != $au && $au != $null ||
           $(tu{uri.host}) != "{{ .Values.kamailio.registrar.realm }}" ||
           $(ru{uri.host}) != "{{ .Values.kamailio.registrar.realm }}") {

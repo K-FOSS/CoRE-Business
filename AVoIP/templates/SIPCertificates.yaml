@@ -3,7 +3,7 @@
 {{- $ownerService := "" -}}
 {{- $ownerHostSuffix := "" -}}
 {{- $ownerStatefulSet := "" -}}
-{{- $sipCoreTlsIngress := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
+{{- $sipCoreTlsIngress := default (default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance) .Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
 {{- $sipCoreTlsEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $sipCoreTlsIngress) -}}
 {{- if (.Values.kamailio.websocketHA | default dict).enabled -}}
   {{- $ownerService = include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "owner") -}}

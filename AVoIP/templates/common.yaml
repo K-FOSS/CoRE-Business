@@ -177,7 +177,7 @@
 {{- define "avoip.kamailio.common.controllers" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
 {{- $websocketHA := .Values.kamailio.websocketHA | default dict -}}
-{{- $sipCoreTlsIngress := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
+{{- $sipCoreTlsIngress := default (default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance) .Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
 {{- $sipCorePublicTlsEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $sipCoreTlsIngress) -}}
 {{- $kamailioImage := .Values.kamailio.image -}}
 {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) -}}
@@ -466,7 +466,7 @@
           - name: sipcore-ws
             containerPort: {{ $.Values.asterisk.sipCore.httpPort }}
             protocol: TCP
-          {{- if and $.Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.name (default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance)) }}
+          {{- if and $.Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.name (default (default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance) $.Values.asterisk.sipCore.tls.ingressKamailioInstance)) }}
           - name: sipcore-tls-in
             containerPort: {{ $.Values.asterisk.sipCore.tls.port }}
             protocol: TCP
@@ -535,7 +535,7 @@
         targetPort: sipcore-ws
         protocol: TCP
         appProtocol: kubernetes.io/ws
-    {{- if and $.Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.name (default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance)) }}
+    {{- if and $.Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.name (default (default $.Values.asterisk.sipCore.kamailioInstance $.Values.asterisk.sipCore.ingressKamailioInstance) $.Values.asterisk.sipCore.tls.ingressKamailioInstance)) }}
       sipcore-tls-in:
         port: {{ $.Values.asterisk.sipCore.tls.port }}
         targetPort: sipcore-tls-in
@@ -617,7 +617,7 @@
 
 {{- define "avoip.kamailio.common.persistence" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
-{{- $sipCoreTlsIngress := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
+{{- $sipCoreTlsIngress := default (default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance) .Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
 {{- $sipCorePublicTlsEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $sipCoreTlsIngress) -}}
 {{- if .Values.kamailio.enabled }}
   {{ $component }}-config:
@@ -1400,6 +1400,83 @@ controllers:
 {{- end }}
 {{ end }}
 {{ end }}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+{{- if and $instance.enabled $instance.registrar.enabled $instance.registrar.credentialSync.enabled -}}
+{{- range $extension := $.Values.asterisk.sipCore.extensions -}}
+{{- if has (toString $extension.number) $instance.registrar.allowedUsers }}
+  {{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance "suffix" (printf "reg-sync-%s" $extension.number)) }}:
+    type: 'cronjob'
+    forceRename: '{{ printf "%s-reg-sync-%s" (include "avoip.fullname" $ | trunc 30 | trimSuffix "-") $extension.number }}'
+    cronjob:
+      schedule: '{{ $instance.registrar.credentialSync.schedule }}'
+      concurrencyPolicy: 'Forbid'
+      successfulJobsHistory: 1
+      failedJobsHistory: 3
+    pod:
+      automountServiceAccountToken: false
+      restartPolicy: 'OnFailure'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: 'RuntimeDefault'
+      labels:
+        app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}'
+        app.kubernetes.io/instance: '{{ $.Release.Name }}'
+    containers:
+      sync:
+        image:
+          repository: '{{ $instance.image.repository }}'
+          tag: '{{ $instance.image.tag }}'
+          digest: '{{ $instance.image.digest }}'
+          pullPolicy: '{{ $instance.image.pullPolicy }}'
+        command: ['/bin/sh', '-c']
+        args:
+          - |
+            set -eu
+            export SIP_USERNAME='{{ $extension.number }}'
+            export SIP_REALM='{{ $instance.registrar.realm }}'
+            psql -X -q -v ON_ERROR_STOP=1 "$REGISTRAR_DB_URL" <<'SQL'
+            \getenv sip_username SIP_USERNAME
+            \getenv sip_realm SIP_REALM
+            \getenv sip_password SIP_PASSWORD
+            INSERT INTO subscriber
+              (username, domain, password, email_address, ha1, ha1b, enabled, expires_at)
+            VALUES
+              (:'sip_username', :'sip_realm', '', '',
+               md5(:'sip_username' || ':' || :'sip_realm' || ':' || :'sip_password'),
+               '', TRUE, 'infinity')
+            ON CONFLICT (username, domain) DO UPDATE
+              SET password = '',
+                  ha1 = EXCLUDED.ha1,
+                  enabled = TRUE,
+                  expires_at = 'infinity';
+            SQL
+        env:
+          - name: REGISTRAR_DB_URL
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $instance.registrar.database.secretName }}'
+                key: 'psqlURI'
+          - name: SIP_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: '{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" $extension.number) }}'
+                key: 'password'
+          - name: PGSSLMODE
+            value: 'verify-full'
+          - name: PGSSLROOTCERT
+            value: '/etc/ssl/certs/ca-certificates.crt'
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ['ALL']
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- if (include "avoip.rtpengine.enabled" . | trim) }}
 {{- if not (has .Values.rtpengine.control.transport (list "udp" "websocket")) }}{{- fail "rtpengine.control.transport must be udp or websocket" }}{{- end }}
 {{- if and (or .Values.rtpengine.control.websocketEnabled (eq .Values.rtpengine.control.transport "websocket")) (or (lt (int .Values.rtpengine.control.websocketPort) 1) (gt (int .Values.rtpengine.control.websocketPort) 65535)) }}{{- fail "rtpengine.control.websocketPort must be between 1 and 65535" }}{{- end }}

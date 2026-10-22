@@ -104,27 +104,32 @@ instance. The carrier's existing selector remains stable; other instances use
 their own controller and instance selector labels. The generated configuration
 checksum and Reloader references cause a rollout when configuration changes.
 
-### WSS edge HA options
+### Frontend client HA options
+
+`frontendHA` is the preferred transport-neutral input name for the
+client-facing HA mode. Existing site overlays using `websocketHA` remain
+supported as a compatibility alias; if both are set, `frontendHA` takes
+precedence. WSS is one supported transport, alongside SIP over TLS.
 
 Only the selected Asterisk SIP Core private instance may enable HA directly.
-A separate unselected pilot may set `websocketHA.pilot: true` while leaving
+A separate unselected pilot may set `frontendHA.pilot: true` while leaving
 the selected legacy instance running. Invalid replica counts, missing Asterisk
 SIP Core selection, enabled Kamailio registrar, invalid drain timings, PDB
 values and rollout partitions fail Helm rendering.
 
 | Path | Default | Rendered behavior |
 | --- | --- | --- |
-| `websocketHA.enabled` | `false` | Enables StatefulSet identities, Path routing and the owner TLS Service; does not alter the carrier instance. |
-| `websocketHA.pilot` | `false` | Allows an unselected HA private-SBC instance to coexist with the selected legacy service; also permits a selected one-replica test instance. |
-| `websocketHA.legacyOwner` | `false` | Keeps the previous single-replica SIP Core listener and return Service present after another instance becomes selected. Enables local `ctl` and shutdown drain behavior; setting it on an already running legacy instance causes one controlled pod replacement so later drains can use `ws.disable`. |
-| `websocketHA.ownerServiceName` | generated `*-owner` | Headless Service identity used for pod DNS and wildcard certificate SANs. |
-| `websocketHA.podDisruptionBudget.minAvailable` | `2` | Protects at least two replicas during voluntary disruption. |
-| `websocketHA.rolloutPartition` | `0` | StatefulSet rolling update partition for controlled ordinal updates. |
-| `websocketHA.endpointRemovalDelaySeconds` | `10` | Wait after readiness removal for EndpointSlice and gateway backend updates. |
-| `websocketHA.drainSeconds` | `120` | Time for existing connections/dialogs before container exit. |
-| `websocketHA.terminationGracePeriodSeconds` | `150` | Must exceed drain plus endpoint-removal delay by at least five seconds. |
-| `websocketHA.compatibility.lfOnlyHeartbeat.enabled` | `false` | Enables exact `0A 0A` compatibility only on the SIP WSS edge. It is not a general malformed-SIP filter. |
-| `websocketHA.compatibility.lfOnlyHeartbeat.image.repository`, `.tag`, `.digest` | empty | Required when enabled. Pin the locally built Kamailio 6.1.4 image by repository, immutable tag and sha256 digest. The same image is used by every WSS replica. |
+| `frontendHA.enabled` | `false` | Enables StatefulSet identities, per-owner Path routing and the owner TLS Service for frontend client flows; does not alter the carrier instance. |
+| `frontendHA.pilot` | `false` | Allows an unselected HA private-SBC instance to coexist with the selected legacy service; also permits a selected one-replica test instance. |
+| `frontendHA.legacyOwner` | `false` | Keeps the previous single-replica SIP Core listener and return Service present after another instance becomes selected. Enables local `ctl` and shutdown drain behavior; setting it on an already running legacy instance causes one controlled pod replacement so later drains can use `ws.disable`. |
+| `frontendHA.ownerServiceName` | generated `*-owner` | Headless Service identity used for pod DNS and certificate SANs. |
+| `frontendHA.podDisruptionBudget.minAvailable` | `2` | Protects at least two replicas during voluntary disruption. |
+| `frontendHA.rolloutPartition` | `0` | StatefulSet rolling update partition for controlled ordinal updates. |
+| `frontendHA.endpointRemovalDelaySeconds` | `10` | Wait after readiness removal for EndpointSlice and gateway backend updates. |
+| `frontendHA.drainSeconds` | `120` | Time for existing connections/dialogs before container exit. |
+| `frontendHA.terminationGracePeriodSeconds` | `150` | Must exceed drain plus endpoint-removal delay by at least five seconds. |
+| `frontendHA.compatibility.lfOnlyHeartbeat.enabled` | `false` | Enables exact `0A 0A` compatibility for SIP WSS clients. It is transport-specific, not a general malformed-SIP filter. |
+| `frontendHA.compatibility.lfOnlyHeartbeat.image.repository`, `.tag`, `.digest` | empty | Required when enabled. Pin the locally built Kamailio 6.1.4 image by repository, immutable tag and sha256 digest. |
 
 When HA or `legacyOwner` draining is enabled, the default pod security context
 sets `fsGroup: 1000` so the non-root Kamailio UID/GID can write the existing

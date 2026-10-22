@@ -399,6 +399,23 @@
         }
       }
 
+      if (is_method("REGISTER")) {
+        {{- if .Values.kamailio.registrar.enabled }}
+        route(PRIVATE_REGISTER);
+        {{- else }}
+        sl_send_reply("403", "Registration Disabled");
+        {{- end }}
+        exit;
+      }
+
+      {{- if .Values.kamailio.registrar.enabled }}
+      # Once SIP Core devices authenticate directly to Kamailio, do not
+      # forward their calls through the legacy Asterisk registration path.
+      if (is_method("INVITE") && !has_totag()) {
+        route(PRIVATE_AUTH_DEVICE);
+      }
+      {{- end }}
+
       t_on_reply("SIPCORE_WS_REPLY");
 
       if (is_method("CANCEL")) {

@@ -3,6 +3,7 @@ set -euo pipefail
 
 chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 rendered="$(mktemp)"
+frontend="$(mktemp)"
 pilot="$(mktemp)"
 cutover="$(mktemp)"
 split="$(mktemp)"
@@ -12,7 +13,7 @@ invalid="$(mktemp)"
 compat="$(mktemp)"
 asterisk_file="$(mktemp)"
 external_callback="$(mktemp)"
-trap 'rm -f "$rendered" "$pilot" "$cutover" "$split" "$legacy" "$legacy_sipcore" "$invalid" "$compat" "$asterisk_file" "$external_callback"' EXIT
+trap 'rm -f "$rendered" "$frontend" "$pilot" "$cutover" "$split" "$legacy" "$legacy_sipcore" "$invalid" "$compat" "$asterisk_file" "$external_callback"' EXIT
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
@@ -35,6 +36,12 @@ assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-in
 assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | (.spec.template.metadata.annotations["checksum/kamailio-config"] | length) == 64' 'WSS pods roll when the rendered Kamailio configuration changes'
 assert_yq 'select(.kind == "Job" and (.metadata.name | test("kamailio-internal-registrar-schema$"))) | .spec.template.spec.containers[0].env[] | select(.name == "PGSSLROOTCERT") | .value == "/etc/ssl/certs/ca-certificates.crt"' 'registrar schema migration uses the system PostgreSQL CA bundle'
 assert_yq 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal") | .spec.replicas == 1' 'the existing private-sbc remains a separate single-replica Deployment'
+helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
+  --set kamailio.instances[2].websocketHA.enabled=false \
+  --set kamailio.instances[2].frontendHA.enabled=true > "$frontend"
+assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.replicas == 3' 'the transport-neutral frontendHA setting overrides the legacy websocketHA alias'
 assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .lifecycle.preStop.exec.command[-1] | test("touch /tmp/kamailio-draining;.*ws.disable.*sleep 130")' 'preStop marks the owner draining, disables new websocket handshakes and waits through the configured grace interval'
 assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .readinessProbe.exec.command[-1] | contains("kamailio-draining")' 'readiness removes draining owners from new Envoy selection'
 assert_yq 'select(.kind == "StatefulSet" and .metadata.name == "core-kamailio-internal-wss") | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .livenessProbe.exec.command[-1] | (contains("kamailio-draining") | not)' 'liveness continues to treat a healthy draining process as alive'
@@ -73,6 +80,7 @@ grep -Fq 'if (!add_path_received())' <<<"$config"
 grep -Fq 'SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-owner.core-prod.svc.cluster.local' <<<"$config"
 grep -Fq 't_on_reply("SIPCORE_WS_REPLY")' <<<"$config"
 grep -Fq 'onreply_route[SIPCORE_WS_REPLY]' <<<"$config"
+grep -Fq 'stage=frontend-contact-aliased' <<<"$config"
 grep -Fq 'rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")' <<<"$config"
 grep -Fq 'Unsupported WebSocket Contact' <<<"$config"
 grep -Fq '@SIPCORE_OWNER_POD.core-home1-talos-prod-avoip-kamailio-internal-wss-owner.core-prod.svc.cluster.local:5063;transport=tls' <<<"$config"

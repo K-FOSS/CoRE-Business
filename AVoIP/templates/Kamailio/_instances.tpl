@@ -152,6 +152,28 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
+  {{- if $effective.registrar.credentialSync.enabled -}}
+    {{- if not $effective.registrar.enabled -}}
+      {{- fail (printf "Kamailio %s registrar credentialSync requires registrar.enabled" $name) -}}
+    {{- end -}}
+    {{- if not (regexMatch "^(@(hourly|daily)|([0-9*/,-]+[ ]+){4}[0-9*/,-]+)$" (toString $effective.registrar.credentialSync.schedule)) -}}
+      {{- fail (printf "Kamailio %s registrar credentialSync.schedule must be a five-field cron expression" $name) -}}
+    {{- end -}}
+    {{- range $extension := $.Values.asterisk.sipCore.extensions -}}
+      {{- if and (has (toString $extension.number) $effective.registrar.allowedUsers) (or (not $extension.secret.remoteKey) (not $extension.secret.property)) -}}
+        {{- fail (printf "Kamailio %s registrar credentialSync requires a Vault password reference for extension %s" $name $extension.number) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- range $user := $effective.registrar.allowedUsers -}}
+      {{- $found := false -}}
+      {{- range $extension := $.Values.asterisk.sipCore.extensions -}}
+        {{- if eq (toString $extension.number) (toString $user) -}}{{- $found = true -}}{{- end -}}
+      {{- end -}}
+      {{- if not $found -}}
+        {{- fail (printf "Kamailio %s registrar credentialSync has no SIP Core password reference for AoR %s" $name $user) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
   {{- if eq $role "private-sbc" -}}
     {{- $wssHA := $effective.websocketHA | default dict -}}
     {{- if and $wssHA.legacyOwner (or $wssHA.enabled (gt (int $effective.replicas) 1) (not $.Values.asterisk.sipCore.enabled)) -}}
@@ -292,6 +314,18 @@
   {{- end -}}
   {{- if not $ingressInstanceFound -}}
     {{- fail (printf "asterisk.sipCore.ingressKamailioInstance %s must name an enabled private-sbc instance" $ingressName) -}}
+  {{- end -}}
+{{- end -}}
+{{- if and $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled $.Values.asterisk.sipCore.tls.enabled $.Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
+  {{- $tlsIngressName := $.Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
+  {{- $tlsIngressFound := false -}}
+  {{- range $instance := $out -}}
+    {{- if and $instance.enabled (eq $instance.name $tlsIngressName) (eq $instance.role "private-sbc") -}}
+      {{- $tlsIngressFound = true -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if not $tlsIngressFound -}}
+    {{- fail (printf "asterisk.sipCore.tls.ingressKamailioInstance %s must name an enabled private-sbc instance" $tlsIngressName) -}}
   {{- end -}}
 {{- end -}}
 {{- toYaml $out -}}

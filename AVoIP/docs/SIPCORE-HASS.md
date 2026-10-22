@@ -43,9 +43,9 @@ remain on the carrier instance. The HTTP `X-Forwarded-For` header belongs to
 the upgrade request; it is not part of the SIP messages carried inside the
 WebSocket connection.
 
-The same SIP Core hostname also has a `TLSRoute` on `main-gw`'s `sips-tls`
+The same SIP Core hostname also has a `TLSRoute` on `main-gw`'s `tls-mqtt`
 listener. A native SIP client connects to `sips:<extension>@<hostname>` using
-TLS on port `5061`; the hostname in TLS SNI selects the route. TLS passes
+TLS on port `8443`; the hostname in TLS SNI selects the route. TLS passes
 through Envoy to the selected Kamailio SIP Core ingress listener on its
 dedicated backend port `5064`. Kamailio preserves the client source with
 PROXY protocol v2 and relays SIP to Asterisk, which uses the same per-extension
@@ -54,7 +54,7 @@ authentication username, and use its existing SIP Core password. The route is
 publicly reachable through `main-gw`; SIP Digest and the extension's existing
 dialplan allowlist remain the authorization checks. Configure the SIP address
 as `sips:<extension>@<hostname>`, the registrar as `<hostname>`, and TLS
-transport on port `5061`.
+transport on port `8443`.
 
 This TLSRoute passes TLS through, so the phone validates the certificate
 presented by Kamailio—not the certificate on `main-gw`. Its SIP Core SNI
@@ -64,10 +64,12 @@ The existing Kamailio SIP certificate and Vault mTLS identity remain unchanged.
 The dedicated certificate must be Ready and chain to a CA trusted by the phone.
 
 The current PJSIP endpoints are generated with Asterisk's `webrtc=yes`
-settings, and Kamailio applies the WebRTC RTPEngine profile to SIP Core SDP.
-Registration over TLS is supported by this route; a native client also needs
-compatible ICE and DTLS-SRTP media for calls to work. Basic TLS signaling with
-plain RTP alone is not established by this configuration.
+settings, and the SIP Core media path currently applies RTPEngine's WebRTC
+profile. Registration over TLS is supported, but this does not yet establish
+media compatibility with conventional SIP phones that offer plain RTP or
+SDES-SRTP. WSS clients continue to use the browser WebRTC media profile.
+The frontend HA routing/registration path is transport-neutral; WSS is one
+supported client transport alongside SIP over TLS.
 
 When a contact's browser WebSocket has closed, its owner replica cannot relay
 to that local flow. For non-ACK requests the WSS edge returns SIP `430 Flow
