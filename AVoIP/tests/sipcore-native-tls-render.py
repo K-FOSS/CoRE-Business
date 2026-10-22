@@ -33,6 +33,8 @@ configs = [obj["data"]["kamailio.cfg"] for obj in objects if obj and
            "internal-wss-config" in obj.get("metadata", {}).get("name", "")]
 assert len(configs) == 1
 config = configs[0]
+modules = re.findall(r'^loadmodule "([^"]+)"', config, re.MULTILINE)
+assert modules[0] == 'tls.so', 'TLS must initialize before forked registrar DB clients'
 block = runpy.run_path(str(Path(__file__).with_name("sipcore-info-routing.py")))["block"]
 frontend = block(config, "route[FROM_SIPCORE]")
 backend = block(config, "route[FROM_SIPCORE_ASTERISK]")

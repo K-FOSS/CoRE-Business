@@ -113,6 +113,9 @@ data:
     {{- end }}
     alias="{{ $kamailioHost }}:5062"
 
+    # tls must precede modules that initialize thread-local/OpenSSL state.
+    # The registrar's libpq TLS connections are opened again in forked workers.
+    loadmodule "tls.so"
     loadmodule "tm.so"
     loadmodule "sl.so"
     {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
@@ -186,7 +189,6 @@ data:
       }
     }
     {{- end }}
-    loadmodule "tls.so"
     {{- if or .Values.kamailio.carrierOutbound.enabled $sipCoreEnabled (and (eq .Values.kamailio.role "private-sbc") .Values.kamailio.interSite.peers) }}
     loadmodule "dialog.so"
     {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled }}

@@ -9,7 +9,14 @@ Asterisk voicemail. AVoIP Admin remains the operational configuration owner.
 The registrar uses the site PostgreSQL `User` claim and libpq's system CA
 bundle with `verify-full`; the credential-sync Job and the serving Kamailio
 container must both receive that CA path. A missing path prevents pods from
-starting even when schema creation succeeds.
+starting even when schema creation succeeds. During the YVR rollout, the
+serving pods also logged Kamailio's warning that `tls.so` must be loaded
+first, consistent with the [TLS module's ordering requirement](https://www.kamailio.org/docs/modules/6.1.x/modules/tls.html),
+then forked registrar workers timed out opening libpq TLS sessions
+although `psql` from the same pod succeeded. The module is now loaded before
+other modules; verify this removes the warning and startup timeouts. The
+warning and timeout were observed together, but their causal relationship
+still needs runtime confirmation.
 The public TLSRoute and Gateway listener pass TLS through Envoy with PROXY v2;
 Kamailio presents the dedicated public certificate for
 `sipcore.mylogin.space:8443`. Browser WSS signaling keeps its own listener.
