@@ -22,9 +22,11 @@ the intended global balancing sites and that each site's K8GB instance is
 configured for the `gslb.mylogin.space` zone. Site-specific gateway, hostname,
 replica and image settings are kept in `values.yaml`; workload configuration
 lives in `templates/common.yaml`. The image is pinned to Draw.io 32.5.5's
-multi-architecture Docker Hub manifest. The container runs non-root with a
-RuntimeDefault seccomp profile, no service account token, disabled privilege
-escalation and dropped Linux capabilities.
+multi-architecture Docker Hub manifest. The container runs as the image's
+non-root UID 1001, allowing Kubernetes to verify `runAsNonRoot: true` despite
+the image's named default user. It also uses a RuntimeDefault seccomp profile,
+has no service account token, disables privilege escalation and drops Linux
+capabilities.
 HTTP probes check port 8080, and an egress NetworkPolicy denies outbound
 connections, matching the static web-app posture in CyberChef. Verify that
 Draw.io's complete editing, export, embed and optional integration workflows
