@@ -387,7 +387,7 @@ kamailio:
             enabled: true
             # Increase core diagnostics only on the dedicated WSS edge.
             # Do not enable raw SIP dumps, which can expose Digest responses.
-            coreDebug: 3
+            coreDebug: 2
         # Send unsolicited Pong frames to keep the upgraded stream active
         # without evicting clients that do not return Ping frames through an
         # intermediary. Asterisk OPTIONS remains the SIP flow health check.
