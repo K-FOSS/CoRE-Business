@@ -27,6 +27,18 @@ kamailio:
       enabled: true
       role: carrier-sbc
       replicas: 3
+      carrierOutbound:
+        enabled: true
+        clientIdentity:
+          enabled: true
+          issuerName: kjdev-cluster
+        peer:
+          secretName: flowroute-ca
+          cidr: 192.0.2.0/24
+          sanHostname: flowroute.test
+          serviceHost: flowroute.test
+          controller: flowroute
+        gatewayServiceHost: gateway.test
     - name: internal
       enabled: true
       role: private-sbc

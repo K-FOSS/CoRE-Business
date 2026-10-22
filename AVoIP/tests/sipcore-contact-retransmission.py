@@ -20,7 +20,8 @@ import time
 
 def inspect(config, block):
     reply = block(config, "reply_route ")
-    assert 'if ($proto == "ws" && $Rp ==' in reply
+    assert '$proto == "ws" && $Rp ==' in reply
+    assert '$proto == "tls" && $Rp ==' in reply
     assert '!is_method("REGISTER")' in reply
     assert 'is_present_hf("Contact")' in reply
     assert 'add_contact_alias()' in reply
@@ -60,8 +61,10 @@ def exercise(reply, schema, negative=False):
     port = reserve.getsockname()[1]
     reserve.close()
     # Keep all remaining statements of the production reply route intact.
-    reply, count = re.subn(r'\$proto == "ws" && \$Rp == [0-9]+',
-                           f'$proto == "udp" && $Rp == {port}', reply)
+    reply, count = re.subn(
+        r'\(\(\$proto == "ws" && \$Rp == [0-9]+\) \|\|\s*'
+        r'\(\$proto == "tls" && \$Rp == [0-9]+\)\)',
+        f'($proto == "udp" && $Rp == {port})', reply)
     assert count == 1
     if negative:
         # Reproduce the original bug with the same body in TM's named route.

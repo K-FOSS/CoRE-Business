@@ -729,9 +729,10 @@
     # TOPOS still stores their Contact, so alias every browser response here
     # before TM can take that path. Otherwise a later unaliased 200 overwrites
     # the saved Contact and subsequent ACK/BYE requests cannot find the flow.
-    # Keep this restricted to the established SIP Core WebSocket listener.
+    # Keep this restricted to the SIP Core client-facing WebSocket and TLS listeners.
     reply_route {
-      if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }} &&
+      if ((($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) ||
+           ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }})) &&
           !is_method("REGISTER") && is_present_hf("Contact")) {
         if (add_contact_alias()) {
           {{- if .Values.kamailio.sipLogging.sipCore }}
