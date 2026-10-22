@@ -57,12 +57,11 @@ as `sips:<extension>@<hostname>`, the registrar as `<hostname>`, and TLS
 transport on port `5061`.
 
 This TLSRoute passes TLS through, so the phone validates the certificate
-presented by Kamailio—not the certificate on `main-gw`. The Kamailio SIP
-certificate includes the SIP Core hostname and is issued using
+presented by Kamailio—not the certificate on `main-gw`. Its SIP Core SNI
+selects a dedicated `sipcore-public-tls` certificate issued using
 `sip.tls.issuerName` (`kjdev-cluster`, the public ACME issuer, by default).
-It must be Ready and chain to a CA trusted by the phone. Do not use the
-separate Vault issuer for Kamailio's carrier mTLS client identity as this
-public server certificate.
+The existing Kamailio SIP certificate and Vault mTLS identity remain unchanged.
+The dedicated certificate must be Ready and chain to a CA trusted by the phone.
 
 The current PJSIP endpoints are generated with Asterisk's `webrtc=yes`
 settings, and Kamailio applies the WebRTC RTPEngine profile to SIP Core SDP.

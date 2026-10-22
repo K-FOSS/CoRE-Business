@@ -418,6 +418,18 @@ data:
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 
+    {{- if $sipCoreTlsEnabled }}
+    # Public SIP Core SNI presents its dedicated ACME certificate. The default
+    # profile and all other SIP TLS listeners keep the existing certificate.
+    [server:any]
+    server_name = {{ $.Values.asterisk.sipCore.hostname }}
+    method = TLSv1.2+
+    verify_certificate = no
+    require_certificate = no
+    private_key = /etc/kamailio/sipcore-public-tls/tls.key
+    certificate = /etc/kamailio/sipcore-public-tls/tls.crt
+    {{- end }}
+
     {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) $websocketHA.enabled $websocketHA.legacyOwner) }}
     # Asterisk's ACME certificate is a server certificate, not a client
     # identity. Its dedicated return listener relies on Cilium's workload

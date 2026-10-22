@@ -21,9 +21,6 @@ spec:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" $component "override" .Values.kamailio.sip.serviceHost) }}'
     {{- if and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled (or (eq .Values.kamailio.name .Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).enabled (.Values.kamailio.websocketHA | default dict).legacyOwner $sipCoreTlsEnabled) }}
     - '{{ include "avoip.sip.sipCoreReturnHost" (dict "root" .) }}'
-    {{- if $sipCoreTlsEnabled }}
-    - '{{ .Values.asterisk.sipCore.hostname }}'
-    {{- end }}
     {{- if (.Values.kamailio.websocketHA | default dict).enabled }}
     {{ range $ordinal := until (int .Values.kamailio.replicas) }}
     # ACME rejects a DNS name covered by a wildcard SAN in the same request.
@@ -47,7 +44,25 @@ spec:
   {{- end }}
   issuerRef:
     kind: ClusterIssuer
-    name: '{{ if $sipCoreTlsEnabled }}{{ required "sip.tls.issuerName is required for public SIP Core TLS" .Values.sip.tls.issuerName }}{{ else if and .Values.kamailio.carrierOutbound.clientIdentity.enabled (eq .Values.kamailio.role "private-sbc") }}{{ required "kamailio.carrierOutbound.clientIdentity.issuerName is required" .Values.kamailio.carrierOutbound.clientIdentity.issuerName }}{{ else }}{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}{{ end }}'
+    name: '{{ if and .Values.kamailio.carrierOutbound.clientIdentity.enabled (eq .Values.kamailio.role "private-sbc") }}{{ required "kamailio.carrierOutbound.clientIdentity.issuerName is required" .Values.kamailio.carrierOutbound.clientIdentity.issuerName }}{{ else }}{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}{{ end }}'
+{{- if $sipCoreTlsEnabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-public-tls") }}'
+spec:
+  secretName: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-public-tls") }}'
+  dnsNames:
+    - '{{ required "asterisk.sipCore.hostname is required for the public SIP Core TLS certificate" .Values.asterisk.sipCore.hostname }}'
+  usages:
+    - 'digital signature'
+    - 'key encipherment'
+    - 'server auth'
+  issuerRef:
+    kind: ClusterIssuer
+    name: '{{ required "sip.tls.issuerName is required for public SIP Core TLS" .Values.sip.tls.issuerName }}'
+{{- end }}
 {{- if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
 ---
 apiVersion: cert-manager.io/v1

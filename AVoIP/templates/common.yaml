@@ -177,6 +177,8 @@
 {{- define "avoip.kamailio.common.controllers" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
 {{- $websocketHA := .Values.kamailio.websocketHA | default dict -}}
+{{- $sipCoreTlsIngress := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
+{{- $sipCorePublicTlsEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $sipCoreTlsIngress) -}}
 {{- $kamailioImage := .Values.kamailio.image -}}
 {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) -}}
   {{- $kamailioImage = .Values.avoipAdmin.routing.image -}}
@@ -252,7 +254,7 @@
         # loaded from one consistent configuration set.
         checksum/kamailio-config: '{{ include "avoip.kamailio.render.KamailioConfig" . | sha256sum }}'
         configmap.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "config") }}'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}{{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-mtls") }},{{ .Values.kamailio.carrierOutbound.peer.secretName }}{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}{{ if $sipCorePublicTlsEnabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-public-tls") }}{{ end }}{{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-mtls") }},{{ .Values.kamailio.carrierOutbound.peer.secretName }}{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
 {{- with .Values.kamailio.podAnnotations }}
 {{ toYaml . | nindent 8 }}
 {{- end }}
@@ -615,6 +617,8 @@
 
 {{- define "avoip.kamailio.common.persistence" -}}
 {{- $component := include "avoip.kamailio.component" .Values.kamailio -}}
+{{- $sipCoreTlsIngress := default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance -}}
+{{- $sipCorePublicTlsEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $sipCoreTlsIngress) -}}
 {{- if .Values.kamailio.enabled }}
   {{ $component }}-config:
     type: configMap
@@ -647,6 +651,15 @@
       {{ $component }}:
         {{ $component }}:
           - path: /etc/kamailio/tls
+{{- if $sipCorePublicTlsEnabled }}
+  {{ $component }}-sipcore-public-tls:
+    type: secret
+    name: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-public-tls") }}'
+    advancedMounts:
+      {{ $component }}:
+        {{ $component }}:
+          - path: /etc/kamailio/sipcore-public-tls
+{{- end }}
 {{- if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
   {{ $component }}-sip-mtls:
     type: secret
