@@ -20,9 +20,13 @@ not remove the timeout. TCP connections reached the PostgreSQL pod and ten
 parallel `psql` sessions from a frontend pod succeeded, while the forked
 Kamailio workers failed under a five-second libpq deadline. The serving
 registrar's connection deadline is now 30 seconds, with `verify-full` and the
-site CA unchanged. Whether this resolves the Kamailio-specific startup race
-must be confirmed on new pods; a healthy render or transient readiness is
-insufficient.
+site CA unchanged. Two newly rolled frontend pods remained ready for more than
+four minutes, but a longer observation is needed before the startup race can
+be considered closed. The YVR ApplicationSet now uses preferred pod
+anti-affinity and soft topology spreading for both three-replica internal
+Kamailio sets because hard pod separation plus available CPU prevented a
+third pod from scheduling. This permits co-location and does not guarantee
+three-node fault isolation.
 The public TLSRoute and Gateway listener pass TLS through Envoy with PROXY v2;
 Kamailio presents the dedicated public certificate for
 `sipcore.mylogin.space:8443`. Browser WSS signaling keeps its own listener.
@@ -92,6 +96,17 @@ cannot be reconstructed from the supplied excerpts alone. The render
 regression guards the corrected expressions; live logs must confirm the
 warning disappears.
 
+At 21:32–21:34 UTC on 2026-10-22, Groundwire's 7101 TLS INVITEs (for example
+Call-ID `8F6944329CC684E28908EDCAC2B9D01CFB1291CD`) passed frontend
+authentication but FreeSWITCH's `core-managed` listener returned 407. No 200,
+ACK or media exchange occurred on these attempts. Source inspection found
+that the frontend did not consume the client's `Proxy-Authorization` header
+after successful Digest authentication, so it forwarded device credentials
+across the separate FreeSWITCH trust boundary. The frontend now removes the
+authorized credentials before relaying. That credential propagation is
+source-confirmed; whether it alone caused FreeSWITCH's 407 remains unverified
+until another live call. Do not log the credential or its Digest response.
+
 ## Signaling and ownership
 
 Groundwire connects to `sipcore.mylogin.space:8443` through the main Gateway
@@ -131,7 +146,8 @@ correctly. Repeat with a fresh connection, reused connection, different
 frontend replica, and browser WSS registration/calling. Inspect final
 client-facing Contact/SDP and actual selected outbound connection, not just
 alias creation or pod readiness. Check that no new connect targets an Envoy
-ephemeral port and that no `sipcore` integer-conversion warning recurs.
+ephemeral port, no FreeSWITCH 407 recurs after frontend authentication, and no
+`sipcore` integer-conversion warning recurs.
 
 ## Recovery and limits
 

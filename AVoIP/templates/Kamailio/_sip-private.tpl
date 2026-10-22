@@ -1159,6 +1159,10 @@
         sl_send_reply("403", "Caller Not Authorized");
         return;
       }
+      # The frontend has consumed this Digest challenge. Never pass the
+      # device's Proxy-Authorization to FreeSWITCH's trusted ingress profile;
+      # it is a separate authentication realm and security boundary.
+      consume_credentials();
       $var(auth_device) = 1;
     }
     {{- end }}

@@ -41,6 +41,7 @@ backend = block(config, "route[FROM_SIPCORE_ASTERISK]")
 reply = block(config, "reply_route ")
 named_reply = block(config, "onreply_route[SIPCORE_WS_REPLY]")
 relay = block(config, "route[PRIVATE_RELAY]")
+device_auth = block(config, "route[PRIVATE_AUTH_DEVICE]")
 
 # TOPOS must derive the client-facing Contact from the public inbound RR, and
 # preserve the private outbound owner RR for cross-replica restoration.
@@ -80,6 +81,11 @@ assert 'if ($var(side) eq "sipcore" && is_method("ACK|INFO"))' in source
 assert 'if ($var(side) eq "sipcore" && is_method("INFO"))' in config
 assert not re.search(r'\$var\(side\)\s*(?:==|!=)\s*"sipcore"', config)
 assert 'if ($var(side) eq "sipcore" && is_method("INFO"))' in relay
+
+# Device Digest belongs to the frontend realm only. Once accepted, it must
+# not leak to FreeSWITCH and trigger a second authentication challenge.
+assert device_auth.index('proxy_authorize(') < device_auth.index('consume_credentials();')
+assert device_auth.index('consume_credentials();') < device_auth.index('$var(auth_device) = 1;')
 
 # Registrar SQL must match the shipped subscriber schema.
 jobs = [obj for obj in objects if obj and obj.get("kind") == "CronJob" and
