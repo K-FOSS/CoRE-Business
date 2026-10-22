@@ -65,6 +65,14 @@ the one-replica private-SBC. See the
 current topology and connection-owner behavior.
 
 This chart is the site-specific desired state for the AVoIP stack in `core-prod`.
+The Forgejo-built [managed Kamailio routing image](image/kamailio-routing/Containerfile)
+includes the pinned core-compatible `tcpops`, `auth_radius`, and `misc_radius`
+modules. It links the RADIUS modules against Debian's radcli library; their
+presence in the image does not enable RADIUS authentication or change the
+current PostgreSQL-backed SIP Digest design. See Kamailio's
+[`auth_radius`](https://www.kamailio.org/docs/modules/6.1.x/modules/auth_radius.html)
+and [`misc_radius`](https://www.kamailio.org/docs/modules/6.1.x/modules/misc_radius.html)
+module documentation and Debian's [`radcli` package](https://packages.debian.org/bookworm/amd64/libs/libradcli4).
 The [SIP, identity, and RTC architecture plan](docs/SIP-STATEFUL-HA.md) and its
 [phased TODO tracker](TODO.md) describe proposed stateful routing, web phone,
 directory switchboard, MatrixRTC and native calling work, with evidence gates

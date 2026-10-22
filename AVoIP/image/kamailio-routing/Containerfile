@@ -2,20 +2,21 @@ ARG KAMAILIO_BASE=ghcr.io/kamailio/kamailio:6.1.4-bookworm@sha256:c54f770ab74ae6
 FROM ${KAMAILIO_BASE} AS builder
 USER root
 ARG KAMAILIO_SOURCE_SHA256=290624b6624edc230af0fc458fb7e481e64b893be7cb5084398e587942992e0a
-RUN apt-get update && apt-get install -y --no-install-recommends bison build-essential ca-certificates curl flex libcurl4-openssl-dev libjansson-dev libevent-dev libhiredis-dev libjson-c-dev libpq-dev libssl-dev libunistring-dev libwebsockets-dev pkg-config && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bison build-essential ca-certificates curl flex libcurl4-openssl-dev libjansson-dev libevent-dev libhiredis-dev libjson-c-dev libradcli-dev libpq-dev libssl-dev libunistring-dev libwebsockets-dev pkg-config && rm -rf /var/lib/apt/lists/*
 WORKDIR /usr/src
 RUN curl --fail --location --silent --show-error https://www.kamailio.org/pub/kamailio/6.1.4/src/kamailio-6.1.4_src.tar.gz -o kamailio.tar.gz \
     && echo "$KAMAILIO_SOURCE_SHA256  kamailio.tar.gz" | sha256sum --check --status \
     && tar -xzf kamailio.tar.gz
 RUN cd /usr/src/kamailio-6.1.4 \
-    && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu modules_dir=lib/x86_64-linux-gnu/kamailio/ include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+    && export RADCLI=1 \
+    && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu modules_dir=lib/x86_64-linux-gnu/kamailio/ include_modules='auth auth_db auth_radius ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd misc_radius nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
     && make -j2 all prefix=/usr libdir=/usr/lib/x86_64-linux-gnu modules_dir=lib/x86_64-linux-gnu/kamailio/ \
     && mkdir -p /out/modules \
     && cp src/kamailio /out/kamailio \
-    && for module in auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do cp "src/modules/$module/$module.so" /out/modules/; done
+    && for module in auth auth_db auth_radius ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd misc_radius nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do cp "src/modules/$module/$module.so" /out/modules/; done
 FROM ${KAMAILIO_BASE}
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends libcurl4 libjansson4 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends libcurl4 libjansson4 libradcli4 && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /out/modules/ /usr/lib/x86_64-linux-gnu/kamailio/modules/
 COPY --from=builder /out/kamailio /usr/sbin/kamailio
 COPY test.cfg /tmp/routing-test.cfg
