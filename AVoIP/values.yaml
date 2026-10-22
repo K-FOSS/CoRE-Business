@@ -1657,6 +1657,6 @@ avoipAdmin:
     upstreamCIDRs: []
     image:
       repository: 'slop.writemy.codes/core/core-business/kamailio-routing'
-      tag: '1-b58e69003e930cf3b41f4083c4dcc7a03b498e1f'
-      digest: 'sha256:219818c75659592456b5b34543572effda93512cd57f6dbb9c00fdded5d3deb5'
+      tag: '1-2d15ae410c36b3d5b96f942945f31bfb4892add2'
+      digest: 'sha256:d56a5de7f77ff936515c949f295397cf54451343a9971092790c44f85e9c4c58'
       pullPolicy: 'IfNotPresent'
