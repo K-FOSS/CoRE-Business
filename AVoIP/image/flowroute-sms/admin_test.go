@@ -281,6 +281,45 @@ func TestCatalogOwnership(t *testing.T) {
 	}
 }
 
+func TestSIPUserAssignmentsRequireEnabledSiteExtension(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.SIPUsers = []sipUserRoute{{Username: "7101", Extension: "7101", DisplayName: "Desk phone", Enabled: true}}
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("valid SIP user rejected: %v", err)
+	}
+	tests := []struct {
+		name   string
+		mutate func(*sipCatalog)
+	}{
+		{"invalid username", func(c *sipCatalog) { c.SIPUsers[0].Username = "7101;drop" }},
+		{"unconfigured extension", func(c *sipCatalog) { c.SIPUsers[0].Extension = "7102" }},
+		{"registration enabled for disabled extension", func(c *sipCatalog) { disabled := false; c.Extensions[0].Enabled = &disabled }},
+		{"duplicate username", func(c *sipCatalog) { c.SIPUsers = append(c.SIPUsers, c.SIPUsers[0]) }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := fixtureCatalog()
+			c.SIPUsers = append([]sipUserRoute(nil), catalog.SIPUsers...)
+			test.mutate(&c)
+			if err := c.validate(); err == nil {
+				t.Fatal("invalid SIP user assignment accepted")
+			}
+		})
+	}
+}
+
+func TestSIPUserConfigRejectsCredentialFields(t *testing.T) {
+	for _, field := range []string{"password", "ha1", "ha1b"} {
+		input := `{"username":"7101","extension":"7101","` + field + `":""}`
+		decoder := json.NewDecoder(strings.NewReader(input))
+		decoder.DisallowUnknownFields()
+		var user sipUserRoute
+		if err := decoder.Decode(&user); err == nil {
+			t.Errorf("credential field %q was accepted in SIP user configuration", field)
+		}
+	}
+}
+
 func TestIVRDefinitionsUseConfiguredAndAuthorizedDestinations(t *testing.T) {
 	catalog := fixtureCatalog()
 	catalog.IVRs = []ivrDefinition{{ID: "main-menu", Name: "Main menu", Site: "yvr", GreetingAsset: "welcome", TimeoutMs: 15000, DigitTimeoutMs: 2000, MaxDigits: 4, InvalidRetries: 1, Routes: []ivrDigitRoute{{Digits: "1", Kind: "extension", Destination: "7101"}, {Digits: "2", Kind: "did", Destination: "+16505550123", Provider: "carrier", CallerID: "+12065550100"}}}}

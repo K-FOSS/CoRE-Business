@@ -9,7 +9,7 @@ print('Synthetic UI artifacts:', artifacts)
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True, args=['--no-sandbox'])
     for width, theme in [(1280, 'light'), (360, 'light'), (768, 'dark')]:
-        api_state = {'sip': {'providers': [{'id': 'carrier', 'host': 'sip.carrier.example', 'gateways': {'yvr': 'carrier-yvr'}, 'verified_caller_ids': [{'number': '+12065550100', 'evidence': 'fixture approval'}]}], 'dids': [], 'extensions': [{'extension': '7101', 'display_name': 'Desk phone', 'assigned_user': 'august@example.test', 'enabled': True, 'outbound_enabled': True, 'caller_id': '+12065550100', 'provider': 'carrier', 'site': 'yvr'}], 'version': 0}}
+        api_state = {'sip': {'providers': [{'id': 'carrier', 'host': 'sip.carrier.example', 'gateways': {'yvr': 'carrier-yvr'}, 'verified_caller_ids': [{'number': '+12065550100', 'evidence': 'fixture approval'}]}], 'dids': [], 'extensions': [{'extension': '7101', 'display_name': 'Desk phone', 'assigned_user': 'august@example.test', 'enabled': True, 'outbound_enabled': True, 'caller_id': '+12065550100', 'provider': 'carrier', 'site': 'yvr'}], 'sip_users': [{'username': '7101', 'extension': '7101', 'display_name': 'Desk phone', 'enabled': True}], 'version': 0}}
         page = browser.new_page(viewport={'width': width, 'height': 900}, color_scheme=theme)
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
@@ -60,6 +60,28 @@ with sync_playwright() as p:
         page.get_by_role('button', name='Save', exact=True).click()
         page.get_by_text('Outbound disabled', exact=False).wait_for()
         assert api_state['sip']['extensions'][0]['outbound_enabled'] is False
+        page.get_by_role('button', name='SIP users', exact=True).click()
+        page.get_by_text('Desk phone', exact=True).wait_for()
+        assert 'Desired registration enabled' in page.locator('.admin-card').inner_text()
+        assert 'Credentials managed outside Admin' in page.locator('.admin-card').inner_text()
+        assert 'Digest verifiers are never stored here' in page.locator('#admin-help').inner_text()
+        page.get_by_role('button', name='Edit', exact=True).click()
+        assert page.locator('#field-username').input_value() == '7101'
+        assert page.locator('#field-username').is_disabled() is False
+        assert page.locator('#field-username').evaluate('(el)=>el.readOnly')
+        page.locator('#field-enabled').uncheck()
+        page.get_by_role('button', name='Save', exact=True).click()
+        assert api_state['sip']['sip_users'][0]['enabled'] is False
+        page.get_by_text('Desired registration disabled', exact=False).wait_for()
+        page.get_by_role('button', name='Add SIP user', exact=True).click()
+        page.locator('#field-username').fill('7102')
+        page.locator('#field-extension').select_option('7101')
+        page.locator('#field-display_name').fill('Tablet')
+        assert not page.locator('#field-enabled').is_checked()
+        assert page.locator('#edit-fields input[type="password"]').count() == 0
+        page.get_by_role('button', name='Save', exact=True).click()
+        assert api_state['sip']['sip_users'][1]['username'] == '7102'
+        assert api_state['sip']['sip_users'][1]['enabled'] is False
         page.screenshot(path=artifacts / f'admin-{width}-{theme}.png', full_page=True)
         assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'horizontal overflow'
         assert not errors, errors

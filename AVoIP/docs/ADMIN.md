@@ -147,6 +147,17 @@ eligible provider candidate order; FreeSWITCH currently uses the first eligible
 provider and does not retry another provider. Live health-based failover is not
 implemented, and the preview reports provider health as `not_reported`.
 
+The **SIP users** tab manages non-secret SIP identity assignments in the same
+versioned PostgreSQL catalog: numeric SIP username, configured extension,
+display name and registration-enabled flag. The site's assignment and
+Authentik user metadata are inherited from the linked extension, avoiding a
+second owner mapping. A user must reference an existing extension; registration
+cannot be enabled for a disabled extension. Admin never accepts or stores SIP
+passwords or Digest verifiers. Keep those credentials in the platform secret
+store. These records are management metadata only: they are not yet projected
+into Kamailio's dedicated registrar database and do not switch the live
+Asterisk registration path.
+
 Each DID card can preview an inbound route without placing a call. The preview
 checks the exact DID, site, assigned provider and optional provider source IP
 against the current catalog, then displays the destination and policy revision.

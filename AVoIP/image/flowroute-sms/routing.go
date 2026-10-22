@@ -89,6 +89,16 @@ type extensionRoute struct {
 	TenantID            string   `json:"tenant_id,omitempty"`
 }
 
+// sipUserRoute is the non-secret SIP identity assignment managed by AVoIP
+// Admin. Digest credentials remain in the platform secret store and are not
+// part of the shared catalog or the Kamailio routing snapshot.
+type sipUserRoute struct {
+	Username    string `json:"username"`
+	Extension   string `json:"extension"`
+	DisplayName string `json:"display_name,omitempty"`
+	Enabled     bool   `json:"enabled"`
+}
+
 type callLimitProfile struct {
 	ID                 string `json:"id"`
 	Name               string `json:"name"`
@@ -230,6 +240,7 @@ type sipCatalog struct {
 	Providers     []sipProvider      `json:"providers"`
 	DIDs          []didRoute         `json:"dids"`
 	Extensions    []extensionRoute   `json:"extensions"`
+	SIPUsers      []sipUserRoute     `json:"sip_users,omitempty"`
 	LimitProfiles []callLimitProfile `json:"limit_profiles,omitempty"`
 	IVRs          []ivrDefinition    `json:"ivrs,omitempty"`
 	Version       int64              `json:"version"`
@@ -241,6 +252,7 @@ type siteTarget struct {
 }
 
 var extensionID = regexp.MustCompile(`^[0-9]{2,12}$`)
+var sipUsername = regexp.MustCompile(`^[0-9]{2,12}$`)
 var adminUserID = regexp.MustCompile(`^[A-Za-z0-9_.@:-]{1,128}$`)
 var correlationID = regexp.MustCompile(`^[A-Za-z0-9_.:-]{1,128}$`)
 var sipHost = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,252}$`)
@@ -317,7 +329,7 @@ func resolvedLimitProfile(c sipCatalog, assignedID, tenantID, site string) callL
 }
 
 func (c sipCatalog) validate() error {
-	if len(c.Providers) > 50 || len(c.DIDs) > 1000 || len(c.Extensions) > 1000 || len(c.LimitProfiles) > 500 || len(c.IVRs) > 500 {
+	if len(c.Providers) > 50 || len(c.DIDs) > 1000 || len(c.Extensions) > 1000 || len(c.SIPUsers) > 1000 || len(c.LimitProfiles) > 500 || len(c.IVRs) > 500 {
 		return errors.New("catalog too large")
 	}
 	profiles := map[string]callLimitProfile{}
@@ -528,6 +540,7 @@ func (c sipCatalog) validate() error {
 		}
 	}
 	seen := map[string]bool{}
+	extensionsBySite := map[string]extensionRoute{}
 	for _, e := range c.Extensions {
 		if e.Site != "yvr" && e.Site != "yxl" {
 			return errors.New("extension site must be yvr or yxl")
@@ -576,6 +589,31 @@ func (c sipCatalog) validate() error {
 			}
 		}
 		seen[e.Extension] = true
+		extensionsBySite[e.Site+":"+e.Extension] = e
+	}
+	seenSIPUsers := map[string]bool{}
+	for _, user := range c.SIPUsers {
+		if !sipUsername.MatchString(user.Username) || !extensionID.MatchString(user.Extension) || len(user.DisplayName) > 120 {
+			return errors.New("invalid SIP user")
+		}
+		if seenSIPUsers[user.Username] {
+			return errors.New("duplicate SIP username")
+		}
+		var assignedExtension extensionRoute
+		found := false
+		for _, extension := range extensionsBySite {
+			if extension.Extension == user.Extension {
+				assignedExtension, found = extension, true
+				break
+			}
+		}
+		if !found {
+			return errors.New("SIP user must map to a configured extension")
+		}
+		if user.Enabled && assignedExtension.Enabled != nil && !*assignedExtension.Enabled {
+			return errors.New("SIP registration cannot be enabled for a disabled extension")
+		}
+		seenSIPUsers[user.Username] = true
 	}
 	return nil
 }

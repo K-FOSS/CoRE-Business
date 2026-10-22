@@ -3,9 +3,12 @@
 [AVoIP administration](docs/ADMIN.md) provides group-aware SMS administration,
 multiple messaging accounts and a managed SIP provider/DID/caller-ID catalog.
 Its Extensions screen controls outbound enablement, verified caller ID, provider,
-and egress site; disabled decisions are sent to Homer. Routing activation is
-independent of UI enablement. Both interfaces follow the
-[shared Material Design 2 specification](docs/UI-DESIGN.md).
+and egress site; disabled decisions are sent to Homer. The SIP users screen
+manages non-secret username-to-extension assignments and registration enablement
+in the PostgreSQL catalog. SIP passwords and Digest verifiers stay outside
+Admin; these records are not yet provisioned to Kamailio or the active
+registration path. Routing activation is independent of UI enablement. Both
+interfaces follow the [shared Material Design 2 specification](docs/UI-DESIGN.md).
 
 The optional authenticated [Bridged calls](docs/BRIDGED-CALLS.md) page lets a
 user schedule or place a callback-first call to an authorized extension. It is
