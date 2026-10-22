@@ -638,6 +638,9 @@ kamailio:
       maxContacts: 2
       minExpires: 120
       maxExpires: 600
+      credentialSync:
+        enabled: false
+        schedule: '*/5 * * * *'
     networkPolicy:
       envoy:
         # Match the Envoy Gateway data-plane pods, not carrier source CIDRs.
@@ -985,6 +988,9 @@ asterisk:
       port: 5064
       gatewaySectionName: 'tls-mqtt'
       gatewayPort: 8443
+      # Optional TLS-only Kamailio selection, independent of the WSS backend.
+      # Empty follows ingressKamailioInstance for compatibility.
+      ingressKamailioInstance: ''
     allowedOrigins: []
     httpPort: 8088
     backendTrafficPolicy:
@@ -1657,6 +1663,6 @@ avoipAdmin:
     upstreamCIDRs: []
     image:
       repository: 'slop.writemy.codes/core/core-business/kamailio-routing'
-      tag: '1-2d15ae410c36b3d5b96f942945f31bfb4892add2'
-      digest: 'sha256:d56a5de7f77ff936515c949f295397cf54451343a9971092790c44f85e9c4c58'
+      tag: '1-771b8bc6a51cb3c27ce1affca27a76b97afe4400'
+      digest: 'sha256:b247bc0dabc0927b70678b56150a970dc03850bbde40c7842d31502b7b99aa88'
       pullPolicy: 'IfNotPresent'
