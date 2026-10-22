@@ -116,9 +116,6 @@ route:
     enabled: true
     kind: HTTPRoute
 
-    labels:
-      wan-mode: 'public'
-      lan-mode: 'private'
     annotations:
       forecastle.stakater.com/expose: 'true'
       forecastle.stakater.com/instance: 'core'
