@@ -119,7 +119,7 @@ route:
     annotations:
       {{- toYaml .Values.route.cyberchef.annotations | nindent 6 }}
       {{- if .Values.k8gb.enabled }}
-      external-dns.alpha.kubernetes.io/target: {{ printf "%s.%s" (first (splitList "." (first .Values.cyberchef.domains))) (join "." (rest (splitList "." .Values.k8gb.domain))) | quote }}
+      external-dns.alpha.kubernetes.io/target: {{ printf "%s.%s" (first (splitList "." (first .Values.cyberchef.domains))) .Values.k8gb.domain | quote }}
       {{- end }}
 
     labels:
@@ -136,7 +136,10 @@ route:
       {{- range $domain := .Values.cyberchef.domains }}
       - {{ $domain | quote }}
       {{- if $.Values.k8gb.enabled }}
-      - {{ printf "%s.%s" (first (splitList "." $domain)) (join "." (rest (splitList "." $.Values.k8gb.domain))) | quote }}
+      {{- $gslbDomain := printf "%s.%s" (first (splitList "." $domain)) $.Values.k8gb.domain }}
+      {{- if ne $domain $gslbDomain }}
+      - {{ $gslbDomain | quote }}
+      {{- end }}
       {{- end }}
       {{- end }}
 
