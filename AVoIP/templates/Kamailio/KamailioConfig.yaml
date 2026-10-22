@@ -120,6 +120,11 @@ data:
     {{- end }}
     {{- if $sipCoreEnabled }}
     loadmodule "nathelper.so"
+    # tcpops exposes the actual accepted TCP peer when PROXY protocol
+    # overrides the SIP message source address and port.
+    {{- if .Values.asterisk.sipCore.tls.enabled }}
+    loadmodule "tcpops.so"
+    {{- end }}
     {{- if not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not $websocketHA.enabled)) }}
     # SIP Core reads the managed extension codec policy on WSS INVITEs even
     # when the admin-routing module bundle is disabled on the HA edge.

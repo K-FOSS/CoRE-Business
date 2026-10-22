@@ -37,6 +37,16 @@ Asterisk unchanged. On hangup, Asterisk's BYE reached the correct owner pod but
 had no alias for the live TLS flow and received `404 Frontend Contact Not
 Found`.
 
+After forcing the Contact alias, a subsequent short-call reproduction resolved
+the alias but still failed at relay: the stored alias contained the client tuple
+reported by PROXY v2, and Kamailio tried to open a new TLS connection to that
+tuple. Envoy owns the accepted upstream connection, so Kamailio must route back
+over that connection's actual peer tuple instead. The TLS listener now uses
+Kamailio's `tcpops` `$tcp(c_si)` / `$tcp(c_sp)` values with the explicit
+`add_contact_alias()` parameters for REGISTER and initial INVITE Contacts.
+Other transports retain `set_contact_alias("1")`. The `$tcp()` values are the
+connection peer tuple rather than the PROXY-advertised SIP source.
+
 ## Source repair
 
 [Kamailio](https://www.kamailio.org/)'s
@@ -45,10 +55,14 @@ runs for network responses before TM's named handler. Browser Contact aliasing
 now runs there, including on retransmitted answers. It is limited to the
 SIP Core WebSocket and TLS listeners and excludes REGISTER replies so AOR
 contact lists remain intact. Client-facing REGISTERs and initial INVITEs also
-use `set_contact_alias("1")`, which always writes the received flow address
-even when it equals the Contact and replaces a client-supplied alias. This lets
-Asterisk return BYE/OPTIONS traffic through the owning TLS connection. The
-named reply handlers retain their SDP and response diagnostics. An explicit
+use a flow alias, replacing a client-supplied alias. On TLS/PROXY traffic the
+alias is the actual Envoy peer tuple, so Kamailio can reuse its accepted TLS
+connection; on WS and direct transports `set_contact_alias("1")` stores the
+received flow address. This lets Asterisk return BYE/OPTIONS traffic through
+the owning connection. The behavior relies on Kamailio's
+[tcpops connection variables](https://www.kamailio.org/wikidocs/cookbooks/6.1.x/pseudovariables/#tcpops-module-variable)
+and [nathelper alias parameters](https://www.kamailio.org/docs/modules/6.1.x/modules/nathelper.html#nathelper.f.add_contact_alias).
+The named reply handlers retain their SDP and response diagnostics. An explicit
 `return` leaves core response processing successful; no local BYE
 acknowledgment is introduced.
 

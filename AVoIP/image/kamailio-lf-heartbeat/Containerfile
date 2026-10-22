@@ -22,10 +22,10 @@ RUN cd /usr/src/kamailio-6.1.4 \
     && patch --batch --fuzz=0 -p1 < /tmp/lf-heartbeat.patch \
     && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
-         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
     && make -j2 all prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
-         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+         include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
     && make install prefix=/usr libdir=/usr/lib/x86_64-linux-gnu \
          modules_dir=lib/x86_64-linux-gnu/kamailio/ \
     && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/htable.so \
@@ -36,7 +36,7 @@ RUN cd /usr/src/kamailio-6.1.4 \
     && test -s /usr/lib/x86_64-linux-gnu/kamailio/modules/rtpengine.so \
     && mkdir -p /out/usr/lib/x86_64-linux-gnu/kamailio/modules \
     && cp /usr/sbin/kamailio /out/usr/sbin-kamailio \
-    && for module in auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
+    && for module in auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtpengine rr rtimer sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do \
          cp "/usr/lib/x86_64-linux-gnu/kamailio/modules/${module}.so" /out/usr/lib/x86_64-linux-gnu/kamailio/modules/; \
        done
 COPY test-kamailio.cfg /tmp/test-kamailio.cfg

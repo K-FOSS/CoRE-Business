@@ -84,7 +84,9 @@ retention and verification.
 The dedicated WSS edge has an opt-in, exact LF/LF heartbeat compatibility
 patch for Home Assistant SIP Core. It is disabled by default; Home1 enables it
 on `internal-websocket` using a separately built, digest-pinned Kamailio 6.1.4
-image. The
+image. The TLS/PROXY flow requires a matching `tcpops` module, compiled from
+the same patched source as the Kamailio binary, to route in-dialog requests
+back over Envoy's accepted connection. The
 [Forgejo workflow](../.forgejo/workflows/kamailio-lf-heartbeat.yaml) tests an
 amd64 build and publishes an amd64 image on `main`; its successful run
 reports the immutable digest. Home1 is running tag

@@ -31,6 +31,8 @@ def inspect(config, block):
         assert 'set_contact_alias("1")' not in block(config, f"onreply_route[{name}]")
     frontend = block(config, "route[FROM_SIPCORE]")
     assert frontend.count('set_contact_alias("1")') == 2
+    assert frontend.count('add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")') == 2
+    assert 'loadmodule "tcpops.so"' in config
     assert 'nat_uac_test(64)' not in frontend
     return reply
 

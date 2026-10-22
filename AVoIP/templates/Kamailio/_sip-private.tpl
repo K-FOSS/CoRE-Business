@@ -312,14 +312,35 @@
 
       force_rport();
       # Every front-end registration and initial client dialog must retain the
-      # client flow through this Kamailio owner. set_contact_alias() is
-      # unconditional: add_contact_alias() skips a Contact that already equals
-      # the PROXY-preserved source, which Asterisk still cannot reach directly.
+      # client flow through this Kamailio owner. TLS behind Envoy uses its actual
+      # accepted peer tuple; other transports use the received source tuple.
       if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
+        {{- if .Values.asterisk.sipCore.tls.enabled }}
+        if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+          # PROXY v2 changes $si/$sp to the phone tuple. Store the actual
+          # Envoy-to-Kamailio peer tuple so in-dialog TLS requests reuse the
+          # accepted upstream connection instead of dialing the phone tuple.
+          if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
+          {{- if .Values.kamailio.sipLogging.sipCore }}
+          xlog("L_INFO", "SIPCORE FLOW stage=frontend-contact-flow-aliased pod=$env(POD_NAME) callid=$ci method=$rm client=$si:$sp flow_peer=$tcp(c_si):$tcp(c_sp) transport=$proto cseq=$hdr(CSeq)\n");
+          {{- end }}
+        } else {
+          if (!set_contact_alias("1")) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
+        {{- else }}
         if (!set_contact_alias("1")) {
           sl_send_reply("400", "Bad Contact");
           exit;
         }
+        {{- end }}
+        {{- if .Values.asterisk.sipCore.tls.enabled }}
+        }
+        {{- end }}
         {{- if .Values.kamailio.sipLogging.sipCore }}
         xlog(
           "L_INFO",
@@ -327,10 +348,24 @@
         );
         {{- end }}
       } else if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
+        {{- if .Values.asterisk.sipCore.tls.enabled }}
+        if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+          if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
+        } else {
+          if (!set_contact_alias("1")) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
+        }
+        {{- else }}
         if (!set_contact_alias("1")) {
           sl_send_reply("400", "Bad Contact");
           exit;
         }
+        {{- end }}
       }
 
       t_on_reply("SIPCORE_WS_REPLY");
