@@ -10,11 +10,11 @@ k8gb:
   enabled: true
   strategy: 'roundRobin'
   dnsTtlSeconds: 30
+  domain: gslb.mylogin.space
 
 cyberchef:
   domains:
     - 'cyberchef.mylogin.space'
-    - 'cyberchef.gslb.mylogin.space'
   replicas: 2
 
   image:

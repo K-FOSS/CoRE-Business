@@ -133,6 +133,9 @@ route:
       {{- range .Values.cyberchef.domains }}
       - {{ . | quote }}
       {{- end }}
+      {{- if .Values.k8gb.enabled }}
+      - {{ .Values.k8gb.domain | quote }}
+      {{- end }}
 
     rules:
       - matches:
