@@ -72,7 +72,11 @@ assert '$Rp == 5062' in reply and '$hdr(Record-Route) =~' in reply
 assert reply.count('rtpengine_manage("$var(sipcore_answer_flags)")') == 1
 assert 'rtpengine_manage(' not in named_reply
 assert 'WebRTC ' in reply and '$proto == "ws"' in frontend
-assert 'if ($proto == "ws") $var(sipcore_media_flags)' in frontend
+assert 'if ($proto == "ws") {' in frontend
+assert '$var(sipcore_media_flags) = "WebRTC " + $var(sipcore_media_flags);' in frontend
+assert '$var(sipcore_media_flags) = "SDES-nonew " + $var(sipcore_media_flags);' in frontend
+assert frontend.index('SDES-nonew ') < frontend.index('rtpengine_manage("$var(sipcore_media_flags)")')
+assert 'stage=frontend-offer-media-applied' in frontend
 assert 'stage=frontend-answer-media-applied' in reply
 
 # Force string semantics for the side marker in both request and send routes.

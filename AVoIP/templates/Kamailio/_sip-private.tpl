@@ -485,7 +485,14 @@
         $var(sipcore_media_flags) = "replace-origin external internal address-family=IP4";
         # Native TLS phones may offer RTP/AVP and RTP/SAVP. WebRTC forces
         # DTLS/ICE and must be limited to the browser WebSocket leg.
-        if ($proto == "ws") $var(sipcore_media_flags) = "WebRTC " + $var(sipcore_media_flags);
+        if ($proto == "ws") {
+          $var(sipcore_media_flags) = "WebRTC " + $var(sipcore_media_flags);
+        } else {
+          # Native phones can offer SDES-SRTP alongside RTP/AVP. Do not
+          # expand their two supported suites into RTPEngine's full suite
+          # catalog on the FreeSWITCH leg.
+          $var(sipcore_media_flags) = "SDES-nonew " + $var(sipcore_media_flags);
+        }
         if ($var(sipcore_managed_codec_flags) != $null && $var(sipcore_managed_codec_flags) != "") {
           $var(sipcore_media_flags) = $var(sipcore_media_flags) + " " + $var(sipcore_managed_codec_flags);
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -497,6 +504,9 @@
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
         }
+        {{- if .Values.kamailio.sipLogging.sipCore }}
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-offer-media-applied pod=$env(POD_NAME) callid=$ci method=$rm transport=$proto flags=$var(sipcore_media_flags) cseq=$hdr(CSeq)\n");
+        {{- end }}
         if ($var(sipcore_managed_codec_flags) != $null && $var(sipcore_managed_codec_flags) != "") {
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
           hlog("$ci", "kamailio_event=rtpengine_codec_policy decision=applied direction=outbound extension=$hdr(X-Core-Extension) stage=asterisk_sdp_offer flags=$var(sipcore_managed_codec_flags) call_id=$ci");

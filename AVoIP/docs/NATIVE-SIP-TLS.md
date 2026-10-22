@@ -104,9 +104,27 @@ that the frontend did not consume the client's `Proxy-Authorization` header
 after successful Digest authentication, so it forwarded device credentials
 across the separate FreeSWITCH trust boundary. The frontend now consumes the
 authorized credential and strips all remaining Authorization headers before
-relaying. That credential propagation is
-source-confirmed; whether it alone caused FreeSWITCH's 407 remains unverified
-until another live call. Do not log the credential or its Digest response.
+relaying. That credential propagation is source-confirmed, and the next live
+call no longer received FreeSWITCH's 407. This supports the fix but does not
+prove which of the forwarded headers triggered that challenge. Do not log the
+credential or its Digest response.
+
+The later 21:51:39 UTC Groundwire attempt, Call-ID
+`D62FB3296823E85460DFB70CF9ADCB04B8A34285`, passed that authentication
+handoff; FreeSWITCH instead rejected its initial SDP with `488 Not Acceptable
+Here` and Q.850 cause 88 (`INCOMPATIBLE_DESTINATION`). The received offer and
+the offer sent to FreeSWITCH both contained two audio sections, `RTP/AVP` and
+`RTP/SAVP`, with shared codec IDs. RTPEngine changed the two phone-offered
+SDES suites into twelve suites per section on the internal leg. These facts
+were checked from the newly captured call by selecting only media transport,
+suite **names** and status metadata; no keying material was printed. This
+suite expansion is source- and trace-confirmed, but its precise contribution
+to FreeSWITCH's 488 is not yet proven. The native-TLS offer now uses
+[`SDES-nonew`](https://github.com/sipwise/rtpengine/blob/master/docs/ng_control_protocol.md)
+so the internal offer retains only the phone-offered suites. Browser WebRTC
+continues to use its separate DTLS/ICE policy. Recheck both `m=` sections and
+the answer after this change; do not treat a 488 disappearing as proof that
+audio or dialog routing works.
 
 ## Signaling and ownership
 
