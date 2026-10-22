@@ -8,11 +8,11 @@ RUN curl --fail --location --silent --show-error https://www.kamailio.org/pub/ka
     && echo "$KAMAILIO_SOURCE_SHA256  kamailio.tar.gz" | sha256sum --check --status \
     && tar -xzf kamailio.tar.gz
 RUN cd /usr/src/kamailio-6.1.4 \
-    && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu modules_dir=lib/x86_64-linux-gnu/kamailio/ include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
+    && make cfg prefix=/usr libdir=/usr/lib/x86_64-linux-gnu modules_dir=lib/x86_64-linux-gnu/kamailio/ include_modules='auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog' \
     && make -j2 all prefix=/usr libdir=/usr/lib/x86_64-linux-gnu modules_dir=lib/x86_64-linux-gnu/kamailio/ \
     && mkdir -p /out/modules \
     && cp src/kamailio /out/kamailio \
-    && for module in auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do cp "src/modules/$module/$module.so" /out/modules/; done
+    && for module in auth auth_db ctl corex db_postgres dialog dispatcher htable http_client ipops jansson lwsc maxfwd nathelper ndb_redis outbound path pv registrar rtimer rtpengine rr sanity siptrace siputils sl tcpops textops textopsx tls tm topos topos_redis usrloc websocket xhttp xlog; do cp "src/modules/$module/$module.so" /out/modules/; done
 FROM ${KAMAILIO_BASE}
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends libcurl4 libjansson4 && rm -rf /var/lib/apt/lists/*
