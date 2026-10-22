@@ -15,8 +15,14 @@ first, consistent with the [TLS module's ordering requirement](https://www.kamai
 then forked registrar workers timed out opening libpq TLS sessions
 although `psql` from the same pod succeeded. The module is now loaded before
 other modules; verify this removes the warning and startup timeouts. The
-warning and timeout were observed together, but their causal relationship
-still needs runtime confirmation.
+warning and timeout were observed together, but loading `tls.so` first did
+not remove the timeout. TCP connections reached the PostgreSQL pod and ten
+parallel `psql` sessions from a frontend pod succeeded, while the forked
+Kamailio workers failed under a five-second libpq deadline. The serving
+registrar's connection deadline is now 30 seconds, with `verify-full` and the
+site CA unchanged. Whether this resolves the Kamailio-specific startup race
+must be confirmed on new pods; a healthy render or transient readiness is
+insufficient.
 The public TLSRoute and Gateway listener pass TLS through Envoy with PROXY v2;
 Kamailio presents the dedicated public certificate for
 `sipcore.mylogin.space:8443`. Browser WSS signaling keeps its own listener.

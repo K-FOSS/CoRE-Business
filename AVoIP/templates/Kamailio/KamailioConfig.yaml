@@ -206,7 +206,7 @@ data:
     modparam("dispatcher", "ds_probing_mode", 1)
     {{- if .Values.kamailio.registrar.enabled }}
     loadmodule "db_postgres.so"
-    modparam("db_postgres", "con_param", "sslmode=verify-full;connect_timeout=5")
+    modparam("db_postgres", "con_param", "sslmode=verify-full;connect_timeout={{ default 30 .Values.kamailio.registrar.database.connectTimeoutSeconds }}")
     loadmodule "auth.so"
     loadmodule "auth_db.so"
     loadmodule "usrloc.so"

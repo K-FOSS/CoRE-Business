@@ -14,6 +14,7 @@ yq -e 'select(.kind == "User" and (.metadata.name | contains("internal-wss-regis
 yq -e 'select(.kind == "User" and (.metadata.name | contains("internal-registrar-db"))) | .spec.username == "kamailio-test"' "$rendered" >/dev/null
 yq -e 'select(.kind == "CronJob" and (.metadata.name | contains("reg-sync-7101"))) | .spec.jobTemplate.spec.template.spec.containers[0].env | any(.name == "SIP_PASSWORD" and .valueFrom.secretKeyRef.name != "")' "$rendered" >/dev/null
 yq -e 'select(.kind == "StatefulSet" and (.metadata.name | contains("internal-wss"))) | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .env | any(.name == "PGSSLROOTCERT" and .value == "/etc/ssl/certs/ca-certificates.crt")' "$rendered" >/dev/null
+yq -e 'select(.kind == "StatefulSet" and (.metadata.name | contains("internal-wss"))) | .spec.template.spec.containers[] | select(.name == "kamailio-internal-wss") | .env | any(.name == "PGCONNECT_TIMEOUT" and .value == "30")' "$rendered" >/dev/null
 yq -e 'select(.kind == "CiliumNetworkPolicy" and (.metadata.name | contains("internal-wss-sip-policy"))) | (.spec.ingress | any(.fromEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss")) and (.spec.egress | any(.toEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss"))' "$rendered" >/dev/null
 freeswitch_sip_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-sip-configs"))) | .data["kamailio.xml"]' "$rendered")"
 grep -Fq '<gateway name="sipcore-registrar">' <<<"$freeswitch_sip_config"
@@ -23,6 +24,7 @@ asterisk_startup="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | co
 
 ha_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("internal-wss-config"))) | .data["kamailio.cfg"]' "$rendered")"
 grep -Fq 'loadmodule "auth_db.so"' <<<"$ha_config"
+grep -Fq 'sslmode=verify-full;connect_timeout=30' <<<"$ha_config"
 grep -Fq 'route(PRIVATE_REGISTER);' <<<"$ha_config"
 grep -Fq 'Path: <sip:SIPCORE_OWNER_POD.' <<<"$ha_config"
 grep -Fq 'www_authorize("sipcore.mylogin.space", "active_subscriber")' <<<"$ha_config"

@@ -442,6 +442,7 @@ kamailio:
           enabled: false
           host: ''
           port: 5432
+          connectTimeoutSeconds: 30
           username: ''
           secretName: ''
           terraformProvider: ''
@@ -633,6 +634,7 @@ kamailio:
         enabled: false
         host: ''
         port: 5432
+        connectTimeoutSeconds: 30
         username: ''
         secretName: ''
         terraformProvider: ''

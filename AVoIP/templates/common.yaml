@@ -375,7 +375,7 @@
           - name: PGSSLROOTCERT
             value: '/etc/ssl/certs/ca-certificates.crt'
           - name: PGCONNECT_TIMEOUT
-            value: '5'
+            value: '{{ default 30 .Values.kamailio.registrar.database.connectTimeoutSeconds }}'
           - name: REGISTRAR_DB_URL
             valueFrom:
               secretKeyRef:
