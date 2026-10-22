@@ -29,7 +29,7 @@
         {{- if .Values.kamailio.sipLogging.sipCore }}
         xlog(
           "L_WARN",
-          "SIPCORE FLOW stage=websocket-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt\n"
+          "SIPCORE FLOW stage=frontend-wss-ingress pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt\n"
         );
         {{- end }}
         route(FROM_SIPCORE);
@@ -311,17 +311,24 @@
       }
 
       force_rport();
-      if (nat_uac_test(64)) {
-        if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
-          if (!add_contact_alias()) {
-            sl_send_reply("400", "Bad Contact");
-            exit;
-          }
-        } else if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
-          if (!add_contact_alias()) {
-            sl_send_reply("400", "Bad Contact");
-            exit;
-          }
+      # Every front-end registration must retain the client flow through this
+      # Kamailio owner. A private Contact can equal the PROXY-preserved source,
+      # so nat_uac_test(64) alone misses it even though Asterisk cannot reach it.
+      if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
+        if (!add_contact_alias()) {
+          sl_send_reply("400", "Bad Contact");
+          exit;
+        }
+        {{- if .Values.kamailio.sipLogging.sipCore }}
+        xlog(
+          "L_INFO",
+          "SIPCORE FLOW stage=frontend-contact-aliased pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp transport=$proto cseq=$hdr(CSeq)\n"
+        );
+        {{- end }}
+      } else if (nat_uac_test(64) && !has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
+        if (!add_contact_alias()) {
+          sl_send_reply("400", "Bad Contact");
+          exit;
         }
       }
 
@@ -592,7 +599,7 @@
                 "SIPCORE FLOW stage=asterisk-local-route-loop-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) alias_result=$var(sipcore_alias_result) ruri_host=$rd ruri_port=$rp\n"
               );
               {{- end }}
-              sl_send_reply("404", "WebSocket Contact Not Found");
+              sl_send_reply("404", "Frontend Contact Not Found");
               exit;
             }
             remove_hf("Route");
@@ -615,7 +622,7 @@
               "L_ERR",
               "SIPCORE FLOW stage=asterisk-contact-route-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) alias_result=$var(sipcore_alias_result) ruri_host=$rd ruri_port=$rp\n"
             );
-            sl_send_reply("404", "WebSocket Contact Not Found");
+            sl_send_reply("404", "Frontend Contact Not Found");
             exit;
           }
         }
@@ -634,7 +641,7 @@
             "SIPCORE FLOW stage=asterisk-contact-route-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) alias_result=$var(sipcore_alias_result) ruri_host=$rd ruri_port=$rp\n"
           );
           {{- end }}
-          sl_send_reply("404", "WebSocket Contact Not Found");
+          sl_send_reply("404", "Frontend Contact Not Found");
           exit;
         }
         if (is_method("INVITE") && !has_totag()) {
@@ -685,7 +692,7 @@
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
-        "SIPCORE FLOW stage=forward-to-websocket pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination_host=$dd destination_port=$dp destination_transport=$dP flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) cseq=$hdr(CSeq)\n"
+        "SIPCORE FLOW stage=forward-to-frontend pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination_host=$dd destination_port=$dp destination_transport=$dP flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) cseq=$hdr(CSeq)\n"
       );
       {{- end }}
       route(PRIVATE_RELAY);
@@ -785,12 +792,12 @@
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
-        "SIPCORE FLOW stage=websocket-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT branch=dialog-response\n"
+        "SIPCORE FLOW stage=frontend-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT branch=dialog-response\n"
       );
       {{- end }}
       if (has_body("application/sdp")) {
         if (!rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")) {
-          xlog("L_ERR", "RTPEngine SIP Core WebSocket answer handling failed callid=$ci status=$rs\n");
+          xlog("L_ERR", "RTPEngine SIP Core frontend answer handling failed callid=$ci status=$rs\n");
           drop;
         }
       }

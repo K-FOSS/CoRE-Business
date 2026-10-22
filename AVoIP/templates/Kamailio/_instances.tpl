@@ -23,6 +23,14 @@
   {{- end -}}
   {{- $roleDefaults := index $.Values.kamailio.roleDefaults $role | default dict -}}
   {{- $effective := mergeOverwrite (deepCopy $.Values.kamailio.defaults) (deepCopy $roleDefaults) (deepCopy $raw) -}}
+  {{- $frontendHA := deepCopy ($effective.frontendHA | default dict) -}}
+  {{- if hasKey $raw "websocketHA" -}}
+    {{- $frontendHA = mergeOverwrite $frontendHA (deepCopy $raw.websocketHA) -}}
+  {{- end -}}
+  {{- if hasKey $raw "frontendHA" -}}
+    {{- $frontendHA = mergeOverwrite $frontendHA (deepCopy $raw.frontendHA) -}}
+  {{- end -}}
+  {{- $_ := set $effective "websocketHA" $frontendHA -}}
   {{- if or (lt (int $effective.shmSizeMb) 16) (gt (int $effective.shmSizeMb) 4096) -}}
     {{- fail (printf "Kamailio %s shmSizeMb must be between 16 and 4096" $name) -}}
   {{- end -}}

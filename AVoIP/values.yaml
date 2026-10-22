@@ -364,8 +364,10 @@ kamailio:
       rollingUpdate:
         surge: '1'
         unavailable: 0
-      websocketHA:
+      frontendHA:
         # Opt in on a separate named private-sbc instance dedicated to WSS.
+        # This transport-neutral HA mode is for frontend SIP clients; WSS is
+        # one supported transport. `websocketHA` remains a legacy alias.
         # The ordinary internal SBC remains a one-replica Deployment.
         enabled: false
         # Keep the old single-replica owner rendering the SIP Core listeners
