@@ -118,10 +118,6 @@ route:
 
     annotations:
       {{- toYaml .Values.route.cyberchef.annotations | nindent 6 }}
-      {{- if .Values.k8gb.enabled }}
-      external-dns.alpha.kubernetes.io/hostname: {{ (first .Values.cyberchef.domains) | quote }}
-      external-dns.alpha.kubernetes.io/target: {{ printf "%s.%s" (first (splitList "." (first .Values.cyberchef.domains))) .Values.k8gb.domain | quote }}
-      {{- end }}
 
     labels:
       {{- toYaml .Values.route.cyberchef.labels | nindent 6 }}

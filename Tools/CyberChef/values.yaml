@@ -37,8 +37,7 @@ route:
       forecastle.stakater.com/instance: 'core'
       forecastle.stakater.com/group: 'Tools'
       forecastle.stakater.com/appName: 'CyberChef'
-    labels:
-      wan-mode: 'public'
+    labels: {}
   cyberchef-k8gb:
     annotations: {}
     labels: {}
