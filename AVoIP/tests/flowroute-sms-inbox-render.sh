@@ -50,7 +50,7 @@ for expected in \
   }
 done
 
-for component in web api webhook; do
+for component in web api webhook media tts-cache; do
   component="$component" yq -e 'select(.kind == "Deployment" and .metadata.name == "sms-inbox-check-avoip-flowroute-sms-" + env.component)' "$tmp_dir/render.yaml" >/dev/null || {
     echo "Missing $component deployment" >&2
     exit 1
@@ -58,7 +58,7 @@ for component in web api webhook; do
 done
 
 policy_count="$(yq -r 'select(.kind == "NetworkPolicy" and (.metadata.name | contains("flowroute-sms"))) | .metadata.name' "$tmp_dir/render.yaml" | wc -l)"
-[[ "$policy_count" == '3' ]] || {
+[[ "$policy_count" == '5' ]] || {
   echo 'Expected one Envoy-only ingress policy per SMS workload' >&2
   exit 1
 }
