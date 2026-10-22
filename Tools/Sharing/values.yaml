@@ -79,7 +79,7 @@ sharing:
     # variables; generated database, Redis, JWT and OIDC values take precedence.
     # See https://github.com/thedevs-network/kutt/blob/v3.2.6/.example.env.
     config:
-      SITE_NAME: 'Sharing'
+      SITE_NAME: 'CoRE-Links'
       #DB_SSL: 'true'
       #DB_POOL_MIN: '0'
       #DB_POOL_MAX: '10'
@@ -102,7 +102,7 @@ sharing:
       #ENABLE_RATE_LIMIT: 'false'
       #REPORT_EMAIL: ''
       #CONTACT_EMAIL: ''
-      OIDC_BUTTON_TEXT: 'Log in with CoRE SSO'
+      OIDC_BUTTON_TEXT: 'Log in with CoRE-Auth'
     resources:
       requests:
         cpu: '50m'
