@@ -85,7 +85,9 @@ assert 'if ($var(side) eq "sipcore" && is_method("INFO"))' in relay
 # Device Digest belongs to the frontend realm only. Once accepted, it must
 # not leak to FreeSWITCH and trigger a second authentication challenge.
 assert device_auth.index('proxy_authorize(') < device_auth.index('consume_credentials();')
-assert device_auth.index('consume_credentials();') < device_auth.index('$var(auth_device) = 1;')
+assert device_auth.index('consume_credentials();') < device_auth.index('remove_hf("Authorization");')
+assert device_auth.index('remove_hf("Authorization");') < device_auth.index('remove_hf("Proxy-Authorization");')
+assert device_auth.index('remove_hf("Proxy-Authorization");') < device_auth.index('$var(auth_device) = 1;')
 
 # Registrar SQL must match the shipped subscriber schema.
 jobs = [obj for obj in objects if obj and obj.get("kind") == "CronJob" and

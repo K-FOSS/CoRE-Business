@@ -1163,6 +1163,10 @@
       # device's Proxy-Authorization to FreeSWITCH's trusted ingress profile;
       # it is a separate authentication realm and security boundary.
       consume_credentials();
+      # A phone can include credentials for other realms on the same INVITE.
+      # None of them belong on the trusted FreeSWITCH leg either.
+      remove_hf("Authorization");
+      remove_hf("Proxy-Authorization");
       $var(auth_device) = 1;
     }
     {{- end }}

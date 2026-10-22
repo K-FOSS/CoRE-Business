@@ -102,8 +102,9 @@ authentication but FreeSWITCH's `core-managed` listener returned 407. No 200,
 ACK or media exchange occurred on these attempts. Source inspection found
 that the frontend did not consume the client's `Proxy-Authorization` header
 after successful Digest authentication, so it forwarded device credentials
-across the separate FreeSWITCH trust boundary. The frontend now removes the
-authorized credentials before relaying. That credential propagation is
+across the separate FreeSWITCH trust boundary. The frontend now consumes the
+authorized credential and strips all remaining Authorization headers before
+relaying. That credential propagation is
 source-confirmed; whether it alone caused FreeSWITCH's 407 remains unverified
 until another live call. Do not log the credential or its Digest response.
 
