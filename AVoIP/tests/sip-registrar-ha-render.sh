@@ -18,6 +18,28 @@ yq -e 'select(.kind == "StatefulSet" and (.metadata.name | contains("internal-ws
 yq -e 'select(.kind == "CiliumNetworkPolicy" and (.metadata.name | contains("internal-wss-sip-policy"))) | (.spec.ingress | any(.fromEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss")) and (.spec.egress | any(.toEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss"))' "$rendered" >/dev/null
 freeswitch_sip_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-sip-configs"))) | .data["kamailio.xml"]' "$rendered")"
 grep -Fq '<gateway name="sipcore-registrar">' <<<"$freeswitch_sip_config"
+python3 - "$rendered" <<'PY'
+import json
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+resources = json.loads(subprocess.check_output(['yq', '-s', '.', sys.argv[1]]))
+dialplan = next(resource['data']['public.xml'] for resource in resources
+                if resource and resource.get('kind') == 'ConfigMap'
+                and resource['metadata']['name'].endswith('-freeswitch-dialplan-configs'))
+root = ET.fromstring(dialplan)
+for context, extension in [('ivr-targets', 'ivr-destination-7101'),
+                           ('public', 'authorized-inter-site-extension')]:
+    node = root.find(f"context[@name='{context}']/extension[@name='{extension}']")
+    assert node is not None
+    bridges = [action.get('data') for action in node.findall('.//action[@application="bridge"]')]
+    assert bridges == ['sofia/gateway/sipcore-registrar/${destination_number}'], (context, bridges)
+    assert node.find('.//action[@application="ring_ready"]') is not None or context == 'ivr-targets'
+echo = root.find("context[@name='ivr-targets']/extension[@name='ivr-destination-9090']")
+assert echo.find('.//action[@application="echo"]') is not None
+assert not echo.findall('.//action[@application="bridge"]')
+PY
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("admin"))) | .spec.template.spec.containers[].env[] | select(.name == "AVOIP_SIPCORE_REGISTRAR_GATEWAY") | .value == "sipcore-registrar"' "$rendered" >/dev/null
 asterisk_startup="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("asterisk"))) | .spec.template.spec.containers[] | select(.name == "asterisk") | .args[]' "$rendered")"
 ! grep -Fq 'sip_password=' <<<"$asterisk_startup"

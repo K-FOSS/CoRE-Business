@@ -161,6 +161,20 @@ own established Envoy connection for client-bound requests. The public
 certificate remains separate from the internal certificate; neither client
 DNS access to Kubernetes nor certificate exceptions are expected.
 
+For inbound calls, the FreeSWITCH IVR accepts only its configured destination
+list. When a destination is a configured SIP Core extension and
+`registrarBackend` is `kamailio`, both the IVR selection and the authenticated
+inter-site voice handoff bridge via FreeSWITCH's non-registering
+`sipcore-registrar` mTLS gateway. Kamailio checks the destination against its
+allowed users and active subscriber table, looks up the live PostgreSQL-backed
+registration, and follows the recorded per-pod Path to the owner. The IVR's
+9090 echo is local to FreeSWITCH in this mode; voicemail `*97` still uses
+Asterisk. Merely storing a registration is not proof a phone can ring: the
+FreeSWITCH-to-Kamailio B-leg, owner routing, client flow and media answer all
+need live verification. Older IVR and inter-site 7101 dialplan branches sent
+those calls to Asterisk after its 7101 endpoint was removed, so they could not
+ring the Kamailio-registered phone.
+
 ## Reproduce and verify
 
 Run `AVoIP/tests/sipcore-native-tls-render.py --runtime-image
@@ -192,6 +206,12 @@ For the AVP compatibility rollout, verify the live `core-managed` Sofia
 profile has the setting, that the same Groundwire offer no longer gets an
 immediate 488, and that the answer's selected media mode and cipher actually
 work in both directions.
+Also select 7101 from the YVR IVR and place an authenticated YXL-to-YVR
+inter-site call to 7101. Confirm FreeSWITCH attempts
+`sofia/gateway/sipcore-registrar/7101`, Kamailio resolves the current
+registration and its owner, Groundwire rings, and answer/hangup complete. A
+404 from Kamailio means the subscriber or registration was not found; a
+FreeSWITCH bridge attempt alone does not establish delivery.
 
 ## Recovery and limits
 

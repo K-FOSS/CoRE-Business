@@ -207,8 +207,9 @@ flowroute:
 # Independent HTTP callback stack for inbound Flowroute messages. It shares
 # AVoIP's global PostgreSQL identity but does not require FreeSWITCH.
 flowrouteSMS:
-  # Enable only after the callback token, image digest, and public hostname
-  # have been provisioned. The service is owned by primaryRegion only.
+  # Enable per site after its callback token, image digest, public hostnames,
+  # and PostgreSQL connection path have been provisioned. Secondary sites
+  # must override the default public SMS and media hostnames.
   enabled: true
   replicas: 2
   hostname: 'sms.resolvemy.host'
@@ -244,6 +245,10 @@ flowrouteSMS:
   databaseSecret:
     name: ''
     key: 'psqlURI'
+  # Optional host published in the site's User connection URI. A site-local
+  # PGPool can front the global PostgreSQL database without creating a new
+  # database identity. Use a DNS name covered by PGPool's serving certificate.
+  databaseHost: ''
   legacyFlowroute:
     enabled: true
   # Metadata only; credentials are references to existing Secrets.

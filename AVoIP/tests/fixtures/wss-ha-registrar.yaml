@@ -7,6 +7,14 @@ freeswitch:
   enabled: true
   sipCore:
     allowCryptoInAvp: true
+  interSite:
+    enabled: true
+    peerName: 'yxl'
+    extension: '7101'
+    ivrExtension: '7102'
+  ivr:
+    enabled: true
+    extensions: ['7101', '9090', '66']
 avoipAdmin:
   enabled: true
   routing:
@@ -23,6 +31,7 @@ asterisk:
     kamailioInstance: 'internal'
     ingressKamailioInstance: 'internal-wss'
     hostname: 'sipcore.mylogin.space'
+    inboundVoiceExtension: '7101'
     allowedOrigins: ['https://home.mylogin.space']
     tls:
       ingressKamailioInstance: 'internal-wss'

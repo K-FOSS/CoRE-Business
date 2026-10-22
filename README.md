@@ -13,8 +13,9 @@ DTMF delivery to Asterisk, the separate RTPEngine trickle ICE path, and safe
 live verification of voicemail navigation and ACK routing.
 The [Flowroute SMS messaging stack](AVoIP/docs/FLOWROUTE-SMS.md) provides a
 responsive conversation inbox, authenticated send API, and independent inbound
-webhook. Its three workloads use the shared PostgreSQL service on the YVR
-primary cluster.
+webhook. YVR uses the global PostgreSQL service; the YXL desired state adds a
+separate SMS stack using its site-local PGPool frontend to the global database
+cluster, with distinct public hostnames. YXL rollout remains to be verified.
 AVoIP's Authentik admin group desired state declares the `voip@` aliases on
 `snd.fyi`, `resolvemy.host` and `writemy.codes` through its LDAP group
 attributes while retaining shared SMS number assignments.
@@ -268,6 +269,7 @@ Where documentation and manifests differ, the manifests, owning Backplane
 ApplicationSet and observed controller state are authoritative.
 
 AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
-SMS hosted in YVR and managed SIP routing enabled. DNS-only admin aliases
-use the existing site HTTPS gateway names; the routes require Authentik. See
+SMS running in YVR and selected for YXL rollout, and managed SIP routing
+enabled. DNS-only admin aliases use the existing site HTTPS gateway names;
+the routes require Authentik. See
 [deployment and rollback](AVoIP/docs/ADMIN.md).

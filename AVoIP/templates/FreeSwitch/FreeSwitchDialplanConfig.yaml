@@ -2,6 +2,12 @@
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $voicemailEnabled := or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled -}}
 {{- $voicemailAccessCode := default .Values.freeswitch.voicemail.accessCode .Values.asterisk.voicemail.accessCode -}}
+{{- $registeredExtensions := dict -}}
+{{- if eq .Values.asterisk.sipCore.registrarBackend "kamailio" }}
+{{- range .Values.asterisk.sipCore.extensions }}
+{{- $_ := set $registeredExtensions (toString .number) true -}}
+{{- end }}
+{{- end }}
 {{- if and .Values.freeswitch.fax.enabled (le (int .Values.freeswitch.fax.t38.rxReinvitePacketCount) 0) }}
 {{- fail "freeswitch.fax.t38.rxReinvitePacketCount must be greater than zero" }}
 {{- end }}
@@ -143,10 +149,18 @@ data:
         <extension name="authorized-inter-site-extension">
           <condition field="destination_number" expression="^{{ $.Values.freeswitch.interSite.extension }}$"/>
           <condition field="${sip_h_X-Core-InterSite}" expression="^{{ $.Values.freeswitch.interSite.peerName }}$">
+            {{- if hasKey $registeredExtensions (toString $.Values.freeswitch.interSite.extension) }}
+            <action application="log" data="INFO AVoIP authorized inter-site transfer peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number} uuid=${uuid} call_id=${sip_call_id} backend=sipcore-registrar"/>
+            {{- else }}
             <action application="log" data="INFO AVoIP authorized inter-site transfer peer={{ $.Values.freeswitch.interSite.peerName }} extension=${destination_number} uuid=${uuid} call_id=${sip_call_id} backend=asterisk"/>
+            {{- end }}
             <action application="ring_ready"/>
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
+            {{- if hasKey $registeredExtensions (toString $.Values.freeswitch.interSite.extension) }}
+            <action application="bridge" data="sofia/gateway/sipcore-registrar/${destination_number}"/>
+            {{- else }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
+            {{- end }}
             {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
           </condition>
         </extension>
@@ -292,6 +306,17 @@ data:
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/asterisk/${destination_number}"/>
             <action application="hangup" data="NORMAL_CLEARING"/>
+            {{- else if and (eq $.Values.asterisk.sipCore.registrarBackend "kamailio") (eq (toString .) (toString $.Values.asterisk.sipCore.echoExtension)) }}
+            <action application="log" data="INFO AVoIP IVR answering local echo extension=${destination_number} caller=${caller_id_number}"/>
+            <action application="answer"/>
+            <action application="echo"/>
+            {{- else if hasKey $registeredExtensions (toString .) }}
+            <action application="log" data="INFO AVoIP IVR ringing registered extension=${destination_number} caller=${caller_id_number} backend=sipcore-registrar"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
+            <action application="bridge" data="sofia/gateway/sipcore-registrar/${destination_number}"/>
+            {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
+            <action application="hangup"/>
             {{- else }}
             <action application="log" data="INFO AVoIP IVR forwarding caller=${caller_id_number} to local Asterisk destination=${destination_number}"/>
             <action application="set" data="hangup_after_bridge=true"/>

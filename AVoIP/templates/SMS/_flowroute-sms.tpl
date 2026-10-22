@@ -2,7 +2,12 @@
 {{- if .Values.flowrouteSMS.enabled -}}
 {{- $settings := .Values.flowrouteSMS -}}
 {{- if ne .Values.region $settings.primaryRegion -}}
-  {{- fail (printf "flowrouteSMS may only run in primaryRegion %q" $settings.primaryRegion) -}}
+  {{- if eq $settings.hostname "sms.resolvemy.host" -}}
+    {{- fail "flowrouteSMS.hostname must be site-specific outside the primary region" -}}
+  {{- end -}}
+  {{- if and $settings.media.enabled (eq $settings.media.hostname "sms-media.resolvemy.host") -}}
+    {{- fail "flowrouteSMS.media.hostname must be site-specific outside the primary region" -}}
+  {{- end -}}
 {{- end -}}
 {{- $_ := required "flowrouteSMS.hostname is required" $settings.hostname -}}
 {{- $fullName := include "avoip.fullname" . -}}

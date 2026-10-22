@@ -132,9 +132,11 @@ INVITEs, stores per-pod Contact Paths, and forwards calls to FreeSWITCH.
 FreeSWITCH and AVoIP Admin retain outbound routing and policy and deliver
 inbound extensions through the `sipcore-registrar` gateway. The switch omits
 7101's Asterisk PJSIP auth/AOR/endpoint and temporarily disables the 1234
-callback; Asterisk voicemail remains configured. The current
+callback; Asterisk voicemail remains configured. The YVR IVR's configured
+7101 selection and authenticated YXL-to-YVR 7101 handoff also use this
+gateway, while the IVR's 9090 echo is local to FreeSWITCH. The current
 [YVR ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
-has not yet enabled this backend. Reverting the switch restores Asterisk's
+selects this backend. Reverting the switch restores Asterisk's
 endpoint, but active registrations must re-register because the two registrar
 databases do not share Contact state.
 
@@ -529,12 +531,17 @@ Composition generates that service identity and provisions it through the
 global PostgreSQL providers `psql` and `psql-main`; its connection Secret is
 used by the standalone SMS persistence service. The same claim is retained
 while the legacy `freeswitch.sms.enabled` path remains active.
+The YXL overlay uses its existing site-specific claim and publishes the local
+PGPool hostname through `flowrouteSMS.databaseHost`; this changes only the
+connection URI, not the global PostgreSQL provider or database identity.
 
-The [Flowroute SMS messaging stack](docs/FLOWROUTE-SMS.md) now runs separate
-web, API, and webhook Deployments and Services in `core-prod` on the primary
-YVR cluster. The web route serves the responsive conversation UI, the API
-checks Authentik number entitlements for reads and sends, and the public
-`/flowroute/` route remains callback-token protected. The API receives Flowroute
+The [Flowroute SMS messaging stack](docs/FLOWROUTE-SMS.md) runs separate
+web, API, and webhook Deployments and Services in `core-prod` on YVR. The
+YXL ApplicationSet overlay now selects a second, separately named stack;
+its live reconciliation and database readiness still need verification. The
+web route serves the responsive conversation UI, the API
+checks Authentik number entitlements for reads and sends, and YVR's public
+`/flowroute/` route remains callback-token protected. The YVR API receives Flowroute
 send keys from an ExternalSecret backed by the existing SMS Vault record.
 Twilio provider accounts can also send MMS from the inbox using uploaded image
 files. Files are stored in the site-local S3 bucket and exposed to Twilio only
@@ -963,6 +970,7 @@ for this workflow: [User platform APIs](https://slop.writemy.codes/CoRE/CoRE-Bac
   and [Nextcloud Talk quick install and administration settings](https://nextcloud-talk.readthedocs.io/en/latest/quick-install/)
 
 AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
-SMS hosted in YVR and managed SIP routing enabled. DNS-only admin aliases
-use the existing site HTTPS gateway names; the routes require Authentik. See
+SMS running in YVR and selected for YXL rollout, and managed SIP routing
+enabled. DNS-only admin aliases use the existing site HTTPS gateway names;
+the routes require Authentik. See
 [deployment and rollback](docs/ADMIN.md).

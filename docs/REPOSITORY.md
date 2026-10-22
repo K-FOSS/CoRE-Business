@@ -144,11 +144,14 @@ connection or resource identity.
 AVoIP's [Flowroute SMS stack](../AVoIP/docs/FLOWROUTE-SMS.md) has separate web,
 API, and webhook workloads. The webhook stores inbound message records in its
 `CoRE-Voice` User claim database. Its two-or-more stateless replicas deduplicate
-Flowroute retries by message ID. The public callback route is owned by the YVR primary region and requires
-a provisioned callback token and immutable webhook image digest. The protected
+Flowroute retries by message ID. YVR's public callback route requires
+a provisioned callback token and immutable webhook image digest. YXL's
+desired SMS stack uses separate public hostnames and does not enable the
+legacy Flowroute callback. The protected
 API uses the same PostgreSQL records for conversations and sends through
 Flowroute with separate Vault sourced credentials. The service uses the
-current global PSQL provider through the
+current global PSQL provider; YXL's User connection URI instead targets its
+site-local PGPool frontend to that global cluster. These layers are owned by the
 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml),
 [PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml),
 and [User implementation](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User).
@@ -517,6 +520,7 @@ Removal requires checking external resources and orphan/deletion policies; delet
 a claim does not establish that its data or grants were removed.
 
 AVoIP administration is enabled by the Backplane owner on YVR and YXL, with
-SMS hosted in YVR and managed SIP routing enabled. DNS-only admin aliases
-use the existing site HTTPS gateway names; the routes require Authentik. See
+SMS running in YVR and selected for YXL rollout, and managed SIP routing
+enabled. DNS-only admin aliases use the existing site HTTPS gateway names;
+the routes require Authentik. See
 [deployment and rollback](../AVoIP/docs/ADMIN.md).

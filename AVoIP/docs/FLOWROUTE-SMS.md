@@ -34,15 +34,20 @@ receive callbacks.
 
 ## Deployment inputs
 
-The checked-in values enable `flowrouteSMS` for its configured primary region
-(YVR). Enabling it renders separate web, API, and webhook Deployments and Services,
+The checked-in values enable `flowrouteSMS` for YVR. The
+[AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+also selects YXL with distinct `sms-yxl.mylogin.space` and
+`sms-media-yxl.mylogin.space` hostnames; this remains pending live reconciliation.
+Enabling it renders separate web, API, and webhook Deployments and Services,
 each with at least two replicas. The public Gateway API HTTPRoute sends only
 `/flowroute/` to the webhook; the Authentik protected route sends `/inbox` and
 `/assets/` to the web UI and `/api/` and `/media/` to the API. The
-primary-region guard prevents multiple ApplicationSet targets from claiming
-the same public hostname. Each pinned image is published by the
+secondary-site hostname checks prevent the default YVR SMS and media names
+from being claimed by another site. YXL disables the legacy Flowroute receiver
+and does not receive YVR's callback token; provider callbacks must be configured
+explicitly for its own hostname. Each pinned image is published by the
 [Forgejo image workflow](../../.forgejo/workflows/flowroute-sms.yaml).
-The three images are built from the Go source in [`image/flowroute-sms`](../image/flowroute-sms/)
+The images are built from the Go source in [`image/flowroute-sms`](../image/flowroute-sms/)
 with the pinned Go 1.27.2 builder image.
 The web image serves self-hosted [Roboto](https://fonts.google.com/specimen/Roboto)
 under the bundled Open Font License; it does not call a third-party font CDN.
@@ -72,8 +77,17 @@ unauthorized image remains `404`, making storage failures distinguishable from
 missing media.
 
 The database credential is read from the `psqlURI` key in the `CoRE-Voice`
-connection Secret. Messages are stored in `public.flowroute_inbound_messages`;
-new MMS image attachments are stored in the site-local S3 bucket as objects
+connection Secret. YXL's existing site-specific `User` claim continues to
+provision its own database and service identity with the global PostgreSQL
+providers, but `flowrouteSMS.databaseHost` publishes the site-local
+`psql.core-dc1-talos-prod.dc1.yxl.mylogin.space` PGPool endpoint in its
+connection URI. That DNS name resolves to YXL's local `psql` Service, fronts
+the shared global PostgreSQL cluster, and is covered by YXL's serving
+certificate. It does not merge YXL and YVR message histories. Check the
+[PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
+and the [User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+before changing this path. Messages are stored in `public.flowroute_inbound_messages`;
+new MMS image attachments are stored as S3 objects
 under `sms-media/inbound/`, with object keys and metadata in
 `public.flowroute_inbound_media`. Legacy PostgreSQL `bytea` rows remain
 readable during migration. The receiver fetches only HTTPS signed media URLs
@@ -82,7 +96,8 @@ from Flowroute's documented media host
 (`s3.us-west-2.amazonaws.com`), accepts
 image MIME types, limits attachments to ten per message and 750 KiB total, and
 commits message and media metadata together. Flowroute's signed download links
-expire, so attachments are copied into site-local S3 on receipt. Twilio's API
+expire, so attachments are copied into the configured S3 bucket on receipt.
+YVR uses its local TenantLab bucket; YXL uses the peered YVR bucket. Twilio's API
 redirects are followed only over HTTPS to approved Twilio/S3 media hosts, and
 credentials are not forwarded to the redirected host. See the
 [Flowroute inbound MMS callback format](https://developer.flowroute.com/api/messages/v2.2/receive-an-mms/).
@@ -175,7 +190,9 @@ The Go unit tests cover current and legacy payload decoding, MMS metadata, and
 callback-token path matching. The container build runs the tests before
 compiling a static, non-root binary. The SMS renderer checks confirm that
 disabling the receiver omits its resources, enabling it renders the standalone
-workload and public callback route, and a non-primary region cannot claim it.
+workload and public callback route, and a secondary site must use separate
+public hostnames and can publish a local PGPool hostname without changing the
+global PostgreSQL providers.
 The inbox renderer checks confirm its Authentik policy, number mapping and
 non-public route.
 

@@ -72,12 +72,36 @@ if helm template flowroute-invalid "$repo_root/AVoIP" --namespace core-prod \
   --set datacenter=dc1 \
   --set region=yxl \
   --set flowrouteSMS.enabled=true \
-  --set flowrouteSMS.hostname=sms.mylogin.space \
   --set flowrouteSMS.image.repository=forge.example/core/flowroute-sms \
   --set flowrouteSMS.image.digest=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --set flowrouteSMS.callbackSecret.name=flowroute-invalid-avoip-sms-callback \
   >"$tmp_dir/non-primary.yaml" 2>&1; then
-  echo 'Flowroute SMS should render only in its configured primary region' >&2
+  echo 'Secondary-site SMS must not claim the default primary hostname' >&2
+  exit 1
+fi
+
+helm template flowroute-yxl "$repo_root/AVoIP" --namespace core-prod \
+  --set cluster.name=core-dc1-talos-prod \
+  --set datacenter=dc1 \
+  --set region=yxl \
+  --set freeswitch.enabled=false \
+  --set flowrouteSMS.enabled=true \
+  --set flowrouteSMS.hostname=sms-yxl.mylogin.space \
+  --set flowrouteSMS.media.hostname=sms-media-yxl.mylogin.space \
+  --set flowrouteSMS.media.endpoint=https://s3.core-home1-talos-prod.home1.yvr.mylogin.space \
+  --set flowrouteSMS.media.existingCredentials=true \
+  --set flowrouteSMS.media.credentialsSecretName=core-dc1-talos-prod-core-storage-s3-tenant-prod-core-home1-talos-prod-providercreds \
+  --set flowrouteSMS.media.accessKeyKey=AWS_ACCESS_KEY_ID \
+  --set flowrouteSMS.media.secretKeyKey=AWS_SECRET_ACCESS_KEY \
+  --set flowrouteSMS.databaseHost=psql.core-dc1-talos-prod.dc1.yxl.mylogin.space \
+  --set flowrouteSMS.legacyFlowroute.enabled=false \
+  >"$tmp_dir/yxl.yaml"
+yq -e 'select(.kind == "User" and .metadata.name == "core-voice-core-dc1-talos-prod-yxl") | .spec.psql.hostname == "psql.core-dc1-talos-prod.dc1.yxl.mylogin.space" and .spec.psql.crossplane.terraformProvider == "psql" and .spec.psql.crossplane.crossplaneProvider == "psql-main"' "$tmp_dir/yxl.yaml" >/dev/null
+yq -e 'select(.kind == "User" and .metadata.name == "core-voice-core-dc1-talos-prod-yxl") | .spec | has("s3") | not' "$tmp_dir/yxl.yaml" >/dev/null
+yq -e 'select(.kind == "HTTPRoute" and (.metadata.name | contains("flowroute-sms-media"))) | .spec.hostnames == ["sms-media-yxl.mylogin.space"]' "$tmp_dir/yxl.yaml" >/dev/null
+yq -e 'select(.kind == "HTTPRoute" and (.metadata.name | contains("flowroute-sms")) and (.metadata.name | contains("media") | not) and (.metadata.name | contains("inbox") | not)) | .spec.hostnames == ["sms-yxl.mylogin.space"]' "$tmp_dir/yxl.yaml" >/dev/null
+if grep -Fq 'FLOWROUTE_CALLBACK_TOKEN' "$tmp_dir/yxl.yaml"; then
+  echo 'YXL must not receive the YVR legacy Flowroute callback token' >&2
   exit 1
 fi
 

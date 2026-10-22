@@ -12,6 +12,11 @@ spec:
   serviceAccount: true
   psql:
     enabled: true
+    {{- if .Values.flowrouteSMS.databaseHost }}
+    # The service identity and database remain on global PostgreSQL. Only
+    # the published connection URI selects this site's local PGPool frontend.
+    hostname: '{{ .Values.flowrouteSMS.databaseHost }}'
+    {{- end }}
     crossplane:
       # Global PostgreSQL resources are reconciled through the Backplane
       # provider pair; the claim intentionally omits spec.username so the
