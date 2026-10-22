@@ -16,8 +16,9 @@ This chart's default workload is [Firefly III](https://www.firefly-iii.org/), a
 self-hosted personal finance manager, with the
 [BJW-S Common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 It serves `firefly.mylogin.space` through a Gateway API HTTPRoute and uses the
-upstream Firefly III container image at version `6.6.6`. Access is protected by
-Authentik forward authentication.
+upstream Firefly III container image at version `6.7.9`, pinned to its
+multi-platform Docker Hub manifest digest. Access is protected by Authentik
+forward authentication.
 
 Authentication is intended to be seamless: Envoy sends the request to the
 site Authentik outpost, the outpost returns the authenticated user's email,

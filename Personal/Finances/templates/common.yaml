@@ -420,6 +420,8 @@ route:
 {{- $_ := required "firefly.database.crossplane.terraformProvider must be injected by the owning ApplicationSet" .Values.firefly.database.crossplane.terraformProvider -}}
 {{- $_ := set .Values.controllers.app.containers.firefly.image "tag" .Values.firefly.imageTag -}}
 {{- $_ := set .Values.controllers.scheduler.containers.scheduler.image "tag" .Values.firefly.imageTag -}}
+{{- $_ := set .Values.controllers.app.containers.firefly.image "digest" .Values.firefly.imageDigest -}}
+{{- $_ := set .Values.controllers.scheduler.containers.scheduler.image "digest" .Values.firefly.imageDigest -}}
 {{- $dbPassword := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.database.userSecret "key" .Values.firefly.database.passwordKey)) -}}
 {{- $dbUsername := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.database.userSecret "key" .Values.firefly.database.usernameKey)) -}}
 {{- $appKeySecret := dict "valueFrom" (dict "secretKeyRef" (dict "name" .Values.firefly.appKeySecret "key" "APP_KEY")) -}}
