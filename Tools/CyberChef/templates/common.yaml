@@ -130,11 +130,11 @@ route:
         sectionName: {{ .Values.gateway.sectionName | quote }}
 
     hostnames:
-      {{- range .Values.cyberchef.domains }}
-      - {{ . | quote }}
+      {{- range $domain := .Values.cyberchef.domains }}
+      - {{ $domain | quote }}
+      {{- if $.Values.k8gb.enabled }}
+      - {{ printf "%s.%s" (first (splitList "." $domain)) (join "." (rest (splitList "." $.Values.k8gb.domain))) | quote }}
       {{- end }}
-      {{- if .Values.k8gb.enabled }}
-      - {{ .Values.k8gb.domain | quote }}
       {{- end }}
 
     rules:
