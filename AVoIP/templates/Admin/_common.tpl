@@ -25,6 +25,7 @@
 {{- fail "avoipAdmin.bridgedCalls timeout, duration, horizon, or concurrency setting is outside its allowed range" }}
 {{- end }}
 {{- $dbName := printf "%s-admin-connection" (include "avoip.fullname" .) -}}
+{{- $sipCoreRegistrarGateway := ternary "sipcore-registrar" "" (eq .Values.asterisk.sipCore.registrarBackend "kamailio") -}}
 controllers:
   avoip-admin:
     forceRename: '{{ include "avoip.fullname" . }}-admin'
@@ -69,6 +70,10 @@ controllers:
           {{ end }}
           - name: 'AVOIP_ROUTING_ENABLED'
             value: '{{ $settings.routing.enabled }}'
+          {{- if $sipCoreRegistrarGateway }}
+          - name: 'AVOIP_SIPCORE_REGISTRAR_GATEWAY'
+            value: '{{ $sipCoreRegistrarGateway }}'
+          {{- end }}
           {{ if and .Values.flowrouteSMS.enabled .Values.flowrouteSMS.legacyFlowroute.enabled }}
           - name: 'FLOWROUTE_SMS_ACCESS_KEY'
             valueFrom:

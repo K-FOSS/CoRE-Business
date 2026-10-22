@@ -182,7 +182,9 @@ data:
     loadmodule "auth_db.so"
     loadmodule "usrloc.so"
     loadmodule "registrar.so"
+    {{- if not $sipCoreEnabled }}
     loadmodule "nathelper.so"
+    {{- end }}
     modparam("auth_db", "db_url", REGISTRAR_DB_URL)
     modparam("auth_db", "use_domain", 1)
     modparam("auth_db", "calculate_ha1", 0)

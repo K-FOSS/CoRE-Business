@@ -504,6 +504,30 @@ func TestFreeSwitchDynamicRoutePreservesFullPlusOneDestination(t *testing.T) {
 	}
 }
 
+func TestFreeSwitchInboundExtensionUsesRegistrarGatewayWhenEnabled(t *testing.T) {
+	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
+	t.Setenv("AVOIP_SITE", "yvr")
+	t.Setenv("AVOIP_SIPCORE_REGISTRAR_GATEWAY", "sipcore-registrar")
+	s := &server{}
+	s.cacheCatalog(fixtureCatalog())
+	form := url.Values{
+		"Caller-Context":                     {"core-managed-inbound"},
+		"Caller-Destination-Number":          {"+12065550100"},
+		"variable_sip_h_X-Core-Original-DID": {"+12065550100"},
+	}
+	r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.SetBasicAuth("routing", os.Getenv("AVOIP_ROUTING_TOKEN"))
+	w := httptest.NewRecorder()
+	s.freeSwitchRoute(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("FreeSWITCH dialplan status %d: %s", w.Code, w.Body.String())
+	}
+	if got := freeSwitchActionData(t, w.Body.String(), "bridge"); got != "sofia/gateway/sipcore-registrar/7101" {
+		t.Fatalf("inbound extension did not use the HA registrar gateway: %s", w.Body.String())
+	}
+}
+
 func TestExtensionOutboundEnablement(t *testing.T) {
 	legacy := extensionRoute{Extension: "7101", CallerID: "+12065550100", Provider: "carrier", Site: "yvr"}
 	if !legacy.outboundAllowed() || legacy.outboundDisabledReason() != "" {

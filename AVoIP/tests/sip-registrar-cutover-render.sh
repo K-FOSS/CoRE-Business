@@ -34,7 +34,7 @@ yq -e 'select(.kind == "CronJob" and .metadata.name == "core-home1-talos-prod-av
 
 internal_config="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$rendered")"
 grep -Fq 'loadmodule "auth_db.so"' <<<"$internal_config"
-grep -Fq 'if (($var(side) == "sipcore" && $proto != "tls") ||' <<<"$internal_config"
+grep -Fq '($proto == "tls" && $Rp ==' <<<"$internal_config"
 grep -Fq 'www_authorize("sipcore.mylogin.space", "active_subscriber")' <<<"$internal_config"
 grep -Fq 'proxy_authorize("sipcore.mylogin.space", "active_subscriber")' <<<"$internal_config"
 ! grep -Fq 'SIP_PASSWORD=' <<<"$rendered"

@@ -115,6 +115,21 @@ without enabling SIP registration; live provisioning is pending reconciliation. 
 for ordering, access boundaries, and the separate prerequisites for enabling
 REGISTER handling.
 
+The chart also supports an opt-in HA cutover with
+`asterisk.sipCore.registrarBackend: 'kamailio'`. It requires the same
+three-replica `websocketHA` instance for WSS and TLS, a dedicated PostgreSQL
+`User` claim and connection Secret, a Vault-backed credential-sync CronJob,
+and a FreeSWITCH mTLS peer. That instance authenticates REGISTER and client
+INVITEs, stores per-pod Contact Paths, and forwards calls to FreeSWITCH.
+FreeSWITCH and AVoIP Admin retain outbound routing and policy and deliver
+inbound extensions through the `sipcore-registrar` gateway. The switch omits
+7101's Asterisk PJSIP auth/AOR/endpoint and temporarily disables the 1234
+callback; Asterisk voicemail remains configured. The current
+[YVR ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+has not yet enabled this backend. Reverting the switch restores Asterisk's
+endpoint, but active registrations must re-register because the two registrar
+databases do not share Contact state.
+
 YXL's and YVR's `internal` and `carrier` Kamailio instances are configured
 for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`

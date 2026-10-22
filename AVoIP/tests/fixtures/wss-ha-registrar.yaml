@@ -1,0 +1,101 @@
+cluster:
+  name: 'core-home1-talos-prod'
+  domain: 'k8s.home1.resolvemy.host'
+datacenter: 'home1'
+region: 'yvr'
+freeswitch:
+  enabled: true
+avoipAdmin:
+  enabled: true
+  routing:
+    enabled: true
+sip:
+  tls:
+    issuerName: 'kjdev-cluster'
+asterisk:
+  sipCore:
+    enabled: true
+    registrarBackend: 'kamailio'
+    externalCallback:
+      enabled: false
+    kamailioInstance: 'internal'
+    ingressKamailioInstance: 'internal-wss'
+    hostname: 'sipcore.mylogin.space'
+    allowedOrigins: ['https://home.mylogin.space']
+    tls:
+      ingressKamailioInstance: 'internal-wss'
+    extensions:
+      - number: '7101'
+        secret:
+          remoteKey: 'AVoIP/SIPCore/YVR/Home1/7101'
+          property: 'Password'
+        allowCallsTo: ['9090', '66']
+kamailio:
+  instances:
+    - name: 'carrier'
+      enabled: true
+      role: 'carrier-sbc'
+      replicas: 3
+      carrierOutbound:
+        enabled: true
+        clientIdentity:
+          enabled: true
+          issuerName: 'kjdev-cluster'
+        peer:
+          secretName: 'flowroute-ca'
+          cidr: '192.0.2.0/24'
+          sanHostname: 'flowroute.test'
+          serviceHost: 'flowroute.test'
+          controller: 'flowroute'
+        gatewayServiceHost: 'gateway.test'
+    - name: 'internal'
+      enabled: true
+      role: 'private-sbc'
+      replicas: 1
+      registrar:
+        database:
+          enabled: true
+          host: 'postgres.test'
+          username: 'kamailio-test'
+          secretName: 'kamailio-test-registrar-db'
+      topology:
+        redis:
+          database: 52
+          secretName: 'avoip-kamailio-internal-topos'
+    - name: 'internal-wss'
+      enabled: true
+      role: 'private-sbc'
+      replicas: 3
+      websocketHA:
+        enabled: true
+      sipLogging:
+        rawInbound: false
+        postToposResponses: false
+        carrierTraffic: false
+        diagnostics:
+          enabled: false
+          sdp: false
+      privateRouting:
+        peers:
+          - name: 'freeswitch-registrar'
+            controller: 'freeswitch'
+            cidr: '192.0.2.0/24'
+            sanHostname: 'freeswitch.test'
+      registrar:
+        enabled: true
+        realm: 'sipcore.mylogin.space'
+        accessPeerName: 'freeswitch-registrar'
+        inboundPeerName: 'freeswitch-registrar'
+        allowedUsers: ['7101']
+        maxContacts: 8
+        credentialSync:
+          enabled: true
+        database:
+          enabled: true
+          host: 'postgres.test'
+          username: 'kamailio-test-wss'
+          secretName: 'kamailio-test-wss-db'
+      topology:
+        redis:
+          database: 53
+          secretName: 'avoip-kamailio-internal-wss-topos'

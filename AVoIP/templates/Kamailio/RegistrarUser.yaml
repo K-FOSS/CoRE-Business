@@ -25,5 +25,5 @@ spec:
       crossplaneProvider: '{{ default (printf "psql-%s-%s" $root.Values.datacenter $root.Values.region) $database.crossplaneProvider }}'
   writeConnectionSecretToRef:
     name: '{{ $database.secretName }}'
-{{- end -}}
-{{- end -}}
+{{ end }}
+{{ end }}

@@ -436,6 +436,7 @@ kamailio:
         enabled: false
         realm: ''
         accessPeerName: ''
+        inboundPeerName: ''
         allowedUsers: []
         database:
           enabled: false
@@ -626,6 +627,7 @@ kamailio:
       enabled: false
       realm: ''
       accessPeerName: ''
+      inboundPeerName: ''
       allowedUsers: []
       database:
         enabled: false
@@ -973,6 +975,9 @@ asterisk:
     # Enables the SIP Core browser client path through the existing HTTPS
     # Gateway. It does not enable PSTN dialing or create public RTP exposure.
     enabled: false
+    # Switches registration and extension call delivery together. Keep the
+    # Vault password reference in extensions for the Kamailio HA1 reconciler.
+    registrarBackend: 'asterisk'
     # Route SIP Core WebSocket signaling through this dedicated private SBC.
     # The selected instance must be enabled with role private-sbc.
     kamailioInstance: 'internal'

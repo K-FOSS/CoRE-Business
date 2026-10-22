@@ -128,6 +128,21 @@ data:
   {{- end }}
   kamailio.xml: |
     <profile name="kamailio">
+      {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) }}
+      {{- if and $instance.enabled $instance.websocketHA.enabled $instance.registrar.enabled }}
+      <gateways>
+        <gateway name="sipcore-registrar">
+          <param name="username" value="freeswitch"/>
+          <param name="from-user" value="freeswitch"/>
+          <param name="realm" value="{{ $instance.registrar.realm }}"/>
+          <param name="from-domain" value="{{ $instance.registrar.realm }}"/>
+          <param name="proxy" value="{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance) }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:5062;transport=tls"/>
+          <param name="register-transport" value="tls"/>
+          <param name="register" value="false"/>
+        </gateway>
+      </gateways>
+      {{- end }}
+      {{- end }}
       <settings>
         <param name="debug" value="{{ $.Values.freeswitch.sipLogging.sofiaDebug }}"/>
         <param name="sip-port" value="5060"/>

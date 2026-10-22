@@ -191,6 +191,37 @@
       }
 
       {{- if .Values.kamailio.registrar.enabled }}
+      {{- if .Values.kamailio.registrar.inboundPeerName }}
+      # This mTLS peer is FreeSWITCH call control. It chooses which DID maps
+      # to an extension; Kamailio only resolves that extension's live contact.
+      if ($var(peer_name) == "{{ .Values.kamailio.registrar.inboundPeerName }}") {
+        $var(registered_destination) = 0;
+        {{- range .Values.kamailio.registrar.allowedUsers }}
+        if ($rU == "{{ . }}") $var(registered_destination) = 1;
+        {{- end }}
+        if ($var(registered_destination) != 1 ||
+            ($(ru{uri.host}) != "{{ .Values.kamailio.registrar.realm }}" &&
+             $(ru{uri.host}) != "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" (include "avoip.kamailio.component" .Values.kamailio)) }}")) {
+          sl_send_reply("403", "Destination Not Authorized");
+          exit;
+        }
+        # Sofia's non-registering gateway may place the proxy service host
+        # in the Request-URI. Normalize to the registrar's AoR domain before
+        # the domain-aware subscriber and location lookups.
+        $ru = "sip:" + $rU + "@{{ .Values.kamailio.registrar.realm }}";
+        if (!is_subscriber("$ru", "active_subscriber", "3")) {
+          sl_send_reply("404", "User Not Available");
+          exit;
+        }
+        if (!lookup("location")) {
+          sl_send_reply("404", "User Not Registered");
+          exit;
+        }
+        record_route();
+        route(PRIVATE_RELAY);
+        exit;
+      }
+      {{- end }}
       if ($var(peer_name) == "{{ .Values.kamailio.registrar.accessPeerName }}") {
         route(PRIVATE_AUTH_DEVICE);
         if ($var(auth_device) != 1) exit;
@@ -368,6 +399,27 @@
         {{- end }}
       }
 
+      {{- if .Values.kamailio.registrar.enabled }}
+      # The frontend terminates registration on its flow-owning pod. Never
+      # forward credentials or Contact state to the legacy Asterisk registrar.
+      if (is_method("REGISTER")) {
+        route(PRIVATE_REGISTER);
+        exit;
+      }
+      if (!has_totag() && !is_method("INVITE|OPTIONS|ACK|CANCEL")) {
+        sl_send_reply("405", "Method Not Allowed");
+        exit;
+      }
+      if (!has_totag() && is_method("INVITE")) {
+        route(PRIVATE_AUTH_DEVICE);
+        if ($var(auth_device) != 1) exit;
+        # The identity passed to FreeSWITCH is the Digest username, never a
+        # device-provided policy header or a caller-ID field.
+        remove_hf("X-Core-Extension");
+        append_hf("X-Core-Extension: $au\r\n");
+      }
+      {{- end }}
+
       t_on_reply("SIPCORE_WS_REPLY");
       if (is_method("CANCEL")) {
         rtpengine_manage();
@@ -432,7 +484,7 @@
       } else if (is_method("BYE")) {
         rtpengine_manage();
       }
-      {{- if .Values.kamailio.websocketHA.enabled }}
+      {{- if and .Values.kamailio.websocketHA.enabled (not .Values.kamailio.registrar.enabled) }}
       route(TO_SIPCORE_ASTERISK);
       if (is_method("REGISTER")) {
         # PJSIP_DIAL_CONTACTS() sends the stored Contact URI directly, so a
@@ -463,13 +515,22 @@
         record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
         {{- end }}
       }
-      {{- if not .Values.kamailio.websocketHA.enabled }}
+      {{- if .Values.kamailio.registrar.enabled }}
+      if (!has_totag() && is_method("INVITE")) {
+        $du = "sips:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}:5072;transport=tls";
+        $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
+        set_send_socket_name("private_tls");
+      } else if (!has_totag() && is_method("OPTIONS")) {
+        sl_send_reply("200", "Keepalive");
+        exit;
+      }
+      {{- else }}
       route(TO_SIPCORE_ASTERISK);
       {{- end }}
       {{- if .Values.kamailio.sipLogging.sipCore }}
       xlog(
         "L_WARN",
-        "SIPCORE FLOW stage=forward-to-asterisk pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT\n"
+        "SIPCORE FLOW stage={{ if .Values.kamailio.registrar.enabled }}forward-to-call-control{{ else }}forward-to-asterisk{{ end }} pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT\n"
       );
       {{- end }}
       route(PRIVATE_RELAY);
@@ -948,7 +1009,9 @@
 
     {{- if .Values.kamailio.registrar.enabled }}
     route[PRIVATE_REGISTER] {
-      if (($var(side) == "sipcore" && $proto != "tls") ||
+      if (($var(side) == "sipcore" &&
+           !(($proto == "tls" && $Rp == {{ .Values.asterisk.sipCore.tls.port }}) ||
+             ($proto == "ws" && $Rp == {{ .Values.asterisk.sipCore.httpPort }}))) ||
           ($var(side) != "sipcore" && $var(peer_name) != "{{ .Values.kamailio.registrar.accessPeerName }}") ||
           $tU == $null || $tU != $au && $au != $null ||
           $(tu{uri.host}) != "{{ .Values.kamailio.registrar.realm }}" ||
@@ -972,6 +1035,14 @@
         sl_send_reply("403", "AoR Not Authorized");
         exit;
       }
+      # Never trust a device-supplied Path. DB-only usrloc is shared among HA
+      # pods, but the live TLS/WS connection belongs to this StatefulSet pod.
+      remove_hf("Path");
+      {{- if .Values.kamailio.websocketHA.enabled }}
+      if ($var(side) == "sipcore") {
+        append_hf("Path: <sip:SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr>\r\n");
+      }
+      {{- end }}
       # registrar.save() sends its own 200 or error response.
       save("location");
       exit;

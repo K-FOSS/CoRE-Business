@@ -213,7 +213,8 @@ records the 2026-10-17 CANCEL and FreeSWITCH rejection causes and the
 remaining live call checks. The
 chart's [private Kamailio role](../AVoIP/docs/KAMAILIO-VALUES.md),
 [YXL and YVR carrier mTLS transport and YVR Asterisk NANP outbound calling](../AVoIP/docs/OUTBOUND-PILOT.md) and
-[private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md)
+[private PostgreSQL-backed registrar pilot](../AVoIP/docs/INTERNAL-REGISTRAR.md),
+and the opt-in HA registrar backend in the [AVoIP chart](../AVoIP/README.md)
 are documented separately: YXL and YVR enable the carrier mTLS transport
 while only YVR Asterisk SIP Core account `7101` is configured for general
 standard NANP outbound calls. The desired-state update places regional

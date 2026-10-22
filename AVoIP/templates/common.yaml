@@ -896,7 +896,7 @@ controllers:
         # The credentials are rendered into startup-only files, so include the
         # mounted Secret as well when the generated connection changes.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk-configs,{{ include "avoip.fullname" . }}-asterisk-config-tpl'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }},{{ include "avoip.fullname" . }}-asterisk-voicemail-pin{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }},{{ include "avoip.asterisk.sipCore.kamailioTLSSecret" . }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-asterisk,{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }},{{ include "avoip.fullname" . }}-asterisk-voicemail-pin{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.asterisk.sipCore.enabled }},{{ include "avoip.asterisk.sipCore.kamailioTLSSecret" . }}{{ if ne .Values.asterisk.sipCore.registrarBackend "kamailio" }}{{ range .Values.asterisk.sipCore.extensions }},{{ include "avoip.asterisk.sipCore.secretName" (dict "root" $ "number" .number) }}{{ end }}{{ end }}{{ end }}{{ if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }},{{ .Values.asterisk.turn.secret.name }}{{ end }}'
     initContainers:
       asterisk-timezone:
         image:
@@ -1106,6 +1106,7 @@ controllers:
             {{- end }}
             {{- if .Values.asterisk.sipCore.enabled }}
             : > /tmp/avoip-sipcore-pjsip.conf
+            {{- if ne .Values.asterisk.sipCore.registrarBackend "kamailio" }}
             {{- range .Values.asterisk.sipCore.extensions }}
             sip_password="$(cat /run/avoip/sipcore/{{ .number }}/password)"
             case "$sip_password" in
@@ -1130,6 +1131,7 @@ controllers:
               {{- end }}
             } >> /tmp/avoip-sipcore-pjsip.conf
             unset sip_password
+            {{- end }}
             {{- end }}
             {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
             printf '\n[carrier-outbound]\ntype=aor\ncontact=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\n\n' >> /tmp/avoip-sipcore-pjsip.conf
@@ -2599,7 +2601,7 @@ persistence:
           - path: /run/avoip/turn
             readOnly: true
 {{- end }}
-{{- if .Values.asterisk.sipCore.enabled }}
+{{- if and .Values.asterisk.sipCore.enabled (ne .Values.asterisk.sipCore.registrarBackend "kamailio") }}
 {{- range .Values.asterisk.sipCore.extensions }}
   asterisk-sipcore-{{ .number }}:
     type: secret

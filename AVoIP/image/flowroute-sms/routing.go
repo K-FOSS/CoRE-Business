@@ -1240,7 +1240,11 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 				case "ivr":
 					transfer = "ivr-entry XML ivr"
 				case "extension":
-					bridge = "sofia/gateway/asterisk/" + d.Destination
+					if registrarGateway := strings.TrimSpace(os.Getenv("AVOIP_SIPCORE_REGISTRAR_GATEWAY")); registrarGateway == "sipcore-registrar" {
+						bridge = "sofia/gateway/sipcore-registrar/" + d.Destination
+					} else {
+						bridge = "sofia/gateway/asterisk/" + d.Destination
+					}
 				case "sip":
 					bridge = "sofia/flowroute/" + d.Destination
 				case "did":

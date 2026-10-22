@@ -52,6 +52,26 @@ spec:
               protocol: 'TCP'
     {{- end }}
     {{- end }}
+    {{- if and $instance.registrar.enabled $instance.websocketHA.enabled }}
+    # A DB lookup on any replica follows the stored Path to its flow owner.
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.asterisk.sipCore.privateEgressPort }}'
+              protocol: 'TCP'
+    # FreeSWITCH can return in-dialog requests to this owner listener.
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'freeswitch'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.asterisk.sipCore.privateEgressPort }}'
+              protocol: 'TCP'
+    {{- end }}
     {{- range $peer := $instance.privateRouting.peers }}
     - fromEndpoints:
         - matchLabels:
@@ -81,6 +101,24 @@ spec:
         - ports:
             - port: '{{ $instance.registrar.database.port }}'
               protocol: 'TCP'
+    {{- if $instance.websocketHA.enabled }}
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ $.Values.asterisk.sipCore.privateEgressPort }}'
+              protocol: 'TCP'
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'freeswitch'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '5072'
+              protocol: 'TCP'
+    {{- end }}
     {{- end }}
     {{- if $instance.carrierOutbound.enabled }}
     - toEndpoints:
@@ -195,5 +233,5 @@ spec:
               protocol: 'UDP'
             - port: '53'
               protocol: 'TCP'
-{{- end -}}
-{{- end -}}
+{{ end }}
+{{ end }}

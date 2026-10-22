@@ -9,6 +9,28 @@
 {{- end -}}
 {{- if .Values.asterisk.sipCore.enabled -}}
   {{- $sipExtensions := dict -}}
+  {{- if not (has .Values.asterisk.sipCore.registrarBackend (list "asterisk" "kamailio")) -}}
+    {{- fail "asterisk.sipCore.registrarBackend must be asterisk or kamailio" -}}
+  {{- end -}}
+  {{- if eq .Values.asterisk.sipCore.registrarBackend "kamailio" -}}
+    {{- if or (not .Values.freeswitch.enabled) (not .Values.avoipAdmin.enabled) (not .Values.avoipAdmin.routing.enabled) .Values.asterisk.sipCore.externalCallback.enabled -}}
+      {{- fail "Kamailio SIP Core registration requires FreeSWITCH managed routing and disables the Asterisk callback" -}}
+    {{- end -}}
+    {{- $haRegistrarFound := false -}}
+    {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+      {{- if and $instance.enabled $instance.websocketHA.enabled $instance.registrar.enabled (eq $instance.name $.Values.asterisk.sipCore.ingressKamailioInstance) (eq $instance.name (default $.Values.asterisk.sipCore.ingressKamailioInstance $.Values.asterisk.sipCore.tls.ingressKamailioInstance)) -}}
+        {{- $haRegistrarFound = true -}}
+        {{- range $extension := $.Values.asterisk.sipCore.extensions -}}
+          {{- if not (has (toString $extension.number) $instance.registrar.allowedUsers) -}}
+            {{- fail (printf "Kamailio HA registrar must authorize extension %s" $extension.number) -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if not $haRegistrarFound -}}
+      {{- fail "Kamailio SIP Core registration requires the same enabled HA registrar for WSS and TLS ingress" -}}
+    {{- end -}}
+  {{- end -}}
   {{- if not (include "avoip.rtpengine.enabled" . | trim) -}}
     {{- fail "Asterisk SIP Core requires the existing RTPEngine for WebRTC media" -}}
   {{- end -}}

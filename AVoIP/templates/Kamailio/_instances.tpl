@@ -143,6 +143,18 @@
     {{- if not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.accessPeerName)) -}}
       {{- fail (printf "Kamailio %s registrar requires a dedicated access peer" $name) -}}
     {{- end -}}
+    {{- if and $effective.websocketHA.enabled (or (not $.Values.freeswitch.enabled) (not $.Values.avoipAdmin.routing.enabled) (not (regexMatch "^[a-z][a-z0-9-]*$" (toString $effective.registrar.inboundPeerName)))) -}}
+      {{- fail (printf "Kamailio %s HA registrar requires FreeSWITCH managed routing and an inbound peer name" $name) -}}
+    {{- end -}}
+    {{- if $effective.registrar.inboundPeerName -}}
+      {{- $inboundPeerFound := false -}}
+      {{- range $peer := $effective.privateRouting.peers -}}
+        {{- if and (eq $peer.name $effective.registrar.inboundPeerName) (eq $peer.controller "freeswitch") -}}{{- $inboundPeerFound = true -}}{{- end -}}
+      {{- end -}}
+      {{- if not $inboundPeerFound -}}
+        {{- fail (printf "Kamailio %s registrar inbound peer must identify an explicitly configured FreeSWITCH mTLS peer" $name) -}}
+      {{- end -}}
+    {{- end -}}
     {{- if not $effective.registrar.allowedUsers -}}
       {{- fail (printf "Kamailio %s registrar requires at least one authorized pilot AoR" $name) -}}
     {{- end -}}
@@ -195,8 +207,8 @@
       {{- if or (not $.Values.asterisk.enabled) (not $.Values.asterisk.sipCore.enabled) (and (ne $name $.Values.asterisk.sipCore.kamailioInstance) (ne $name $sipCoreIngressInstance) (not $wssHA.pilot)) -}}
         {{- fail (printf "Kamailio %s websocketHA requires Asterisk SIP Core enabled and selection as the return instance or WSS ingress, unless websocketHA.pilot is enabled" $name) -}}
       {{- end -}}
-      {{- if or $effective.registrar.enabled (not $effective.enabled) -}}
-        {{- fail (printf "Kamailio %s websocketHA requires an enabled private-sbc with the Kamailio registrar pilot disabled" $name) -}}
+      {{- if not $effective.enabled -}}
+        {{- fail (printf "Kamailio %s websocketHA requires an enabled private-sbc" $name) -}}
       {{- end -}}
       {{- $ownerServiceName := include "avoip.kamailio.resourceName" (dict "root" $ "instance" $effective "suffix" "owner") -}}
       {{- $ingressServiceName := include "avoip.kamailio.resourceName" (dict "root" $ "instance" $effective) -}}
