@@ -29,3 +29,13 @@ cyberchef:
     limits:
       cpu: '500m'
       memory: '256Mi'
+
+route:
+  cyberchef:
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/group: 'Tools'
+      forecastle.stakater.com/appName: 'CyberChef'
+    labels:
+      wan-mode: 'public'

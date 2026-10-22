@@ -117,10 +117,13 @@ route:
     kind: HTTPRoute
 
     annotations:
-      forecastle.stakater.com/expose: 'true'
-      forecastle.stakater.com/instance: 'core'
-      forecastle.stakater.com/group: 'Tools'
-      forecastle.stakater.com/appName: 'CyberChef'
+      {{- toYaml .Values.route.cyberchef.annotations | nindent 6 }}
+      {{- if .Values.k8gb.enabled }}
+      external-dns.alpha.kubernetes.io/target: {{ printf "%s.%s" (first (splitList "." (first .Values.cyberchef.domains))) (join "." (rest (splitList "." .Values.k8gb.domain))) | quote }}
+      {{- end }}
+
+    labels:
+      {{- toYaml .Values.route.cyberchef.labels | nindent 6 }}
 
     parentRefs:
       - group: gateway.networking.k8s.io
