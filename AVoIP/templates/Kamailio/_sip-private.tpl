@@ -398,10 +398,12 @@
         # hostname; keep the Contact alias so the owner can find its live WS
         # flow when the INVITE returns. The matching Path remains owner-pod
         # addressed for path-aware AOR requests.
-        if (is_present_hf("Contact") && $hdr(Contact) != "*" &&
-            !subst_hf("Contact", "/@[^;>; ]+;transport=ws/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/ig", "a")) {
-          sl_send_reply("400", "Unsupported WebSocket Contact");
-          exit;
+        if ($proto == "ws") {
+          if (is_present_hf("Contact") && $hdr(Contact) != "*" &&
+              !subst_hf("Contact", "/@[^;>; ]+;transport=ws/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/ig", "a")) {
+            sl_send_reply("400", "Unsupported WebSocket Contact");
+            exit;
+          }
         }
         remove_hf("Path");
         set_send_socket_name("sipcore_owner_tls");
