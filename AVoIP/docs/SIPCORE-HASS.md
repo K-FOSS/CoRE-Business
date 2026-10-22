@@ -56,6 +56,14 @@ dialplan allowlist remain the authorization checks. Configure the SIP address
 as `sips:<extension>@<hostname>`, the registrar as `<hostname>`, and TLS
 transport on port `5061`.
 
+This TLSRoute passes TLS through, so the phone validates the certificate
+presented by Kamailio—not the certificate on `main-gw`. The Kamailio SIP
+certificate includes the SIP Core hostname and is issued using
+`sip.tls.issuerName` (`kjdev-cluster`, the public ACME issuer, by default).
+It must be Ready and chain to a CA trusted by the phone. Do not use the
+separate Vault issuer for Kamailio's carrier mTLS client identity as this
+public server certificate.
+
 The current PJSIP endpoints are generated with Asterisk's `webrtc=yes`
 settings, and Kamailio applies the WebRTC RTPEngine profile to SIP Core SDP.
 Registration over TLS is supported by this route; a native client also needs
