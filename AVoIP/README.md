@@ -6,8 +6,9 @@ Its Extensions screen controls outbound enablement, verified caller ID, provider
 and egress site; disabled decisions are sent to Homer. The SIP users screen
 manages non-secret username-to-extension assignments and registration enablement
 in the PostgreSQL catalog. SIP passwords and Digest verifiers stay outside
-Admin; these records are not yet provisioned to Kamailio or the active
-registration path. Routing activation is independent of UI enablement. Both
+Admin; the YVR desired registrar uses Secret-backed credential sync, whose
+live convergence must be checked separately. Routing activation is independent
+of UI enablement. Both
 interfaces follow the [shared Material Design 2 specification](docs/UI-DESIGN.md).
 
 The optional authenticated [Bridged calls](docs/BRIDGED-CALLS.md) page lets a
@@ -47,15 +48,19 @@ For inbound-call ACKs or remote BYEs rejected after a retransmitted answer,
 see the [SIP Core Contact alias repair](docs/SIPCORE-REMOTE-HANGUP.md). Client
 registrations and initial calls over TLS or WSS force an owner-flow alias even
 when the advertised Contact already matches the private transport source.
+The [native TLS dialog runbook](docs/NATIVE-SIP-TLS.md) records the later
+public-Contact, owner socket and retransmitted-SDP corrections and their
+post-TOPOS/live verification requirements.
 
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the
 [SIP HA integration baseline](docs/SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-09).
 Native SIP clients can also register over TLS through a Gateway `TLSRoute`
 selected by the `sipcore.mylogin.space` SNI. The route shares SIP Core's
-per-extension Digest accounts; current accounts retain their WebRTC media
-requirements. See the [SIP Core client guide](docs/SIPCORE-HASS.md) for
-connection settings and compatibility limits.
+per-extension Digest accounts. Native TLS offers no longer receive the
+browser-only WebRTC media flags. See the [SIP Core client guide](docs/SIPCORE-HASS.md)
+for connection settings and the [TLS runbook](docs/NATIVE-SIP-TLS.md) for
+compatibility and live verification limits.
 The chart supports a separate `internal-wss` Kamailio instance for the opt-in
 three-replica WSS edge. The ordinary `internal` private-SBC remains its own
 one-replica Deployment. Home1's active ApplicationSet uses the instance name

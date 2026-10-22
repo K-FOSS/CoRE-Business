@@ -342,6 +342,9 @@
       }
 
       force_rport();
+      # This marker is only meaningful on the Cilium-restricted owner port.
+      # A public client must never be able to select the owner-forward path.
+      remove_hf("X-Core-Frontend-Owner-Forward");
       # Every front-end registration and initial client dialog must retain the
       # client flow through this Kamailio owner. TLS behind Envoy uses its actual
       # accepted peer tuple; other transports use the received source tuple.
@@ -385,6 +388,9 @@
             sl_send_reply("400", "Bad Contact");
             exit;
           }
+          # Keep the actual accepted socket ID on this owner, separate from
+          # the redis-backed TOPOS dialog. It cannot move to another pod.
+          $sht(sipcore_tls_dialog=>$ci) = $conid;
         } else {
           if (!set_contact_alias("1")) {
             sl_send_reply("400", "Bad Contact");
@@ -433,6 +439,18 @@
         if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
+      {{- if .Values.kamailio.websocketHA.enabled }}
+      if (has_totag() && $du != $null &&
+          $(du{uri.host}) =~ "^{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}-[0-9]+\\." &&
+          $(du{uri.host}) != "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}") {
+        # TOPOS restored the owner RR on a different frontend replica. The
+        # receiving owner resumes normal client-side routing on port 5063.
+        append_hf("X-Core-Frontend-Owner-Forward: 1\r\n");
+        set_send_socket_name("sipcore_owner_tls");
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-owner-hop pod=$env(POD_NAME) callid=$ci method=$rm owner=$dd cseq=$hdr(CSeq)\n");
+        route(PRIVATE_RELAY);
+      }
+      {{- end }}
       route(SIPCORE_CONTENT_TYPE);
       if ($var(sipcore_content_type) == "application/trickle-ice-sdpfrag" && has_body()) {
         if (!is_method("INFO")) {
@@ -464,7 +482,10 @@
           if (!is_method("ACK")) sl_send_reply("488", "Incomplete SDP Offer");
           exit;
         }
-        $var(sipcore_media_flags) = "WebRTC replace-origin external internal address-family=IP4";
+        $var(sipcore_media_flags) = "replace-origin external internal address-family=IP4";
+        # Native TLS phones may offer RTP/AVP and RTP/SAVP. WebRTC forces
+        # DTLS/ICE and must be limited to the browser WebSocket leg.
+        if ($proto == "ws") $var(sipcore_media_flags) = "WebRTC " + $var(sipcore_media_flags);
         if ($var(sipcore_managed_codec_flags) != $null && $var(sipcore_managed_codec_flags) != "") {
           $var(sipcore_media_flags) = $var(sipcore_media_flags) + " " + $var(sipcore_managed_codec_flags);
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -510,7 +531,21 @@
       {{- end }}
       if (is_method("INVITE") && !has_totag()) {
         {{- if .Values.kamailio.websocketHA.enabled }}
+        {{- if .Values.asterisk.sipCore.tls.enabled }}
+        if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+          # The first RR is the internal outbound/owner leg; the second is
+          # the client-facing TLS leg. TOPOS uses the latter for its masked
+          # response Contact and retains the former for dialog restoration.
+          record_route_preset(
+            "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr;r2=on",
+            "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }};transport=tls;lr;r2=on"
+          );
+        } else {
+        {{- end }}
         record_route_preset("SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+        {{- if .Values.asterisk.sipCore.tls.enabled }}
+        }
+        {{- end }}
         {{- else }}
         record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
         {{- end }}
@@ -537,6 +572,14 @@
     }
 
     route[FROM_SIPCORE_ASTERISK] {
+      {{- if .Values.kamailio.websocketHA.enabled }}
+      if ($hdr(X-Core-Frontend-Owner-Forward) eq "1") {
+        remove_hf("X-Core-Frontend-Owner-Forward");
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-owner-received pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq)\n");
+        route(FROM_SIPCORE);
+        exit;
+      }
+      {{- end }}
       if (!is_method("INVITE|ACK|BYE|CANCEL|OPTIONS|UPDATE|INFO|PRACK|REFER|NOTIFY")) {
         sl_send_reply("405", "Method Not Allowed");
         exit;
@@ -713,8 +756,8 @@
         # alias. Resolve it only after local return-service routes are gone.
         if ($du == $null) {
           handle_ruri_alias();
+          $var(sipcore_alias_result) = $rc;
           if ($rc != 1) {
-            $var(sipcore_alias_result) = $rc;
             xlog(
               "L_ERR",
               "SIPCORE FLOW stage=asterisk-contact-route-failure pod=$env(POD_NAME) callid=$ci method=$rm flow_token_result=$var(sipcore_flow_token_result) loose_route_result=$var(sipcore_loose_route_result) local_route_hops=$var(sipcore_local_route_hops) alias_result=$var(sipcore_alias_result) ruri_host=$rd ruri_port=$rp\n"
@@ -730,8 +773,8 @@
         # configured extension; require a live Kamailio alias instead of
         # comparing that Contact user to the extension allowlist.
         handle_ruri_alias();
+        $var(sipcore_alias_result) = $rc;
         if ($rc != 1) {
-          $var(sipcore_alias_result) = $rc;
           {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
             "L_ERR",
@@ -749,6 +792,38 @@
           {{- end }}
         }
       }
+      {{- if .Values.asterisk.sipCore.tls.enabled }}
+      # PROXY v2 reports the phone in $si/$sp, while the accepted TLS socket
+      # belongs to Envoy's real peer. handle_ruri_alias() only sets $du;
+      # without otcpid Kamailio may dial Envoy's ephemeral source port.
+      if ($var(sipcore_alias_result) == 1 && $dP == "tls" && $du != $null) {
+        $var(sipcore_flow_peer) = "$dd:$dp";
+        $var(sipcore_flow_conid) = 0;
+        if (!tcp_get_conid("$var(sipcore_flow_peer)", "$var(sipcore_flow_conid)") ||
+            !tcp_conid_alive("$var(sipcore_flow_conid)")) {
+          xlog("L_WARN", "SIPCORE FLOW stage=tls-owner-flow-gone pod=$env(POD_NAME) callid=$ci method=$rm peer=$var(sipcore_flow_peer) cseq=$hdr(CSeq) response=430\n");
+          if (!is_method("ACK")) sl_send_reply("430", "TLS Flow Failed");
+          exit;
+        }
+        if (has_totag()) {
+          if ($sht(sipcore_tls_dialog=>$ci) == $null ||
+              $sht(sipcore_tls_dialog=>$ci) ine $var(sipcore_flow_conid)) {
+            xlog("L_WARN", "SIPCORE FLOW stage=tls-dialog-flow-mismatch pod=$env(POD_NAME) callid=$ci method=$rm candidate_connection_id=$var(sipcore_flow_conid) cseq=$hdr(CSeq) response=430\n");
+            if (!is_method("ACK")) sl_send_reply("430", "TLS Dialog Flow Gone");
+            exit;
+          }
+        } else if (is_method("INVITE")) {
+          $sht(sipcore_tls_dialog=>$ci) = $var(sipcore_flow_conid);
+        }
+        if (!tcp_set_otcpid("$var(sipcore_flow_conid)")) {
+          xlog("L_ERR", "SIPCORE FLOW stage=tls-owner-flow-select-failed pod=$env(POD_NAME) callid=$ci method=$rm connection_id=$var(sipcore_flow_conid) cseq=$hdr(CSeq)\n");
+          if (!is_method("ACK")) sl_send_reply("430", "TLS Flow Failed");
+          exit;
+        }
+        tcp_set_otcpid_flag(1);
+        xlog("L_INFO", "SIPCORE FLOW stage=tls-owner-flow-selected pod=$env(POD_NAME) callid=$ci method=$rm connection_id=$var(sipcore_flow_conid) peer=$var(sipcore_flow_peer) cseq=$hdr(CSeq)\n");
+      }
+      {{- end }}
       route(SIPCORE_CONTENT_TYPE);
       if ($var(sipcore_content_type) == "application/trickle-ice-sdpfrag" && has_body()) {
         if (!is_method("INFO")) {
@@ -823,29 +898,48 @@
     }
 
     # TM's transaction reply route is not invoked for retransmitted 2xx.
-    # TOPOS still stores their Contact, so alias every browser response here
-    # before TM can take that path. Otherwise a later unaliased 200 overwrites
-    # the saved Contact and subsequent ACK/BYE requests cannot find the flow.
-    # Keep this restricted to the SIP Core client-facing WebSocket and TLS listeners.
+    # Responses to client-originated calls arrive on the internal signaling
+    # socket, not the client listener. The owner Record-Route identifies this
+    # leg for both first and late answers, before TOPOS strips it.
     reply_route {
-      if ((($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) ||
-           ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }})) &&
+      $var(sipcore_client_reply) = 0;
+      if ($proto == "tls" && $Rp == 5062 &&
+          $hdr(Record-Route) =~ "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}") {
+        $var(sipcore_client_reply) = 1;
+      }
+      if ($var(sipcore_client_reply) == 1 &&
           !is_method("REGISTER") && is_present_hf("Contact")) {
         if (set_contact_alias("1")) {
           {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
             "L_INFO",
-            "SIPCORE FLOW stage=asterisk-websocket-contact-aliased pod=$env(POD_NAME) callid=$ci method=$rm status=$rs cseq=$hdr(CSeq)\n"
+            "SIPCORE FLOW stage=backend-contact-aliased pod=$env(POD_NAME) callid=$ci method=$rm status=$rs cseq=$hdr(CSeq)\n"
           );
           {{- end }}
         } else {
           {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
             "L_ERR",
-            "SIPCORE FLOW stage=asterisk-websocket-contact-alias-failure pod=$env(POD_NAME) callid=$ci method=$rm status=$rs cseq=$hdr(CSeq)\n"
+            "SIPCORE FLOW stage=backend-contact-alias-failure pod=$env(POD_NAME) callid=$ci method=$rm status=$rs cseq=$hdr(CSeq)\n"
           );
           {{- end }}
         }
+      }
+      # Process each *wire copy* of an answer once, including late 2xx that
+      # bypass TM onreply_route. RTPEngine reuses the existing Call-ID/tag
+      # session; no extra offer is created for retransmissions.
+      if ($var(sipcore_client_reply) == 1 && has_body("application/sdp")) {
+        $var(sipcore_answer_flags) = "replace-origin internal external address-family=IP4";
+        # The inbound RR of native TLS dialogs is public; browser dialogs
+        # retain the single private owner RR. Do not force DTLS/ICE on phones.
+        if (!($hdr(Record-Route) =~ "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}")) {
+          $var(sipcore_answer_flags) = "WebRTC " + $var(sipcore_answer_flags);
+        }
+        if (!rtpengine_manage("$var(sipcore_answer_flags)")) {
+          xlog("L_ERR", "SIPCORE FLOW stage=frontend-answer-media-failed pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq)\n");
+          drop;
+        }
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-answer-media-applied pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq) transport=$proto\n");
       }
       return;
     }
@@ -893,12 +987,7 @@
         "SIPCORE FLOW stage=frontend-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT branch=dialog-response\n"
       );
       {{- end }}
-      if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")) {
-          xlog("L_ERR", "RTPEngine SIP Core frontend answer handling failed callid=$ci status=$rs\n");
-          drop;
-        }
-      }
+      # Media is rewritten in reply_route for initial and retransmitted 2xx.
       # Only modify Contact on the REGISTER request sent to Asterisk. Its 2xx
       # response lists every binding for the AOR, not just this transaction;
       # rewriting those Contacts here loses each client's dynamic .invalid
@@ -926,7 +1015,7 @@
         {{- end }}
       }
       $var(private_relay_result) = t_relay();
-      if ($var(side) == "sipcore" && is_method("INFO")) {
+      if ($var(side) eq "sipcore" && is_method("INFO")) {
         xlog("L_INFO", "SIPCORE INFO relay callid=$ci cseq=$hdr(CSeq) method=$rm content_type=$cT branch=$var(sipcore_info_branch) relay_result=$var(private_relay_result)\n");
       }
       if ($var(private_relay_result) <= 0) {
@@ -934,7 +1023,7 @@
           "L_ERR",
           "SIP relay result=failed tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=$rm from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) direction=$var(peer_name) route=$route_uri next_hop=$du destination_host=$dd destination_port=$dp transport=$dP socket=$fsn t_relay_result=$var(private_relay_result)\n"
         );
-        if ($var(side) == "sipcore" && $dP == "ws") {
+        if ($var(side) eq "sipcore" && $dP eq "ws") {
         {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
             "L_WARN",
@@ -945,7 +1034,7 @@
           exit;
         }
         {{- if .Values.kamailio.sipLogging.sipCore }}
-        if ($var(side) == "sipcore") {
+        if ($var(side) eq "sipcore") {
           xlog(
             "L_ERR",
             "SIPCORE FLOW stage=relay-failure pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp destination_host=$dd destination_port=$dp destination_transport=$dP socket=$fsn cseq=$hdr(CSeq)\n"
@@ -969,13 +1058,13 @@
 
     {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
     onsend_route {
-      if ($var(side) == "sipcore" && is_method("ACK|INFO")) {
+      if ($var(side) eq "sipcore" && is_method("ACK|INFO")) {
         xlog("L_INFO", "SIPCORE wire callid=$ci cseq=$hdr(CSeq) method=$rm from_tag=$ft to_tag=$tt content_type=$cT destination=$snd(ip):$snd(port) transport=$snd(proto)\n");
       }
       if ($snd(buf) =~ "^BYE ") {
         xlog(
           "L_INFO",
-          "SIP BYE wire attempt tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=BYE from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) connection_id=$conid transport=$snd(proto) local_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n"
+          "SIP BYE wire attempt tier=private pod=$env(POD_NAME) callid=$ci linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) method=BYE from_tag=$ft to_tag=$tt cseq=$hdr(CSeq) incoming_connection_id=$conid active_connection_id=$tcp(aconid) transport=$snd(proto) local_socket=$sndfrom(proto):$sndfrom(ip):$sndfrom(port) socket_name=$fsn destination=$snd(ip):$snd(port)\n"
         );
       }
     }
@@ -1009,10 +1098,10 @@
 
     {{- if .Values.kamailio.registrar.enabled }}
     route[PRIVATE_REGISTER] {
-      if (($var(side) == "sipcore" &&
+      if (($var(side) eq "sipcore" &&
            !(($proto == "tls" && $Rp == {{ .Values.asterisk.sipCore.tls.port }}) ||
              ($proto == "ws" && $Rp == {{ .Values.asterisk.sipCore.httpPort }}))) ||
-          ($var(side) != "sipcore" && $var(peer_name) != "{{ .Values.kamailio.registrar.accessPeerName }}") ||
+          ($var(side) ne "sipcore" && $var(peer_name) ne "{{ .Values.kamailio.registrar.accessPeerName }}") ||
           $tU == $null || $tU != $au && $au != $null ||
           $(tu{uri.host}) != "{{ .Values.kamailio.registrar.realm }}" ||
           $(ru{uri.host}) != "{{ .Values.kamailio.registrar.realm }}") {
@@ -1039,7 +1128,7 @@
       # pods, but the live TLS/WS connection belongs to this StatefulSet pod.
       remove_hf("Path");
       {{- if .Values.kamailio.websocketHA.enabled }}
-      if ($var(side) == "sipcore") {
+      if ($var(side) eq "sipcore") {
         append_hf("Path: <sip:SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr>\r\n");
       }
       {{- end }}

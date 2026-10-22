@@ -1,5 +1,19 @@
 # AVoIP render checks
 
+Native TLS signaling regressions are checked with
+`AVoIP/tests/sipcore-native-tls-render.py` and, where a pinned Kamailio 6.1.4
+runtime with SQLite is available,
+`AVoIP/tests/sipcore-contact-retransmission.py --runtime --runtime-image
+ghcr.io/kamailio/kamailio:6.1.4-bookworm`. The latter receives
+the actual TOPOS-masked response and checks its public Contact across
+retransmitted answers. The render check guards the three-replica owner route,
+live TLS connection pinning, answer media callback and explicit string
+comparisons. Neither substitutes for the live checks in the
+[native TLS runbook](../docs/NATIVE-SIP-TLS.md).
+`AVoIP/tests/sipcore-sdp-retransmission.py --runtime-image
+ghcr.io/kamailio/kamailio:6.1.4-bookworm` checks that both copies of a 200
+carry identical rewritten SDP using a deterministic fake RTPEngine.
+
 The inter-site inbound trust and listener path has a focused render check:
 
 ```sh

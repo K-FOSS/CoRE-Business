@@ -20,10 +20,13 @@ AVoIP's Authentik admin group desired state declares the `voip@` aliases on
 attributes while retaining shared SMS number assignments.
 The [SIP Core remote hangup guide](AVoIP/docs/SIPCORE-REMOTE-HANGUP.md)
 describes the separate Contact-alias loss caused by retransmitted answers.
+The [native SIP-over-TLS troubleshooting guide](AVoIP/docs/NATIVE-SIP-TLS.md)
+covers public dialog Contacts, owner-flow reuse and retransmitted SDP.
 The [AVoIP chart](AVoIP/README.md) now includes an opt-in PostgreSQL-backed
 HA Kamailio registrar and FreeSWITCH call-control path. The
-[YVR ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
-still selects Asterisk registration until its cutover values are published.
+[YVR ApplicationSet](https://slop.writemy.codes/K-FOSS/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+selects Kamailio registration; live convergence and call acceptance require
+separate verification.
 
 CoRE Business contains the application charts and manifests for the business
 and personal-service layer of the CoRE platform. It includes AI services,

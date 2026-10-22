@@ -124,12 +124,20 @@ data:
     # overrides the SIP message source address and port.
     {{- if .Values.asterisk.sipCore.tls.enabled }}
     loadmodule "tcpops.so"
+    {{- if not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not $websocketHA.enabled)) }}
+    loadmodule "htable.so"
+    {{- end }}
+    # Process-local socket IDs are deliberately not replicated through Redis.
+    # A restarted owner must fail an old dialog rather than attach it to a
+    # different TLS connection that later reuses Envoy's source tuple.
+    modparam("htable", "htable", "sipcore_tls_dialog=>size=8;autoexpire=86400")
     {{- end }}
     {{- if not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not $websocketHA.enabled)) }}
     # SIP Core reads the managed extension codec policy on WSS INVITEs even
     # when the admin-routing module bundle is disabled on the HA edge.
     loadmodule "jansson.so"
     {{- end }}
+
     # SIP Core return routing calls check_flow_token() even on the legacy
     # single-replica owner while a separate WSS edge is being piloted.
     loadmodule "outbound.so"
@@ -159,6 +167,25 @@ data:
     loadmodule "siputils.so"
     loadmodule "textops.so"
     loadmodule "xlog.so"
+    {{- if and $sipCoreEnabled .Values.asterisk.sipCore.tls.enabled }}
+    # Closure events are metadata-only. A lost socket remains pinned in the
+    # process-local dialog table so an old call cannot use a replacement flow.
+    event_route[tcp:closed] {
+      if ($Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-tls-closed pod=$env(POD_NAME) connection_id=$conid peer=$si:$sp\n");
+      }
+    }
+    event_route[tcp:timeout] {
+      if ($Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+        xlog("L_WARN", "SIPCORE FLOW stage=frontend-tls-timeout pod=$env(POD_NAME) connection_id=$conid peer=$si:$sp\n");
+      }
+    }
+    event_route[tcp:reset] {
+      if ($Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+        xlog("L_WARN", "SIPCORE FLOW stage=frontend-tls-reset pod=$env(POD_NAME) connection_id=$conid peer=$si:$sp\n");
+      }
+    }
+    {{- end }}
     loadmodule "tls.so"
     {{- if or .Values.kamailio.carrierOutbound.enabled $sipCoreEnabled (and (eq .Values.kamailio.role "private-sbc") .Values.kamailio.interSite.peers) }}
     loadmodule "dialog.so"

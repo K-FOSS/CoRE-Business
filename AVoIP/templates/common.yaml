@@ -1444,9 +1444,9 @@ controllers:
             \getenv sip_realm SIP_REALM
             \getenv sip_password SIP_PASSWORD
             INSERT INTO subscriber
-              (username, domain, password, email_address, ha1, ha1b, enabled, expires_at)
+              (username, domain, password, ha1, ha1b, enabled, expires_at)
             VALUES
-              (:'sip_username', :'sip_realm', '', '',
+              (:'sip_username', :'sip_realm', '',
                md5(:'sip_username' || ':' || :'sip_realm' || ':' || :'sip_password'),
                '', TRUE, 'infinity')
             ON CONFLICT (username, domain) DO UPDATE
