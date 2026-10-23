@@ -23,6 +23,16 @@
 {{- end -}}
 {{- $controls | toJson -}}
 {{- end -}}
+{{- define "avoip.admin.registrarDatabases" -}}
+{{- $databases := list -}}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+  {{- if and $instance.enabled $instance.registrar.enabled $instance.registrar.database.enabled -}}
+    {{- $env := printf "AVOIP_REGISTRAR_DB_%s" (upper (replace "-" "_" (toString $instance.name))) -}}
+    {{- $databases = append $databases (dict "name" (toString $instance.name) "site" $.Values.region "realm" $instance.registrar.realm "url_env" $env) -}}
+  {{- end -}}
+{{- end -}}
+{{- $databases | toJson -}}
+{{- end -}}
 {{- define "avoip.admin.commonValues" -}}
 {{- if and .Values.avoipAdmin.enabled .Values.freeswitch.enabled -}}
 {{- $settings := .Values.avoipAdmin -}}
@@ -199,6 +209,17 @@ controllers:
                 key: '{{ $settings.telephony.managementSecret.key }}'
           - name: 'AVOIP_KAMAILIO_CONTROL_ADDRESSES'
             value: '{{ include "avoip.admin.kamailioControls" $ | replace "'" "''" }}'
+          - name: 'AVOIP_REGISTRAR_DATABASES_JSON'
+            value: '{{ include "avoip.admin.registrarDatabases" $ | replace "'" "''" }}'
+          {{- range $instance := (include "avoip.kamailio.instances" $ | fromYamlArray) }}
+          {{- if and $instance.enabled $instance.registrar.enabled $instance.registrar.database.enabled }}
+          - name: 'AVOIP_REGISTRAR_DB_{{ upper (replace "-" "_" (toString $instance.name)) }}'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ $instance.registrar.database.secretName }}'
+                key: 'psqlURI'
+          {{- end }}
+          {{- end }}
           {{ if $settings.telephony.freeswitch.cdrConnectionSecret.name }}
           - name: 'AVOIP_FREESWITCH_CDR_URL'
             valueFrom:
@@ -315,6 +336,16 @@ networkpolicies:
           ports:
             - port: {{ default (dig "defaults" "controlPort" 2046 $.Values.kamailio) $.Values.kamailio.controlPort }}
               protocol: 'TCP'
+        {{- range $instance := (include "avoip.kamailio.instances" $ | fromYamlArray) }}
+        {{- if and $instance.enabled $instance.registrar.enabled $instance.registrar.database.enabled }}
+        - toFQDNs:
+            - matchName: '{{ $instance.registrar.database.host }}'
+          toPorts:
+            - ports:
+                - port: '{{ $instance.registrar.database.port }}'
+                  protocol: 'TCP'
+        {{- end }}
+        {{- end }}
         - to:
             - podSelector:
                 matchLabels:

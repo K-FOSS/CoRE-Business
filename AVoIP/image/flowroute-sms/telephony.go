@@ -23,6 +23,38 @@ type telephonyStatus struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+type serviceReplica struct {
+	Service string `json:"service"`
+	Target  string `json:"target"`
+	State   string `json:"state"`
+	Detail  string `json:"detail,omitempty"`
+}
+
+type registrarDatabase struct {
+	Name   string `json:"name"`
+	Site   string `json:"site,omitempty"`
+	Realm  string `json:"realm,omitempty"`
+	URLenv string `json:"url_env"`
+}
+
+type registrationContact struct {
+	Registrar     string    `json:"registrar"`
+	Site          string    `json:"site,omitempty"`
+	Username      string    `json:"username"`
+	Domain        string    `json:"domain"`
+	Contact       string    `json:"contact"`
+	Received      string    `json:"received,omitempty"`
+	Path          string    `json:"path,omitempty"`
+	Expires       time.Time `json:"expires"`
+	UserAgent     string    `json:"user_agent,omitempty"`
+	Instance      string    `json:"instance,omitempty"`
+	RegID         string    `json:"reg_id,omitempty"`
+	ConnectionID  string    `json:"connection_id,omitempty"`
+	ServerID      string    `json:"server_id,omitempty"`
+	Keepalive     string    `json:"keepalive,omitempty"`
+	LastModified  string    `json:"last_modified,omitempty"`
+}
+
 type liveCall struct {
 	System    string    `json:"system"`
 	ID        string    `json:"id"`
@@ -64,6 +96,35 @@ func controlTargets(ctx context.Context, address string) []string {
 		out = append(out, net.JoinHostPort(ip, port))
 	}
 	return out
+}
+
+func serviceName(address string) string {
+	host, _, err := net.SplitHostPort(strings.TrimSpace(address))
+	if err != nil {
+		host = strings.TrimSpace(address)
+	}
+	if index := strings.IndexByte(host, '.'); index > 0 {
+		host = host[:index]
+	}
+	return host
+}
+
+func replicaTargets(ctx context.Context, address string) []serviceReplica {
+	targets := controlTargets(ctx, address)
+	service := serviceName(address)
+	result := make([]serviceReplica, 0, len(targets))
+	for _, target := range targets {
+		result = append(result, serviceReplica{Service: service, Target: target, State: "unknown"})
+	}
+	return result
+}
+
+func registrarDatabases() []registrarDatabase {
+	var databases []registrarDatabase
+	if json.Unmarshal([]byte(telephonyEnv("AVOIP_REGISTRAR_DATABASES_JSON")), &databases) != nil {
+		return nil
+	}
+	return databases
 }
 
 func kamailioControlTargets(ctx context.Context) []string {
@@ -131,8 +192,11 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 	defer cancel()
-	result := map[string]any{"site": telephonyEnv("AVOIP_SITE"), "checked_at": time.Now().UTC(), "systems": []telephonyStatus{}, "calls": []liveCall{}, "cdr": []cdrRecord{}}
+	result := map[string]any{"site": telephonyEnv("AVOIP_SITE"), "checked_at": time.Now().UTC(), "systems": []telephonyStatus{}, "replicas": []serviceReplica{}, "registrations": []registrationContact{}, "registrar_databases": []telephonyStatus{}, "calls": []liveCall{}, "cdr": []cdrRecord{}}
 	var systems []telephonyStatus
+	var replicas []serviceReplica
+	var registrations []registrationContact
+	var registrarSystems []telephonyStatus
 	var calls []liveCall
 	var cdr []cdrRecord
 	if host := telephonyEnv("AVOIP_AMI_ADDRESS"); host != "" {
@@ -144,8 +208,10 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 			if currentErr == nil {
 				connected = true
 				amiCalls = append(amiCalls, current...)
+				replicas = append(replicas, serviceReplica{Service: serviceName(host), Target: target, State: "connected"})
 			} else {
 				err = currentErr
+				replicas = append(replicas, serviceReplica{Service: serviceName(host), Target: target, State: "unavailable", Detail: safeInterfaceError(currentErr)})
 			}
 		}
 		if connected {
@@ -171,8 +237,10 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		for _, target := range controlTargets(ctx, address) {
 			if _, currentErr := freeSwitchStatus(ctx, target, telephonyEnv("AVOIP_ESL_SECRET")); currentErr == nil {
 				connected = true
+				replicas = append(replicas, serviceReplica{Service: serviceName(address), Target: target, State: "connected"})
 			} else {
 				err = currentErr
+				replicas = append(replicas, serviceReplica{Service: serviceName(address), Target: target, State: "unavailable", Detail: safeInterfaceError(currentErr)})
 			}
 			if currentCalls, currentErr := freeSwitchCalls(ctx, target, telephonyEnv("AVOIP_ESL_SECRET")); currentErr == nil {
 				calls = append(calls, currentCalls...)
@@ -202,7 +270,22 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		} else {
 			_ = conn.Close()
 		}
+		replicas = append(replicas, serviceReplica{Service: "Kamailio ctl", Target: target, State: state, Detail: safeInterfaceError(err)})
 		systems = append(systems, telephonyStatus{Name: "Kamailio ctl", State: state})
+	}
+	for _, database := range registrarDatabases() {
+		url := telephonyEnv(database.URLenv)
+		if url == "" {
+			registrarSystems = append(registrarSystems, telephonyStatus{Name: database.Name, State: "not configured"})
+			continue
+		}
+		contacts, err := queryRegistrarContacts(ctx, database)
+		if err != nil {
+			registrarSystems = append(registrarSystems, telephonyStatus{Name: database.Name, State: "unavailable", Detail: safeInterfaceError(err)})
+			continue
+		}
+		registrarSystems = append(registrarSystems, telephonyStatus{Name: database.Name, State: "connected", Detail: fmt.Sprintf("%d active contacts", len(contacts))})
+		registrations = append(registrations, contacts...)
 	}
 	for _, config := range []struct{ name, url, table, started, caller, called, duration, disposition string }{
 		{"Asterisk CDR", telephonyEnv("AVOIP_ASTERISK_CDR_URL"), telephonyEnv("AVOIP_ASTERISK_CDR_TABLE"), "calldate", "src", "dst", "billsec", "disposition"},
@@ -225,8 +308,87 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		}
 		systems = append(systems, telephonyStatus{Name: config.name, State: state, Detail: detail})
 	}
-	result["systems"], result["calls"], result["cdr"] = systems, calls, cdr
+	result["systems"], result["replicas"], result["registrations"], result["registrar_databases"], result["calls"], result["cdr"] = systems, replicas, registrations, registrarSystems, calls, cdr
 	writeJSON(w, result)
+}
+
+func queryRegistrarContacts(ctx context.Context, database registrarDatabase) ([]registrationContact, error) {
+	config, err := pgx.ParseConfig(telephonyEnv(database.URLenv))
+	if err != nil {
+		return nil, err
+	}
+	config.RuntimeParams["default_transaction_read_only"] = "on"
+	conn, err := pgx.ConnectConfig(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+	if err = conn.Ping(ctx); err != nil {
+		return nil, err
+	}
+	rows, err := conn.Query(ctx, `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='location'`)
+	if err != nil {
+		return nil, err
+	}
+	columns := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err = rows.Scan(&name); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		columns[name] = true
+	}
+	rows.Close()
+	for _, required := range []string{"username", "domain", "contact", "expires"} {
+		if !columns[required] {
+			return nil, fmt.Errorf("registrar location table missing %s", required)
+		}
+	}
+	known := []string{"username", "domain", "contact", "received", "path", "expires", "user_agent", "instance", "reg_id", "connection_id", "server_id", "keepalive", "last_modified"}
+	selects := make([]string, 0, len(known))
+	for _, name := range known {
+		if columns[name] {
+			selects = append(selects, fmt.Sprintf("COALESCE(%q::text, '') AS %q", name, name))
+		} else {
+			selects = append(selects, fmt.Sprintf("'' AS %q", name))
+		}
+	}
+	query := fmt.Sprintf("SELECT %s FROM public.location", strings.Join(selects, ", "))
+	rows, err = conn.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []registrationContact{}
+	for rows.Next() {
+		values := make([]string, len(known))
+		pointers := make([]any, len(values))
+		for index := range values {
+			pointers[index] = &values[index]
+		}
+		if err = rows.Scan(pointers...); err != nil {
+			return nil, err
+		}
+		expires, ok := registrarExpiry(values[5])
+		if !ok || !expires.After(time.Now()) {
+			continue
+		}
+		result = append(result, registrationContact{Registrar: database.Name, Site: database.Site, Username: values[0], Domain: values[1], Contact: values[2], Received: values[3], Path: values[4], Expires: expires, UserAgent: values[6], Instance: values[7], RegID: values[8], ConnectionID: values[9], ServerID: values[10], Keepalive: values[11], LastModified: values[12]})
+	}
+	return result, rows.Err()
+}
+
+func registrarExpiry(value string) (time.Time, bool) {
+	if seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64); err == nil {
+		return time.Unix(seconds, 0), true
+	}
+	for _, layout := range []string{time.RFC3339Nano, "2006-01-02 15:04:05.999999Z07:00", "2006-01-02 15:04:05.999999", "2006-01-02 15:04:05"} {
+		if parsed, err := time.Parse(layout, strings.TrimSpace(value)); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
 }
 
 func freeSwitchStatus(ctx context.Context, address, secret string) (string, error) {

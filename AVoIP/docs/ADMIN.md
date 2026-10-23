@@ -69,7 +69,7 @@ PostgreSQL grants must be ready before admin pods can become ready.
 | `POST /api/routing/preview` | Admin-only outbound policy preview using the current extension, destination, caller ID, site and provider catalog |
 | `POST /api/routing/inbound-preview` | Admin-only inbound DID preview using the current DID, provider assignment, optional source IP, site and catalog revision |
 | `GET /api/audit` | Recent protected control-plane audit metadata; no credential values |
-| Telephony tab | Shows live AMI/Event Socket status, active calls, and recent Asterisk/FreeSWITCH CDR rows when `avoipAdmin.telephony.enabled` is configured; `End call` sends an audited, same-origin admin request |
+| Telephony tab | Shows live AMI/Event Socket status, every resolved Asterisk/FreeSWITCH/Kamailio control replica, active SIP registrations and Contacts from the configured registrar databases, active calls, and recent Asterisk/FreeSWITCH CDR rows when `avoipAdmin.telephony.enabled` is configured; `End call` sends an audited, same-origin admin request |
 | `GET /routing/snapshot` | Token-authenticated internal compiled route view; machine listener only |
 | `POST /routing/freeswitch` | Authenticated internal XML dialplan for managed contexts; machine listener only |
 
@@ -90,6 +90,16 @@ ports; do not expose AMI/Event Socket through a Gateway or public Service. The
 CDR query is read-only and returns at most 50
 recent records per database. Active call termination requires the Admin group;
 each accepted request is written to the existing Admin audit table.
+
+When the Kamailio registrar is enabled, the chart also injects the existing
+registrar connection Secrets as read-only Admin environment references. The
+Telephony tab queries each `public.location` table without mutating it and
+filters expired rows in the Admin process. It displays the AoR, Contact,
+received address, Path/flow metadata, connection and server identifiers,
+user-agent, expiry, and registrar/site name. It never displays the connection
+URI, password, Digest verifier, or other Secret value. A registrar database
+that cannot be reached is shown as unavailable while other registrar and
+replica results remain visible.
 
 A SIP provider has ID/name, canonical SIP hostname, an optional digits-only
 egress prefix, explicit signaling CIDRs, per-site provisioned gateway names and
