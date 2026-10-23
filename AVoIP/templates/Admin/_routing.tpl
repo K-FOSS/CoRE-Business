@@ -101,14 +101,23 @@
         if ($redis(inbound_limit=>value) != 1) {
           sl_send_reply("486", "Inbound Limit Reached"); exit;
         }
-        $dlg_ctx(timeout_route) = "INBOUND_DIALOG_TIMEOUT";
-        dlg_manage();
-        dlg_set_property("timeout-noreset");
-        $dlg_var(inbound_limit_key) = $var(inbound_limit_key);
-        $dlg_var(inbound_limit_callid) = $ci;
-        if (!dlg_set_timeout("$var(inbound_max_duration)")) {
+        # The quota reservation is shared; do not make its lifetime depend on
+        # a process-local Kamailio dialog timer or a replica-local dlg_var().
+        # FreeSWITCH owns the B2BUA call lifecycle and must originate any
+        # legitimate call-leg teardown.
+        $var(inbound_call_key) = "avoip:in:call:" + $ci;
+        $var(inbound_call_ttl) = $var(inbound_max_duration) + 86400;
+        $var(inbound_call_map_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX',tonumber(ARGV[2]));return 1";
+        if (!redis_cmd(
+          "topos", "EVAL %s 1 %s %s %s",
+          "$var(inbound_call_map_script)", "$var(inbound_call_key)",
+          "$var(inbound_limit_key)", "$var(inbound_call_ttl)",
+          "inbound_call_mapping"
+        ) || $redis(inbound_call_mapping=>type) != $redisd(rpl_int) ||
+            $redis(inbound_call_mapping=>value) != 1) {
+          xlog("L_ERR", "AVOIP inbound quota mapping failed callid=$ci\n");
           route(INBOUND_LIMIT_RELEASE);
-          sl_send_reply("503", "Inbound Limit Setup Failed"); exit;
+          sl_send_reply("503", "Inbound Limits Unavailable"); exit;
         }
       }
       jansson_get("host", "$var(managed_route)", "$var(managed_host)");
@@ -144,20 +153,15 @@
       route(RELAY); exit;
     }
     route[INBOUND_LIMIT_RELEASE] {
-      $var(inbound_limit_key) = $dlg_var(inbound_limit_key);
-      $var(inbound_limit_callid) = $dlg_var(inbound_limit_callid);
-      if ($var(inbound_limit_key) == $null || $var(inbound_limit_callid) == $null) return;
-      $var(inbound_release_script) = "redis.call('ZREM',KEYS[1],'call:'..ARGV[1]);return 1";
-      if (!redis_cmd("topos", "EVAL %s 1 %s %s", "$var(inbound_release_script)", "$var(inbound_limit_key)", "$var(inbound_limit_callid)", "inbound_release")) {
+      # Resolve the reservation through shared state so a BYE or failed
+      # transaction handled by another carrier replica can release it.
+      $var(inbound_call_key) = "avoip:in:call:" + $ci;
+      $var(inbound_release_script) = "local q=redis.call('GET',KEYS[1]);if not q then return 0 end;redis.call('ZREM',q,'call:'..ARGV[1]);redis.call('DEL',KEYS[1]);return 1";
+      if (!redis_cmd("topos", "EVAL %s 1 %s %s", "$var(inbound_release_script)", "$var(inbound_call_key)", "$ci", "inbound_release") ||
+          $redis(inbound_release=>type) != $redisd(rpl_int) ||
+          $redis(inbound_release=>value) < 0) {
         xlog("L_ERR", "Inbound call limit release failed callid=$ci\n");
       }
-      $dlg_var(inbound_limit_key) = "";
-      $dlg_var(inbound_limit_callid) = "";
-      return;
-    }
-    route[INBOUND_DIALOG_TIMEOUT] {
-      route(INBOUND_LIMIT_RELEASE);
-      dlg_bye("all");
       return;
     }
     {{- end }}

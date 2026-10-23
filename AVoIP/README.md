@@ -177,6 +177,9 @@ render regression and live SIP/media acceptance.
 The [SIP route debugging runbook](docs/avoip/runbooks/sip-route-debugging.md)
 maps each logged next hop and wire destination to its Service, EndpointSlice and
 backing pod, and describes how to verify dialog teardown and replica health.
+The [SIP dialog lifecycle guide](docs/SIP-DIALOG-LIFECYCLE.md) documents the
+replica-safe quota release, FreeSWITCH-owned teardown, and restored-hop TLS SNI
+behavior.
 AVoIP Admin's **Limit Profiles** screen configures rate, concurrency and call
 duration limits for DID/inbound and extension/outbound routing, with direct,
 tenant-default and site-default profiles. Quota counters are currently local

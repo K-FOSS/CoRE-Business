@@ -1009,8 +1009,12 @@
       # Route header. Set SNI from the restored next hop before relaying so
       # the return listener selects its non-mTLS profile instead of the
       # strict default profile.
-      if ($du =~ "^sips:") {
+      if ($dP == "tls" && $du != $null && $(du{uri.host}) != "") {
         $xavp(tls=>server_name) = $(du{uri.host});
+        xlog(
+          "L_INFO",
+          "SIP TLS dialog identity call_id=$ci method=$rm destination=$du tls_sni=$xavp(tls=>server_name) source=$si:$sp\n"
+        );
       }
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog(
@@ -1130,21 +1134,6 @@
         "L_INFO",
         "SIP response call_id=$ci method=$rm status=$rs direction=$var(side) from_tag=$ft to_tag=$tt linkedid=$hdr(X-Core-Call-Linkedid) origin_uniqueid=$hdr(X-Core-Origin-Uniqueid) recv_socket=$Ri:$Rp/$proto send_socket=$fsn source_ip=$si destination_ip=$du reason_header=$hdr(Reason) dialog_direction=$var(side) cseq=$hdr(CSeq)\n"
       );
-      if ($dlg_var(outbound_gateway) == "flowroute") {
-        xlog(
-          "L_INFO",
-          "SIP outbound response call_id=$ci linkedid=$dlg_var(core_linkedid) origin_uniqueid=$dlg_var(core_origin_uniqueid) site=$dlg_var(outbound_site) gateway=$dlg_var(outbound_gateway) method=$rm status=$rs reason_header=$hdr(Reason) cause_source=received_sip_response response_source=$si:$sp cseq=$hdr(CSeq)\n"
-        );
-      }
-      {{- end }}
-
-      {{- if and .Values.kamailio.carrierOutbound.enabled .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
-      if ($dlg_var(outbound_gateway) == "flowroute" && $rm == "INVITE" && $rs >= 200) {
-        hlog(
-          "$ci",
-          "kamailio_event=call_end call_id=$ci linkedid=$dlg_var(core_linkedid) origin_uniqueid=$dlg_var(core_origin_uniqueid) site=$dlg_var(outbound_site) gateway=$dlg_var(outbound_gateway) final_sip_status=$rs reason_header=$hdr(Reason) cause_source=received_sip_response response_source=$si:$sp cseq=$hdr(CSeq)"
-        );
-      }
       {{- end }}
 
       return(1);

@@ -142,27 +142,31 @@
         exit;
       }
 
+      # Quota admission is shared across carrier replicas. Keep the mapping
+      # outside Kamailio's process-local dialog table so a later BYE handled by
+      # another replica can release the same reservation.
+      $var(outbound_call_key) = "avoip:out:call:" + $ci;
+      $var(outbound_call_ttl) = $var(managed_max_duration_seconds) + 86400;
+      $var(outbound_call_map_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX',tonumber(ARGV[2]));return 1";
+      if (!redis_cmd(
+        "topos", "EVAL %s 1 %s %s %s",
+        "$var(outbound_call_map_script)", "$var(outbound_call_key)",
+        "$var(outbound_quota_key)", "$var(outbound_call_ttl)",
+        "outbound_call_mapping"
+      ) || $redis(outbound_call_mapping=>type) != $redisd(rpl_int) ||
+          $redis(outbound_call_mapping=>value) != 1) {
+        xlog("L_ERR", "SIP outbound quota mapping failed callid=$ci method=$rm\n");
+        route(OUTBOUND_RELEASE);
+        sl_send_reply("503", "Outbound Limits Unavailable");
+        exit;
+      }
+
       remove_hf("P-Asserted-Identity");
       append_hf("P-Asserted-Identity: <sip:$fU@{{ include "avoip.sip.siteHost" . }}>\r\n");
       $ru = "sips:" + $rU + "@" + $var(managed_host);
       route(RR_BACKEND_TO_CARRIER);
-      $dlg_ctx(timeout_route) = "OUTBOUND_DIALOG_TIMEOUT";
-      dlg_manage();
-      dlg_set_property("timeout-noreset");
-      if (!dlg_set_timeout("$var(managed_max_duration_seconds)")) {
-        route(OUTBOUND_RELEASE);
-        sl_send_reply("503", "Outbound Limit Setup Failed"); exit;
-      }
-      $dlg_var(core_linkedid) = $hdr(X-Core-Call-Linkedid);
-      $dlg_var(core_origin_uniqueid) = $hdr(X-Core-Origin-Uniqueid);
-      $dlg_var(outbound_site) = "{{ $.Values.region }}";
-      $dlg_var(outbound_gateway) = "flowroute";
-      $dlg_var(outbound_quota_key) = $var(outbound_quota_key);
-      $var(outbound_teardown_key) = "avoip:out:teardown:" + $ci;
-      $dlg_var(outbound_teardown_key) = $var(outbound_teardown_key);
       # CoRE authorization/correlation headers are for trusted internal hops
-      # only. Preserve the validated call IDs in dialog state for Homer and
-      # quota diagnostics, then remove them before sending the INVITE upstream.
+      # only. Remove them before sending the INVITE upstream.
       remove_hf("X-Core-Extension");
       remove_hf("X-Core-Call-Linkedid");
       remove_hf("X-Core-Origin-Uniqueid");
@@ -177,12 +181,11 @@
       }
       $du = "sips:" + $var(managed_host) + ":5061;transport=tls";
       $xavp(tls=>server_name) = $var(managed_host);
-      $dlg_var(outbound_gateway) = $var(managed_host);
       set_send_socket_name("public_tls");
       {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
       hlog(
         "$ci",
-        "kamailio_event=routing_decision route=authorized_outbound_to_flowroute call_id=$ci linkedid=$dlg_var(core_linkedid) origin_uniqueid=$dlg_var(core_origin_uniqueid) site=$dlg_var(outbound_site) gateway=$dlg_var(outbound_gateway) method=$rm cseq=$hdr(CSeq) transport=$proto"
+        "kamailio_event=routing_decision route=authorized_outbound_to_flowroute call_id=$ci site={{ $.Values.region }} gateway=$var(managed_host) method=$rm cseq=$hdr(CSeq) transport=$proto"
       );
       {{- end }}
       route(RELAY);
@@ -190,58 +193,19 @@
     }
 
     route[OUTBOUND_RELEASE] {
-      $var(release_script) = "redis.call('ZREM',KEYS[1],'call:'..ARGV[1]);return 1";
-      $var(outbound_quota_key) = $dlg_var(outbound_quota_key);
-      if ($var(outbound_quota_key) == $null || $var(outbound_quota_key) == "") {
-        $var(outbound_quota_key) = "avoip:out:quota:" + $fU;
-      }
+      # Resolve and release the reservation from shared state. This route is
+      # deliberately independent of $dlg_var(): Kamailio dialogs are local to
+      # one replica, while the BYE may arrive on another replica.
+      $var(outbound_call_key) = "avoip:out:call:" + $ci;
+      $var(release_script) = "local q=redis.call('GET',KEYS[1]);if not q then return 0 end;redis.call('ZREM',q,'call:'..ARGV[1]);redis.call('DEL',KEYS[1]);return 1";
       if (!redis_cmd(
         "topos", "EVAL %s 1 %s %s", "$var(release_script)",
-        "$var(outbound_quota_key)",
+        "$var(outbound_call_key)",
         "$ci", "outbound_release"
-      )) {
+      ) || $redis(outbound_release=>type) != $redisd(rpl_int) ||
+          $redis(outbound_release=>value) < 0) {
         xlog("L_ERR", "Outbound quota release failed callid=$ci\n");
       }
-      return;
-    }
-
-    # A dialog timer is local to the replica that handled the initial INVITE.
-    # A BYE can terminate the dialog through another replica, so the timer
-    # consults shared state before creating its own cleanup BYE.
-    route[OUTBOUND_DIALOG_TIMEOUT] {
-      $var(outbound_teardown_key) = $dlg_var(outbound_teardown_key);
-      if ($var(outbound_teardown_key) == $null ||
-          !redis_cmd(
-            "topos",
-            "EVAL %s 1 %s",
-            "if redis.call('EXISTS',KEYS[1])==0 then redis.call('SET',KEYS[1],'timeout','EX',86400);return 1 else return 0 end",
-            "$var(outbound_teardown_key)", "outbound_timeout_claim"
-          )) {
-        xlog(
-          "L_ERR",
-          "SIP dialog timeout action=skipped reason=shared-state-unavailable callid=$ci from_tag=$ft to_tag=$tt direction=outbound-flowroute rtpengine_delete=not-requested\n"
-        );
-        return;
-      }
-      if ($redis(outbound_timeout_claim=>type) != $redisd(rpl_int) ||
-          $redis(outbound_timeout_claim=>value) != 1) {
-        xlog(
-          "L_INFO",
-          "SIP dialog timeout action=suppressed reason=bye-already-processed callid=$ci from_tag=$ft to_tag=$tt direction=outbound-flowroute rtpengine_delete=not-requested\n"
-        );
-        return;
-      }
-      xlog(
-        "L_WARN",
-        "SIP dialog timeout action=cleanup-bye callid=$ci from_tag=$ft to_tag=$tt direction=outbound-flowroute rtpengine_delete=requested\n"
-      );
-      if (!rtpengine_delete()) {
-        xlog(
-          "L_ERR",
-          "SIP dialog timeout media-delete=failed callid=$ci from_tag=$ft to_tag=$tt direction=outbound-flowroute\n"
-        );
-      }
-      dlg_bye("all");
       return;
     }
 
