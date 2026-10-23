@@ -424,15 +424,12 @@
         route(PRIVATE_AUTH_DEVICE);
         if ($var(auth_device) != 1) exit;
         # The identity passed to FreeSWITCH is the Digest username, never a
-        # device-provided policy header or a caller-ID field. The media
-        # profile is likewise derived from the accepted Kamailio transport;
-        # a client cannot opt itself into a trusted FreeSWITCH media mode.
+        # device-provided policy header or a caller-ID field. Media security
+        # terminates on RTPEngine, so a client cannot select an internal media
+        # profile either.
         remove_hf("X-Core-Extension");
         remove_hf("X-Core-Media-Profile");
         append_hf("X-Core-Extension: $au\r\n");
-        if ($proto == "ws") {
-          append_hf("X-Core-Media-Profile: webrtc\r\n");
-        }
       }
       {{- end }}
 
@@ -534,25 +531,11 @@
           if (!is_method("ACK")) sl_send_reply("488", "Incomplete SDP Offer");
           exit;
         }
-        $var(sipcore_media_flags) = "replace-origin external internal address-family=IP4";
-        $var(sipcore_client_websocket) = 0;
-        # An HA owner hop arrives over internal TLS even when the original
-        # client is a browser. Keep classifying from the client Contact rather
-        # than the current Kamailio transport so re-INVITEs and UPDATEs retain
-        # the browser's WebRTC media policy after a frontend hop.
-        if ($proto == "ws" || $hdr(Contact) =~ "(^|[;[:space:]])transport=ws([;[:space:]]|$)") {
-          $var(sipcore_client_websocket) = 1;
-        }
-        # Native TLS phones may offer RTP/AVP and RTP/SAVP. WebRTC forces
-        # DTLS/ICE and must be limited to the browser WebSocket leg.
-        if ($var(sipcore_client_websocket) == 1) {
-          $var(sipcore_media_flags) = "WebRTC " + $var(sipcore_media_flags);
-        } else {
-          # Native phones can offer SDES-SRTP alongside RTP/AVP. Do not
-          # expand their two supported suites into RTPEngine's full suite
-          # catalog on the FreeSWITCH leg.
-          $var(sipcore_media_flags) = "SDES-nonew " + $var(sipcore_media_flags);
-        }
+        # RTPEngine is the public media-security boundary. It terminates the
+        # endpoint's ICE, DTLS-SRTP or SDES leg and presents one independent,
+        # hidden RTP/AVP leg to FreeSWITCH. Never propagate endpoint candidates
+        # or cryptographic attributes through the internal Kamailio hop.
+        $var(sipcore_media_flags) = "RTP/AVP ICE=remove DTLS=off SDES=off rtcp-mux-demux replace-origin external internal address-family=IP4";
         if ($var(sipcore_managed_codec_flags) != $null && $var(sipcore_managed_codec_flags) != "") {
           $var(sipcore_media_flags) = $var(sipcore_media_flags) + " " + $var(sipcore_managed_codec_flags);
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -916,7 +899,14 @@
           if (!is_method("ACK")) sl_send_reply("488", "Incomplete SDP Offer");
           exit;
         }
-        if (!rtpengine_manage("WebRTC replace-origin internal external address-family=IP4")) {
+        $var(sipcore_backend_offer_flags) = "replace-origin internal external address-family=IP4";
+        # The resolved Contact alias identifies the endpoint transport. Only
+        # the browser-facing copy receives ICE and DTLS-SRTP; native SIP/TLS
+        # remains a separate RTPEngine-anchored media association.
+        if ($dP == "ws") {
+          $var(sipcore_backend_offer_flags) = "WebRTC " + $var(sipcore_backend_offer_flags);
+        }
+        if (!rtpengine_manage("$var(sipcore_backend_offer_flags)")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound SDP handling failed callid=$ci method=$rm\n");
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
@@ -969,12 +959,11 @@
 
     # TM's transaction reply route is not invoked for retransmitted 2xx.
     # Responses to client-originated calls arrive on the internal signaling
-    # socket, not the client listener. The owner Record-Route identifies this
-    # leg for both first and late answers, before TOPOS strips it.
+    # socket, not the client listener. Classify that listener directly and use
+    # the final Via for the endpoint transport after TOPOS hides Record-Route.
     reply_route {
       $var(sipcore_client_reply) = 0;
-      if ($proto == "tls" && $Rp == 5062 &&
-          $hdr(Record-Route) =~ "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}") {
+      if ($proto == "tls" && $Rp == 5062) {
         $var(sipcore_client_reply) = 1;
       }
       if ($var(sipcore_client_reply) == 1 &&
@@ -1000,9 +989,10 @@
       # session; no extra offer is created for retransmissions.
       if ($var(sipcore_client_reply) == 1 && has_body("application/sdp")) {
         $var(sipcore_answer_flags) = "replace-origin internal external address-family=IP4";
-        # The inbound RR of native TLS dialogs is public; browser dialogs
-        # retain the single private owner RR. Do not force DTLS/ICE on phones.
-        if (!($hdr(Record-Route) =~ "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}")) {
+        # The final Via is the endpoint-facing transport even after TOPOS has
+        # hidden Record-Route. This keeps first and retransmitted answers on
+        # the same media policy without relying on transaction-local state.
+        if ($(hfl(Via)[-1]) =~ "^SIP/2.0/WSS") {
           $var(sipcore_answer_flags) = "WebRTC " + $var(sipcore_answer_flags);
         }
         if (!rtpengine_manage("$var(sipcore_answer_flags)")) {
@@ -1027,7 +1017,7 @@
       }
       {{- end }}
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
+        if (!rtpengine_manage("RTP/AVP ICE=remove DTLS=off SDES=off rtcp-mux-demux replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
           drop;
         }

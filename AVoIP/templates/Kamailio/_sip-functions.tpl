@@ -435,7 +435,7 @@
       }
 
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
+        if (!rtpengine_manage("RTP/AVP ICE=remove DTLS=off SDES=off rtcp-mux-demux replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core SDP handling failed callid=$ci method=$rm\n");
           if (!is_method("ACK")) sl_send_reply("503", "Media Relay Unavailable");
           exit;
@@ -518,7 +518,7 @@
       }
       {{- end }}
       if (has_body("application/sdp")) {
-        if (!rtpengine_manage("WebRTC replace-origin external internal address-family=IP4")) {
+        if (!rtpengine_manage("RTP/AVP ICE=remove DTLS=off SDES=off rtcp-mux-demux replace-origin external internal address-family=IP4")) {
           xlog("L_ERR", "RTPEngine SIP Core outbound answer handling failed callid=$ci status=$rs\n");
           drop;
         }

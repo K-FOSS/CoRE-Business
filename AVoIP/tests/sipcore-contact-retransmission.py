@@ -21,7 +21,7 @@ import time
 def inspect(config, block):
     reply = block(config, "reply_route ")
     assert '$proto == "tls" && $Rp == 5062' in reply
-    assert '$hdr(Record-Route) =~' in reply
+    assert '$(hfl(Via)[-1]) =~ "^SIP/2.0/WSS"' in reply
     assert '$var(sipcore_client_reply) == 1' in reply
     assert '!is_method("REGISTER")' in reply
     assert 'is_present_hf("Contact")' in reply
@@ -69,8 +69,7 @@ def exercise(reply, schema_sql, negative=False, runtime_image=None, public_conta
     reserve.close()
     # Keep all remaining statements of the production reply route intact.
     reply, count = re.subn(
-        r'\$proto == "tls" && \$Rp == 5062 &&\s*'
-        r'\$hdr\(Record-Route\) =~ "[^"]+"',
+        r'\$proto == "tls" && \$Rp == 5062',
         f'$proto == "udp" && $Rp == {port}', reply)
     assert count == 1
     # This harness isolates Contact/TOPOS behavior and sends no SDP. The

@@ -67,17 +67,6 @@ data:
       {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
       <context name="core-managed-entry">
         {{- if eq $.Values.asterisk.sipCore.registrarBackend "kamailio" }}
-        <!-- Kamailio owns WSS and stamps this header only after authenticating
-             the device and classifying the accepted transport. Late media
-             negotiation lets FreeSWITCH apply its WebRTC media defaults before
-             answer()/bridge() consumes the RTPEngine-originated SAVPF offer. -->
-        <extension name="registered-client-media-profile" continue="true">
-          <condition field="${channel_name}" expression="^sofia/core-managed/"/>
-          <condition field="${sip_h_X-Core-Media-Profile}" expression="^webrtc$">
-            <action application="set" data="media_webrtc=true"/>
-            <action application="log" data="INFO AVoIP client media profile uuid=${uuid} profile=webrtc"/>
-          </condition>
-        </extension>
         <extension name="registered-client-echo">
           <condition field="${channel_name}" expression="^sofia/core-managed/"/>
           <condition field="${sip_h_X-Core-Extension}" expression="^[0-9]{2,12}$"/>

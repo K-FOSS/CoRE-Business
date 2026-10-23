@@ -53,17 +53,20 @@ public-Contact, owner socket and retransmitted-SDP corrections and their
 post-TOPOS/live verification requirements.
 The complete Groundwire 7101 registration, call, HA, media, and traffic
 matrix investigation is in [Groundwire SIP flows](docs/GROUNDWIRE-SIP-FLOWS.md).
+The focused October 23 Groundwire, JsSIP, and correlated carrier evidence is
+recorded in [the three-dialog capture report](docs/SIP-CALL-CAPTURES-2026-10-23.md).
 
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the
 [SIP HA integration baseline](docs/SIP-STATEFUL-HA.md#sip-core-wss-integration-baseline-observed-2026-10-09).
 Native SIP clients can also register over TLS through a Gateway `TLSRoute`
 selected by the `sipcore.mylogin.space` SNI. The route shares SIP Core's
-per-extension Digest accounts. Native TLS offers no longer receive the
-browser-only WebRTC media flags. Home1 opts into FreeSWITCH's
-`NDLB-allow-crypto-in-avp` only on the Kamailio-facing profile for
-Groundwire's mixed AVP/SAVP offer; the chart default is off and live call
-acceptance still requires verification. See the [SIP Core client guide](docs/SIPCORE-HASS.md)
+per-extension Digest accounts. RTPEngine terminates ICE and media encryption
+at the public media boundary. The hidden FreeSWITCH-facing leg is conventional
+RTP/AVP for browser WSS and native SIP/TLS endpoints; WebRTC flags are applied
+only to SDP leaving RTPEngine toward a browser. Home1 retains
+`NDLB-allow-crypto-in-avp` only as scoped compatibility on the
+Kamailio-facing profile. See the [SIP Core client guide](docs/SIPCORE-HASS.md)
 for connection settings and the [TLS runbook](docs/NATIVE-SIP-TLS.md) for
 compatibility and live verification limits.
 The chart supports a separate `internal-wss` Kamailio instance for the opt-in
@@ -143,11 +146,10 @@ endpoint, but active registrations must re-register because the two registrar
 databases do not share Contact state.
 
 The Kamailio-facing FreeSWITCH Sofia profile separates request-source
-authorization (`apply-inbound-acl=kamailio`) from ICE candidate filtering.
-Its candidate ACL accepts both `localnet.auto` and `wan.auto`, so WebRTC
-clients behind the private network and public native SIP clients are not
-silently filtered by the default WAN-only candidate list. This does not change
-the SIP source allowlist. See [registered-client call troubleshooting](docs/SIP-CLIENT-CALL-FAILURES.md)
+authorization (`apply-inbound-acl=kamailio`) from media handling. Endpoint ICE
+candidates never reach this profile: the public RTPEngine removes ICE, DTLS
+and SDES from the independent internal RTP/AVP leg. This does not change the
+SIP source allowlist. See [registered-client call troubleshooting](docs/SIP-CLIENT-CALL-FAILURES.md)
 for the observed `INCOMPATIBLE_DESTINATION` failures and live verification.
 
 YXL's and YVR's `internal` and `carrier` Kamailio instances are configured

@@ -111,38 +111,35 @@ assert 'sipcore_tls_dialog=>size=8;autoexpire=86400' in config
 
 # Core reply_route runs for late 2xx when TM's named onreply route does not.
 # One call per wire copy; no second transformation in the TM callback.
-assert '$Rp == 5062' in reply and '$hdr(Record-Route) =~' in reply
+assert '$proto == "tls" && $Rp == 5062' in reply
+assert '$(hfl(Via)[-1]) =~ "^SIP/2.0/WSS"' in reply
 assert reply.count('rtpengine_manage("$var(sipcore_answer_flags)")') == 1
 assert 'rtpengine_manage(' not in named_reply
-assert 'WebRTC ' in reply and '$proto == "ws"' in frontend
-assert 'if ($proto == "ws" || $hdr(Contact) =~ "(^|[;[:space:]])transport=ws([;[:space:]]|$)") {' in frontend
-assert '$var(sipcore_media_flags) = "WebRTC " + $var(sipcore_media_flags);' in frontend
-assert '$var(sipcore_media_flags) = "SDES-nonew " + $var(sipcore_media_flags);' in frontend
-assert '$hdr(Contact) =~ "(^|[;[:space:]])transport=ws([;[:space:]]|$)"' in frontend
-assert '$var(sipcore_client_websocket) == 1' in frontend
-assert frontend.index('SDES-nonew ') < frontend.index('rtpengine_manage("$var(sipcore_media_flags)")')
+assert '$var(sipcore_answer_flags) = "WebRTC " + $var(sipcore_answer_flags);' in reply
+internal_media = 'RTP/AVP ICE=remove DTLS=off SDES=off rtcp-mux-demux'
+assert internal_media in frontend
+assert frontend.index(internal_media) < frontend.index('rtpengine_manage("$var(sipcore_media_flags)")')
+assert 'WebRTC " + $var(sipcore_media_flags)' not in frontend
 assert 'stage=frontend-offer-media-applied' in frontend
 assert 'stage=frontend-answer-media-applied' in reply
 
-# Kamailio, not the device, classifies WebRTC signaling for FreeSWITCH's late
-# media negotiation. Native TLS receives no WebRTC marker.
+# A client cannot request an internal media mode. FreeSWITCH receives only the
+# RTPEngine-terminated RTP/AVP leg and therefore needs no browser marker.
 assert 'remove_hf("X-Core-Media-Profile")' in frontend
-assert 'if ($proto == "ws")' in frontend
-assert 'append_hf("X-Core-Media-Profile: webrtc\\r\\n")' in frontend
+assert 'append_hf("X-Core-Media-Profile:' not in frontend
 
 dialplan_configs = [obj["data"]["public.xml"] for obj in objects if obj and
                     obj.get("kind") == "ConfigMap" and
                     "freeswitch-dialplan-configs" in obj.get("metadata", {}).get("name", "")]
 assert len(dialplan_configs) == 1
 dialplan = dialplan_configs[0]
-assert '<extension name="registered-client-media-profile" continue="true">' in dialplan
-assert '<condition field="${sip_h_X-Core-Media-Profile}" expression="^webrtc$">' in dialplan
-assert '<action application="set" data="media_webrtc=true"/>' in dialplan
+assert '<extension name="registered-client-media-profile"' not in dialplan
+assert 'media_webrtc=true' not in dialplan
 module_configs = [obj["data"]["modules.conf.xml"] for obj in objects if obj and
                   obj.get("kind") == "ConfigMap" and
                   "freeswitch-misc-configs" in obj.get("metadata", {}).get("name", "")]
 assert len(module_configs) == 1
-assert '<load module="mod_rtc"/>' in module_configs[0]
+assert '<load module="mod_rtc"/>' not in module_configs[0]
 acl_configs = [obj["data"]["acl.conf.xml"] for obj in objects if obj and
                obj.get("kind") == "ConfigMap" and
                "freeswitch-misc-configs" in obj.get("metadata", {}).get("name", "")]

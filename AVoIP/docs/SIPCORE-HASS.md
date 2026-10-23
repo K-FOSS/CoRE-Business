@@ -63,11 +63,12 @@ selects a dedicated `sipcore-public-tls` certificate issued using
 The existing Kamailio SIP certificate and Vault mTLS identity remain unchanged.
 The dedicated certificate must be Ready and chain to a CA trusted by the phone.
 
-The current PJSIP endpoints are generated with Asterisk's `webrtc=yes`
-settings, and the SIP Core media path currently applies RTPEngine's WebRTC
-profile. Registration over TLS is supported, but this does not yet establish
-media compatibility with conventional SIP phones that offer plain RTP or
-SDES-SRTP. WSS clients continue to use the browser WebRTC media profile.
+The legacy PJSIP endpoints are generated with Asterisk's `webrtc=yes`
+settings. In the HA registrar path, RTPEngine terminates the browser's WebRTC
+association and presents conventional RTP/AVP to FreeSWITCH. Browser-facing
+SDP continues to use WebRTC ICE/DTLS-SRTP, while native SIP/TLS clients use an
+independently negotiated public-side association. Registration over TLS alone
+does not prove media compatibility; both transports require live media tests.
 The frontend HA routing/registration path is transport-neutral; WSS is one
 supported client transport alongside SIP over TLS.
 

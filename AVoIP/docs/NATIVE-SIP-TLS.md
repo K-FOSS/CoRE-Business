@@ -119,12 +119,13 @@ SDES suites into twelve suites per section on the internal leg. These facts
 were checked from the newly captured call by selecting only media transport,
 suite **names** and status metadata; no keying material was printed. This
 suite expansion is source- and trace-confirmed, but its precise contribution
-to FreeSWITCH's 488 is not yet proven. The native-TLS offer now uses
-[`SDES-nonew`](https://github.com/sipwise/rtpengine/blob/master/docs/ng_control_protocol.md)
-so the internal offer retains only the phone-offered suites. Browser WebRTC
-continues to use its separate DTLS/ICE policy. Recheck both `m=` sections and
-the answer after this change; do not treat a 488 disappearing as proof that
-audio or dialog routing works.
+to FreeSWITCH's 488 is not yet proven. An intermediate `SDES-nonew` change
+retained the phone-offered suites but did not establish a clean media boundary.
+The current route instead terminates native ICE and media encryption at
+RTPEngine and sends one independent `RTP/AVP` leg to FreeSWITCH with
+`ICE=remove`, `DTLS=off`, `SDES=off`, and RTCP demultiplexing. Recheck the
+client-facing answer after this change; do not treat a 488 disappearing as
+proof that audio or dialog routing works.
 
 Two more Groundwire attempts at 22:36:41 and 22:36:53 UTC on 2026-10-22
 still ended with FreeSWITCH `488/INCOMPATIBLE_DESTINATION`; the latter has
@@ -134,20 +135,17 @@ corrected but did **not** resolve the 488. The phone's `RTP/AVP` alternative
 and RTPEngine's forwarded `RTP/AVP` alternative both carried two `a=crypto`
 attributes. FreeSWITCH 1.11.3 [rejects crypto in AVP by default](https://github.com/signalwire/freeswitch/blob/v1.11.3/src/switch_core_media.c)
 and has an [explicit profile compatibility parameter](https://github.com/signalwire/freeswitch/blob/v1.11.3/src/mod/endpoints/mod_sofia/sofia.c)
-for this nonstandard offer. Home1 enables `NDLB-allow-crypto-in-avp` only on
-the Kamailio-facing `core-managed` FreeSWITCH profile through
-`freeswitch.sipCore.allowCryptoInAvp`; the default remains off. This widens
-accepted media syntax on that trusted signaling leg, not on the carrier or
-Asterisk profiles, and does not bypass SIP authentication or TLS verification.
-The deployed offer also still contained ICE and DTLS attributes. The warning
+for this nonstandard offer. Home1's scoped compatibility parameter remains
+rendered, but is no longer exercised by the intended route because crypto
+attributes do not cross the RTPEngine boundary. It does not bypass SIP
+authentication or TLS verification. The earlier deployed offer also contained
+ICE and DTLS attributes. The warning
 `NO candidate ACL defined, Defaulting to wan.auto` is emitted when a candidate
-is parsed, not proof that ICE caused the 488. The exact FreeSWITCH failing
-branch was not logged, so success of this compatibility setting and whether
-ICE/DTLS needs separate normalization remain live-verification questions. The
-active managed profile now also uses late SDP negotiation with generous codec
-selection, matching the existing Kamailio-facing profile. This is intended to
-accept the native client's mixed media offer without changing browser WebRTC
-policy; a live call is still required to prove that the 488 is resolved.
+is parsed, not proof that ICE caused the 488. The exact historical FreeSWITCH
+failing branch was not logged. The active managed profile retains late SDP
+negotiation with generous codec selection, but now consumes only RTPEngine's
+conventional internal RTP offer. A live call is still required to prove that
+the 488 and audio path are resolved.
 Only SDP structure, suite names and counts were queried; no SRTP keys or ICE
 passwords were printed.
 

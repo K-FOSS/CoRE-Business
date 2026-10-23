@@ -41,6 +41,12 @@ Admin-managed call path. FreeSWITCH documents these as distinct
 controls: [Sofia SIP profile parameters](https://developer.signalwire.com/freeswitch/users-and-endpoints/sip-profiles/)
 and [ACL behavior](https://developer.signalwire.com/freeswitch/integration/acls/).
 
+That candidate admission was an intermediate correction while FreeSWITCH was
+still receiving WebRTC SDP. The final architecture terminates endpoint ICE at
+RTPEngine and sends no candidates on the hidden RTP/AVP leg. The scoped ACL may
+remain loaded during rollout, but a candidate reaching `core-managed` now
+indicates a failed media-boundary rewrite rather than expected operation.
+
 Signaling remains:
 
 ```text
@@ -139,30 +145,30 @@ responsible proxy avoids requiring that client behavior. Longer offers remain
 untouched, and the proxy does not synthesize a replacement
 INVITE or hide the negotiated refresher policy.
 
-### WebRTC media handoff to FreeSWITCH
+### Public WebRTC termination at RTPEngine
 
-The former browser path terminated the Kamailio/RTPEngine WebRTC offer on an
-Asterisk PJSIP endpoint rendered with `webrtc=yes`. After registration and
-call control moved to the HA registrar and FreeSWITCH, the same RTPEngine
-policy correctly re-originated a single `UDP/TLS/RTP/SAVPF` audio section with
-ICE, DTLS and RTCP mux toward the `core-managed` Sofia profile. The profile
-uses late negotiation, but the generated FreeSWITCH dialplan did not mark the
-channel as WebRTC before `answer()` or a carrier bridge consumed the offer.
-Live JsSIP calls consequently reached `core-managed-entry` and failed at media
-negotiation with `488` / `INCOMPATIBLE_DESTINATION` despite overlapping Opus,
-PCMU and PCMA codecs.
+The former browser path sent a re-originated `UDP/TLS/RTP/SAVPF` section with
+ICE, DTLS and RTCP mux through the hidden signaling tier to FreeSWITCH. That
+made FreeSWITCH a second WebRTC endpoint and exposed RTPEngine ICE candidates
+inside the cluster. Groundwire similarly reached FreeSWITCH with two media
+sections and endpoint security attributes. Those offers produced the observed
+`488` / `INCOMPATIBLE_DESTINATION` failures.
 
-Kamailio now removes any device-supplied `X-Core-Media-Profile` and stamps
-`X-Core-Media-Profile: webrtc` only for an authenticated initial INVITE
-accepted on its WebSocket transport. The trusted `core-managed-entry`
-dialplan maps that marker to FreeSWITCH's `media_webrtc=true` channel variable
-before any `answer()` or transfer. SIP signaling remains WSS-to-Kamailio and
-TLS-to-FreeSWITCH; FreeSWITCH does not expose a second browser WSS listener.
-RTPEngine remains the ICE/DTLS media anchor, and FreeSWITCH terminates the
-RTPEngine-facing WebRTC media association. The reduced FreeSWITCH module list
-also loads `mod_rtc`, which is present in the pinned image but was absent from
-the running module set. Native SIP/TLS calls are not marked as WebRTC and
-retain their separate SDES policy.
+The public RTPEngine is now the sole endpoint media-security boundary.
+Kamailio asks it to present `RTP/AVP`, remove ICE, disable DTLS and SDES, and
+demultiplex RTCP on every endpoint-to-FreeSWITCH offer. The reverse operation
+adds WebRTC ICE/DTLS-SRTP only when SDP leaves RTPEngine toward a WSS browser;
+native TLS endpoints retain their independently negotiated public-side media
+association. FreeSWITCH therefore sees only the RTPEngine pod address and an
+ordinary hidden RTP leg. It no longer loads `mod_rtc`, receives a trusted
+WebRTC marker, or sets `media_webrtc`.
+
+The response path uses the receiving internal TLS listener to identify
+FreeSWITCH replies and the final Via transport to distinguish WSS from native
+TLS. It no longer depends on a Record-Route header that TOPOS may already have
+hidden. This applies to the first answer and every retransmitted copy: a
+captured successful JsSIP dialog previously forwarded FreeSWITCH's pod address
+instead of invoking RTPEngine's answer operation.
 
 ### Multiple registered endpoints
 

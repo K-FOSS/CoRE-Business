@@ -196,12 +196,12 @@ Groundwire ICE/SDP
   ⇄ FreeSWITCH RTP/SDP leg
 ```
 
-The frontend sends native phone offers through RTPEngine with
-`replace-origin`, `external internal`, and `address-family=IP4`. Native TLS
-clients receive the `SDES-nonew` compatibility flag when the configured
-policy permits SDES; browser WSS receives the WebRTC flag. This distinction is
-intentional: browser WebRTC flags must not be applied indiscriminately to
-native SIP phones.
+The frontend sends endpoint offers through the site-public RTPEngine. The
+client-facing association negotiates the endpoint's ICE and RTP security;
+the hidden FreeSWITCH-facing association is forced to `RTP/AVP` with ICE,
+DTLS and SDES removed and RTCP demultiplexed. Browser `WebRTC` flags are used
+only when SDP leaves RTPEngine toward a WSS client. Native SIP/TLS clients
+retain their independently negotiated public-side association.
 
 The first offer creates the media session. Final answers are processed once
 per outgoing wire copy using the existing media session; retransmitted 200
