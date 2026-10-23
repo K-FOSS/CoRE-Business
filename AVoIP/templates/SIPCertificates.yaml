@@ -95,6 +95,12 @@ spec:
 {{ end }}
 {{ end }}
 {{- if .Values.freeswitch.enabled }}
+{{- $freeswitchKamailioIssuer := dig "kamailioClientIssuerName" "" .Values.freeswitch -}}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+  {{- if dig "carrierOutbound" "clientIdentity" "enabled" false $instance -}}
+    {{- $freeswitchKamailioIssuer = dig "carrierOutbound" "clientIdentity" "issuerName" $freeswitchKamailioIssuer $instance -}}
+  {{- end -}}
+{{- end }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -124,7 +130,7 @@ spec:
     - 'client auth'
   issuerRef:
     kind: ClusterIssuer
-    name: '{{ required "a client-auth capable issuer is required for the FreeSWITCH-to-Kamailio certificate" (default .Values.freeswitch.kamailioClientIssuerName .Values.kamailio.carrierOutbound.clientIdentity.issuerName) }}'
+    name: '{{ required "a client-auth capable issuer is required for the FreeSWITCH-to-Kamailio certificate" $freeswitchKamailioIssuer }}'
 {{- end }}
 {{- if .Values.asterisk.enabled }}
 ---
