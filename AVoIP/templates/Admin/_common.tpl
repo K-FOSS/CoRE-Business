@@ -173,7 +173,7 @@ controllers:
                 key: 'token'
           {{ if $settings.telephony.enabled }}
           - name: 'AVOIP_AMI_ADDRESS'
-            value: '{{ default (printf "%s-asterisk-control.%s.svc.%s:%d" (include "avoip.fullname" $) $.Release.Namespace $.Values.cluster.domain (int $settings.telephony.asteriskManager.port)) $settings.telephony.asterisk.amiAddress }}'
+            value: '{{ default (printf "%s.%s.svc.%s:%d" (include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" "asterisk-control")) $.Release.Namespace $.Values.cluster.domain (int $settings.telephony.asteriskManager.port)) $settings.telephony.asterisk.amiAddress }}'
           - name: 'AVOIP_AMI_USERNAME'
             value: '{{ default (printf "avoip-admin-%s" .Values.region) $settings.telephony.asteriskManager.username }}'
           - name: 'AVOIP_AMI_SECRET'
@@ -191,7 +191,7 @@ controllers:
             value: '{{ $settings.telephony.asterisk.cdrTable }}'
           {{ end }}
           - name: 'AVOIP_ESL_ADDRESS'
-            value: '{{ default (printf "%s-freeswitch-control.%s.svc.%s:%d" (include "avoip.fullname" $) $.Release.Namespace $.Values.cluster.domain (int $settings.telephony.freeswitchEventSocket.port)) $settings.telephony.freeswitch.eventSocketAddress }}'
+            value: '{{ default (printf "%s.%s.svc.%s:%d" (include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" "freeswitch-control")) $.Release.Namespace $.Values.cluster.domain (int $settings.telephony.freeswitchEventSocket.port)) $settings.telephony.freeswitch.eventSocketAddress }}'
           - name: 'AVOIP_ESL_SECRET'
             valueFrom:
               secretKeyRef:

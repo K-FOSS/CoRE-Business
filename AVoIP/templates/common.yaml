@@ -2280,7 +2280,7 @@ service:
 {{- end }}
 {{- if .Values.avoipAdmin.telephony.enabled }}
   asterisk-control:
-    forceRename: '{{ include "avoip.fullname" . }}-asterisk-control'
+    forceRename: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "asterisk-control") }}'
     controller: asterisk
     clusterIP: 'None'
     publishNotReadyAddresses: false
@@ -2368,7 +2368,7 @@ service:
 {{- end }}
 {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
   freeswitch-control:
-    forceRename: '{{ include "avoip.fullname" . }}-freeswitch-control'
+    forceRename: '{{ include "avoip.resourceNameWithSuffix" (dict "root" . "suffix" "freeswitch-control") }}'
     controller: freeswitch
     clusterIP: 'None'
     publishNotReadyAddresses: false
