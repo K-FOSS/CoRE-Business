@@ -102,6 +102,8 @@ grep -Fq 'require_certificate = yes' <<<"$tls_config"
 
 grep -Fq 'support_path=yes' "$rendered"
 grep -Fq 'max_contacts=2' "$rendered"
+grep -Fq 'modparam("registrar", "append_branches", 1)' <<<"$config"
+echo 'PASS: inbound registrar lookup forks every active contact'
 grep -Fq 'auth_type=userpass' "$rendered"
 grep -Fq 'username=7101' "$rendered"
 ! grep -Fq 'outbound_proxy=sip:127.0.0.1:1' "$rendered"

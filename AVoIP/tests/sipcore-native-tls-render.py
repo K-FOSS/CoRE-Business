@@ -86,6 +86,7 @@ assert re.search(r'record_route_preset\(\s*"SIPCORE_OWNER_POD\.[^\"]+:5063;trans
                  r'"sipcore\.mylogin\.space:8443;transport=tls;lr;r2=on"', frontend)
 assert 'modparam("topos", "contact_mode", 1)' in config
 assert 'modparam("topos", "rr_update", 1)' in config
+assert 'modparam("registrar", "append_branches", 1)' in config
 assert 'stage=frontend-owner-hop' in frontend
 assert 'X-Core-Frontend-Owner-Forward' in frontend and 'remove_hf("X-Core-Frontend-Owner-Forward")' in frontend
 assert 'stage=frontend-dialog-backend-route' in frontend

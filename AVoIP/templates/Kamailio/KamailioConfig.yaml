@@ -227,6 +227,9 @@ data:
     modparam("registrar", "max_contacts", {{ .Values.kamailio.registrar.maxContacts }})
     modparam("registrar", "min_expires", {{ .Values.kamailio.registrar.minExpires }})
     modparam("registrar", "max_expires", {{ .Values.kamailio.registrar.maxExpires }})
+    # lookup("location") must append every active binding so TM can fork
+    # inbound calls to all registered TLS and WebSocket endpoints.
+    modparam("registrar", "append_branches", 1)
     modparam("registrar", "use_path", 1)
     modparam("registrar", "path_mode", 1)
     {{- end }}

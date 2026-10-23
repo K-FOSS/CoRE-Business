@@ -80,6 +80,10 @@ Request-URI to the registrar realm, checks the active subscriber, performs
 `lookup("location")`, records the dialog route, and relays the INVITE. The
 registered contact's Path and owner metadata are binding-specific. A shared
 location row does not make a live TCP/TLS connection portable between pods.
+The registrar enables `append_branches=1`, so the lookup keeps the highest-q
+binding as the Request-URI and adds every other active binding as a transaction
+branch. TM then rings all registered TLS/WSS endpoints in parallel; each branch
+retains its own Path, TOPOS owner, and flow alias.
 
 ### Groundwire to extension 66
 

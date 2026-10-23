@@ -137,3 +137,13 @@ that receives a `422` may retry with at least the returned `Min-SE`; the
 observed JsSIP transaction did not do so. Accepting the valid 90-second offer
 at the responsible UAS avoids requiring that client behavior and keeps the
 dialog standards-compliant.
+
+### Multiple registered endpoints
+
+The registrar lookup also enables `append_branches=1`. Without that registrar
+parameter, `lookup("location")` selects only the highest-q contact even when
+PostgreSQL contains multiple active bindings. With it, Kamailio's transaction
+manager forks the inbound INVITE to every active TLS and WSS contact, while
+preserving each binding's Path and connection-owner metadata. This applies to
+the extension's registered endpoints generally; it is not an extension-7101
+special case.
