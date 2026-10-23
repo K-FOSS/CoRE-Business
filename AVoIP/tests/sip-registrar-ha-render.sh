@@ -28,6 +28,7 @@ settings = {node.get('name'): node.get('value') for node in profile.findall('./s
 candidate_acls = [node.get('value') for node in profile.findall('./settings/param[@name="apply-candidate-acl"]')]
 assert settings['apply-inbound-acl'] == 'kamailio'
 assert candidate_acls == ['localnet.auto', 'wan.auto'], candidate_acls
+assert settings['NDLB-allow-crypto-in-avp'] == 'true'
 PY
 managed_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-managed"))) | .data["core-managed.xml"]' "$rendered")"
 python3 - "$managed_config" <<'PY'

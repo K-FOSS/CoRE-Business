@@ -41,6 +41,13 @@ assert len(freeswitch_configs) == 1
 freeswitch_profile = ET.fromstring(freeswitch_configs[0])
 assert freeswitch_profile.attrib["name"] == "kamailio"
 assert len(freeswitch_profile.findall("./settings/param[@name='NDLB-allow-crypto-in-avp'][@value='true']")) == 1
+managed_configs = [obj["data"]["core-managed.xml"] for obj in objects if obj and
+                    obj.get("kind") == "ConfigMap" and
+                    "freeswitch-managed" in obj.get("metadata", {}).get("name", "")]
+assert len(managed_configs) == 1
+managed_profile = ET.fromstring(managed_configs[0])
+assert managed_profile.attrib["name"] == "core-managed"
+assert len(managed_profile.findall("./settings/param[@name='NDLB-allow-crypto-in-avp'][@value='true']")) == 1
 disabled_render = subprocess.check_output([
     "helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
     "--namespace", "core-prod", "-f",
