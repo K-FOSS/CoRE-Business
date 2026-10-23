@@ -130,12 +130,14 @@ controllers:
                 name: '{{ default (printf "%s-core-voice-sms" $fullName) $settings.databaseSecret.name }}'
                 key: '{{ $settings.databaseSecret.key }}'
           {{- end }}
-          {{- if and (eq $mode "webhook") $settings.legacyFlowroute.enabled }}
+          {{- if and (or (eq $mode "webhook") (eq $mode "media")) $settings.legacyFlowroute.enabled }}
+          {{- if eq $mode "webhook" }}
           - name: 'FLOWROUTE_CALLBACK_TOKEN'
             valueFrom:
               secretKeyRef:
                 name: '{{ $callbackSecretName }}'
                 key: '{{ $settings.callbackSecret.key }}'
+          {{- end }}
           - name: 'FLOWROUTE_SMS_DIAGNOSTICS'
             value: '{{ $settings.diagnostics.enabled }}'
           {{- end }}
