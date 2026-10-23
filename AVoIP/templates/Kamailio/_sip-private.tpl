@@ -455,6 +455,19 @@
         route(PRIVATE_RELAY);
       }
       {{- end }}
+      if (has_totag() &&
+          ($hdr(Route) =~ "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}" ||
+           $(ru{uri.host}) == "{{ $.Values.asterisk.sipCore.hostname }}")) {
+        # TOPOS may expose the public client-facing route as the remaining
+        # local Route URI. On the client-facing leg, that URI is not the
+        # next hop for ACK/BYE/INFO/UPDATE; the established dialog peer is
+        # FreeSWITCH. Owner-pod forwarding above remains authoritative when
+        # TOPOS restored a different replica's owner address.
+        $du = "sips:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}:5072;transport=tls";
+        $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
+        set_send_socket_name("private_tls");
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-dialog-backend-route pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn\n");
+      }
       route(SIPCORE_CONTENT_TYPE);
       if ($var(sipcore_content_type) == "application/trickle-ice-sdpfrag" && has_body()) {
         if (!is_method("INFO")) {

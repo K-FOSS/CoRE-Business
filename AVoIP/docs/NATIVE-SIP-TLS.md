@@ -151,6 +151,11 @@ policy; a live call is still required to prove that the 488 is resolved.
 Only SDP structure, suite names and counts were queried; no SRTP keys or ICE
 passwords were printed.
 
+Client-originated in-dialog requests also restore the FreeSWITCH backend when
+TOPOS leaves the public SIP Core route as the local Route URI. This prevents
+ACK/BYE/INFO/UPDATE from being relayed back toward the public entry point with
+an empty next hop; restored owner-pod routes are handled first for HA dialogs.
+
 ## Signaling and ownership
 
 Groundwire connects to `sipcore.mylogin.space:8443` through the main Gateway

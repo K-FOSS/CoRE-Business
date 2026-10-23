@@ -81,6 +81,8 @@ assert 'modparam("topos", "contact_mode", 1)' in config
 assert 'modparam("topos", "rr_update", 1)' in config
 assert 'stage=frontend-owner-hop' in frontend
 assert 'X-Core-Frontend-Owner-Forward' in frontend and 'remove_hf("X-Core-Frontend-Owner-Forward")' in frontend
+assert 'stage=frontend-dialog-backend-route' in frontend
+assert ':5072;transport=tls' in frontend
 assert 'stage=frontend-owner-received' in backend
 assert backend.index('route(FROM_SIPCORE);') < backend.index('check_flow_token()')
 
