@@ -353,6 +353,83 @@ func TestIVRDefinitionsUseConfiguredAndAuthorizedDestinations(t *testing.T) {
 	}
 }
 
+func TestManagedAudioEndpointsValidateReferencesAndRemoteMediaPolicy(t *testing.T) {
+	enabled := true
+	catalog := fixtureCatalog()
+	catalog.AudioEndpoints = []audioEndpoint{{
+		ID:                  "welcome-audio",
+		Name:                "Welcome announcement",
+		Site:                "yvr",
+		Extension:           "66",
+		Enabled:             &enabled,
+		MediaSourceType:     "library",
+		MediaAsset:          "welcome",
+		PlaybackMode:        "once",
+		HangupAfterPlayback: &enabled,
+	}}
+	catalog.IVRs = []ivrDefinition{{ID: "main-menu", Name: "Main menu", Site: "yvr", GreetingAsset: "welcome", TimeoutMs: 15000, DigitTimeoutMs: 2000, MaxDigits: 4, InvalidRetries: 1, Routes: []ivrDigitRoute{{Digits: "1", Kind: "audio_endpoint", Destination: "welcome-audio"}}}}
+	catalog.DIDs[0].Kind = "audio_endpoint"
+	catalog.DIDs[0].Destination = "welcome-audio"
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("valid managed audio endpoint rejected: %v", err)
+	}
+
+	catalog.AudioEndpoints[0].MediaSourceType = "remote_url"
+	catalog.AudioEndpoints[0].MediaAsset = ""
+	catalog.AudioEndpoints[0].MediaURL = "https://media.example.test/welcome.mp3"
+	if err := catalog.validate(); err == nil {
+		t.Fatal("remote media host accepted without an explicit allowlist")
+	}
+	t.Setenv("AVOIP_AUDIO_REMOTE_MEDIA_HOSTS", "media.example.test")
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("allowlisted remote media rejected: %v", err)
+	}
+	catalog.AudioEndpoints[0].MediaURL = "https://127.0.0.1/private.mp3"
+	if err := catalog.validate(); err == nil {
+		t.Fatal("IP-literal remote media host accepted")
+	}
+}
+
+func TestIVRRejectsIndirectRouteCycles(t *testing.T) {
+	catalog := fixtureCatalog()
+	catalog.IVRs = []ivrDefinition{
+		{ID: "main", Name: "Main", Site: "yvr", GreetingAsset: "welcome", TimeoutMs: 15000, DigitTimeoutMs: 2000, MaxDigits: 4, InvalidRetries: 1, Routes: []ivrDigitRoute{{Digits: "1", Kind: "ivr", Destination: "support"}}},
+		{ID: "support", Name: "Support", Site: "yvr", GreetingAsset: "welcome", TimeoutMs: 15000, DigitTimeoutMs: 2000, MaxDigits: 4, InvalidRetries: 1, Routes: []ivrDigitRoute{{Digits: "1", Kind: "ivr", Destination: "main"}}},
+	}
+	if err := catalog.validate(); err == nil {
+		t.Fatal("indirect IVR route cycle accepted")
+	}
+}
+
+func TestFreeSwitchManagedAudioEndpointRoute(t *testing.T) {
+	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
+	t.Setenv("AVOIP_SITE", "yvr")
+	enabled := true
+	catalog := fixtureCatalog()
+	catalog.AudioEndpoints = []audioEndpoint{{ID: "welcome-audio", Name: "Welcome announcement", Site: "yvr", Extension: "66", Enabled: &enabled, MediaSourceType: "library", MediaAsset: "welcome", PlaybackMode: "once", RepeatCount: 1, HangupAfterPlayback: &enabled}}
+	s := &server{}
+	s.cacheCatalog(catalog)
+	form := url.Values{
+		"Caller-Context":                  {"core-managed-outbound"},
+		"Caller-Destination-Number":       {"66"},
+		"variable_sip_h_X-Core-Extension": {"7101"},
+	}
+	r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.SetBasicAuth("routing", os.Getenv("AVOIP_ROUTING_TOKEN"))
+	w := httptest.NewRecorder()
+	s.freeSwitchRoute(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("FreeSWITCH endpoint route status %d: %s", w.Code, w.Body.String())
+	}
+	if got := strings.Count(w.Body.String(), `application="playback" data="/usr/share/freeswitch/sounds/avoip-shared/welcome.wav"`); got != 2 {
+		t.Fatalf("audio endpoint repeat count generated %d playback actions: %s", got, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), `application="bridge"`) {
+		t.Fatalf("audio endpoint was incorrectly bridged: %s", w.Body.String())
+	}
+}
+
 func TestIVRMediaProxyRequiresAdminAndFiltersUnsafeAssets(t *testing.T) {
 	library := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

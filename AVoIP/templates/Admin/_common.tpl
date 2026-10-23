@@ -167,6 +167,8 @@ controllers:
             value: '{{ dict "calls_per_minute" .Values.kamailio.defaults.carrierOutbound.limits.callsPerMinute "concurrent_calls" .Values.kamailio.defaults.carrierOutbound.limits.concurrentCalls "max_duration_seconds" .Values.kamailio.defaults.carrierOutbound.limits.maxDurationSeconds | toJson | replace "'" "''" }}'
           - name: 'AVOIP_SITES_JSON'
             value: '{{ include "avoip.admin.sites" . | replace "'" "''" }}'
+          - name: 'AVOIP_AUDIO_REMOTE_MEDIA_HOSTS'
+            value: '{{ join "," $settings.audioEndpoints.remoteMediaHosts }}'
           {{ if ne (kindOf $settings.catalog) "invalid" }}
           - name: 'AVOIP_SIP_JSON'
             value: '{{ toJson $settings.catalog | replace "'" "''" }}'

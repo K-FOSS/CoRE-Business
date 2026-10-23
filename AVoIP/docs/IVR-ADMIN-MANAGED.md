@@ -27,6 +27,23 @@ The API must accept asset IDs and destination identifiers, never FreeSWITCH
 XML, channel variables, SIP expressions, or dialstrings. Authorization is
 rechecked when a call enters the IVR.
 
+## Audio endpoints
+
+Audio endpoints are first-class catalog records. They have a stable ID, site,
+optional routable extension, enabled state, playback behavior, and either a
+shared-library WAV asset or an explicitly allowlisted HTTPS media source. A
+direct call to an assigned Audio Endpoint extension, or a DID whose structured
+destination is an Audio Endpoint, is resolved by the authenticated
+`mod_xml_curl` route and logged with the endpoint ID, SIP Call-ID, and
+FreeSWITCH UUID. No browser supplies a filesystem path or FreeSWITCH dialplan
+fragment.
+
+Remote media is disabled until the deployment sets
+`AVOIP_AUDIO_REMOTE_MEDIA_HOSTS` to exact approved hostnames. IP literals,
+credentials, ports, non-HTTPS URLs, and unlisted hosts are rejected before a
+catalog revision is saved. This keeps Audio Endpoints from becoming an
+unrestricted server-side request mechanism.
+
 ## Runtime boundary
 
 The IVR controller should run as a dedicated FreeSWITCH instance and service,
@@ -60,13 +77,17 @@ authorization system.
 1. **Implemented:** Add persisted IVR definitions and digit-route records to
    the Admin catalog, including optimistic versioning and the existing
    catalog-save audit event.
-2. **Implemented:** Add the Admin UI and authenticated media-index proxy for
-   shared-library selection and structured destination validation.
+2. **Implemented:** Add the Admin UI, Audio Endpoint resource, authenticated
+   media-index proxy, and structured destination validation. Direct Audio
+   Endpoint calls and DID-to-Audio-Endpoint routing use the authenticated
+   dynamic FreeSWITCH route.
 3. **Remaining:** Add a private snapshot endpoint and dedicated FreeSWITCH deployment with
    authenticated access and a readiness check for the active snapshot.
-4. **Remaining:** Route one configured DID through the dedicated instance in a fixture and
-   mocked telephony tests.
-5. **Remaining:** Migrate existing static IVR entries, verify DTMF and hangup propagation,
+4. **Remaining:** Execute structured IVR routes (including Audio Endpoint and
+   IVR-to-IVR routes) in that controller; the current static IVR contexts do
+   not consume Admin IVR route definitions yet.
+5. **Remaining:** Migrate the legacy `66`/`67` static playback destinations,
+   verify DTMF and hangup propagation,
    then remove the compatibility definition from the routing dialplan.
 
 Until this migration completes, the static `freeswitch.ivr` values remain the

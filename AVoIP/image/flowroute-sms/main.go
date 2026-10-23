@@ -817,7 +817,7 @@ func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if name != "admin.js" && name != "app.css" && name != "telephony.css" && name != "app.js" && name != "attachments.js" && name != "bridged-calls.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
+	if name != "admin.js" && name != "app.css" && name != "telephony.css" && name != "ivr.css" && name != "app.js" && name != "attachments.js" && name != "bridged-calls.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
 		http.NotFound(w, r)
 		return
 	}

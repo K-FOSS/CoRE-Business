@@ -72,6 +72,50 @@ type ivrDigitRoute struct {
 	CallerID    string `json:"caller_id,omitempty"`
 }
 
+// audioEndpoint is an AVoIP-managed, addressable playback destination. It is
+// deliberately a catalog resource rather than a FreeSWITCH dialplan fragment:
+// the runtime can resolve a stable endpoint ID to a validated media source.
+type audioEndpoint struct {
+	ID                  string `json:"id"`
+	Name                string `json:"name"`
+	Site                string `json:"site"`
+	Extension           string `json:"extension,omitempty"`
+	Enabled             *bool  `json:"enabled,omitempty"`
+	Description         string `json:"description,omitempty"`
+	MediaSourceType     string `json:"media_source_type"`
+	MediaAsset          string `json:"media_asset,omitempty"`
+	MediaURL            string `json:"media_url,omitempty"`
+	PlaybackMode        string `json:"playback_mode"`
+	HangupAfterPlayback *bool  `json:"hangup_after_playback,omitempty"`
+	RepeatCount         int    `json:"repeat_count,omitempty"`
+}
+
+func (a audioEndpoint) active() bool { return a.Enabled == nil || *a.Enabled }
+
+// allowedRemoteAudioURL keeps managed remote media from becoming a general
+// purpose FreeSWITCH fetch primitive.  Operators must explicitly list the
+// exact HTTPS hosts which are permitted to supply media.  Library-backed media
+// does not need this exception and remains the normal choice.
+func allowedRemoteAudioURL(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u == nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Port() != "" {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "" {
+		return false
+	}
+	if _, err := netip.ParseAddr(host); err == nil {
+		return false
+	}
+	for _, allowed := range strings.Split(os.Getenv("AVOIP_AUDIO_REMOTE_MEDIA_HOSTS"), ",") {
+		if host == strings.ToLower(strings.TrimSpace(allowed)) {
+			return true
+		}
+	}
+	return false
+}
+
 func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
 
 type extensionRoute struct {
@@ -238,14 +282,15 @@ func (e extensionRoute) outboundDisabledReason() string {
 }
 
 type sipCatalog struct {
-	Providers     []sipProvider      `json:"providers"`
-	DIDs          []didRoute         `json:"dids"`
-	Extensions    []extensionRoute   `json:"extensions"`
-	SIPUsers      []sipUserRoute     `json:"sip_users,omitempty"`
-	LimitProfiles []callLimitProfile `json:"limit_profiles,omitempty"`
-	IVRs          []ivrDefinition    `json:"ivrs,omitempty"`
-	Version       int64              `json:"version"`
-	Source        string             `json:"source,omitempty"`
+	Providers      []sipProvider      `json:"providers"`
+	DIDs           []didRoute         `json:"dids"`
+	Extensions     []extensionRoute   `json:"extensions"`
+	SIPUsers       []sipUserRoute     `json:"sip_users,omitempty"`
+	LimitProfiles  []callLimitProfile `json:"limit_profiles,omitempty"`
+	IVRs           []ivrDefinition    `json:"ivrs,omitempty"`
+	AudioEndpoints []audioEndpoint    `json:"audio_endpoints,omitempty"`
+	Version        int64              `json:"version"`
+	Source         string             `json:"source,omitempty"`
 }
 type siteTarget struct {
 	Host string `json:"host"`
@@ -430,6 +475,38 @@ func (c sipCatalog) validate() error {
 		}
 		return false
 	}
+	audioEndpoints := map[string]audioEndpoint{}
+	audioExtensions := map[string]bool{}
+	for _, endpoint := range c.AudioEndpoints {
+		if !providerID.MatchString(endpoint.ID) || strings.TrimSpace(endpoint.Name) == "" || len(endpoint.Name) > 100 || len(endpoint.Description) > 500 || (endpoint.Site != "yvr" && endpoint.Site != "yxl") || (endpoint.Extension != "" && !extensionID.MatchString(endpoint.Extension)) || (endpoint.PlaybackMode != "once" && endpoint.PlaybackMode != "loop") || endpoint.RepeatCount < 0 || endpoint.RepeatCount > 100 {
+			return errors.New("invalid audio endpoint")
+		}
+		if _, exists := audioEndpoints[endpoint.ID]; exists || (endpoint.Extension != "" && audioExtensions[endpoint.Extension]) {
+			return errors.New("duplicate audio endpoint ID or extension")
+		}
+		switch endpoint.MediaSourceType {
+		case "library":
+			if !ivrAssetID.MatchString(endpoint.MediaAsset) || endpoint.MediaURL != "" {
+				return errors.New("audio endpoint library media is invalid")
+			}
+		case "remote_url":
+			if !allowedRemoteAudioURL(endpoint.MediaURL) || endpoint.MediaAsset != "" {
+				return errors.New("audio endpoint remote media must be an allowlisted HTTPS hostname URL")
+			}
+		default:
+			return errors.New("unsupported audio endpoint media source")
+		}
+		audioEndpoints[endpoint.ID] = endpoint
+		if endpoint.Extension != "" {
+			audioExtensions[endpoint.Extension] = true
+		}
+	}
+	knownIVRs := map[string]ivrDefinition{}
+	for _, candidate := range c.IVRs {
+		if candidate.ID != "" {
+			knownIVRs[candidate.ID] = candidate
+		}
+	}
 	ivrs := map[string]ivrDefinition{}
 	for _, ivr := range c.IVRs {
 		if !providerID.MatchString(ivr.ID) || strings.TrimSpace(ivr.Name) == "" || len(ivr.Name) > 100 || (ivr.Site != "yvr" && ivr.Site != "yxl") || !ivrAssetID.MatchString(ivr.GreetingAsset) || ivr.TimeoutMs < 1000 || ivr.TimeoutMs > 60000 || ivr.DigitTimeoutMs < 250 || ivr.DigitTimeoutMs > 10000 || ivr.MaxDigits < 1 || ivr.MaxDigits > 8 || ivr.InvalidRetries < 0 || ivr.InvalidRetries > 3 || len(ivr.Routes) == 0 || len(ivr.Routes) > 64 {
@@ -472,11 +549,48 @@ func (c sipCatalog) validate() error {
 				if !ivrAssetID.MatchString(route.Destination) || route.Provider != "" || route.CallerID != "" {
 					return errors.New("IVR media route requires a valid shared-library asset ID")
 				}
+			case "audio_endpoint":
+				endpoint, ok := audioEndpoints[route.Destination]
+				if !ok || endpoint.Site != ivr.Site || !endpoint.active() || route.Provider != "" || route.CallerID != "" {
+					return errors.New("IVR route refers to an unavailable audio endpoint at its site")
+				}
+			case "ivr":
+				target, ok := knownIVRs[route.Destination]
+				if !ok || target.Site != ivr.Site || target.ID == ivr.ID || route.Provider != "" || route.CallerID != "" {
+					return errors.New("IVR route refers to an invalid IVR at its site")
+				}
 			default:
 				return errors.New("unsupported IVR route kind")
 			}
 		}
 		ivrs[ivr.ID] = ivr
+	}
+	// A direct self-reference is rejected above; walk the remaining IVR edges as
+	// well so a saved route cannot create an indirect menu loop.
+	visiting := map[string]bool{}
+	visited := map[string]bool{}
+	var visitIVR func(string) bool
+	visitIVR = func(id string) bool {
+		if visiting[id] {
+			return true
+		}
+		if visited[id] {
+			return false
+		}
+		visiting[id] = true
+		for _, route := range ivrs[id].Routes {
+			if route.Kind == "ivr" && visitIVR(route.Destination) {
+				return true
+			}
+		}
+		delete(visiting, id)
+		visited[id] = true
+		return false
+	}
+	for id := range ivrs {
+		if visitIVR(id) {
+			return errors.New("IVR routes cannot contain a cycle")
+		}
 	}
 	dids := map[string]bool{}
 	for _, d := range c.DIDs {
@@ -527,6 +641,11 @@ func (c sipCatalog) validate() error {
 			if !extensionID.MatchString(d.Destination) {
 				return errors.New("invalid destination extension")
 			}
+		case "audio_endpoint":
+			endpoint, ok := audioEndpoints[d.Destination]
+			if !ok || endpoint.Site != d.Site || !endpoint.active() {
+				return errors.New("DID refers to an unavailable audio endpoint at its site")
+			}
 		case "did":
 			if !plusOneNumber.MatchString(d.Destination) || !verify(d.OutboundProvider, d.CallerID, d.Site) {
 				return errors.New("DID forwarding needs a valid destination and verified outbound caller ID")
@@ -549,7 +668,7 @@ func (c sipCatalog) validate() error {
 		if err := validateAssignment(e.LimitProfileID, e.TenantID, e.Site); err != nil {
 			return err
 		}
-		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || (e.AssignedUser != "" && !adminUserID.MatchString(e.AssignedUser)) || seen[e.Extension] {
+		if !extensionID.MatchString(e.Extension) || len(e.DisplayName) > 120 || (e.AssignedUser != "" && !adminUserID.MatchString(e.AssignedUser)) || seen[e.Extension] || audioExtensions[e.Extension] {
 			return errors.New("invalid or duplicate extension")
 		}
 		callerIDs := e.callerIDs()
@@ -1202,6 +1321,10 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	extension := r.Form.Get("variable_sip_h_X-Core-Extension")
 	bridge := ""
 	transfer := ""
+	playback := ""
+	playbackEndpoint := ""
+	playbackHangup := true
+	playbackCount := 1
 	detectFax := false
 	callerID := ""
 	gateway := ""
@@ -1209,24 +1332,46 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	codecOrder := []string(nil)
 	callLinkedID := safeCorrelationID(r.Form.Get("variable_sip_h_X-Core-Call-Linkedid"))
 	originUniqueID := safeCorrelationID(r.Form.Get("variable_sip_h_X-Core-Origin-Uniqueid"))
+	resolveAudioEndpoint := func(endpoint audioEndpoint) {
+		if endpoint.Site != site || !endpoint.active() {
+			return
+		}
+		playbackEndpoint = endpoint.ID
+		playbackHangup = endpoint.HangupAfterPlayback == nil || *endpoint.HangupAfterPlayback
+		playbackCount = endpoint.RepeatCount + 1
+		if endpoint.MediaSourceType == "library" {
+			playback = "/usr/share/freeswitch/sounds/avoip-shared/" + endpoint.MediaAsset + ".wav"
+			return
+		}
+		// Catalog validation has already enforced an exact HTTPS-host allowlist.
+		playback = "shout://" + strings.TrimPrefix(endpoint.MediaURL, "https://")
+	}
 	if context == "core-managed-outbound" && extensionID.MatchString(extension) {
-		for _, e := range c.Extensions {
-			if e.Extension == extension && e.Site == site {
-				callerID = e.callerIDs()[0]
-				eligibleProviders, _ := eligibleExtensionProviders(c, e, callerID, site)
-				if len(eligibleProviders) > 0 {
-					provider := eligibleProviders[0]
-					providerID = provider.ID
-					gateway = provider.Gateways[site]
-					codecOrder = effectiveProviderCodecOrder(provider)
-					if plusOneNumber.MatchString(destination) {
-						for _, d := range c.DIDs {
-							if d.Number == callerID && containsString(d.Providers, providerID) && len(d.CodecOrder) > 0 {
-								codecOrder = d.CodecOrder
-								break
+		for _, endpoint := range c.AudioEndpoints {
+			if endpoint.Extension != "" && endpoint.Extension == destination {
+				resolveAudioEndpoint(endpoint)
+				break
+			}
+		}
+		if playback == "" {
+			for _, e := range c.Extensions {
+				if e.Extension == extension && e.Site == site {
+					callerID = e.callerIDs()[0]
+					eligibleProviders, _ := eligibleExtensionProviders(c, e, callerID, site)
+					if len(eligibleProviders) > 0 {
+						provider := eligibleProviders[0]
+						providerID = provider.ID
+						gateway = provider.Gateways[site]
+						codecOrder = effectiveProviderCodecOrder(provider)
+						if plusOneNumber.MatchString(destination) {
+							for _, d := range c.DIDs {
+								if d.Number == callerID && containsString(d.Providers, providerID) && len(d.CodecOrder) > 0 {
+									codecOrder = d.CodecOrder
+									break
+								}
 							}
+							bridge = managedOutboundGatewayBridge(gateway, destination, extension, callLinkedID, originUniqueID)
 						}
-						bridge = managedOutboundGatewayBridge(gateway, destination, extension, callLinkedID, originUniqueID)
 					}
 				}
 			}
@@ -1260,12 +1405,18 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 						codecOrder = d.CodecOrder
 					}
 					bridge = managedGatewayBridge(gateway, d.Destination)
+				case "audio_endpoint":
+					for _, endpoint := range c.AudioEndpoints {
+						if endpoint.ID == d.Destination && endpoint.Site == site && endpoint.active() {
+							resolveAudioEndpoint(endpoint)
+						}
+					}
 				}
 			}
 		}
 	}
 	w.Header().Set("Content-Type", "text/xml")
-	if bridge == "" && transfer == "" {
+	if bridge == "" && transfer == "" && playback == "" {
 		io.WriteString(w, `<document type="freeswitch/xml"><section name="result"><result status="not found"/></section></document>`)
 		return
 	}
@@ -1295,7 +1446,16 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>`
 		}
 	}
-	if transfer != "" {
+	if playback != "" {
+		text += `<action application="answer"/><action application="log" data="INFO AVoIP audio endpoint start endpoint=` + escape(playbackEndpoint) + ` call_id=${sip_call_id} uuid=${uuid}"/>`
+		for i := 0; i < playbackCount; i++ {
+			text += `<action application="playback" data="` + escape(playback) + `"/>`
+		}
+		text += `<action application="log" data="INFO AVoIP audio endpoint complete endpoint=` + escape(playbackEndpoint) + ` call_id=${sip_call_id} uuid=${uuid}"/>`
+		if playbackHangup {
+			text += `<action application="hangup" data="NORMAL_CLEARING"/>`
+		}
+	} else if transfer != "" {
 		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
 	} else {
 		text += `<action application="set" data="hangup_after_bridge=true"/><action application="bridge" data="` + escape(bridge) + `"/>`

@@ -1629,6 +1629,10 @@ avoipAdmin:
     digest: 'sha256:d0ffdcdf9e43ff398f3935eee6b260e21ce09775920187a44f18d030b188485e'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
+  audioEndpoints:
+    # Exact HTTPS hostnames which may be used by managed remote-media Audio
+    # Endpoints. Keep empty to require the shared audio library exclusively.
+    remoteMediaHosts: []
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.
   sites: {}
   # Optional live telephony integrations. Secrets must be dedicated read-only
