@@ -143,6 +143,12 @@ module_configs = [obj["data"]["modules.conf.xml"] for obj in objects if obj and
                   "freeswitch-misc-configs" in obj.get("metadata", {}).get("name", "")]
 assert len(module_configs) == 1
 assert '<load module="mod_rtc"/>' in module_configs[0]
+acl_configs = [obj["data"]["acl.conf.xml"] for obj in objects if obj and
+               obj.get("kind") == "ConfigMap" and
+               "freeswitch-misc-configs" in obj.get("metadata", {}).get("name", "")]
+assert len(acl_configs) == 1
+assert '<list name="rtpengine" default="deny">' in acl_configs[0]
+assert '<node type="allow" cidr="172.16.0.0/12"/>' in acl_configs[0]
 
 # Force string semantics for the side marker in both request and send routes.
 source = (root / "AVoIP/templates/Kamailio/_sip-private.tpl").read_text()

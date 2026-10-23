@@ -244,6 +244,13 @@ data:
         <node type="allow" cidr="172.16.0.0/12"/>
         <node type="allow" cidr="{{ $.Values.freeswitch.publicExposure.podCIDR }}"/>
       </list>
+      <!-- SDP reaching FreeSWITCH is already anchored by RTPEngine. Keep ICE
+           candidate acceptance narrower than the SIP-peer ACL and independent
+           of localnet.auto, which sees Cilium's pod /32 rather than the cluster
+           media network. -->
+      <list name="rtpengine" default="deny">
+        <node type="allow" cidr="{{ $.Values.freeswitch.publicExposure.podCIDR }}"/>
+      </list>
       </network-lists>
     </configuration>
 

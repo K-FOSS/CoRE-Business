@@ -30,7 +30,7 @@ assert profile.tag == 'profile' and profile.get('name') == 'kamailio'
 settings = {node.get('name'): node.get('value') for node in profile.findall('./settings/param')}
 candidate_acls = [node.get('value') for node in profile.findall('./settings/param[@name="apply-candidate-acl"]')]
 assert settings['apply-inbound-acl'] == 'kamailio'
-assert candidate_acls == ['localnet.auto', 'wan.auto'], candidate_acls
+assert candidate_acls == ['rtpengine'], candidate_acls
 assert settings['NDLB-allow-crypto-in-avp'] == 'true'
 assert settings['inbound-late-negotiation'] == 'true'
 PY
@@ -44,7 +44,7 @@ assert profile.tag == 'profile' and profile.get('name') == 'core-managed'
 settings = {node.get('name'): node.get('value') for node in profile.findall('./settings/param')}
 candidate_acls = [node.get('value') for node in profile.findall('./settings/param[@name="apply-candidate-acl"]')]
 assert settings['apply-inbound-acl'] == 'kamailio'
-assert candidate_acls == ['localnet.auto', 'wan.auto'], candidate_acls
+assert candidate_acls == ['rtpengine'], candidate_acls
 PY
 python3 - "$rendered" <<'PY'
 import json
