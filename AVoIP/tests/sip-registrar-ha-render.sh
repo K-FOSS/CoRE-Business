@@ -64,6 +64,7 @@ assert echo.find('.//action[@application="echo"]') is not None
 assert not echo.findall('.//action[@application="bridge"]')
 PY
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("admin"))) | .spec.template.spec.containers[].env[] | select(.name == "AVOIP_SIPCORE_REGISTRAR_GATEWAY") | .value == "sipcore-registrar"' "$rendered" >/dev/null
+yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.metadata.annotations["configmap.reloader.stakater.com/reload"] | contains("freeswitch-managed")' "$rendered" >/dev/null
 asterisk_startup="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("asterisk"))) | .spec.template.spec.containers[] | select(.name == "asterisk") | .args[]' "$rendered")"
 ! grep -Fq 'sip_password=' <<<"$asterisk_startup"
 
