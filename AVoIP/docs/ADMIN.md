@@ -69,7 +69,7 @@ PostgreSQL grants must be ready before admin pods can become ready.
 | `POST /api/routing/preview` | Admin-only outbound policy preview using the current extension, destination, caller ID, site and provider catalog |
 | `POST /api/routing/inbound-preview` | Admin-only inbound DID preview using the current DID, provider assignment, optional source IP, site and catalog revision |
 | `GET /api/audit` | Recent protected control-plane audit metadata; no credential values |
-| Telephony tab | Shows live AMI/Event Socket status, every resolved Asterisk/FreeSWITCH/Kamailio control replica, active SIP registrations and Contacts from the configured registrar databases, active calls, and recent Asterisk/FreeSWITCH CDR rows when `avoipAdmin.telephony.enabled` is configured; `End call` sends an audited, same-origin admin request |
+| Telephony tab | Shows live AMI/Event Socket status, every resolved Asterisk/FreeSWITCH/Kamailio control replica, active SIP registrations and Contacts from the configured registrar databases, active calls, and recent Asterisk/FreeSWITCH CDR rows when `avoipAdmin.telephony.enabled` is configured; the topology view groups replicas by logical service and opens a read-only per-replica inspector; `End call` sends an audited, same-origin admin request |
 | `GET /routing/snapshot` | Token-authenticated internal compiled route view; machine listener only |
 | `POST /routing/freeswitch` | Authenticated internal XML dialplan for managed contexts; machine listener only |
 
@@ -99,7 +99,13 @@ received address, Path/flow metadata, connection and server identifiers,
 user-agent, expiry, and registrar/site name. It never displays the connection
 URI, password, Digest verifier, or other Secret value. A registrar database
 that cannot be reached is shown as unavailable while other registrar and
-replica results remain visible.
+replica results remain visible. The Telephony page presents those results as
+service cards and responsive replica tiles rather than a single dense table.
+Selecting a tile opens an accessible read-only inspector with overview,
+verified active-call data, shared registrar connections, and explicit empty
+states for configuration and diagnostics that are not currently provided by
+the backend. It does not infer SIP flow ownership from a shared database row
+or expose arbitrary shell/Kubernetes control.
 
 A SIP provider has ID/name, canonical SIP hostname, an optional digits-only
 egress prefix, explicit signaling CIDRs, per-site provisioned gateway names and
