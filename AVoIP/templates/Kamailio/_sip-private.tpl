@@ -446,6 +446,20 @@
         if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
+      # A FreeSWITCH response Contact receives a nathelper alias for the exact
+      # backend TLS peer. TOPOS restores that Contact on endpoint-originated
+      # sequential requests. Consume the alias before any initial-request
+      # backend selection so ACK, BYE, UPDATE, INFO, REFER and re-INVITE return
+      # to the process/profile that owns the dialog.
+      $var(sipcore_backend_alias_result) = 0;
+      if (has_totag() && $du == $null) {
+        handle_ruri_alias();
+        $var(sipcore_backend_alias_result) = $rc;
+        if ($var(sipcore_backend_alias_result) == 1) {
+          set_send_socket_name("private_tls");
+          xlog("L_INFO", "SIPCORE FLOW stage=frontend-dialog-backend-alias pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn\n");
+        }
+      }
       # RFC 4028 does not permit a UAS minimum below 90 seconds.  The deployed
       # FreeSWITCH build retains its effective 120-second floor even when a
       # lower profile value is rendered. Some browser clients offer a
@@ -481,7 +495,7 @@
       # leg's Contact, including the internal Kamailio-facing profile port.
       # That target is authoritative: the 5072 managed profile is only the
       # initial-request handoff and does not own this dialog.
-      if (has_totag() &&
+      if (has_totag() && $du == $null &&
           ($hdr(Route) =~ "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}" ||
            $(ru{uri.host}) == "{{ $.Values.asterisk.sipCore.hostname }}") &&
           $rp != {{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}) {
@@ -494,7 +508,7 @@
         $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
         set_send_socket_name("private_tls");
         xlog("L_INFO", "SIPCORE FLOW stage=frontend-dialog-backend-route pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn\n");
-      } else if (has_totag() &&
+      } else if (has_totag() && $du == $null &&
                  ($hdr(Route) =~ "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}" ||
                   $(ru{uri.host}) == "{{ $.Values.asterisk.sipCore.hostname }}") &&
                  $rp == {{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}) {
@@ -1055,7 +1069,8 @@
       # core route remains authoritative for retransmitted 2xx responses,
       # which can bypass this callback.
       if (has_body("application/sdp") &&
-          $var(sipcore_answer_processed) != 1) {
+          $Rp != 5062 &&
+          !($(hfl(Via)[-1]) =~ "^SIP/2.0/WSS")) {
         $var(sipcore_answer_flags) = "replace-origin internal external address-family=IP4";
         if ($(hfl(Via)[-1]) =~ "^SIP/2.0/WSS") {
           $var(sipcore_answer_flags) = "WebRTC " + $var(sipcore_answer_flags);
@@ -1064,7 +1079,6 @@
           xlog("L_ERR", "SIPCORE FLOW stage=frontend-answer-media-failed pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq) callback=tm\n");
           drop;
         }
-        $var(sipcore_answer_processed) = 1;
         xlog("L_INFO", "SIPCORE FLOW stage=frontend-answer-media-applied pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq) transport=$proto callback=tm\n");
       }
       # Media is rewritten in reply_route for initial and retransmitted 2xx.

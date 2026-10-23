@@ -32,13 +32,17 @@ def inspect(config, block):
     for name in ("SIPCORE_ASTERISK_REPLY", "SIPCORE_WS_REPLY"):
         assert 'set_contact_alias("1")' not in block(config, f"onreply_route[{name}]")
     websocket_reply = block(config, "onreply_route[SIPCORE_WS_REPLY]")
-    assert '$var(sipcore_answer_processed) != 1' in websocket_reply
+    assert '$Rp != 5062' in websocket_reply
+    assert '!($(hfl(Via)[-1]) =~ "^SIP/2.0/WSS")' in websocket_reply
     assert 'rtpengine_manage("$var(sipcore_answer_flags)")' in websocket_reply
     frontend = block(config, "route[FROM_SIPCORE]")
     assert frontend.count('set_contact_alias("1")') == 2
     assert frontend.count('add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")') == 2
     assert 'loadmodule "tcpops.so"' in config
     assert 'nat_uac_test(64)' not in frontend
+    assert 'stage=frontend-dialog-backend-alias' in frontend
+    assert frontend.index('handle_ruri_alias();') < frontend.index('stage=frontend-dialog-backend-route')
+    assert 'if (has_totag() && $du == $null &&' in frontend
     return reply
 
 

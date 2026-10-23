@@ -173,9 +173,18 @@ so the FreeSWITCH media address reached the browser and DTLS could not finish.
 The corrected classifier uses the preserved final WSS Via in addition to the
 listener identity. The core reply route handles initial and retransmitted
 answers; the transaction reply callback is a guarded fallback for the first
-answer when listener mapping alone cannot classify it. A per-message marker
-prevents both routes from transforming the same response. This closes the
-demonstrated path that forwarded a pod media address to the browser.
+native TLS answer when listener mapping alone cannot classify it. The two
+guards are mutually exclusive, so one wire response is transformed once. This
+closes the demonstrated path that forwarded a pod media address to the browser.
+
+The same live check found a separate WSS teardown defect. The answer Contact
+correctly carried a backend TLS connection alias, but client-originated ACK and
+BYE did not consume it after TOPOS restoration. They therefore had no selected
+destination socket and could reach a different FreeSWITCH dialog owner, which
+returned 481. Sequential requests now resolve the restored backend alias before
+the generic backend fallback. This applies to ACK, BYE, UPDATE, INFO, REFER and
+re-INVITE rather than special-casing hangup. The native TLS control call already
+completed BYE with 200; the WSS path requires a post-rollout confirmation.
 
 That same test confirms that timer normalization and the private media offer
 now pass both former signaling gates: FreeSWITCH entered destination 66,
