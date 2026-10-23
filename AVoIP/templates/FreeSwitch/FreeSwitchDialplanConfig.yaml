@@ -315,6 +315,10 @@ data:
             <action application="set" data="hangup_after_bridge=true"/>
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/sipcore-registrar/${destination_number}"/>
+            {{- if and $voicemailEnabled (eq (toString .) (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) }}
+            <action application="log" data="INFO AVoIP registrar extension unanswered; forwarding caller=${caller_id_number} to Asterisk voicemail mailbox={{ default $.Values.asterisk.sipCore.inboundVoiceExtension $.Values.asterisk.voicemail.mailbox }}"/>
+            <action application="bridge" data="sofia/gateway/asterisk/voicemail"/>
+            {{- end }}
             {{- include "avoip.freeswitch.inboundBridgeFallback" $ | nindent 12 }}
             <action application="hangup"/>
             {{- else }}

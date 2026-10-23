@@ -1,9 +1,11 @@
 # Asterisk voicemail
 
 Where a SIP Core extension is configured, the direct FaxNumber call rings it
-for 30 seconds and sends unanswered calls to that extension's mailbox. At sites
-without SIP Core but with voicemail enabled, the configured IVR destination can
-connect callers to the local mailbox. While the
+for 30 seconds and sends unanswered calls to that extension's mailbox. When
+inbound IVR delivery uses the Kamailio registrar, the configured voice extension
+is tried through the registrar first and an unanswered call is then handed to
+the same Asterisk mailbox. At sites without SIP Core but with voicemail enabled,
+the configured IVR destination can connect callers to the local mailbox. While the
 unavailable greeting is playing, a caller can press `0` to open the mailbox
 login, then enter a mailbox number and PIN. A caller reaching the voice IVR can
 also dial `*97` or `97` at sites whose IVR offers the Asterisk voicemail

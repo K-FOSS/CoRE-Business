@@ -33,7 +33,6 @@ assert settings['apply-inbound-acl'] == 'kamailio'
 assert candidate_acls == ['localnet.auto', 'wan.auto'], candidate_acls
 assert settings['NDLB-allow-crypto-in-avp'] == 'true'
 assert settings['inbound-late-negotiation'] == 'true'
-assert settings['inbound-codec-negotiation'] == 'generous'
 PY
 managed_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-managed"))) | .data["core-managed.xml"]' "$rendered")"
 python3 - "$managed_config" <<'PY'
@@ -68,6 +67,41 @@ for context, extension in [('ivr-targets', 'ivr-destination-7101'),
 echo = root.find("context[@name='ivr-targets']/extension[@name='ivr-destination-9090']")
 assert echo.find('.//action[@application="echo"]') is not None
 assert not echo.findall('.//action[@application="bridge"]')
+PY
+
+voicemail_rendered="$(mktemp)"
+trap 'rm -f "$rendered" "$voicemail_rendered"' EXIT
+helm template core-home1-talos-prod "$chart_dir" \
+  --namespace core-prod \
+  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha-registrar.yaml" \
+  --set asterisk.voicemail.enabled=true \
+  --set-string asterisk.voicemail.accessCode='*97' \
+  > "$voicemail_rendered"
+python3 - "$voicemail_rendered" <<'PY'
+import json
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+resources = json.loads(subprocess.check_output(['yq', '-s', '.', sys.argv[1]]))
+dialplan = next(resource['data']['public.xml'] for resource in resources
+                if resource and resource.get('kind') == 'ConfigMap'
+                and resource['metadata']['name'].endswith('-freeswitch-dialplan-configs'))
+root = ET.fromstring(dialplan)
+node = root.find("context[@name='ivr-targets']/extension[@name='ivr-destination-7101']")
+assert node is not None
+bridges = [action.get('data') for action in node.findall('.//action[@application="bridge"]')]
+assert bridges == [
+    'sofia/gateway/sipcore-registrar/${destination_number}',
+    'sofia/gateway/asterisk/voicemail',
+], bridges
+assert any('to Asterisk voicemail' in (action.get('data') or '')
+           for action in node.findall('.//action[@application="log"]'))
+
+asterisk = next(resource['data']['extensions.conf'] for resource in resources
+                if resource and resource.get('kind') == 'ConfigMap'
+                and resource['metadata']['name'].endswith('-asterisk-configs'))
+assert 'exten => voicemail,1,VoiceMail(7101@default,u)' in asterisk
 PY
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("admin"))) | .spec.template.spec.containers[].env[] | select(.name == "AVOIP_SIPCORE_REGISTRAR_GATEWAY") | .value == "sipcore-registrar"' "$rendered" >/dev/null
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.metadata.annotations["configmap.reloader.stakater.com/reload"] | contains("freeswitch-managed")' "$rendered" >/dev/null

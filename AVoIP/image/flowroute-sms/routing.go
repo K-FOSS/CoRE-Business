@@ -80,6 +80,7 @@ type extensionRoute struct {
 	AssignedUser        string   `json:"assigned_user,omitempty"`
 	Enabled             *bool    `json:"enabled,omitempty"`
 	OutboundEnabled     *bool    `json:"outbound_enabled,omitempty"`
+	VoicemailEnabled    *bool    `json:"voicemail_enabled,omitempty"`
 	CallerID            string   `json:"caller_id"`
 	Provider            string   `json:"provider"`
 	AuthorizedCallerIDs []string `json:"authorized_caller_ids,omitempty"`
