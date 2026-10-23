@@ -29,6 +29,19 @@ the pinned Kamailio runtime image and cluster access, pass each rendered
 without changing the running pod. The render test does not make a live call or
 validate ringing, answer, RTP, or clean hangup.
 
+## SIP session-timer policy regression
+
+Run the dependency-free protocol boundary check:
+
+```sh
+python3 AVoIP/tests/session-timer-policy.py
+```
+
+It reproduces the observed 90-second offer versus a 120-second UAS minimum,
+checks that the `core-managed` profile accepts the RFC 4028 floor while
+keeping timers enabled, and guards against adding proxy-generated INVITE
+retries. It does not replace a live FreeSWITCH call or a rendered-chart check.
+
 ## Outbound Flowroute teardown regression
 
 Run the two-tier TOPOS and in-dialog route regression from the repository root:

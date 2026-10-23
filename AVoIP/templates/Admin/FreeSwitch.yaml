@@ -16,6 +16,8 @@ data:
         <param name="tls-sip-port" value="5072"/>
         <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
         <param name="auth-calls" value="false"/>
+        <!-- Keep RFC 4028 negotiation enabled; accept the protocol floor. -->
+        <param name="enable-timer" value="true"/>
         <!-- Native clients commonly offer a 90-second RFC 4028 timer.
              Do not reject that offer with FreeSWITCH's 120-second default. -->
         <param name="minimum-session-expires" value="90"/>

@@ -120,5 +120,20 @@ interval of 90 seconds. Native SIP clients may offer a 90-second
 return `422 Session Interval Too Small` with `Min-SE: 120` before call control
 can proceed. Kamailio forwards this response, so the correction belongs on
 the FreeSWITCH profile rather than in topology handling. The configured
-`minimum-session-expires=90` preserves session timers while accepting the
-client offer.
+`enable-timer=true` and `minimum-session-expires=90` preserve session timers
+while accepting the client offer.
+
+This is deliberately scoped to the `core-managed` FreeSWITCH profile, which is
+the internal-client call-control hop. No AVoIP Admin route setting is needed:
+Admin owns the dialplan and authorization policy, while the SIP profile owns
+RFC 4028 acceptance policy. The carrier and Asterisk profiles were not changed
+because this capture does not establish the same incompatibility on those
+legs.
+
+Kamailio is acting as a stateful proxy here. It must not manufacture a second
+INVITE after forwarding a `422`, nor rewrite an end-to-end `Session-Expires`
+value without becoming responsible for the resulting refresher policy. A UAC
+that receives a `422` may retry with at least the returned `Min-SE`; the
+observed JsSIP transaction did not do so. Accepting the valid 90-second offer
+at the responsible UAS avoids requiring that client behavior and keeps the
+dialog standards-compliant.
