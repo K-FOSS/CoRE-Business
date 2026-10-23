@@ -82,6 +82,16 @@ spec:
             - port: '5062'
               protocol: 'TCP'
     {{- end }}
+    {{- if and $root.Values.avoipAdmin.enabled $root.Values.avoipAdmin.telephony.enabled }}
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/controller: 'avoip-admin'
+            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '{{ $root.Values.kamailio.controlPort }}'
+              protocol: 'TCP'
+    {{- end }}
     {{- end }}
   egress:
     {{ if and $root.Values.avoipAdmin.enabled $root.Values.avoipAdmin.routing.enabled (not ($instance.websocketHA | default dict).enabled) }}
@@ -117,16 +127,6 @@ spec:
       toPorts:
         - ports:
             - port: '5072'
-              protocol: 'TCP'
-    {{- end }}
-    {{- if and $root.Values.avoipAdmin.enabled $root.Values.avoipAdmin.telephony.enabled }}
-    - fromEndpoints:
-        - matchLabels:
-            app.kubernetes.io/controller: 'avoip-admin'
-            app.kubernetes.io/instance: '{{ $root.Release.Name }}'
-      toPorts:
-        - ports:
-            - port: '{{ $root.Values.kamailio.controlPort }}'
               protocol: 'TCP'
     {{- end }}
     {{- end }}
