@@ -1625,8 +1625,8 @@ avoipAdmin:
       key: 'Token'
   image:
     repository: 'slop.writemy.codes/core/core-business/flowroute-sms-admin'
-    tag: '1-172995a56dabcfa016e65e9c22e2afa00e98faa7'
-    digest: 'sha256:0ff8c2f145136d3fb99b816e514d21980af735f756878415a5af8d3ae72361f4'
+    tag: '1-488802f85fb76fa375e58ed1508f937a0ddc41f2'
+    digest: 'sha256:a010b353457658b0eac161c2fe90d1bef7fdcaf31b91d42166a7dd39c552b8bd'
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   audioEndpoints:
