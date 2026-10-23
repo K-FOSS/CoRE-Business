@@ -500,9 +500,17 @@
           exit;
         }
         $var(sipcore_media_flags) = "replace-origin external internal address-family=IP4";
+        $var(sipcore_client_websocket) = 0;
+        # An HA owner hop arrives over internal TLS even when the original
+        # client is a browser. Keep classifying from the client Contact rather
+        # than the current Kamailio transport so re-INVITEs and UPDATEs retain
+        # the browser's WebRTC media policy after a frontend hop.
+        if ($proto == "ws" || $hdr(Contact) =~ "(^|[;[:space:]])transport=ws([;[:space:]]|$)") {
+          $var(sipcore_client_websocket) = 1;
+        }
         # Native TLS phones may offer RTP/AVP and RTP/SAVP. WebRTC forces
         # DTLS/ICE and must be limited to the browser WebSocket leg.
-        if ($proto == "ws") {
+        if ($var(sipcore_client_websocket) == 1) {
           $var(sipcore_media_flags) = "WebRTC " + $var(sipcore_media_flags);
         } else {
           # Native phones can offer SDES-SRTP alongside RTP/AVP. Do not
