@@ -817,6 +817,100 @@ func (s *server) getCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, c)
 }
+
+// routingResource is the intentionally small, non-sensitive representation
+// used by Admin selectors.  The browser should link to catalog resources by
+// stable ID, not copy labels, provider metadata or implementation details into
+// a routing record.
+type routingResource struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Type  string `json:"type"`
+	Site  string `json:"site,omitempty"`
+	Meta  string `json:"meta,omitempty"`
+}
+
+func (s *server) routingResources(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r, false) {
+		return
+	}
+	c, err := s.catalog(r)
+	if err != nil {
+		http.Error(w, "routing unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if err := c.validate(); err != nil {
+		http.Error(w, "routing catalog invalid", http.StatusServiceUnavailable)
+		return
+	}
+	kind := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("kind")))
+	site := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("site")))
+	if site == "" {
+		site = strings.ToLower(os.Getenv("AVOIP_SITE"))
+	}
+	if site != "yvr" && site != "yxl" {
+		http.Error(w, "invalid site", http.StatusBadRequest)
+		return
+	}
+	resources := make([]routingResource, 0)
+	appendResource := func(resource routingResource) {
+		if resource.Site == "" || resource.Site == site {
+			resources = append(resources, resource)
+		}
+	}
+	switch kind {
+	case "provider":
+		requireGateway := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("direction"))) != "inbound"
+		for _, provider := range c.Providers {
+			if !requireGateway || provider.Gateways[site] != "" {
+				appendResource(routingResource{ID: provider.ID, Label: provider.Name, Type: kind, Site: site, Meta: provider.Host})
+			}
+		}
+	case "caller_id":
+		providerID := strings.TrimSpace(r.URL.Query().Get("provider_id"))
+		for _, provider := range c.Providers {
+			if providerID != "" && provider.ID != providerID || provider.Gateways[site] == "" {
+				continue
+			}
+			for _, callerID := range provider.CallerIDs {
+				if callerID.ExpiresAt == nil || callerID.ExpiresAt.After(time.Now()) {
+					appendResource(routingResource{ID: callerID.Number, Label: callerID.Number, Type: kind, Site: site, Meta: provider.Name})
+				}
+			}
+		}
+	case "ivr":
+		for _, ivr := range c.IVRs {
+			appendResource(routingResource{ID: ivr.ID, Label: ivr.Name, Type: kind, Site: ivr.Site, Meta: "IVR"})
+		}
+	case "extension":
+		for _, extension := range c.Extensions {
+			if extension.Enabled == nil || *extension.Enabled {
+				appendResource(routingResource{ID: extension.Extension, Label: extension.DisplayName, Type: kind, Site: extension.Site, Meta: "Extension " + extension.Extension})
+			}
+		}
+	case "audio_endpoint":
+		for _, endpoint := range c.AudioEndpoints {
+			if endpoint.active() {
+				appendResource(routingResource{ID: endpoint.ID, Label: endpoint.Name, Type: kind, Site: endpoint.Site, Meta: "Audio endpoint"})
+			}
+		}
+	case "did":
+		for _, did := range c.DIDs {
+			appendResource(routingResource{ID: did.Number, Label: did.Number, Type: kind, Site: did.Site, Meta: "DID"})
+		}
+	case "limit_profile":
+		for _, profile := range c.LimitProfiles {
+			if profile.Scope == "site" && profile.Site != site || profile.Scope == "tenant" {
+				continue
+			}
+			appendResource(routingResource{ID: profile.ID, Label: profile.Name, Type: kind, Site: profile.Site, Meta: profile.Scope})
+		}
+	default:
+		http.Error(w, "unsupported resource kind", http.StatusBadRequest)
+		return
+	}
+	writeJSON(w, map[string]any{"resources": resources, "kind": kind, "site": site})
+}
 func (s *server) saveCatalog(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r, true) {
 		return
@@ -1231,6 +1325,7 @@ func (s *server) registerAdmin(mux *http.ServeMux) {
 		writeJSON(w, map[string]any{"snapshot_ready": cacheErr == nil, "snapshot_valid_until": deadline, "sms_enabled": os.Getenv("ADMIN_SMS_ENABLED") != "false", "site": os.Getenv("AVOIP_SITE"), "routing_enabled": os.Getenv("AVOIP_ROUTING_ENABLED") == "true"})
 	})
 	mux.HandleFunc("GET /api/sip", s.getCatalog)
+	mux.HandleFunc("GET /api/routing/resources", s.routingResources)
 	mux.HandleFunc("PUT /api/sip", s.saveCatalog)
 	mux.HandleFunc("GET /api/ivr/media", s.listIVRMedia)
 	mux.HandleFunc("POST /api/routing/preview", s.previewOutboundRoute)

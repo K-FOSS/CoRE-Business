@@ -25,7 +25,11 @@ to DID routing. Each definition contains:
 
 The API must accept asset IDs and destination identifiers, never FreeSWITCH
 XML, channel variables, SIP expressions, or dialstrings. Authorization is
-rechecked when a call enters the IVR.
+rechecked when a call enters the IVR. Admin’s DID and extension editors use
+the authenticated `GET /api/routing/resources?kind=...&site=...` endpoint for
+resource selectors, loading only the selected resource type. External phone
+numbers and SIPS URIs remain explicit inputs because they are not catalog
+resources.
 
 ## Audio endpoints
 
