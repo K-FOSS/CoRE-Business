@@ -384,9 +384,19 @@ func TestManagedAudioEndpointsValidateReferencesAndRemoteMediaPolicy(t *testing.
 	if err := catalog.validate(); err != nil {
 		t.Fatalf("allowlisted remote media rejected: %v", err)
 	}
+	catalog.AudioEndpoints[0].MediaURL = "https://10.1.1.84/private.mp3"
+	t.Setenv("AVOIP_AUDIO_REMOTE_MEDIA_HOSTS", "media.example.test,10.1.1.84")
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("allowlisted HTTPS IP media rejected: %v", err)
+	}
+	catalog.AudioEndpoints[0].MediaURL = "https://66.165.222.102/private.mp3"
+	t.Setenv("AVOIP_AUDIO_REMOTE_MEDIA_HOSTS", "media.example.test,10.1.1.84,66.165.222.102")
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("second allowlisted HTTPS IP media rejected: %v", err)
+	}
 	catalog.AudioEndpoints[0].MediaURL = "https://127.0.0.1/private.mp3"
 	if err := catalog.validate(); err == nil {
-		t.Fatal("IP-literal remote media host accepted")
+		t.Fatal("unallowlisted IP-literal remote media host accepted")
 	}
 }
 

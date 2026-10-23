@@ -105,9 +105,6 @@ func allowedRemoteAudioURL(raw string) bool {
 	if host == "" {
 		return false
 	}
-	if _, err := netip.ParseAddr(host); err == nil {
-		return false
-	}
 	for _, allowed := range strings.Split(os.Getenv("AVOIP_AUDIO_REMOTE_MEDIA_HOSTS"), ",") {
 		if host == strings.ToLower(strings.TrimSpace(allowed)) {
 			return true
@@ -499,7 +496,7 @@ func (c sipCatalog) validate() error {
 			}
 		case "remote_url":
 			if !allowedRemoteAudioURL(endpoint.MediaURL) || endpoint.MediaAsset != "" {
-				return errors.New("audio endpoint remote media must be an allowlisted HTTPS hostname URL")
+				return errors.New("audio endpoint remote media must be an allowlisted HTTPS hostname or IP URL")
 			}
 		default:
 			return errors.New("unsupported audio endpoint media source")
