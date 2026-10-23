@@ -449,7 +449,7 @@ data:
     verify_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
     require_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
     {{- if eq .Values.kamailio.role "private-sbc" }}
-    ca_list = {{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}/etc/kamailio/peer-ca/ca.crt{{ else if and .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") }}/etc/kamailio/freeswitch-peer-ca/tls.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
+    ca_list = {{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}/etc/kamailio/peer-ca/ca.crt{{ else if and .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") }}/etc/kamailio/freeswitch-peer-ca/ca.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
     {{- end }}
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt

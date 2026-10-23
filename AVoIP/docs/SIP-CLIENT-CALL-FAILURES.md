@@ -69,7 +69,7 @@ identity, so Kamailio rejected the mTLS handshake before SIP routing. The
 chart now issues a separate `freeswitch-kamailio-client-tls` certificate with
 both server-auth and client-auth usage, mounts it only into FreeSWITCH's
 Kamailio profile, and pins Kamailio's private peer trust bundle to that
-certificate chain. The normal FreeSWITCH SIP server certificate remains the
+certificate's issuing `ca.crt`. The normal FreeSWITCH SIP server certificate remains the
 server certificate for its other profiles; no FreeSWITCH private key is
 mounted into Kamailio. Certificate verification, the source CIDR gate, and
 the peer SAN checks remain required.

@@ -693,8 +693,8 @@
     type: secret
     name: '{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls'
     items:
-      - key: 'tls.crt'
-        path: 'tls.crt'
+      - key: 'ca.crt'
+        path: 'ca.crt'
     advancedMounts:
       {{ $component }}:
         {{ $component }}:
