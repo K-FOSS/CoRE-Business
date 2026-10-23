@@ -92,11 +92,11 @@ assert 'modparam("topos", "rr_update", 1)' in config
 assert 'modparam("registrar", "append_branches", 1)' in config
 assert 'stage=frontend-owner-hop' in frontend
 assert 'X-Core-Frontend-Owner-Forward' in frontend and 'remove_hf("X-Core-Frontend-Owner-Forward")' in frontend
-assert 'stage=frontend-dialog-backend-route' in frontend
 assert ':5072;transport=tls' in frontend
-assert 'stage=frontend-dialog-owner-preserved' in frontend
-assert '$rp != 5061' in frontend
-assert frontend.index('$rp != 5061') < frontend.index('stage=frontend-dialog-backend-route')
+assert 'stage=frontend-dialog-backend-owner-route' in frontend
+assert 'stage=frontend-dialog-backend-service-fallback' in frontend
+assert '$rd =~ "^[0-9.]+$"' in frontend
+assert '$rp == 5061 || $rp == 5072' in frontend
 
 # Established Contacts must select the FreeSWITCH pod that owns the Sofia
 # dialog. Falling back to the shared Service allows a different replica to
