@@ -59,7 +59,7 @@ managed_settings = {node.get('name'): node.get('value') for node in managed_prof
 assert managed_settings['inbound-late-negotiation'] == 'true'
 assert managed_settings['inbound-codec-negotiation'] == 'generous'
 assert managed_settings['enable-timer'] == 'true'
-assert managed_settings['minimum-session-expires'] == '90'
+assert managed_settings['minimum-session-expires'] == '120'
 disabled_render = subprocess.check_output([
     "helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
     "--namespace", "core-prod", "-f",

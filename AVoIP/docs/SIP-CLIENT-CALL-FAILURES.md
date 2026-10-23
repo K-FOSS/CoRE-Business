@@ -114,22 +114,21 @@ proof that WSS and native TLS calling work end to end.
 
 ### Session timer negotiation (`422 Session Interval Too Small`)
 
-WebSocket clients may offer a 60-second session interval, but RFC 4028 and
-FreeSWITCH require a UAS minimum of at least 90 seconds. Leaving FreeSWITCH's
-larger default in place causes it to return `422 Session Interval Too Small`
-with `Min-SE: 120` before call control can proceed. Kamailio now raises only
-sub-90-second initial offers to 90 seconds, preserving any refresher
-parameter; the `core-managed` profile uses `enable-timer=true` and
-`minimum-session-expires=90`. This accepts the client behavior without
-requiring a browser retry or changing the client.
+WebSocket clients may offer a 60-second session interval, but the deployed
+FreeSWITCH/Sofia build has an effective 120-second UAS floor. Leaving that
+floor unhandled causes `422 Session Interval Too Small` with `Min-SE: 120`
+before call control can proceed. Kamailio now raises only sub-120-second
+initial offers to 120 seconds, preserving any refresher parameter; the
+`core-managed` profile declares the same floor. This accepts the client
+behavior without requiring a browser retry or changing the client.
 
 This is deliberately scoped to the `core-managed` FreeSWITCH profile, which is
 the internal-client call-control hop. No AVoIP Admin route setting is needed:
 Admin owns the dialplan and authorization policy, while the SIP profile owns
 RFC 4028 acceptance policy. The carrier and Asterisk profiles were not changed
 because this capture does not establish the same incompatibility on those
-legs. A 60-second client offer is represented as a standards-valid 90-second
-internal offer on the FreeSWITCH hop.
+legs. A 60-second client offer is represented as a standards-valid
+120-second internal offer on the FreeSWITCH hop.
 
 Kamailio is acting as a stateful proxy here. It must not manufacture a second
 INVITE after forwarding a `422`, nor rewrite an end-to-end `Session-Expires`

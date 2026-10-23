@@ -18,9 +18,9 @@ data:
         <param name="auth-calls" value="false"/>
         <!-- Keep RFC 4028 negotiation enabled with the deployment policy floor. -->
         <param name="enable-timer" value="true"/>
-        <!-- RFC 4028 requires a UAS minimum of at least 90 seconds.  Kamailio
-             raises shorter endpoint offers to this value before this hop. -->
-        <param name="minimum-session-expires" value="90"/>
+        <!-- The deployed Sofia build has an effective 120-second floor.
+             Kamailio raises shorter endpoint offers before this hop. -->
+        <param name="minimum-session-expires" value="120"/>
         <param name="apply-inbound-acl" value="kamailio"/>
         {{- range $.Values.freeswitch.sipCore.candidateACLs }}
         <param name="apply-candidate-acl" value="{{ . }}"/>

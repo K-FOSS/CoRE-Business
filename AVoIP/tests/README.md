@@ -38,8 +38,8 @@ python3 AVoIP/tests/session-timer-policy.py
 ```
 
 It reproduces the observed short offer versus a 120-second UAS minimum,
-checks that Kamailio raises a sub-90-second offer to the RFC 4028 floor before
-the `core-managed` profile receives it, and guards against adding
+checks that Kamailio raises a sub-120-second offer to the deployed
+FreeSWITCH floor before the `core-managed` profile receives it, and guards against adding
 proxy-generated INVITE retries. It does not replace a live FreeSWITCH call or
 a rendered-chart check.
 
