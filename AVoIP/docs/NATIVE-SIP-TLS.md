@@ -68,6 +68,35 @@ native TLS offers are not forced from RTP/AVP or RTP/SAVP to DTLS-SRTP by the
 frontend. Final SDP must be checked after TOPOS, including all media sections,
 ICE candidates/credentials, fingerprints and codecs.
 
+## FreeSWITCH dialog-owner routing
+
+The October 23 live trace exposed a separate teardown asymmetry. Home1 had two
+FreeSWITCH pods behind one Service. The FreeSWITCH `kamailio` Sofia profile
+listened on TLS/5061, and the managed `core-managed` profile listened on
+TLS/5072. Both listeners were valid destinations when addressed on the pod
+that created the dialog. They were not interchangeable: Sofia transaction and
+dialog state was local to that pod.
+
+The initial SIP Core INVITE used the FreeSWITCH Service, so Kubernetes service
+traversal correctly exposed an ephemeral source port at Kamailio and the
+FreeSWITCH Contact advertised the owning pod and profile port. TOPOS restored
+that Contact on a client-originated ACK or BYE, but the old `TO_BACKEND` route
+discarded the restored pod target for SIP Core traffic and selected the shared
+FreeSWITCH Service again. A later BYE could therefore reach the other
+FreeSWITCH replica: the inbound PSTN leg timed out with 408 when that replica
+did not answer the transaction, while a WSS-originated leg returned the real
+481 `Call Does Not Exist` response. The reverse FreeSWITCH-originated BYE
+worked because it was sent from the owning Sofia dialog and did not need this
+reverse owner lookup.
+
+The chart now preserves a restored numeric FreeSWITCH Contact target on every
+established carrier or SIP Core dialog, for both 5061 and 5072, while keeping
+the private TLS send socket and the FreeSWITCH Service DNS name as TLS SNI.
+The shared Redis-backed TOPOS record remains the cross-Kamailio-replica source
+of the route; only the final FreeSWITCH pod selection is made dialog-specific.
+No endpoint behavior, synthetic response, topology hiding bypass, or
+FreeSWITCH dialog replication is required.
+
 For Call-ID `9A0EECA7BC10B23AD596CBC25841E0779C0C9835`, the supplied
 BYE diagnostic selected Envoy peer `172.20.56.242:50726` but Kamailio then
 opened a *new* outbound connection to that ephemeral port; Envoy refused it.

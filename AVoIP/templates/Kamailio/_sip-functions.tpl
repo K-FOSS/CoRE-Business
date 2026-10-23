@@ -897,26 +897,23 @@
         {{- end }}
       }
       {{- end }}
-      {{- if and (eq .Values.kamailio.role "carrier-sbc") .Values.kamailio.carrierOutbound.enabled .Values.freeswitch.enabled }}
       # TOPOS restores the FreeSWITCH Contact in the Request-URI. Preserve its
       # profile-specific listener port while routing to the owner pod; the
-      # shared Service can select a replica without this Sofia dialog, and its
-      # 5061 port targets a different FreeSWITCH profile.
-      if (has_totag() && $var(side) == "carrier" && $rd =~ "^[0-9.]+$" && $rp > 0) {
+      # shared Service can select a replica without this Sofia dialog. This is
+      # required for both carrier and SIP Core legs because FreeSWITCH B2BUA
+      # state is local to the owning pod and is not replicated.
+      if (has_totag() &&
+          ($var(side) eq "carrier" || $var(side) eq "sipcore") &&
+          $rd =~ "^[0-9.]+$" && ($rp == {{ .Values.kamailio.backend.servicePort }} || $rp == 5072)) {
         $du = "sip:" + $rd + ":" + $rp + ";transport=tls";
         xlog(
           "L_INFO",
-          "SIP dialog backend owner route pod=$env(POD_NAME) callid=$ci method=$rm backend_ip=$rd backend_port=$rp\n"
+          "SIP dialog backend owner route pod=$env(POD_NAME) callid=$ci method=$rm side=$var(side) backend_ip=$rd backend_port=$rp\n"
         );
       } else {
         $du =
           "sip:{{ $freeswitchHost }}:{{ .Values.kamailio.backend.servicePort }};transport=tls";
       }
-      {{- else }}
-      $du =
-        "sip:{{ $freeswitchHost }}:{{ .Values.kamailio.backend.servicePort }};transport=tls";
-      {{- end }}
-
       $xavp(tls=>server_name) = "{{ $freeswitchHost }}";
       set_send_socket_name("private_tls");
       xlog(

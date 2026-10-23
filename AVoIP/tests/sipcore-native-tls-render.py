@@ -27,6 +27,7 @@ rendered = subprocess.check_output([
     "helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
     "--namespace", "core-prod", "-f",
     str(root / "AVoIP/tests/fixtures/wss-ha-registrar.yaml"),
+    "--set", "avoipAdmin.bridgedCalls.enabled=false",
 ])
 objects = json.loads(subprocess.check_output(["yq", "-s", "."], input=rendered))
 configs = [obj["data"]["kamailio.cfg"] for obj in objects if obj and
@@ -64,6 +65,7 @@ disabled_render = subprocess.check_output([
     "helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
     "--namespace", "core-prod", "-f",
     str(root / "AVoIP/tests/fixtures/wss-ha-registrar.yaml"),
+    "--set", "avoipAdmin.bridgedCalls.enabled=false",
     "--set", "freeswitch.sipCore.allowCryptoInAvp=false", "--show-only",
     "templates/FreeSwitch/FreeSwitchSIPConfig.yaml",
 ])
@@ -79,6 +81,7 @@ reply = block(config, "reply_route ")
 named_reply = block(config, "onreply_route[SIPCORE_WS_REPLY]")
 relay = block(config, "route[PRIVATE_RELAY]")
 device_auth = block(config, "route[PRIVATE_AUTH_DEVICE]")
+topology_backend = block(config, "route[TO_BACKEND]")
 
 # TOPOS must derive the client-facing Contact from the public inbound RR, and
 # preserve the private outbound owner RR for cross-replica restoration.
@@ -94,6 +97,15 @@ assert ':5072;transport=tls' in frontend
 assert 'stage=frontend-dialog-owner-preserved' in frontend
 assert '$rp != 5061' in frontend
 assert frontend.index('$rp != 5061') < frontend.index('stage=frontend-dialog-backend-route')
+
+# Established Contacts must select the FreeSWITCH pod that owns the Sofia
+# dialog. Falling back to the shared Service allows a different replica to
+# receive the BYE and return 481 (or no response) because Sofia state is local.
+assert '($var(side) eq "carrier" || $var(side) eq "sipcore")' in topology_backend
+assert '$rd =~ "^[0-9.]+$"' in topology_backend
+assert '$rp == 5061 || $rp == 5072' in topology_backend
+assert 'SIP dialog backend owner route' in topology_backend
+assert topology_backend.index('backend_ip=$rd backend_port=$rp') < topology_backend.index('destination=$du tls_sni=')
 assert 'stage=frontend-owner-received' in backend
 assert backend.index('route(FROM_SIPCORE);') < backend.index('check_flow_token()')
 
