@@ -108,9 +108,13 @@ assert any('to Asterisk voicemail' in (action.get('data') or '')
 registered = root.find("context[@name='ivr-targets']/extension[@name='ivr-destination-7101']")
 actions = list(registered.findall('.//action'))
 ring_index = next(i for i, action in enumerate(actions) if action.get('application') == 'ring_ready')
+timeout_index = next(i for i, action in enumerate(actions)
+                     if action.get('application') == 'set'
+                     and action.get('data') == 'bridge_answer_timeout=30')
 bridge_index = next(i for i, action in enumerate(actions) if action.get('application') == 'bridge'
                     and 'sipcore-registrar' in (action.get('data') or ''))
 assert ring_index < bridge_index
+assert timeout_index < bridge_index
 
 asterisk = next(resource['data']['extensions.conf'] for resource in resources
                 if resource and resource.get('kind') == 'ConfigMap'

@@ -1181,6 +1181,10 @@ freeswitch:
     # are configured.
     enabled: true
     extensions: ['66']
+    # Keep registered SIP endpoints ringing before the optional voicemail/GG
+    # fallback is entered. This is deliberately longer than a provisional
+    # response delay so a phone can finish alerting and answer.
+    registeredExtensionRingTimeoutSeconds: 30
     timeoutMs: 15000
     digitTimeoutMs: 2000
     greeting: '/usr/share/freeswitch/sounds/avoip-shared/IVRGreet.wav'

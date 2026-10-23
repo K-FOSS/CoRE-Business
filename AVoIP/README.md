@@ -289,6 +289,13 @@ definitions are persisted but are not live-routed until the dedicated IVR
 FreeSWITCH runtime and snapshot handoff are deployed; see the
 [managed IVR migration](docs/IVR-ADMIN-MANAGED.md).
 
+When an IVR digit selects a registered SIP extension, FreeSWITCH sends the call
+to the SIP Core registrar and keeps the registered endpoint ringing for the
+configurable `freeswitch.ivr.registeredExtensionRingTimeoutSeconds` window
+(30 seconds by default). Only after that bridge times out does the configured
+voicemail or inbound-audio fallback run; audio destinations such as `66` keep
+their explicit answer-and-playback behavior.
+
 Inter-site voice uses the carrier Service on TLS/5061 and its public TLS
 listener, with a site-specific optional-client-certificate TLS profile. The
 request is authorized by the configured peer CIDR, verified client certificate

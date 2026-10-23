@@ -28,8 +28,8 @@
 {{- end }}
 {{- end }}
 {{- if .Values.freeswitch.ivr.enabled }}
-{{- if or (not .Values.asterisk.enabled) (and (not .Values.asterisk.sipCore.enabled) (not .Values.asterisk.voicemail.enabled) (not (has (toString .Values.asterisk.sipCore.ggAudioExtension) .Values.freeswitch.ivr.extensions))) (eq (len .Values.freeswitch.ivr.extensions) 0) (lt (int .Values.freeswitch.ivr.timeoutMs) 1000) (gt (int .Values.freeswitch.ivr.timeoutMs) 60000) (lt (int .Values.freeswitch.ivr.digitTimeoutMs) 500) (gt (int .Values.freeswitch.ivr.digitTimeoutMs) 5000) }}
-{{- fail "freeswitch.ivr requires SIP Core, Asterisk voicemail, or the built-in audio destination, at least one permitted extension, a 1000-60000 ms input timeout, and a 500-5000 ms digit timeout" }}
+{{- if or (not .Values.asterisk.enabled) (and (not .Values.asterisk.sipCore.enabled) (not .Values.asterisk.voicemail.enabled) (not (has (toString .Values.asterisk.sipCore.ggAudioExtension) .Values.freeswitch.ivr.extensions))) (eq (len .Values.freeswitch.ivr.extensions) 0) (lt (int .Values.freeswitch.ivr.timeoutMs) 1000) (gt (int .Values.freeswitch.ivr.timeoutMs) 60000) (lt (int .Values.freeswitch.ivr.digitTimeoutMs) 500) (gt (int .Values.freeswitch.ivr.digitTimeoutMs) 5000) (lt (int .Values.freeswitch.ivr.registeredExtensionRingTimeoutSeconds) 2) (gt (int .Values.freeswitch.ivr.registeredExtensionRingTimeoutSeconds) 300) }}
+{{- fail "freeswitch.ivr requires SIP Core, Asterisk voicemail, or the built-in audio destination, at least one permitted extension, a 1000-60000 ms input timeout, a 500-5000 ms digit timeout, and a 2-300 second registered-extension ring timeout" }}
 {{- end }}
 {{- if and $voicemailEnabled (not (regexMatch "^\\*[0-9]{2,4}$" $voicemailAccessCode)) }}
 {{- fail "enabled voicemail requires an access code of * followed by two to four digits" }}
@@ -322,9 +322,10 @@ data:
             <action application="answer"/>
             <action application="echo"/>
             {{- else if hasKey $registeredExtensions (toString .) }}
-            <action application="log" data="INFO AVoIP IVR ringing registered extension=${destination_number} caller=${caller_id_number} backend=sipcore-registrar"/>
+            <action application="log" data="INFO AVoIP IVR ringing registered extension=${destination_number} caller=${caller_id_number} backend=sipcore-registrar ring_timeout_seconds={{ $.Values.freeswitch.ivr.registeredExtensionRingTimeoutSeconds }}"/>
             <action application="ring_ready"/>
             <action application="set" data="hangup_after_bridge=true"/>
+            <action application="set" data="bridge_answer_timeout={{ $.Values.freeswitch.ivr.registeredExtensionRingTimeoutSeconds }}"/>
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/sipcore-registrar/${destination_number}"/>
             {{- if and $voicemailEnabled (eq (toString .) (toString $.Values.asterisk.sipCore.inboundVoiceExtension)) }}
