@@ -688,6 +688,19 @@
           - path: /etc/kamailio/peer-ca
             readOnly: true
 {{- end }}
+{{- if and .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") (not .Values.kamailio.carrierOutbound.clientIdentity.enabled) }}
+  {{ $component }}-freeswitch-peer-ca:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
+    items:
+      - key: 'tls.crt'
+        path: 'tls.crt'
+    advancedMounts:
+      {{ $component }}:
+        {{ $component }}:
+          - path: /etc/kamailio/freeswitch-peer-ca
+            readOnly: true
+{{- end }}
   {{ $component }}-tmp:
     type: emptyDir
     advancedMounts:

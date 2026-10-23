@@ -2,6 +2,15 @@
 
 ## Observed evidence
 
+During the 2026-10-23 YVR monitoring window, the IVR attempted
+`sofia/gateway/sipcore-registrar/7101` but FreeSWITCH immediately returned
+`NORMAL_TEMPORARY_FAILURE`/SIP 503. The registrar owner pod logged a TLS
+certificate verification failure from the FreeSWITCH pod on the private
+registrar listener (5062). This proves the call was failing at the
+FreeSWITCH-to-Kamailio mutual-TLS handshake, before contact lookup or device
+delivery; a successful 7101 registration alone was not sufficient evidence
+that the IVR path worked.
+
 On 2026-10-22, FreeSWITCH received INVITEs on its Kamailio-facing TLS profile
 from the internal Kamailio pods. Calls for SIP Core user `7101` then ended in
 `CS_NEW` with `INCOMPATIBLE_DESTINATION`. The media log also said
@@ -52,6 +61,11 @@ address, transport, listener port, verified flag, peer SAN, method and Call-ID;
 it does not log SIP authorization headers or bodies. This distinguishes a
 FreeSWITCH-to-registrar peer-ACL rejection from a later user/contact lookup
 failure.
+
+The private SBC now uses the chart-managed FreeSWITCH public certificate chain
+as its trust bundle for that strict listener. Only `tls.crt` is mounted; the
+FreeSWITCH private key is not mounted into Kamailio. Certificate verification,
+the source CIDR gate, and the existing peer identity checks remain required.
 
 ## Verification and recovery
 

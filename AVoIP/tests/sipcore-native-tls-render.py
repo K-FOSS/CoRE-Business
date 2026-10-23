@@ -34,6 +34,8 @@ configs = [obj["data"]["kamailio.cfg"] for obj in objects if obj and
            "internal-wss-config" in obj.get("metadata", {}).get("name", "")]
 assert len(configs) == 1
 config = configs[0]
+assert 'ca_list = /etc/kamailio/freeswitch-peer-ca/tls.crt' in config
+assert any('freeswitch-peer-ca' in json.dumps(obj) for obj in objects if obj)
 freeswitch_configs = [obj["data"]["kamailio.xml"] for obj in objects if obj and
                       obj.get("kind") == "ConfigMap" and
                       "freeswitch-sip-configs" in obj.get("metadata", {}).get("name", "")]
