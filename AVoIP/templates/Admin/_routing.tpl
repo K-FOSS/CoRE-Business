@@ -107,11 +107,11 @@
         # legitimate call-leg teardown.
         $var(inbound_call_key) = "avoip:in:call:" + $ci;
         $var(inbound_call_ttl) = $var(inbound_max_duration) + 86400;
-        $var(inbound_call_map_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX',tonumber(ARGV[2]));return 1";
+        $var(inbound_call_map_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX'," + $var(inbound_call_ttl) + ");return 1";
         if (!redis_cmd(
-          "topos", "EVAL %s 1 %s %s %s",
+          "topos", "EVAL %s 1 %s %s",
           "$var(inbound_call_map_script)", "$var(inbound_call_key)",
-          "$var(inbound_limit_key)", "$var(inbound_call_ttl)",
+          "$var(inbound_limit_key)",
           "inbound_call_mapping"
         ) || $redis(inbound_call_mapping=>type) != $redisd(rpl_int) ||
             $redis(inbound_call_mapping=>value) != 1) {

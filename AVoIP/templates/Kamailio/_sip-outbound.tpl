@@ -147,11 +147,11 @@
       # another replica can release the same reservation.
       $var(outbound_call_key) = "avoip:out:call:" + $ci;
       $var(outbound_call_ttl) = $var(managed_max_duration_seconds) + 86400;
-      $var(outbound_call_map_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX',tonumber(ARGV[2]));return 1";
+      $var(outbound_call_map_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX'," + $var(outbound_call_ttl) + ");return 1";
       if (!redis_cmd(
-        "topos", "EVAL %s 1 %s %s %s",
+        "topos", "EVAL %s 1 %s %s",
         "$var(outbound_call_map_script)", "$var(outbound_call_key)",
-        "$var(outbound_quota_key)", "$var(outbound_call_ttl)",
+        "$var(outbound_quota_key)",
         "outbound_call_mapping"
       ) || $redis(outbound_call_mapping=>type) != $redisd(rpl_int) ||
           $redis(outbound_call_mapping=>value) != 1) {
