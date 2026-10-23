@@ -101,6 +101,9 @@ URI, password, Digest verifier, or other Secret value. A registrar database
 that cannot be reached is shown as unavailable while other registrar and
 replica results remain visible. The Telephony page presents those results as
 service cards and responsive replica tiles rather than a single dense table.
+Kamailio controls retain the configured instance name and role, so carrier,
+internal, WebSocket registrar, and other enabled Kamailio roles render as
+separate service groups instead of one anonymous control pool.
 Selecting a tile opens an accessible read-only inspector with overview,
 verified active-call data, shared registrar connections, and explicit empty
 states for configuration and diagnostics that are not currently provided by

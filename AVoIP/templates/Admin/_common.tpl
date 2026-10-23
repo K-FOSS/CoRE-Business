@@ -18,7 +18,7 @@
   {{- if $instance.enabled -}}
     {{- $service := include "avoip.kamailio.controlResourceName" (dict "root" $ "instance" $instance) -}}
     {{- $host := printf "%s.%s.svc.%s:%d" $service $.Release.Namespace $.Values.cluster.domain (int (default (dig "defaults" "controlPort" 2046 $.Values.kamailio) $.Values.kamailio.controlPort)) -}}
-    {{- $controls = append $controls $host -}}
+    {{- $controls = append $controls (dict "name" (toString $instance.name) "role" (toString $instance.role) "address" $host) -}}
   {{- end -}}
 {{- end -}}
 {{- $controls | toJson -}}

@@ -25,9 +25,16 @@ type telephonyStatus struct {
 
 type serviceReplica struct {
 	Service string `json:"service"`
+	Role    string `json:"role,omitempty"`
 	Target  string `json:"target"`
 	State   string `json:"state"`
 	Detail  string `json:"detail,omitempty"`
+}
+
+type kamailioControl struct {
+	Name    string `json:"name"`
+	Role    string `json:"role,omitempty"`
+	Address string `json:"address"`
 }
 
 type registrarDatabase struct {
@@ -127,14 +134,24 @@ func registrarDatabases() []registrarDatabase {
 	return databases
 }
 
-func kamailioControlTargets(ctx context.Context) []string {
-	var configured []string
+func kamailioControlTargets(ctx context.Context) []kamailioControl {
+	var configured []kamailioControl
 	if json.Unmarshal([]byte(telephonyEnv("AVOIP_KAMAILIO_CONTROL_ADDRESSES")), &configured) != nil {
-		return nil
+		// Keep the former list-of-addresses shape readable during an image
+		// rollout. New charts always provide instance name and role.
+		var legacy []string
+		if json.Unmarshal([]byte(telephonyEnv("AVOIP_KAMAILIO_CONTROL_ADDRESSES")), &legacy) != nil {
+			return nil
+		}
+		for _, address := range legacy {
+			configured = append(configured, kamailioControl{Name: "unknown", Role: "unknown", Address: address})
+		}
 	}
-	var out []string
-	for _, address := range configured {
-		out = append(out, controlTargets(ctx, address)...)
+	var out []kamailioControl
+	for _, control := range configured {
+		for _, target := range controlTargets(ctx, control.Address) {
+			out = append(out, kamailioControl{Name: control.Name, Role: control.Role, Address: target})
+		}
 	}
 	return out
 }
@@ -262,16 +279,20 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 	} else {
 		systems = append(systems, telephonyStatus{Name: "FreeSWITCH Event Socket", State: "not configured"})
 	}
-	for _, target := range kamailioControlTargets(ctx) {
-		conn, err := (&net.Dialer{Timeout: 2 * time.Second}).DialContext(ctx, "tcp", target)
+	for _, control := range kamailioControlTargets(ctx) {
+		conn, err := (&net.Dialer{Timeout: 2 * time.Second}).DialContext(ctx, "tcp", control.Address)
 		state := "connected"
 		if err != nil {
 			state = "unavailable"
 		} else {
 			_ = conn.Close()
 		}
-		replicas = append(replicas, serviceReplica{Service: "Kamailio ctl", Target: target, State: state, Detail: safeInterfaceError(err)})
-		systems = append(systems, telephonyStatus{Name: "Kamailio ctl", State: state})
+		service := "Kamailio"
+		if control.Name != "" && control.Name != "unknown" {
+			service += " " + control.Name
+		}
+		replicas = append(replicas, serviceReplica{Service: service, Role: control.Role, Target: control.Address, State: state, Detail: safeInterfaceError(err)})
+		systems = append(systems, telephonyStatus{Name: service + " ctl", State: state})
 	}
 	for _, database := range registrarDatabases() {
 		url := telephonyEnv(database.URLenv)
