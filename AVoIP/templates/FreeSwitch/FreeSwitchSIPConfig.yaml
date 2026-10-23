@@ -154,7 +154,11 @@ data:
         <param name="tls-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
         <param name="tls-cert-dir" value="/etc/freeswitch/tls-kamailio"/>
         <param name="tls-verify-date" value="true"/>
-        <param name="tls-verify-policy" value="subjects_out"/>
+        <!-- FreeSWITCH must both validate Kamailio and present its own
+             agent.pem when Kamailio requests the private-peer certificate.
+             `all` retains outbound server validation while enabling the
+             client-auth side of this TLS profile. -->
+        <param name="tls-verify-policy" value="all"/>
         <param name="tls-version" value="$${sip_tls_version}"/>
         <param name="tls-ciphers" value="$${sip_tls_ciphers}"/>
         <param name="dialplan" value="XML"/>
