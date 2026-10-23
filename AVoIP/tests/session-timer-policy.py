@@ -29,17 +29,18 @@ def uas_result(offered: str, minimum: int) -> tuple[int, int | None]:
 
 
 assert '<param name="enable-timer" value="true"/>' in PROFILE
-assert '<param name="minimum-session-expires" value="90"/>' in PROFILE
+assert '<param name="minimum-session-expires" value="60"/>' in PROFILE
 
 # Reproduce the supplied failure against the old 120-second UAS policy.
 assert uas_result("90", 120) == (422, 120)
 
-# The deployed core-managed policy accepts the valid RFC 4028 floor.
-assert uas_result("90", 90) == (200, 90)
+# The deployed core-managed policy accepts the 60-second WebSocket offer.
+assert uas_result("60", 60) == (200, 60)
 
-# Already-compatible offers remain unchanged; the server does not normalize
-# every session interval to a fixed value.
-assert uas_result("120", 90) == (200, 120)
+# Longer offers remain unchanged; the server does not normalize every session
+# interval to a fixed value.
+assert uas_result("90", 60) == (200, 90)
+assert uas_result("120", 60) == (200, 120)
 
 # A proxy forwards a 422; only the UAC can create the new CSeq transaction.
 # This guards against adding unsafe Kamailio-side retry logic for this fix.

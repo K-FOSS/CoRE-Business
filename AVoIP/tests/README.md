@@ -37,10 +37,11 @@ Run the dependency-free protocol boundary check:
 python3 AVoIP/tests/session-timer-policy.py
 ```
 
-It reproduces the observed 90-second offer versus a 120-second UAS minimum,
-checks that the `core-managed` profile accepts the RFC 4028 floor while
-keeping timers enabled, and guards against adding proxy-generated INVITE
-retries. It does not replace a live FreeSWITCH call or a rendered-chart check.
+It reproduces the observed short offer versus a 120-second UAS minimum,
+checks that the `core-managed` profile accepts the current 60-second
+WebSocket offer while keeping timers enabled, and guards against adding
+proxy-generated INVITE retries. It does not replace a live FreeSWITCH call or
+a rendered-chart check.
 
 ## Outbound Flowroute teardown regression
 

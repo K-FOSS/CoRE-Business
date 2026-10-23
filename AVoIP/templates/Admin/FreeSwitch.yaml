@@ -16,11 +16,11 @@ data:
         <param name="tls-sip-port" value="5072"/>
         <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
         <param name="auth-calls" value="false"/>
-        <!-- Keep RFC 4028 negotiation enabled; accept the protocol floor. -->
+        <!-- Keep RFC 4028 negotiation enabled with the deployment policy floor. -->
         <param name="enable-timer" value="true"/>
-        <!-- Native clients commonly offer a 90-second RFC 4028 timer.
-             Do not reject that offer with FreeSWITCH's 120-second default. -->
-        <param name="minimum-session-expires" value="90"/>
+        <!-- WebSocket clients in this deployment offer a 60-second timer.
+             Do not reject that offer with FreeSWITCH's larger default. -->
+        <param name="minimum-session-expires" value="60"/>
         <param name="apply-inbound-acl" value="kamailio"/>
         {{- range $.Values.freeswitch.sipCore.candidateACLs }}
         <param name="apply-candidate-acl" value="{{ . }}"/>

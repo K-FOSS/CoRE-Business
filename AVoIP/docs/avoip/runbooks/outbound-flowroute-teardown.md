@@ -199,9 +199,9 @@ Confirm all of the following in the same Call-ID trace:
 5. **Cleanup timer race:** after a carrier BYE succeeds, wait beyond the
    configured local cleanup interval. No second local BYE or Flowroute 481
    appears.
-6. **Session refresh:** keep a separate call up across the existing 90-second
-   WebRTC refresh. UPDATE and its 200 OK continue through the same dialog
-   route.
+6. **Session refresh:** keep a separate call up across the negotiated WebRTC
+   session refresh. UPDATE and its 200 OK continue through the same dialog
+   route; the managed WebSocket profile now accepts a 60-second offer.
 7. **Media and CDR:** after either BYE direction, `rtpengine-ctl list sessions`
    no longer shows the call's session; an unrelated test call remains. The
    FreeSWITCH CDR records `NORMAL_CLEARING`/remote clearing, and Homer shows
