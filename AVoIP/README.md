@@ -140,6 +140,14 @@ selects this backend. Reverting the switch restores Asterisk's
 endpoint, but active registrations must re-register because the two registrar
 databases do not share Contact state.
 
+The Kamailio-facing FreeSWITCH Sofia profile separates request-source
+authorization (`apply-inbound-acl=kamailio`) from ICE candidate filtering.
+Its candidate ACL accepts both `localnet.auto` and `wan.auto`, so WebRTC
+clients behind the private network and public native SIP clients are not
+silently filtered by the default WAN-only candidate list. This does not change
+the SIP source allowlist. See [registered-client call troubleshooting](docs/SIP-CLIENT-CALL-FAILURES.md)
+for the observed `INCOMPATIBLE_DESTINATION` failures and live verification.
+
 YXL's and YVR's `internal` and `carrier` Kamailio instances are configured
 for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
 client identities use each site's existing Vault backed `core-tls-vault`

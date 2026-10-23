@@ -1130,6 +1130,11 @@ freeswitch:
     # Compatibility for native SIP phones that place SDES a=crypto in an
     # RTP/AVP alternative. Scope this to the Kamailio-facing Sofia profile.
     allowCryptoInAvp: false
+    # ICE candidates arriving on the Kamailio-facing profile may be private
+    # (Home Assistant/WebRTC) or public (native remote clients). Keep both
+    # address classes eligible; otherwise FreeSWITCH's implicit wan.auto
+    # candidate filter silently drops private candidates.
+    candidateACLs: ['localnet.auto', 'wan.auto']
   highAvailability:
     # Active/active FreeSWITCH supports new-call routing on a surviving pod.
     # Enable only with an RWX fax spool and at least two eligible nodes.

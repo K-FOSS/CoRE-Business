@@ -76,6 +76,10 @@
       }
       {{- end }}
       if ($var(peer_allowed) != 1) {
+        xlog(
+          "L_WARN",
+          "Private SIP peer rejected pod=$env(POD_NAME) source=$si:$sp transport=$proto receive_port=$Rp tls_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname method=$rm callid=$ci\n"
+        );
         if (!is_method("ACK")) sl_send_reply("403", "Peer Not Authorized");
         exit;
       }

@@ -18,6 +18,17 @@ yq -e 'select(.kind == "StatefulSet" and (.metadata.name | contains("internal-ws
 yq -e 'select(.kind == "CiliumNetworkPolicy" and (.metadata.name | contains("internal-wss-sip-policy"))) | (.spec.ingress | any(.fromEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss")) and (.spec.egress | any(.toEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss"))' "$rendered" >/dev/null
 freeswitch_sip_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-sip-configs"))) | .data["kamailio.xml"]' "$rendered")"
 grep -Fq '<gateway name="sipcore-registrar">' <<<"$freeswitch_sip_config"
+python3 - "$freeswitch_sip_config" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+profile = ET.fromstring(sys.argv[1])
+assert profile.tag == 'profile' and profile.get('name') == 'kamailio'
+settings = {node.get('name'): node.get('value') for node in profile.findall('./settings/param')}
+candidate_acls = [node.get('value') for node in profile.findall('./settings/param[@name="apply-candidate-acl"]')]
+assert settings['apply-inbound-acl'] == 'kamailio'
+assert candidate_acls == ['localnet.auto', 'wan.auto'], candidate_acls
+PY
 python3 - "$rendered" <<'PY'
 import json
 import subprocess
@@ -53,5 +64,6 @@ grep -Fq 'www_authorize("sipcore.mylogin.space", "active_subscriber")' <<<"$ha_c
 grep -Fq 'X-Core-Extension: $au' <<<"$ha_config"
 grep -Fq ':5072;transport=tls' <<<"$ha_config"
 grep -Fq 'if ($var(peer_name) == "freeswitch-registrar")' <<<"$ha_config"
+grep -Fq 'Private SIP peer rejected pod=$env(POD_NAME) source=$si:$sp transport=$proto receive_port=$Rp tls_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname method=$rm callid=$ci' <<<"$ha_config"
 
 echo 'PASS: HA registrar and legacy database identities coexist; owner routing and Digest registration render'

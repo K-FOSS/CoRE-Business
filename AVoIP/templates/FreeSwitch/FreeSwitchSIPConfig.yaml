@@ -161,6 +161,9 @@ data:
         <param name="context" value="public"/>
         <param name="auth-calls" value="false"/>
         <param name="apply-inbound-acl" value="kamailio"/>
+        {{- range $.Values.freeswitch.sipCore.candidateACLs }}
+        <param name="apply-candidate-acl" value="{{ . }}"/>
+        {{- end }}
         <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-capture" value="{{ ternary "yes" "no" (and $.Values.freeswitch.homer.sipCapture (ne (include "avoip.homer.enabled" $ | trim) "")) }}"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
