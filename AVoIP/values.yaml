@@ -1653,7 +1653,7 @@ avoipAdmin:
       cdrConnectionSecret: {name: '', key: 'psqlURI'}
       cdrTable: 'cdr'
   bridgedCalls:
-    enabled: false
+    enabled: true
     confirmationRequired: true
     internalConfirmationRequired: true
     callbackRingTimeoutSeconds: 30
@@ -1680,7 +1680,7 @@ avoipAdmin:
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams: []
   routing:
-    enabled: false
+    enabled: true
     upstreamCIDRs: []
     image:
       repository: 'slop.writemy.codes/core/core-business/kamailio-routing'
