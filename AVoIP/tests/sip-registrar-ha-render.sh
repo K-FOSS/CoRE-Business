@@ -33,6 +33,8 @@ assert settings['apply-inbound-acl'] == 'kamailio'
 assert candidate_acls == ['rtpengine'], candidate_acls
 assert settings['NDLB-allow-crypto-in-avp'] == 'true'
 assert settings['inbound-late-negotiation'] == 'true'
+assert settings['liberal-dtmf'] == 'true'
+assert settings['dtmf-type'] == 'rfc2833'
 PY
 managed_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-managed"))) | .data["core-managed.xml"]' "$rendered")"
 python3 - "$managed_config" <<'PY'
@@ -88,6 +90,10 @@ dialplan = next(resource['data']['public.xml'] for resource in resources
                 if resource and resource.get('kind') == 'ConfigMap'
                 and resource['metadata']['name'].endswith('-freeswitch-dialplan-configs'))
 root = ET.fromstring(dialplan)
+registered_voicemail = root.find("context[@name='core-managed-entry']/extension[@name='registered-client-voicemail']")
+assert registered_voicemail is not None
+assert any(action.get('data') == 'sofia/gateway/asterisk/*97'
+           for action in registered_voicemail.findall('.//action[@application="bridge"]'))
 node = root.find("context[@name='ivr-targets']/extension[@name='ivr-destination-7101']")
 assert node is not None
 bridges = [action.get('data') for action in node.findall('.//action[@application="bridge"]')]
@@ -103,6 +109,8 @@ asterisk = next(resource['data']['extensions.conf'] for resource in resources
                 and resource['metadata']['name'].endswith('-asterisk-configs'))
 assert 'exten => voicemail,1,VoiceMail(7101@default,u)' in asterisk
 PY
+yq -e 'select(.kind == "Service" and (.metadata.name | contains("asterisk-control"))) | .spec.clusterIP == "None"' "$voicemail_rendered" >/dev/null
+yq -e 'select(.kind == "Service" and (.metadata.name | contains("freeswitch-control"))) | .spec.clusterIP == "None"' "$voicemail_rendered" >/dev/null
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("admin"))) | .spec.template.spec.containers[].env[] | select(.name == "AVOIP_SIPCORE_REGISTRAR_GATEWAY") | .value == "sipcore-registrar"' "$rendered" >/dev/null
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.metadata.annotations["configmap.reloader.stakater.com/reload"] | contains("freeswitch-managed")' "$rendered" >/dev/null
 asterisk_startup="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("asterisk"))) | .spec.template.spec.containers[] | select(.name == "asterisk") | .args[]' "$rendered")"

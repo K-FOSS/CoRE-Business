@@ -148,10 +148,6 @@ data:
     loadmodule "path.so"
     modparam("path", "use_received", 0)
     {{- end }}
-    {{- if or $websocketHA.enabled $websocketHA.legacyOwner }}
-    loadmodule "ctl.so"
-    modparam("ctl", "binrpc", "unix:/tmp/kamailio_ctl")
-    {{- end }}
     loadmodule "xhttp.so"
     loadmodule "websocket.so"
     modparam("websocket", "cors_mode", 0)
@@ -160,6 +156,16 @@ data:
     {{- if (($websocketHA.compatibility | default dict).lfOnlyHeartbeat | default dict).enabled }}
     # Exact 0A 0A text-frame compatibility for Home Assistant SIP Core.
     modparam("websocket", "lf_keepalive_compat", 1)
+    {{- end }}
+    {{- end }}
+    {{- if or $websocketHA.enabled $websocketHA.legacyOwner (and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled) }}
+    loadmodule "ctl.so"
+    {{- if or $websocketHA.enabled $websocketHA.legacyOwner }}
+    modparam("ctl", "binrpc", "unix:/tmp/kamailio_ctl")
+    {{- end }}
+    {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+    # Restricted by the Admin-to-control network policy; one endpoint per pod.
+    modparam("ctl", "binrpc", "tcp:*:{{ $.Values.kamailio.controlPort }}")
     {{- end }}
     {{- end }}
     loadmodule "corex.so"

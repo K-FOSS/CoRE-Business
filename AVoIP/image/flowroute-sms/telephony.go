@@ -44,6 +44,40 @@ type cdrRecord struct {
 
 func telephonyEnv(name string) string { return strings.TrimSpace(os.Getenv(name)) }
 
+// controlTargets expands a headless Service into every currently published
+// pod endpoint while retaining support for explicit single-endpoint overrides.
+func controlTargets(ctx context.Context, address string) []string {
+	address = strings.TrimSpace(address)
+	if address == "" {
+		return nil
+	}
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || host == "" || net.ParseIP(host) != nil {
+		return []string{address}
+	}
+	ips, err := net.DefaultResolver.LookupHost(ctx, host)
+	if err != nil || len(ips) == 0 {
+		return []string{address}
+	}
+	out := make([]string, 0, len(ips))
+	for _, ip := range ips {
+		out = append(out, net.JoinHostPort(ip, port))
+	}
+	return out
+}
+
+func kamailioControlTargets(ctx context.Context) []string {
+	var configured []string
+	if json.Unmarshal([]byte(telephonyEnv("AVOIP_KAMAILIO_CONTROL_ADDRESSES")), &configured) != nil {
+		return nil
+	}
+	var out []string
+	for _, address := range configured {
+		out = append(out, controlTargets(ctx, address)...)
+	}
+	return out
+}
+
 func safeInterfaceError(err error) string {
 	if err == nil {
 		return ""
@@ -87,7 +121,21 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 	var calls []liveCall
 	var cdr []cdrRecord
 	if host := telephonyEnv("AVOIP_AMI_ADDRESS"); host != "" {
-		amiCalls, err := asteriskCalls(ctx, host, telephonyEnv("AVOIP_AMI_USERNAME"), telephonyEnv("AVOIP_AMI_SECRET"))
+		var amiCalls []liveCall
+		var err error
+		connected := false
+		for _, target := range controlTargets(ctx, host) {
+			current, currentErr := asteriskCalls(ctx, target, telephonyEnv("AVOIP_AMI_USERNAME"), telephonyEnv("AVOIP_AMI_SECRET"))
+			if currentErr == nil {
+				connected = true
+				amiCalls = append(amiCalls, current...)
+			} else {
+				err = currentErr
+			}
+		}
+		if connected {
+			err = nil
+		}
 		state := "connected"
 		if err != nil {
 			state = "unavailable"
@@ -103,7 +151,21 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		systems = append(systems, telephonyStatus{Name: "Asterisk AMI", State: "not configured"})
 	}
 	if address := telephonyEnv("AVOIP_ESL_ADDRESS"); address != "" {
-		_, err := freeSwitchStatus(ctx, address, telephonyEnv("AVOIP_ESL_SECRET"))
+		var err error
+		connected := false
+		for _, target := range controlTargets(ctx, address) {
+			if _, currentErr := freeSwitchStatus(ctx, target, telephonyEnv("AVOIP_ESL_SECRET")); currentErr == nil {
+				connected = true
+			} else {
+				err = currentErr
+			}
+			if currentCalls, currentErr := freeSwitchCalls(ctx, target, telephonyEnv("AVOIP_ESL_SECRET")); currentErr == nil {
+				calls = append(calls, currentCalls...)
+			}
+		}
+		if connected {
+			err = nil
+		}
 		state := "connected"
 		if err != nil {
 			s.logger.Warn("freeswitch event socket health check failed", "reason", telephonyErrorClass(err), "detail", safeInterfaceError(err))
@@ -116,6 +178,16 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		systems = append(systems, telephonyStatus{Name: "FreeSWITCH Event Socket", State: state, Detail: detail})
 	} else {
 		systems = append(systems, telephonyStatus{Name: "FreeSWITCH Event Socket", State: "not configured"})
+	}
+	for _, target := range kamailioControlTargets(ctx) {
+		conn, err := (&net.Dialer{Timeout: 2 * time.Second}).DialContext(ctx, "tcp", target)
+		state := "connected"
+		if err != nil {
+			state = "unavailable"
+		} else {
+			_ = conn.Close()
+		}
+		systems = append(systems, telephonyStatus{Name: "Kamailio ctl", State: state})
 	}
 	for _, config := range []struct{ name, url, table, started, caller, called, duration, disposition string }{
 		{"Asterisk CDR", telephonyEnv("AVOIP_ASTERISK_CDR_URL"), telephonyEnv("AVOIP_ASTERISK_CDR_TABLE"), "calldate", "src", "dst", "billsec", "disposition"},
@@ -164,9 +236,23 @@ func (s *server) hangupCall(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch request.System {
 	case "freeswitch":
-		err = freeSwitchHangup(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"), telephonyEnv("AVOIP_ESL_SECRET"), request.ID)
+		for _, target := range controlTargets(ctx, telephonyEnv("AVOIP_ESL_ADDRESS")) {
+			if currentErr := freeSwitchHangup(ctx, target, telephonyEnv("AVOIP_ESL_SECRET"), request.ID); currentErr == nil {
+				err = nil
+				break
+			} else {
+				err = currentErr
+			}
+		}
 	case "asterisk":
-		err = asteriskHangup(ctx, telephonyEnv("AVOIP_AMI_ADDRESS"), telephonyEnv("AVOIP_AMI_USERNAME"), telephonyEnv("AVOIP_AMI_SECRET"), request.ID)
+		for _, target := range controlTargets(ctx, telephonyEnv("AVOIP_AMI_ADDRESS")) {
+			if currentErr := asteriskHangup(ctx, target, telephonyEnv("AVOIP_AMI_USERNAME"), telephonyEnv("AVOIP_AMI_SECRET"), request.ID); currentErr == nil {
+				err = nil
+				break
+			} else {
+				err = currentErr
+			}
+		}
 	default:
 		http.Error(w, "unknown telephony system", http.StatusBadRequest)
 		return

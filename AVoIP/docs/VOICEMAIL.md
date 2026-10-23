@@ -40,6 +40,11 @@ The chart does not copy a PIN previously changed in FreeSWITCH's own voicemail
 database. Asterisk initializes from the CoreVault PIN; subscribers can then
 change it in the Asterisk mailbox menu.
 
+Registered SIP clients can dial `*97` directly. FreeSWITCH matches that
+authenticated managed-client destination and bridges it to Asterisk's
+VoiceMailMain application, preserving the mailbox login and PIN flow. This is
+separate from the public IVR shortcut and does not bypass authentication.
+
 FreeSWITCH continues to receive public carrier calls and bridge the FaxNumber
 call to Asterisk. It no longer loads `mod_voicemail`, stores recordings, or
 provides the mailbox menu. Asterisk uses `app_voicemail_odbc` to store message

@@ -4,7 +4,8 @@ The [AVoIP ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Ap
 deploys Home1's `internal-websocket` owners and the legacy `internal` private
 SBC into `core-prod`, using Lovely's Helm values layer followed by this
 chart's Kustomize patches. Home Assistant reaches the owner over
-`wss://sipcore.mylogin.space/ws`; the owner relays SIP to Asterisk over TLS.
+`wss://sipcore.mylogin.space/ws`; the HA owner relays client SIP to the
+managed FreeSWITCH profile. Native SIP clients use the same dialog path.
 
 ## MIME classification
 
@@ -26,7 +27,7 @@ owner checks. There is no early INFO relay or new authorization path.
 | Request body | Processing |
 | --- | --- |
 | Nonempty `application/trickle-ice-sdpfrag` INFO | Existing `rtpengine_info()` handler; local 200 only after a successful media update, otherwise 503 |
-| `application/dtmf-relay` INFO | Existing dialog relay to Asterisk; preserve body, Content-Type, Call-ID, tags and CSeq; return Asterisk's response |
+| `application/dtmf-relay` INFO | Existing dialog relay with the restored owner route; preserve body, Content-Type, Call-ID, tags and CSeq. FreeSWITCH accepts SIP INFO DTMF and emits RFC 2833 toward trunk legs. |
 | Other INFO | Existing endpoint/dialog policy and relay; never classify as ICE merely because it has an application body |
 | `application/sdp` | Existing SDP offer/answer handling |
 | BYE/CANCEL | Existing media and transaction cleanup |
@@ -40,18 +41,25 @@ telephone-event negotiation, or deletion behavior changes. The existing
 [Kamailio integration](https://www.kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
 handles genuine fragments; this fix introduces no DTMF synthesis or injection.
 
-## Asterisk receive behavior
+## FreeSWITCH and Asterisk DTMF behavior
 
-Read-only inspection on 2026-10-18 found Asterisk 20.20.1, endpoint `7101`
-using `dtmf_mode=rfc4733`, and `res_pjsip_dtmf_info.so` loaded. The
-[Asterisk](https://www.asterisk.org/)
-[20 INFO handler](https://github.com/asterisk/asterisk/blob/20/res/res_pjsip_dtmf_info.c)
-accepts `application/dtmf-relay`, queues a valid digit as a DTMF frame to the
-active channel, and sends the downstream response independently of the
-endpoint's transmit DTMF mode. Keep RTP-event clients and trunk settings as
-configured. No endpoint, mailbox identity, authentication, PostgreSQL voicemail
-or storage changes are needed. Delivery to a live VoiceMailMain application
-still requires the acceptance test below.
+The managed FreeSWITCH profile is configured with `liberal-dtmf=true` and
+`dtmf-type=rfc2833`. This accepts SIP INFO DTMF from browser and native SIP
+clients while preserving RFC 2833 on provider legs. Kamailio still routes the
+INFO through the established dialog owner and does not log the digit body.
+The Asterisk peer retains its existing RTP-event behavior for voicemail and
+other Asterisk-owned dialogs.
+
+Direct registered-client `*97` calls are matched before the general managed
+dialplan and bridged to Asterisk VoiceMailMain. The route requires the
+authenticated extension marker added by the server-side routing policy; it is
+not exposed as an unauthenticated public shortcut.
+
+AVoIP Admin telephony monitoring uses headless control Services. Admin
+resolves every active pod endpoint for Asterisk AMI, FreeSWITCH ESL, and the
+Kamailio ctl listener, aggregating live calls and health rather than querying
+one load-balanced pod. Kamailio ctl is cluster-internal and network-policy
+restricted.
 
 ## Regression checks
 

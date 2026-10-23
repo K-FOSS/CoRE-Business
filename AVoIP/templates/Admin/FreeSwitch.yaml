@@ -21,6 +21,10 @@ data:
         <!-- The deployed Sofia build has an effective 120-second floor.
              Kamailio raises shorter endpoint offers before this hop. -->
         <param name="minimum-session-expires" value="120"/>
+        <!-- Accept SIP INFO DTMF from browser and native SIP clients while
+             continuing to emit RFC 2833 toward trunks. -->
+        <param name="liberal-dtmf" value="true"/>
+        <param name="dtmf-type" value="rfc2833"/>
         <param name="apply-inbound-acl" value="kamailio"/>
         {{- range $.Values.freeswitch.sipCore.candidateACLs }}
         <param name="apply-candidate-acl" value="{{ . }}"/>

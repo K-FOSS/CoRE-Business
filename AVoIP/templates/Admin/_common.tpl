@@ -12,6 +12,17 @@
 {{- end -}}
 {{- mergeOverwrite $sites (deepCopy .Values.avoipAdmin.sites) | toJson -}}
 {{- end -}}
+{{- define "avoip.admin.kamailioControls" -}}
+{{- $controls := list -}}
+{{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+  {{- if $instance.enabled -}}
+    {{- $service := include "avoip.kamailio.resourceName" (dict "root" $ "instance" $instance "suffix" "control") -}}
+    {{- $host := printf "%s.%s.svc.%s:%d" $service $.Release.Namespace $.Values.cluster.domain (int $.Values.kamailio.controlPort) -}}
+    {{- $controls = append $controls $host -}}
+  {{- end -}}
+{{- end -}}
+{{- $controls | toJson -}}
+{{- end -}}
 {{- define "avoip.admin.commonValues" -}}
 {{- if and .Values.avoipAdmin.enabled .Values.freeswitch.enabled -}}
 {{- $settings := .Values.avoipAdmin -}}
@@ -162,7 +173,7 @@ controllers:
                 key: 'token'
           {{ if $settings.telephony.enabled }}
           - name: 'AVOIP_AMI_ADDRESS'
-            value: '{{ default (printf "%s:%d" (include "avoip.sip.serviceHost" (dict "root" $ "component" "asterisk")) (int $settings.telephony.asteriskManager.port)) $settings.telephony.asterisk.amiAddress }}'
+            value: '{{ default (printf "%s-asterisk-control.%s.svc.%s:%d" (include "avoip.fullname" $) $.Release.Namespace $.Values.cluster.domain (int $settings.telephony.asteriskManager.port)) $settings.telephony.asterisk.amiAddress }}'
           - name: 'AVOIP_AMI_USERNAME'
             value: '{{ default (printf "avoip-admin-%s" .Values.region) $settings.telephony.asteriskManager.username }}'
           - name: 'AVOIP_AMI_SECRET'
@@ -180,12 +191,14 @@ controllers:
             value: '{{ $settings.telephony.asterisk.cdrTable }}'
           {{ end }}
           - name: 'AVOIP_ESL_ADDRESS'
-            value: '{{ default (printf "%s:%d" (include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch")) (int $settings.telephony.freeswitchEventSocket.port)) $settings.telephony.freeswitch.eventSocketAddress }}'
+            value: '{{ default (printf "%s-freeswitch-control.%s.svc.%s:%d" (include "avoip.fullname" $) $.Release.Namespace $.Values.cluster.domain (int $settings.telephony.freeswitchEventSocket.port)) $settings.telephony.freeswitch.eventSocketAddress }}'
           - name: 'AVOIP_ESL_SECRET'
             valueFrom:
               secretKeyRef:
                 name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) $settings.telephony.managementSecret.name }}'
                 key: '{{ $settings.telephony.managementSecret.key }}'
+          - name: 'AVOIP_KAMAILIO_CONTROL_ADDRESSES'
+            value: '{{ include "avoip.admin.kamailioControls" $ | replace "'" "''" }}'
           {{ if $settings.telephony.freeswitch.cdrConnectionSecret.name }}
           - name: 'AVOIP_FREESWITCH_CDR_URL'
             valueFrom:
@@ -291,6 +304,16 @@ networkpolicies:
                   app.kubernetes.io/controller: 'freeswitch'
           ports:
             - port: {{ $settings.telephony.freeswitchEventSocket.port }}
+              protocol: 'TCP'
+        - to:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: '{{ .Release.Name }}'
+                matchExpressions:
+                  - key: 'avoip.mylogin.space/kamailio-instance'
+                    operator: 'Exists'
+          ports:
+            - port: {{ $.Values.kamailio.controlPort }}
               protocol: 'TCP'
         - to:
             - podSelector:

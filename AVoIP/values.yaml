@@ -518,6 +518,9 @@ kamailio:
     # defaults raise this for SIP Core TLS handshakes and topology state.
     shmSizeMb: 256
     tcpChildren: 4
+    # Cluster-internal Kamailio ctl/BinRPC listener used by AVoIP Admin
+    # headless-pod health and control queries.
+    controlPort: 2046
     replicas: 3
     rollingUpdate:
       # BJW-S 5.0.1 uses the field name `surge`; keep zero quoted so its

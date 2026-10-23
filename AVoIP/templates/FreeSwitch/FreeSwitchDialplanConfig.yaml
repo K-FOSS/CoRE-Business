@@ -84,6 +84,17 @@ data:
             <action application="hangup" data="NORMAL_CLEARING"/>
           </condition>
         </extension>
+        {{- if $voicemailEnabled }}
+        <extension name="registered-client-voicemail">
+          <condition field="${channel_name}" expression="^sofia/core-managed/"/>
+          <condition field="${sip_h_X-Core-Extension}" expression="^[0-9]{2,12}$"/>
+          <condition field="destination_number" expression="^(\*{{ trimPrefix "*" $voicemailAccessCode }}|{{ trimPrefix "*" $voicemailAccessCode }})$">
+            <action application="log" data="INFO AVoIP registered client forwarding to Asterisk voicemail access code {{ $voicemailAccessCode }}"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            <action application="bridge" data="sofia/gateway/asterisk/{{ $voicemailAccessCode }}"/>
+          </condition>
+        </extension>
+        {{- end }}
         {{- end }}
         <extension name="managed-entry">
           <condition field="${channel_name}" expression="^sofia/core-managed/"/>
