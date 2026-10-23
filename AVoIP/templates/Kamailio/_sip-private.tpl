@@ -455,7 +455,7 @@
           is_present_hf("Session-Expires") &&
           $hdr(Session-Expires) =~ "^(1[01][0-9]|[1-9][0-9]|[0-9])([;[:space:]]|$)") {
         $var(sipcore_original_session_expires) = $hdr(Session-Expires);
-        if (!subst_hf("Session-Expires", "/^[0-9]{1,3}/120/", "a")) {
+        if (!subst_hf("Session-Expires", "/^[0-9][0-9]*/120/", "a")) {
           xlog("L_ERR", "SIPCORE FLOW stage=session-timer-normalization-failed pod=$env(POD_NAME) callid=$ci method=$rm original=$var(sipcore_original_session_expires)\\n");
           sl_send_reply("500", "Session Timer Policy Failure");
           exit;
