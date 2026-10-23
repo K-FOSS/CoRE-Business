@@ -592,7 +592,7 @@
 {{- end }}
 {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled }}
   {{ $component }}-control:
-    forceRename: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "control") }}'
+    forceRename: '{{ include "avoip.kamailio.controlResourceName" (dict "root" . "instance" .Values.kamailio) }}'
     controller: {{ $component }}
     extraSelectorLabels:
       avoip.mylogin.space/kamailio-instance: '{{ .Values.kamailio.name }}'
