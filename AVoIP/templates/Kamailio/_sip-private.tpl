@@ -455,9 +455,14 @@
         route(PRIVATE_RELAY);
       }
       {{- end }}
+      # An inbound FreeSWITCH-to-registrar dialog restores the endpoint
+      # leg's Contact, including the internal Kamailio-facing profile port.
+      # That target is authoritative: the 5072 managed profile is only the
+      # initial-request handoff and does not own this dialog.
       if (has_totag() &&
           ($hdr(Route) =~ "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}" ||
-           $(ru{uri.host}) == "{{ $.Values.asterisk.sipCore.hostname }}")) {
+           $(ru{uri.host}) == "{{ $.Values.asterisk.sipCore.hostname }}") &&
+          $rp != {{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}) {
         # TOPOS may expose the public client-facing route as the remaining
         # local Route URI. On the client-facing leg, that URI is not the
         # next hop for ACK/BYE/INFO/UPDATE; the established dialog peer is
@@ -467,6 +472,11 @@
         $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
         set_send_socket_name("private_tls");
         xlog("L_INFO", "SIPCORE FLOW stage=frontend-dialog-backend-route pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn\n");
+      } else if (has_totag() &&
+                 ($hdr(Route) =~ "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}" ||
+                  $(ru{uri.host}) == "{{ $.Values.asterisk.sipCore.hostname }}") &&
+                 $rp == {{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}) {
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-dialog-owner-preserved pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn ruri=$ru route=$hdr(Route)\n");
       }
       route(SIPCORE_CONTENT_TYPE);
       if ($var(sipcore_content_type) == "application/trickle-ice-sdpfrag" && has_body()) {

@@ -29,6 +29,32 @@ change Contact aliasing or the return-dialog checks. This failure is also
 separate from the previously observed carrier-to-FreeSWITCH teardown delay
 documented in [remote hangup latency](../../docs/remote-hangup-latency.md).
 
+## FreeSWITCH profile selection on endpoint-originated sequential requests
+
+The internal registrar-facing Kamailio has two distinct FreeSWITCH TLS
+destinations. The `5072` service is the managed call-control handoff used for
+new requests from a registered client. The `5061` profile is the FreeSWITCH
+side that owns dialogs created when FreeSWITCH sends an INVITE to a registered
+endpoint. They are not interchangeable SIP dialog contexts.
+
+The live YVR configuration exposed a second routing defect: after TOPOS and
+`loose_route_mode("1")` restored an inbound dialog Contact such as
+`sip:...@<freeswitch-pod>:5061`, `route[FROM_SIPCORE]` unconditionally replaced
+the destination with the `5072` managed service whenever the remaining route
+set referenced the public SIP Core hostname. The SIP Request-URI therefore
+still named the `5061` owner while the packet was delivered to `5072`, which
+returned `481 Call Does Not Exist`.
+
+The routing branch now preserves a restored target on the configured
+FreeSWITCH backend port (`freeswitch.publicExposure.kamailio.backendPort`,
+currently `5061`). The `5072` selection remains available for client-originated
+dialogs whose restored target is not that backend profile. This applies to all
+accepted in-dialog methods handled by `route[FROM_SIPCORE]`—including BYE,
+re-INVITE, UPDATE, INFO, REFER, PRACK, and NOTIFY—rather than special-casing
+BYE. The diagnostic stages `frontend-dialog-owner-preserved` and
+`frontend-dialog-backend-route` make the choice visible without logging SIP
+credentials or media keys.
+
 A second failure was reproduced on 2026-10-22 with a native SIP/TLS client
 originating a call. Its Contact used the same private IP and port Kamailio saw
 as the TLS source. `add_contact_alias()` intentionally adds no alias in that

@@ -91,6 +91,9 @@ assert 'stage=frontend-owner-hop' in frontend
 assert 'X-Core-Frontend-Owner-Forward' in frontend and 'remove_hf("X-Core-Frontend-Owner-Forward")' in frontend
 assert 'stage=frontend-dialog-backend-route' in frontend
 assert ':5072;transport=tls' in frontend
+assert 'stage=frontend-dialog-owner-preserved' in frontend
+assert '$rp != 5061' in frontend
+assert frontend.index('$rp != 5061') < frontend.index('stage=frontend-dialog-backend-route')
 assert 'stage=frontend-owner-received' in backend
 assert backend.index('route(FROM_SIPCORE);') < backend.index('check_flow_token()')
 
