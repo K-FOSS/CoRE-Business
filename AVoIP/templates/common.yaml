@@ -472,7 +472,7 @@
             protocol: TCP
         {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled }}
           - name: control
-            containerPort: {{ $.Values.kamailio.controlPort }}
+            containerPort: {{ default $.Values.kamailio.defaults.controlPort $.Values.kamailio.controlPort }}
             protocol: TCP
         {{- end }}
         {{- if and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) (.Values.kamailio.websocketHA | default dict).enabled (.Values.kamailio.websocketHA | default dict).legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled }}
@@ -600,8 +600,8 @@
     publishNotReadyAddresses: false
     ports:
       control:
-        port: {{ $.Values.kamailio.controlPort }}
-        targetPort: {{ $.Values.kamailio.controlPort }}
+        port: {{ default $.Values.kamailio.defaults.controlPort $.Values.kamailio.controlPort }}
+        targetPort: {{ default $.Values.kamailio.defaults.controlPort $.Values.kamailio.controlPort }}
         protocol: TCP
 {{- end }}
 {{ if and .Values.kamailio.publicExposure.enabled .Values.kamailio.publicExposure.sip.directService.enabled (or .Values.kamailio.publicExposure.sip.enabled .Values.kamailio.publicExposure.sip.udpEnabled .Values.kamailio.publicExposure.sip.tcpEnabled) }}

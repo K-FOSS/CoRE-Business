@@ -313,7 +313,7 @@ networkpolicies:
                   - key: 'avoip.mylogin.space/kamailio-instance'
                     operator: 'Exists'
           ports:
-            - port: {{ $.Values.kamailio.controlPort }}
+            - port: {{ default $.Values.kamailio.defaults.controlPort $.Values.kamailio.controlPort }}
               protocol: 'TCP'
         - to:
             - podSelector:

@@ -158,14 +158,15 @@ data:
     modparam("websocket", "lf_keepalive_compat", 1)
     {{- end }}
     {{- end }}
-    {{- if or $websocketHA.enabled $websocketHA.legacyOwner .Values.kamailio.controlPort }}
+    {{- $controlPort := default .Values.kamailio.defaults.controlPort .Values.kamailio.controlPort }}
+    {{- if or $websocketHA.enabled $websocketHA.legacyOwner $controlPort }}
     loadmodule "ctl.so"
     {{- if or $websocketHA.enabled $websocketHA.legacyOwner }}
     modparam("ctl", "binrpc", "unix:/tmp/kamailio_ctl")
     {{- end }}
-    {{- if .Values.kamailio.controlPort }}
+    {{- if $controlPort }}
     # Restricted by the Admin-to-control network policy; one endpoint per pod.
-    modparam("ctl", "binrpc", "tcp:*:{{ $.Values.kamailio.controlPort }}")
+    modparam("ctl", "binrpc", "tcp:*:{{ $controlPort }}")
     {{- end }}
     {{- end }}
     loadmodule "corex.so"
