@@ -94,11 +94,11 @@ func (a audioEndpoint) active() bool { return a.Enabled == nil || *a.Enabled }
 
 // allowedRemoteAudioURL keeps managed remote media from becoming a general
 // purpose FreeSWITCH fetch primitive.  Operators must explicitly list the
-// exact HTTPS hosts which are permitted to supply media.  Library-backed media
-// does not need this exception and remains the normal choice.
+// exact HTTP(S) hosts which are permitted to supply media.  Library-backed
+// media does not need this exception and remains the normal choice.
 func allowedRemoteAudioURL(raw string) bool {
 	u, err := url.Parse(raw)
-	if err != nil || u == nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Port() != "" {
+	if err != nil || u == nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil || u.Port() != "" {
 		return false
 	}
 	host := strings.ToLower(u.Hostname())
@@ -496,7 +496,7 @@ func (c sipCatalog) validate() error {
 			}
 		case "remote_url":
 			if !allowedRemoteAudioURL(endpoint.MediaURL) || endpoint.MediaAsset != "" {
-				return errors.New("audio endpoint remote media must be an allowlisted HTTPS hostname or IP URL")
+				return errors.New("audio endpoint remote media must be an allowlisted HTTP or HTTPS hostname or IP URL")
 			}
 		default:
 			return errors.New("unsupported audio endpoint media source")

@@ -1630,7 +1630,7 @@ avoipAdmin:
   # null delegates catalog writes to administrators; an object is Git-managed.
   catalog: null
   audioEndpoints:
-    # Exact HTTPS hostnames which may be used by managed remote-media Audio
+    # Exact HTTP(S) hostnames which may be used by managed remote-media Audio
     # Endpoints. Keep empty to require the shared audio library exclusively.
     remoteMediaHosts: ['10.1.1.84', '66.165.222.102']
   # By default use local FreeSWITCH and the configured mTLS inter-site peers.

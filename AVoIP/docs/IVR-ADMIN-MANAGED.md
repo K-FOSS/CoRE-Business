@@ -40,8 +40,8 @@ fragment.
 
 Remote media is disabled until the deployment sets
 `AVOIP_AUDIO_REMOTE_MEDIA_HOSTS` to exact approved hostnames or IP addresses.
-The YVR deployment explicitly allows `10.1.1.84` and `66.165.222.102` for
-HTTPS media. Credentials, ports, non-HTTPS URLs, and unlisted hosts are
+The YVR deployment explicitly allows `10.1.1.84` and `66.165.222.102` for HTTP
+or HTTPS media. Credentials, ports, non-HTTP(S) URLs, and unlisted hosts are
 rejected before a catalog revision is saved. This keeps Audio Endpoints from
 becoming an unrestricted server-side request mechanism.
 

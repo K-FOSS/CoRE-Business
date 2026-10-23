@@ -394,6 +394,10 @@ func TestManagedAudioEndpointsValidateReferencesAndRemoteMediaPolicy(t *testing.
 	if err := catalog.validate(); err != nil {
 		t.Fatalf("second allowlisted HTTPS IP media rejected: %v", err)
 	}
+	catalog.AudioEndpoints[0].MediaURL = "http://10.1.1.84/private.mp3"
+	if err := catalog.validate(); err != nil {
+		t.Fatalf("allowlisted HTTP IP media rejected: %v", err)
+	}
 	catalog.AudioEndpoints[0].MediaURL = "https://127.0.0.1/private.mp3"
 	if err := catalog.validate(); err == nil {
 		t.Fatal("unallowlisted IP-literal remote media host accepted")
