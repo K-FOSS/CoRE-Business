@@ -78,6 +78,21 @@ func kamailioControlTargets(ctx context.Context) []string {
 	return out
 }
 
+func eslCommandAny(ctx context.Context, command string) (string, error) {
+	var lastErr error
+	for _, target := range controlTargets(ctx, telephonyEnv("AVOIP_ESL_ADDRESS")) {
+		result, err := eslCommand(ctx, target, telephonyEnv("AVOIP_ESL_SECRET"), command)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = errors.New("event socket not configured")
+	}
+	return "", lastErr
+}
+
 func safeInterfaceError(err error) string {
 	if err == nil {
 		return ""
@@ -483,26 +498,45 @@ func freeSwitchHangup(ctx context.Context, address, secret, id string) error {
 			return errors.New("invalid UUID")
 		}
 	}
-	_, err := eslCommand(ctx, address, secret, "uuid_kill "+id+" NORMAL_CLEARING")
-	return err
+	var lastErr error
+	for _, target := range controlTargets(ctx, address) {
+		if _, err := eslCommand(ctx, target, secret, "uuid_kill "+id+" NORMAL_CLEARING"); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+	}
+	return lastErr
 }
 
 func freeSwitchUUIDExists(ctx context.Context, address, secret, uuid string) (bool, error) {
 	if uuid == "" || !correlationID.MatchString(uuid) {
 		return false, errors.New("invalid UUID")
 	}
-	response, err := eslCommand(ctx, address, secret, "uuid_exists "+uuid)
-	if err != nil {
-		return false, err
+	var lastErr error
+	for _, target := range controlTargets(ctx, address) {
+		response, err := eslCommand(ctx, target, secret, "uuid_exists "+uuid)
+		if err == nil {
+			return strings.EqualFold(strings.TrimSpace(response), "true"), nil
+		}
+		lastErr = err
 	}
-	return strings.EqualFold(strings.TrimSpace(response), "true"), nil
+	return false, lastErr
 }
 
 func freeSwitchVariable(ctx context.Context, address, secret, uuid, name string) (string, error) {
 	if uuid == "" || strings.ContainsAny(uuid, "\r\n ") || !correlationID.MatchString(uuid) || name == "" || strings.ContainsAny(name, "\r\n ") {
 		return "", errors.New("invalid channel variable request")
 	}
-	return eslCommand(ctx, address, secret, "uuid_getvar "+uuid+" "+name)
+	var lastErr error
+	for _, target := range controlTargets(ctx, address) {
+		result, err := eslCommand(ctx, target, secret, "uuid_getvar "+uuid+" "+name)
+		if err == nil {
+			return result, nil
+		}
+		lastErr = err
+	}
+	return "", lastErr
 }
 func eslCommand(ctx context.Context, address, secret, command string) (string, error) {
 	if address == "" || secret == "" {

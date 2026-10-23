@@ -687,7 +687,7 @@ func (s *server) dispatchBridgedCall(ctx context.Context, id string) {
 	}
 	target := "sofia/gateway/asterisk/" + e.Extension
 	command := bridgedOriginateCommand(call, gateway, target, confirmation)
-	result, err := eslCommand(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"), telephonyEnv("AVOIP_ESL_SECRET"), "bgapi "+command)
+	result, err := eslCommandAny(ctx, "bgapi "+command)
 	if err != nil {
 		s.logger.Error("bridged call origination failed", "call_id", id, "reason", telephonyErrorClass(err), "detail", safeInterfaceError(err))
 		s.failCall(ctx, id, "origination_failed")

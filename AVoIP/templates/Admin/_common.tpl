@@ -17,7 +17,7 @@
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
   {{- if $instance.enabled -}}
     {{- $service := include "avoip.kamailio.controlResourceName" (dict "root" $ "instance" $instance) -}}
-    {{- $host := printf "%s.%s.svc.%s:%d" $service $.Release.Namespace $.Values.cluster.domain (int $.Values.kamailio.controlPort) -}}
+    {{- $host := printf "%s.%s.svc.%s:%d" $service $.Release.Namespace $.Values.cluster.domain (int (default $.Values.kamailio.defaults.controlPort $.Values.kamailio.controlPort)) -}}
     {{- $controls = append $controls $host -}}
   {{- end -}}
 {{- end -}}

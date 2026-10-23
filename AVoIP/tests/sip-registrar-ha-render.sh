@@ -103,6 +103,12 @@ assert bridges == [
 ], bridges
 assert any('to Asterisk voicemail' in (action.get('data') or '')
            for action in node.findall('.//action[@application="log"]'))
+registered = root.find("context[@name='ivr-targets']/extension[@name='ivr-destination-7101']")
+actions = list(registered.findall('.//action'))
+ring_index = next(i for i, action in enumerate(actions) if action.get('application') == 'ring_ready')
+bridge_index = next(i for i, action in enumerate(actions) if action.get('application') == 'bridge'
+                    and 'sipcore-registrar' in (action.get('data') or ''))
+assert ring_index < bridge_index
 
 asterisk = next(resource['data']['extensions.conf'] for resource in resources
                 if resource and resource.get('kind') == 'ConfigMap'
@@ -111,6 +117,7 @@ assert 'exten => voicemail,1,VoiceMail(7101@default,u)' in asterisk
 PY
 yq -e 'select(.kind == "Service" and (.metadata.name | contains("asterisk-control"))) | .spec.clusterIP == "None"' "$voicemail_rendered" >/dev/null
 yq -e 'select(.kind == "Service" and (.metadata.name | contains("freeswitch-control"))) | .spec.clusterIP == "None"' "$voicemail_rendered" >/dev/null
+yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("admin"))) | .spec.template.spec.containers[].env[] | select(.name == "AVOIP_KAMAILIO_CONTROL_ADDRESSES") | .value | contains(":2046")' "$rendered" >/dev/null
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("admin"))) | .spec.template.spec.containers[].env[] | select(.name == "AVOIP_SIPCORE_REGISTRAR_GATEWAY") | .value == "sipcore-registrar"' "$rendered" >/dev/null
 yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.metadata.annotations["configmap.reloader.stakater.com/reload"] | contains("freeswitch-managed")' "$rendered" >/dev/null
 asterisk_startup="$(yq -r 'select(.kind == "Deployment" and (.metadata.name | contains("asterisk"))) | .spec.template.spec.containers[] | select(.name == "asterisk") | .args[]' "$rendered")"

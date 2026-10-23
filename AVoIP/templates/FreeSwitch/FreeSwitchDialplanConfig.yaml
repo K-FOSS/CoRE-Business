@@ -323,6 +323,7 @@ data:
             <action application="echo"/>
             {{- else if hasKey $registeredExtensions (toString .) }}
             <action application="log" data="INFO AVoIP IVR ringing registered extension=${destination_number} caller=${caller_id_number} backend=sipcore-registrar"/>
+            <action application="ring_ready"/>
             <action application="set" data="hangup_after_bridge=true"/>
             {{- include "avoip.freeswitch.inboundBridgePolicy" $ | nindent 12 }}
             <action application="bridge" data="sofia/gateway/sipcore-registrar/${destination_number}"/>
