@@ -164,11 +164,23 @@ rtcp-mux-demux`. The browser-facing offer/answer alone uses RTPEngine's
 `WebRTC` policy. FreeSWITCH no longer receives a WebRTC marker or loads a
 WebRTC media module for this path.
 
-The core reply route now recognizes every response received on Kamailio's
-internal TLS listener, including late final-response copies. It selects the
-browser policy from the final WSS Via rather than requiring a Record-Route
-that TOPOS may already have hidden. This closes the demonstrated path that
-forwarded a pod media address to the browser.
+The initial implementation assumed that every FreeSWITCH response returned on
+Kamailio's internal TLS listener. A post-rollout 7101-to-66 test disproved that
+assumption: the internal Service returned the 200 through the frontend TLS
+listener. The request-side RTPEngine offer ran, but no answer command followed,
+so the FreeSWITCH media address reached the browser and DTLS could not finish.
+
+The corrected classifier uses the preserved final WSS Via in addition to the
+listener identity. The core reply route handles initial and retransmitted
+answers; the transaction reply callback is a guarded fallback for the first
+answer when listener mapping alone cannot classify it. A per-message marker
+prevents both routes from transforming the same response. This closes the
+demonstrated path that forwarded a pod media address to the browser.
+
+That same test confirms that timer normalization and the private media offer
+now pass both former signaling gates: FreeSWITCH entered destination 66,
+answered it and ended normally without 422 or 488. Media was not yet valid in
+that test because it occurred before the answer-classifier correction.
 
 ## Remaining verification
 

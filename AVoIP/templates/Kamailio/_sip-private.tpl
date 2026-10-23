@@ -963,7 +963,8 @@
     # the final Via for the endpoint transport after TOPOS hides Record-Route.
     reply_route {
       $var(sipcore_client_reply) = 0;
-      if ($proto == "tls" && $Rp == 5062) {
+      if (($proto == "tls" && $Rp == 5062) ||
+          $(hfl(Via)[-1]) =~ "^SIP/2.0/WSS") {
         $var(sipcore_client_reply) = 1;
       }
       if ($var(sipcore_client_reply) == 1 &&
@@ -999,6 +1000,7 @@
           xlog("L_ERR", "SIPCORE FLOW stage=frontend-answer-media-failed pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq)\n");
           drop;
         }
+        $var(sipcore_answer_processed) = 1;
         xlog("L_INFO", "SIPCORE FLOW stage=frontend-answer-media-applied pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq) transport=$proto\n");
       }
       return;
@@ -1047,6 +1049,24 @@
         "SIPCORE FLOW stage=frontend-response pod=$env(POD_NAME) callid=$ci method=$rm status=$rs source=$si:$sp recv=$Ri:$Rp/$proto cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt content_type=$cT branch=dialog-response\n"
       );
       {{- end }}
+      # The configured internal Service can return the first transaction
+      # response through the frontend TLS listener. Process that response in
+      # TM's callback when the core reply route could not classify it. The
+      # core route remains authoritative for retransmitted 2xx responses,
+      # which can bypass this callback.
+      if (has_body("application/sdp") &&
+          $var(sipcore_answer_processed) != 1) {
+        $var(sipcore_answer_flags) = "replace-origin internal external address-family=IP4";
+        if ($(hfl(Via)[-1]) =~ "^SIP/2.0/WSS") {
+          $var(sipcore_answer_flags) = "WebRTC " + $var(sipcore_answer_flags);
+        }
+        if (!rtpengine_manage("$var(sipcore_answer_flags)")) {
+          xlog("L_ERR", "SIPCORE FLOW stage=frontend-answer-media-failed pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq) callback=tm\n");
+          drop;
+        }
+        $var(sipcore_answer_processed) = 1;
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-answer-media-applied pod=$env(POD_NAME) callid=$ci status=$rs cseq=$hdr(CSeq) transport=$proto callback=tm\n");
+      }
       # Media is rewritten in reply_route for initial and retransmitted 2xx.
       # Only modify Contact on the REGISTER request sent to Asterisk. Its 2xx
       # response lists every binding for the AOR, not just this transaction;
