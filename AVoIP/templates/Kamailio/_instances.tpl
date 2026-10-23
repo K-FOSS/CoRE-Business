@@ -371,6 +371,7 @@
 {{- if lt $available 1 -}}{{- fail (printf "Kamailio %s resource suffix is too long" .instance.name) -}}{{- end -}}
 {{- printf "%s-%s" ($base | trunc $available | trimSuffix "-") $tail -}}
 {{- end -}}
+{{- end -}}
 {{- define "avoip.kamailio.controlResourceName" -}}
 {{- $component := include "avoip.kamailio.component" .instance -}}
 {{- $tail := printf "%s-control" $component -}}
@@ -378,5 +379,4 @@
 {{- $available := sub 63 (add 1 (len $tail)) | int -}}
 {{- if lt $available 1 -}}{{- fail (printf "Kamailio %s control resource suffix is too long" .instance.name) -}}{{- end -}}
 {{- printf "%s-%s" ($base | trunc $available | trimSuffix "-") $tail -}}
-{{- end -}}
 {{- end -}}
