@@ -94,10 +94,15 @@ spec:
                    the registered inbound SIP-REG gateway remains UDP. -->
               <param name="tls" value="true"/>
               <param name="tls-only" value="false"/>
+              <!-- The registration gateway uses UDP on sip-port. Do not let
+                   Sofia create a plain TCP listener that can collide with
+                   the TLS owner listener after a profile reload. -->
+              <param name="bind-params" value="transport=udp"/>
               <param name="tls-sip-port" value="{{ $.Values.freeswitch.flowrouteOutbound.tlsPort }}"/>
               <!-- Keep the TLS listener URI explicit. The outbound gateway's
                    generated Contact must match this listening transport. -->
               <param name="tls-bind-params" value="transport=tls"/>
+              <param name="reuse-connections" value="true"/>
               <param name="tls-cert-dir" value="/etc/freeswitch/tls-flowroute"/>
               <param name="tls-verify-date" value="true"/>
               <param name="tls-verify-policy" value="subjects_out"/>

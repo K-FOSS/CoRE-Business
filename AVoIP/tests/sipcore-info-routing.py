@@ -250,6 +250,7 @@ def main():
         rendered = subprocess.check_output([
             "helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
             "--namespace", "core-prod", "-f", str(root / "AVoIP/tests/fixtures/wss-ha.yaml"),
+            "--set", "avoipAdmin.bridgedCalls.enabled=false",
         ])
         resources = subprocess.check_output(["yq", "-s", "."], input=rendered)
         configs = [r["data"]["kamailio.cfg"] for r in json.loads(resources)

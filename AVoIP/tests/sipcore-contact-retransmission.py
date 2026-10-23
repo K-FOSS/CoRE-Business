@@ -247,7 +247,8 @@ def main():
     else:
         root = Path(__file__).resolve().parents[2]
         rendered = subprocess.check_output(["helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
-                                            "--namespace", "core-prod", "-f", str(root / "AVoIP/tests/fixtures/wss-ha-pilot.yaml")])
+                                            "--namespace", "core-prod", "-f", str(root / "AVoIP/tests/fixtures/wss-ha-pilot.yaml"),
+                                            "--set", "avoipAdmin.bridgedCalls.enabled=false"])
         objects = json.loads(subprocess.check_output(["yq", "-s", "."], input=rendered))
         configs = [o["data"]["kamailio.cfg"] for o in objects if o and o.get("kind") == "ConfigMap"
                    and "route[FROM_SIPCORE]" in o.get("data", {}).get("kamailio.cfg", "")]

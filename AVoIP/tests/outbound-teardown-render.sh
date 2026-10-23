@@ -7,7 +7,8 @@ render="$(mktemp)"
 trap 'rm -f "$render"' EXIT
 
 helm template core-home1-talos-prod "$chart_dir" --namespace core-prod \
-  -f "$chart_dir/tests/fixtures/outbound-teardown.yaml" > "$render"
+  -f "$chart_dir/tests/fixtures/outbound-teardown.yaml" \
+  --set avoipAdmin.bridgedCalls.enabled=false > "$render"
 
 carrier_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-config") | .data["kamailio.cfg"]' "$render")"
 internal_cfg="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-kamailio-internal-config") | .data["kamailio.cfg"]' "$render")"
@@ -53,6 +54,8 @@ grep -Fq 'route(TO_SIPCORE_ASTERISK);' <<< "$internal_cfg"
 managed_dialog_routes="$(sed -n '/$var(core_managed_from_tag) = "";/,/if (has_totag() && $dlg_var(managed_outbound)/p' <<< "$internal_cfg")"
 [[ "$(grep -Fc 'loose_route()' <<< "$managed_dialog_routes")" -eq 1 ]]
 grep -Fq '<param name="tls-bind-params" value="transport=tls"/>' <<< "$flowroute_profile"
+grep -Fq '<param name="bind-params" value="transport=udp"/>' <<< "$flowroute_profile"
+grep -Fq '<param name="reuse-connections" value="true"/>' <<< "$flowroute_profile"
 flowroute_settings="$(sed -n '/<settings>/,/<\/settings>/p' <<< "$flowroute_profile")"
 grep -Fq '<param name="rtp-timer-name" value="soft"/>' <<< "$flowroute_settings"
 grep -Fq '<param name="rtp-notimer-during-bridge" value="false"/>' <<< "$flowroute_settings"

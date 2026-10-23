@@ -100,6 +100,14 @@ requests. The repair adds no fallback to a shared Service, no destination cache,
 and no permission to relay an unvalidated request. RTPEngine offer/answer,
 DTMF classification, session identifiers and BYE cleanup are unchanged.
 
+The Flowroute FreeSWITCH profile keeps its registration transport explicitly
+UDP with `bind-params=transport=udp`, while its carrier-dialog listener remains
+TLS on the configured owner port. This prevents Sofia from creating a plain TCP
+listener on the TLS owner port during a profile reload. `reuse-connections=true`
+also makes the intended FreeSWITCH outbound TCP/TLS connection reuse explicit;
+Kamailio still routes restored carrier dialogs to the validated owner pod and
+does not copy an ephemeral source port into a Contact or configuration value.
+
 ## Carrier BYE-loss fallback
 
 The outbound carrier endpoint also uses Asterisk's PJSIP `rtp_timeout` as a

@@ -8,6 +8,7 @@ trap 'rm -f "$rendered"' EXIT
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
   -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha-registrar.yaml" \
+  --set avoipAdmin.bridgedCalls.enabled=false \
   > "$rendered"
 
 yq -e 'select(.kind == "User" and (.metadata.name | contains("internal-wss-registrar-db"))) | .spec.username == "kamailio-test-wss"' "$rendered" >/dev/null
@@ -76,6 +77,7 @@ trap 'rm -f "$rendered" "$voicemail_rendered"' EXIT
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
   -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha-registrar.yaml" \
+  --set avoipAdmin.bridgedCalls.enabled=false \
   --set asterisk.voicemail.enabled=true \
   --set-string asterisk.voicemail.accessCode='*97' \
   > "$voicemail_rendered"
