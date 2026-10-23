@@ -603,6 +603,31 @@ func TestFreeSwitchInboundExtensionUsesRegistrarGatewayWhenEnabled(t *testing.T)
 	if got := freeSwitchActionData(t, w.Body.String(), "bridge"); got != "sofia/gateway/sipcore-registrar/7101" {
 		t.Fatalf("inbound extension did not use the HA registrar gateway: %s", w.Body.String())
 	}
+	if got := freeSwitchActionData(t, w.Body.String(), "set"); got != "fax_original_destination=+12065550100" {
+		t.Fatalf("inbound route lost its original DID: %s", w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), `data="bridge_answer_timeout=30"`) || !strings.Contains(w.Body.String(), `application="ring_ready"`) {
+		t.Fatalf("inbound extension route did not preserve the configured ringing window: %s", w.Body.String())
+	}
+}
+
+func TestFreeSwitchInboundExtensionFallsBackToVoicemailAfterRingTimeout(t *testing.T) {
+	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
+	t.Setenv("AVOIP_SITE", "yvr")
+	t.Setenv("AVOIP_SIPCORE_REGISTRAR_GATEWAY", "sipcore-registrar")
+	t.Setenv("AVOIP_INBOUND_EXTENSION_RING_TIMEOUT_SECONDS", "45")
+	t.Setenv("AVOIP_ASTERISK_VOICEMAIL_ENABLED", "true")
+	s := &server{}
+	s.cacheCatalog(fixtureCatalog())
+	form := url.Values{"Caller-Context": {"core-managed-inbound"}, "Caller-Destination-Number": {"+12065550100"}, "variable_sip_h_X-Core-Original-DID": {"+12065550100"}}
+	r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.SetBasicAuth("routing", os.Getenv("AVOIP_ROUTING_TOKEN"))
+	w := httptest.NewRecorder()
+	s.freeSwitchRoute(w, r)
+	if got := strings.Count(w.Body.String(), `application="bridge"`); got != 2 || !strings.Contains(w.Body.String(), `data="bridge_answer_timeout=45"`) || !strings.Contains(w.Body.String(), `data="sofia/gateway/asterisk/voicemail"`) {
+		t.Fatalf("inbound no-answer voicemail route was not generated: %s", w.Body.String())
+	}
 }
 
 func TestExtensionOutboundEnablement(t *testing.T) {

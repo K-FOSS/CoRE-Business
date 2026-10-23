@@ -116,6 +116,14 @@ func allowedRemoteAudioURL(raw string) bool {
 	return false
 }
 
+func inboundExtensionRingTimeoutSeconds() int {
+	seconds, err := strconv.Atoi(os.Getenv("AVOIP_INBOUND_EXTENSION_RING_TIMEOUT_SECONDS"))
+	if err != nil || seconds < 2 || seconds > 300 {
+		return 30
+	}
+	return seconds
+}
+
 func (d didRoute) detectFax() bool { return d.FaxDetectionEnabled == nil || *d.FaxDetectionEnabled }
 
 type extensionRoute struct {
@@ -1325,6 +1333,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	playbackEndpoint := ""
 	playbackHangup := true
 	playbackCount := 1
+	inboundExtensionRoute := false
 	detectFax := false
 	callerID := ""
 	gateway := ""
@@ -1386,6 +1395,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 				case "ivr":
 					transfer = "ivr-entry XML ivr"
 				case "extension":
+					inboundExtensionRoute = true
 					if registrarGateway := strings.TrimSpace(os.Getenv("AVOIP_SIPCORE_REGISTRAR_GATEWAY")); registrarGateway == "sipcore-registrar" {
 						bridge = "sofia/gateway/sipcore-registrar/" + d.Destination
 					} else {
@@ -1458,7 +1468,13 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	} else if transfer != "" {
 		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
 	} else {
+		if inboundExtensionRoute {
+			text += `<action application="ring_ready"/><action application="set" data="bridge_answer_timeout=` + strconv.Itoa(inboundExtensionRingTimeoutSeconds()) + `"/>`
+		}
 		text += `<action application="set" data="hangup_after_bridge=true"/><action application="bridge" data="` + escape(bridge) + `"/>`
+		if inboundExtensionRoute && os.Getenv("AVOIP_ASTERISK_VOICEMAIL_ENABLED") == "true" {
+			text += `<action application="log" data="INFO AVoIP registrar extension unanswered; forwarding caller=${caller_id_number} to Asterisk voicemail"/><action application="bridge" data="sofia/gateway/asterisk/voicemail"/>`
+		}
 	}
 	text += `</condition></extension></context></section></document>`
 	io.WriteString(w, text)

@@ -169,6 +169,10 @@ controllers:
             value: '{{ include "avoip.admin.sites" . | replace "'" "''" }}'
           - name: 'AVOIP_AUDIO_REMOTE_MEDIA_HOSTS'
             value: '{{ join "," $settings.audioEndpoints.remoteMediaHosts }}'
+          - name: 'AVOIP_INBOUND_EXTENSION_RING_TIMEOUT_SECONDS'
+            value: '{{ $.Values.freeswitch.ivr.registeredExtensionRingTimeoutSeconds }}'
+          - name: 'AVOIP_ASTERISK_VOICEMAIL_ENABLED'
+            value: '{{ ternary "true" "false" (or $.Values.asterisk.voicemail.enabled $.Values.freeswitch.voicemail.enabled) }}'
           {{ if ne (kindOf $settings.catalog) "invalid" }}
           - name: 'AVOIP_SIP_JSON'
             value: '{{ toJson $settings.catalog | replace "'" "''" }}'
