@@ -424,9 +424,15 @@
         route(PRIVATE_AUTH_DEVICE);
         if ($var(auth_device) != 1) exit;
         # The identity passed to FreeSWITCH is the Digest username, never a
-        # device-provided policy header or a caller-ID field.
+        # device-provided policy header or a caller-ID field. The media
+        # profile is likewise derived from the accepted Kamailio transport;
+        # a client cannot opt itself into a trusted FreeSWITCH media mode.
         remove_hf("X-Core-Extension");
+        remove_hf("X-Core-Media-Profile");
         append_hf("X-Core-Extension: $au\r\n");
+        if ($proto == "ws") {
+          append_hf("X-Core-Media-Profile: webrtc\r\n");
+        }
       }
       {{- end }}
 

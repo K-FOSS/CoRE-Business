@@ -70,6 +70,9 @@ data:
         <load module="mod_console"/>
         <load module="mod_logfile"/>
         <load module="mod_sofia"/>
+        <!-- WebRTC media engine for the trusted Kamailio/RTPEngine SAVPF leg.
+             Browser SIP signaling remains terminated by Kamailio. -->
+        <load module="mod_rtc"/>
         {{- if $.Values.freeswitch.ldap.enabled }}
         <load module="mod_xml_ldap"/>
         {{- end }}

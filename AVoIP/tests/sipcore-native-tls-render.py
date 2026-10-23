@@ -124,6 +124,26 @@ assert frontend.index('SDES-nonew ') < frontend.index('rtpengine_manage("$var(si
 assert 'stage=frontend-offer-media-applied' in frontend
 assert 'stage=frontend-answer-media-applied' in reply
 
+# Kamailio, not the device, classifies WebRTC signaling for FreeSWITCH's late
+# media negotiation. Native TLS receives no WebRTC marker.
+assert 'remove_hf("X-Core-Media-Profile")' in frontend
+assert 'if ($proto == "ws")' in frontend
+assert 'append_hf("X-Core-Media-Profile: webrtc\\r\\n")' in frontend
+
+dialplan_configs = [obj["data"]["public.xml"] for obj in objects if obj and
+                    obj.get("kind") == "ConfigMap" and
+                    "freeswitch-dialplan-configs" in obj.get("metadata", {}).get("name", "")]
+assert len(dialplan_configs) == 1
+dialplan = dialplan_configs[0]
+assert '<extension name="registered-client-media-profile" continue="true">' in dialplan
+assert '<condition field="${sip_h_X-Core-Media-Profile}" expression="^webrtc$">' in dialplan
+assert '<action application="set" data="media_webrtc=true"/>' in dialplan
+module_configs = [obj["data"]["modules.conf.xml"] for obj in objects if obj and
+                  obj.get("kind") == "ConfigMap" and
+                  "freeswitch-misc-configs" in obj.get("metadata", {}).get("name", "")]
+assert len(module_configs) == 1
+assert '<load module="mod_rtc"/>' in module_configs[0]
+
 # Force string semantics for the side marker in both request and send routes.
 source = (root / "AVoIP/templates/Kamailio/_sip-private.tpl").read_text()
 assert 'if ($var(side) eq "sipcore" && is_method("ACK|INFO"))' in source

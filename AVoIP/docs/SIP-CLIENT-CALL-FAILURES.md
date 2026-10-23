@@ -139,6 +139,31 @@ responsible proxy avoids requiring that client behavior. Longer offers remain
 untouched, and the proxy does not synthesize a replacement
 INVITE or hide the negotiated refresher policy.
 
+### WebRTC media handoff to FreeSWITCH
+
+The former browser path terminated the Kamailio/RTPEngine WebRTC offer on an
+Asterisk PJSIP endpoint rendered with `webrtc=yes`. After registration and
+call control moved to the HA registrar and FreeSWITCH, the same RTPEngine
+policy correctly re-originated a single `UDP/TLS/RTP/SAVPF` audio section with
+ICE, DTLS and RTCP mux toward the `core-managed` Sofia profile. The profile
+uses late negotiation, but the generated FreeSWITCH dialplan did not mark the
+channel as WebRTC before `answer()` or a carrier bridge consumed the offer.
+Live JsSIP calls consequently reached `core-managed-entry` and failed at media
+negotiation with `488` / `INCOMPATIBLE_DESTINATION` despite overlapping Opus,
+PCMU and PCMA codecs.
+
+Kamailio now removes any device-supplied `X-Core-Media-Profile` and stamps
+`X-Core-Media-Profile: webrtc` only for an authenticated initial INVITE
+accepted on its WebSocket transport. The trusted `core-managed-entry`
+dialplan maps that marker to FreeSWITCH's `media_webrtc=true` channel variable
+before any `answer()` or transfer. SIP signaling remains WSS-to-Kamailio and
+TLS-to-FreeSWITCH; FreeSWITCH does not expose a second browser WSS listener.
+RTPEngine remains the ICE/DTLS media anchor, and FreeSWITCH terminates the
+RTPEngine-facing WebRTC media association. The reduced FreeSWITCH module list
+also loads `mod_rtc`, which is present in the pinned image but was absent from
+the running module set. Native SIP/TLS calls are not marked as WebRTC and
+retain their separate SDES policy.
+
 ### Multiple registered endpoints
 
 The registrar lookup also enables `append_branches=1`. Without that registrar
