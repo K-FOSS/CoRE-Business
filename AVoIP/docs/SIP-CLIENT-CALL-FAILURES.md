@@ -19,11 +19,14 @@ does not prove which candidate caused each `INCOMPATIBLE_DESTINATION` result.
 
 ## Implemented configuration
 
-The Kamailio-facing profile now configures two repeatable FreeSWITCH
+The FreeSWITCH profiles that receive the internal Kamailio hop now configure
+two repeatable FreeSWITCH
 `apply-candidate-acl` entries: `localnet.auto` and `wan.auto`. That preserves
 acceptance of public candidates while also allowing private ICE candidates
 used by Home Assistant/browser clients. The existing `kamailio`
-`apply-inbound-acl` remains unchanged. FreeSWITCH documents these as distinct
+`apply-inbound-acl` remains unchanged. This includes the operational
+`core-managed` profile on port 5072, which is used by the current AVoIP
+Admin-managed call path. FreeSWITCH documents these as distinct
 controls: [Sofia SIP profile parameters](https://developer.signalwire.com/freeswitch/users-and-endpoints/sip-profiles/)
 and [ACL behavior](https://developer.signalwire.com/freeswitch/integration/acls/).
 

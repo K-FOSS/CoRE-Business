@@ -17,6 +17,9 @@ data:
         <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
         <param name="auth-calls" value="false"/>
         <param name="apply-inbound-acl" value="kamailio"/>
+        {{- range $.Values.freeswitch.sipCore.candidateACLs }}
+        <param name="apply-candidate-acl" value="{{ . }}"/>
+        {{- end }}
         <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
         <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
         <param name="disable-transcoding" value="false"/>
