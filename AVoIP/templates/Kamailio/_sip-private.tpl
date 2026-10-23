@@ -443,6 +443,23 @@
         if (!is_method("ACK")) sl_send_reply("481", "Call Does Not Exist");
         exit;
       }
+      # RFC 4028 does not permit a UAS minimum below 90 seconds.  Some
+      # browser clients offer a 60-second Session-Expires and do not retry a
+      # 422 response.  Normalize only that too-short initial offer on the
+      # trusted internal call-control hop; retain any refresher parameter and
+      # leave valid offers unchanged.  This is policy negotiation, not a
+      # synthetic INVITE or a dialog-specific exception.
+      if (!has_totag() && is_method("INVITE") &&
+          is_present_hf("Session-Expires") &&
+          $hdr(Session-Expires) =~ "^[0-8]?[0-9]") {
+        $var(sipcore_original_session_expires) = $hdr(Session-Expires);
+        if (!subst_hf("Session-Expires", "/^[0-8]?[0-9]/90/", "a")) {
+          xlog("L_ERR", "SIPCORE FLOW stage=session-timer-normalization-failed pod=$env(POD_NAME) callid=$ci method=$rm original=$var(sipcore_original_session_expires)\\n");
+          sl_send_reply("500", "Session Timer Policy Failure");
+          exit;
+        }
+        xlog("L_INFO", "SIPCORE FLOW stage=session-timer-normalized pod=$env(POD_NAME) callid=$ci method=$rm original=$var(sipcore_original_session_expires) normalized=$hdr(Session-Expires)\\n");
+      }
       {{- if .Values.kamailio.websocketHA.enabled }}
       if (has_totag() && $du != $null &&
           $(du{uri.host}) =~ "^{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}-[0-9]+\\." &&

@@ -114,28 +114,30 @@ proof that WSS and native TLS calling work end to end.
 
 ### Session timer negotiation (`422 Session Interval Too Small`)
 
-FreeSWITCH's `core-managed` profile accepts the 60-second session interval
-used by the WebSocket clients. Leaving FreeSWITCH's larger default in place
-causes it to return `422 Session Interval Too Small` with `Min-SE: 120` before
-call control can proceed. Kamailio forwards this response, so the correction
-belongs on the FreeSWITCH profile rather than in topology handling. The
-configured `enable-timer=true` and `minimum-session-expires=60` preserve
-session timers while accepting the client offer.
+WebSocket clients may offer a 60-second session interval, but RFC 4028 and
+FreeSWITCH require a UAS minimum of at least 90 seconds. Leaving FreeSWITCH's
+larger default in place causes it to return `422 Session Interval Too Small`
+with `Min-SE: 120` before call control can proceed. Kamailio now raises only
+sub-90-second initial offers to 90 seconds, preserving any refresher
+parameter; the `core-managed` profile uses `enable-timer=true` and
+`minimum-session-expires=90`. This accepts the client behavior without
+requiring a browser retry or changing the client.
 
 This is deliberately scoped to the `core-managed` FreeSWITCH profile, which is
 the internal-client call-control hop. No AVoIP Admin route setting is needed:
 Admin owns the dialplan and authorization policy, while the SIP profile owns
 RFC 4028 acceptance policy. The carrier and Asterisk profiles were not changed
 because this capture does not establish the same incompatibility on those
-legs.
+legs. A 60-second client offer is represented as a standards-valid 90-second
+internal offer on the FreeSWITCH hop.
 
 Kamailio is acting as a stateful proxy here. It must not manufacture a second
 INVITE after forwarding a `422`, nor rewrite an end-to-end `Session-Expires`
 value without becoming responsible for the resulting refresher policy. A UAC
 that receives a `422` may retry with at least the returned `Min-SE`; the
-observed client transaction did not do so. Accepting the configured 60-second
-offer at the responsible UAS avoids requiring that client behavior. Longer
-offers remain untouched, and the proxy does not synthesize a replacement
+observed client transaction did not do so. Normalizing the short offer at the
+responsible proxy avoids requiring that client behavior. Longer offers remain
+untouched, and the proxy does not synthesize a replacement
 INVITE or hide the negotiated refresher policy.
 
 ### Multiple registered endpoints
