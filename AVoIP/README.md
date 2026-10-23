@@ -51,6 +51,8 @@ when the advertised Contact already matches the private transport source.
 The [native TLS dialog runbook](docs/NATIVE-SIP-TLS.md) records the later
 public-Contact, owner socket and retransmitted-SDP corrections and their
 post-TOPOS/live verification requirements.
+The complete Groundwire 7101 registration, call, HA, media, and traffic
+matrix investigation is in [Groundwire SIP flows](docs/GROUNDWIRE-SIP-FLOWS.md).
 
 The current Home1 SIP Core Gateway contract and its one-hour connection
 duration constraint are documented in the
