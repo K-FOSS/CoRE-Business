@@ -17,7 +17,7 @@
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
   {{- if $instance.enabled -}}
     {{- $service := include "avoip.kamailio.controlResourceName" (dict "root" $ "instance" $instance) -}}
-    {{- $host := printf "%s.%s.svc.%s:%d" $service $.Release.Namespace $.Values.cluster.domain (int (default $.Values.kamailio.defaults.controlPort $.Values.kamailio.controlPort)) -}}
+    {{- $host := printf "%s.%s.svc.%s:%d" $service $.Release.Namespace $.Values.cluster.domain (int (default (dig "defaults" "controlPort" 2046 $.Values.kamailio) $.Values.kamailio.controlPort)) -}}
     {{- $controls = append $controls $host -}}
   {{- end -}}
 {{- end -}}
@@ -313,7 +313,7 @@ networkpolicies:
                   - key: 'avoip.mylogin.space/kamailio-instance'
                     operator: 'Exists'
           ports:
-            - port: {{ default $.Values.kamailio.defaults.controlPort $.Values.kamailio.controlPort }}
+            - port: {{ default (dig "defaults" "controlPort" 2046 $.Values.kamailio) $.Values.kamailio.controlPort }}
               protocol: 'TCP'
         - to:
             - podSelector:

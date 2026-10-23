@@ -89,7 +89,7 @@ spec:
             app.kubernetes.io/instance: '{{ $root.Release.Name }}'
       toPorts:
         - ports:
-            - port: '{{ default $root.Values.kamailio.defaults.controlPort $root.Values.kamailio.controlPort }}'
+            - port: '{{ default (dig "defaults" "controlPort" 2046 $root.Values.kamailio) $root.Values.kamailio.controlPort }}'
               protocol: 'TCP'
     {{- end }}
     {{- end }}

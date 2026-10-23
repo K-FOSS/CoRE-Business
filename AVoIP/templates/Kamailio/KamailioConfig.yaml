@@ -158,7 +158,7 @@ data:
     modparam("websocket", "lf_keepalive_compat", 1)
     {{- end }}
     {{- end }}
-    {{- $controlPort := default .Values.kamailio.defaults.controlPort .Values.kamailio.controlPort }}
+    {{- $controlPort := default (dig "defaults" "controlPort" 2046 .Values.kamailio) .Values.kamailio.controlPort }}
     {{- if or $websocketHA.enabled $websocketHA.legacyOwner $controlPort }}
     loadmodule "ctl.so"
     {{- if or $websocketHA.enabled $websocketHA.legacyOwner }}
