@@ -136,7 +136,8 @@ caller ID is the runtime default; for that identity, the first currently
 eligible provider is used. Route preview can check another authorized caller ID
 and shows each provider removed by verification or missing site gateway. The
 **Extensions** screen also stores assignment metadata, display name and
-explicit enabled/outbound-enabled flags. Entries without enablement flags retain
+explicit enabled/outbound-enabled/voicemail-enabled flags. Entries without
+enablement flags retain
 their prior enabled behavior. Disabled entries stay identifiable in the
 immutable routing snapshot, but Kamailio rejects their outbound calls with a
 distinct reason (`extension_disabled` or `outbound_disabled`) in Homer. This screen governs

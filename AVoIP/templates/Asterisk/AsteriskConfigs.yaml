@@ -163,6 +163,11 @@ data:
     ; VoiceMail() sends callers who press 0 during a greeting to this extension.
     exten => o,1,VoiceMailMain()
       same => n,Hangup()
+    {{- if or .Values.asterisk.voicemail.enabled .Values.freeswitch.voicemail.enabled }}
+    ; FreeSWITCH uses this private handoff after an unanswered registrar call.
+    exten => voicemail,1,VoiceMail({{ default .Values.asterisk.sipCore.inboundVoiceExtension .Values.asterisk.voicemail.mailbox }}@default,u)
+      same => n,Hangup()
+    {{- end }}
     {{- end }}
     {{- if and .Values.asterisk.voicemail.enabled (not .Values.asterisk.sipCore.enabled) .Values.freeswitch.ivr.enabled }}
     ; Voicemail-only sites use the local mailbox as the IVR destination.
