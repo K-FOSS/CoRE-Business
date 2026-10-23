@@ -152,7 +152,7 @@ data:
         <param name="tls-only" value="true"/>
         <param name="tls-bind-params" value="transport=tls"/>
         <param name="tls-sip-port" value="{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }}"/>
-        <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
+        <param name="tls-cert-dir" value="/etc/freeswitch/tls-kamailio"/>
         <param name="tls-verify-date" value="true"/>
         <param name="tls-verify-policy" value="subjects_out"/>
         <param name="tls-version" value="$${sip_tls_version}"/>

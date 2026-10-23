@@ -18,6 +18,9 @@ yq -e 'select(.kind == "StatefulSet" and (.metadata.name | contains("internal-ws
 yq -e 'select(.kind == "CiliumNetworkPolicy" and (.metadata.name | contains("internal-wss-sip-policy"))) | (.spec.ingress | any(.fromEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss")) and (.spec.egress | any(.toEndpoints[]?.matchLabels."app.kubernetes.io/controller" == "kamailio-internal-wss"))' "$rendered" >/dev/null
 freeswitch_sip_config="$(yq -r 'select(.kind == "ConfigMap" and (.metadata.name | contains("freeswitch-sip-configs"))) | .data["kamailio.xml"]' "$rendered")"
 grep -Fq '<gateway name="sipcore-registrar">' <<<"$freeswitch_sip_config"
+grep -Fq '<param name="tls-cert-dir" value="/etc/freeswitch/tls-kamailio"/>' <<<"$freeswitch_sip_config"
+yq -e 'select(.kind == "Certificate" and (.metadata.name | contains("freeswitch-kamailio-client-tls"))) | .spec.usages | contains(["client auth"])' "$rendered" >/dev/null
+yq -e 'select(.kind == "Deployment" and (.metadata.name | contains("freeswitch"))) | .spec.template.spec.volumes[] | select(.name | contains("freeswitch-kamailio-client-tls"))' "$rendered" >/dev/null
 python3 - "$freeswitch_sip_config" <<'PY'
 import sys
 import xml.etree.ElementTree as ET

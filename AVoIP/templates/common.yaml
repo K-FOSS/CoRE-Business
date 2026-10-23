@@ -254,7 +254,7 @@
         # loaded from one consistent configuration set.
         checksum/kamailio-config: '{{ include "avoip.kamailio.render.KamailioConfig" . | sha256sum }}'
         configmap.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "config") }}'
-        secret.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}{{ if $sipCorePublicTlsEnabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-public-tls") }}{{ end }}{{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-mtls") }},{{ .Values.kamailio.carrierOutbound.peer.secretName }}{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-tls") }}{{ if $sipCorePublicTlsEnabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sipcore-public-tls") }}{{ end }}{{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }},{{ include "avoip.kamailio.resourceName" (dict "root" . "instance" .Values.kamailio "suffix" "sip-mtls") }},{{ .Values.kamailio.carrierOutbound.peer.secretName }}{{ end }}{{ if .Values.freeswitch.enabled }},{{ include "avoip.fullname" . }}-freeswitch-sip-tls,{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls{{ end }}{{ if .Values.kamailio.topology.enabled }},{{ .Values.kamailio.topology.redis.secretName }}{{ end }}'
 {{- with .Values.kamailio.podAnnotations }}
 {{ toYaml . | nindent 8 }}
 {{- end }}
@@ -691,7 +691,7 @@
 {{- if and .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") (not .Values.kamailio.carrierOutbound.clientIdentity.enabled) }}
   {{ $component }}-freeswitch-peer-ca:
     type: secret
-    name: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls'
+    name: '{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls'
     items:
       - key: 'tls.crt'
         path: 'tls.crt'
@@ -1816,9 +1816,9 @@ controllers:
         # consistently instead of retaining a mixed in-memory configuration.
         configmap.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-configs,{{ include "avoip.fullname" . }}-freeswitch-misc-configs,{{ include "avoip.fullname" . }}-freeswitch-sip-configs,{{ include "avoip.fullname" . }}-freeswitch-dialplan-configs{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }},{{ include "avoip.fullname" . }}-freeswitch-managed{{ end }}{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "ip-acl" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
 {{- if .Values.freeswitch.sms.enabled }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "credentials" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sms,{{ include "avoip.fullname" . }}-freeswitch-sip-tls,{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls,{{ include "avoip.fullname" . }}-asterisk-freeswitch-peer{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "credentials" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
 {{- else }}
-        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "credentials" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
+        secret.reloader.stakater.com/reload: '{{ include "avoip.fullname" . }}-freeswitch-sip-tls,{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls{{ if .Values.asterisk.enabled }},{{ include "avoip.fullname" . }}-asterisk-sip-tls{{ end }}{{ if .Values.freeswitch.flowrouteOutbound.enabled }},{{ include "avoip.fullname" . }}-freeswitch-flowroute,{{ include "avoip.fullname" . }}-freeswitch-flowroute-client-tls{{ end }}{{ range .Values.avoipAdmin.upstreams }}{{ if eq (default "credentials" .authentication) "credentials" }},{{ include "avoip.resourceNameWithSuffix" (dict "root" $ "suffix" (printf "upstream-%s" .name)) }}{{ end }}{{ end }}'
 {{- end }}
     initContainers:
 {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
@@ -1920,6 +1920,10 @@ controllers:
             cat /tls-input/tls.key >> /tls-output/agent.pem
             awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-input/tls.crt >> /tls-output/agent.pem
             cp /etc/ssl/certs/ca-certificates.crt /tls-output/cafile.pem
+            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n == 1 { print }' /tls-kamailio/tls.crt > /tls-kamailio-output/agent.pem
+            cat /tls-kamailio/tls.key >> /tls-kamailio-output/agent.pem
+            awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-kamailio/tls.crt >> /tls-kamailio-output/agent.pem
+            cp /etc/ssl/certs/ca-certificates.crt /tls-kamailio-output/cafile.pem
 {{- if .Values.freeswitch.flowrouteOutbound.enabled }}
             awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n == 1 { print }' /tls-flowroute/tls.crt > /tls-flowroute-output/agent.pem
             cat /tls-flowroute/tls.key >> /tls-flowroute-output/agent.pem
@@ -2731,6 +2735,13 @@ persistence:
       freeswitch:
         tls-material:
           - path: /tls-input
+  freeswitch-kamailio-client-tls:
+    type: secret
+    name: '{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls'
+    advancedMounts:
+      freeswitch:
+        tls-material:
+          - path: /tls-kamailio
 {{- if .Values.asterisk.enabled }}
   freeswitch-asterisk-tls:
     type: secret
@@ -2748,6 +2759,14 @@ persistence:
           - path: /tls-output
         freeswitch:
           - path: /etc/freeswitch/tls
+  freeswitch-kamailio-client-tls-certs:
+    type: emptyDir
+    advancedMounts:
+      freeswitch:
+        tls-material:
+          - path: /tls-kamailio-output
+        freeswitch:
+          - path: /etc/freeswitch/tls-kamailio
 {{- if .Values.freeswitch.flowrouteOutbound.enabled }}
   freeswitch-flowroute-client-tls:
     type: secret

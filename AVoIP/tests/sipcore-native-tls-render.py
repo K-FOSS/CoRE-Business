@@ -35,6 +35,11 @@ configs = [obj["data"]["kamailio.cfg"] for obj in objects if obj and
 assert len(configs) == 1
 config = configs[0]
 assert 'ca_list = /etc/kamailio/freeswitch-peer-ca/tls.crt' in config
+assert 'freeswitch-kamailio-client-tls' in json.dumps(objects)
+client_certs = [obj for obj in objects if obj and obj.get('kind') == 'Certificate' and
+                'freeswitch-kamailio-client-tls' in obj.get('metadata', {}).get('name', '')]
+assert len(client_certs) == 1
+assert 'client auth' in client_certs[0]['spec']['usages']
 assert any('freeswitch-peer-ca' in json.dumps(obj) for obj in objects if obj)
 freeswitch_configs = [obj["data"]["kamailio.xml"] for obj in objects if obj and
                       obj.get("kind") == "ConfigMap" and

@@ -62,16 +62,35 @@ it does not log SIP authorization headers or bodies. This distinguishes a
 FreeSWITCH-to-registrar peer-ACL rejection from a later user/contact lookup
 failure.
 
-The private SBC now uses the chart-managed FreeSWITCH public certificate chain
-as its trust bundle for that strict listener. Only `tls.crt` is mounted; the
-FreeSWITCH private key is not mounted into Kamailio. Certificate verification,
-the source CIDR gate, and the existing peer identity checks remain required.
+The first trust-bundle correction was not sufficient for the live handoff:
+FreeSWITCH was presenting its ordinary SIP server certificate as a client
+certificate. That certificate chains correctly, but it is not a client-auth
+identity, so Kamailio rejected the mTLS handshake before SIP routing. The
+chart now issues a separate `freeswitch-kamailio-client-tls` certificate with
+both server-auth and client-auth usage, mounts it only into FreeSWITCH's
+Kamailio profile, and pins Kamailio's private peer trust bundle to that
+certificate chain. The normal FreeSWITCH SIP server certificate remains the
+server certificate for its other profiles; no FreeSWITCH private key is
+mounted into Kamailio. Certificate verification, the source CIDR gate, and
+the peer SAN checks remain required.
+
+The private listener also shares a Kamailio process with the public TLSRoute.
+That process may accept PROXY v2 on the public path, but the FreeSWITCH
+gateway connects directly to the Kubernetes Service and cannot emit PROXY
+v2. The handoff must therefore be validated as a direct TLS/mTLS connection;
+it must not depend on the public Envoy connection or a client ephemeral port.
 
 ## Verification and recovery
 
 Render the chart with the HA registrar fixture and run
 `bash AVoIP/tests/sip-registrar-ha-render.sh`. The test parses the generated
 Sofia XML and asserts the existing inbound ACL plus both candidate ACLs.
+It also asserts the dedicated client-auth certificate and FreeSWITCH
+`tls-kamailio` material. After deployment, verify the Kamailio 5062 TLS
+listener sees the FreeSWITCH peer SAN as verified and logs
+`stage=asterisk-ingress` followed by the registrar destination lookup; a
+FreeSWITCH `NORMAL_TEMPORARY_FAILURE` with no corresponding Kamailio SIP
+request indicates the TLS handshake still failed.
 After deployment, inspect the final live `kamailio.xml` ConfigMap and verify
 that both candidate ACL parameters are present, then check FreeSWITCH logs for
 the disappearance of the missing-candidate-ACL warning. Place calls from both

@@ -107,6 +107,24 @@ spec:
   issuerRef:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required" .Values.sip.tls.issuerName }}'
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: '{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls'
+spec:
+  secretName: '{{ include "avoip.fullname" . }}-freeswitch-kamailio-client-tls'
+  commonName: '{{ printf "%s.svc" (first (splitList "." (include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch")))) }}'
+  dnsNames:
+    - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
+  usages:
+    - 'digital signature'
+    - 'key encipherment'
+    - 'server auth'
+    - 'client auth'
+  issuerRef:
+    kind: ClusterIssuer
+    name: '{{ required "a client-auth capable issuer is required for the FreeSWITCH-to-Kamailio certificate" (default .Values.freeswitch.kamailioClientIssuerName .Values.kamailio.carrierOutbound.clientIdentity.issuerName) }}'
 {{- end }}
 {{- if .Values.asterisk.enabled }}
 ---
