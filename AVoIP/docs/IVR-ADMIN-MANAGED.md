@@ -82,15 +82,12 @@ authorization system.
    media-index proxy, and structured destination validation. Direct Audio
    Endpoint calls and DID-to-Audio-Endpoint routing use the authenticated
    dynamic FreeSWITCH route.
-3. **Remaining:** Add a private snapshot endpoint and dedicated FreeSWITCH deployment with
-   authenticated access and a readiness check for the active snapshot.
-4. **Remaining:** Execute structured IVR routes (including Audio Endpoint and
-   IVR-to-IVR routes) in that controller; the current static IVR contexts do
-   not consume Admin IVR route definitions yet.
-5. **Remaining:** Migrate the legacy `66`/`67` static playback destinations,
-   verify DTMF and hangup propagation,
-   then remove the compatibility definition from the routing dialplan.
-
-Until this migration completes, the static `freeswitch.ivr` values remain the
-authoritative fallback and must continue to be reviewed with the normal chart
-render and inter-site routing tests.
+3. **Implemented:** FreeSWITCH uses the authenticated XML-curl runtime lookup
+   for IVR entry and digit-target contexts. The lookup resolves the selected
+   Admin IVR, shared-library greeting, Audio Endpoint, extension, nested IVR,
+   media, SIPS, and authorized external-number routes.
+4. **Implemented:** The legacy static `ivr` and `ivr-targets` FreeSWITCH
+   contexts are no longer rendered.
+5. **Required verification:** Exercise every currently configured IVR route and
+   confirm DTMF, endpoint ringing, playback completion, hangup, and voicemail
+   behavior through the dynamic lookup path.

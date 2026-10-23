@@ -134,8 +134,8 @@ call log for correlation with Kamailio's Homer events.
 A DID lists its allowed inbound providers, each with current number-ownership
 verification, and a destination site plus one of:
 
-- `ivr`: the site's existing silent FreeSWITCH IVR; leave destination empty and
-  choose a site with `freeswitch.ivr.enabled`;
+- `ivr`: an AVoIP Admin-managed IVR. Enter its stable ID; an empty legacy value
+  resolves to the site's `main` IVR when present, or the only site IVR;
 - `extension`: an explicit numeric internal extension;
 - `did`: canonical external number, outbound provider and a verified caller ID;
 - `sip`: an explicit `sips:user@host[:port]` endpoint without arbitrary headers,
@@ -237,11 +237,9 @@ To send a DID to a catalog-managed IVR, change its destination type to `ivr`
 and enter the matching IVR ID (for example, `main-menu`). The IVR tab selects a
 greeting from the site's shared audio library and defines digit routes as
 structured destination types; DID routes must use the existing authorized
-provider and verified caller ID. Legacy records with an empty IVR destination
-continue to use the static `freeswitch.ivr` configuration. IVR catalog edits
-are validated and saved through the versioned `/api/sip` API, but are not yet
-activated by the call-routing FreeSWITCH: the dedicated IVR FreeSWITCH runtime
-and its snapshot handoff remain a separate rollout dependency. See
+provider and verified caller ID. IVR catalog edits are validated and saved
+through the versioned `/api/sip` API, then consumed by FreeSWITCH's authenticated
+XML-curl lookup. See
 [managed IVR status and migration](IVR-ADMIN-MANAGED.md). An extension
 destination must exist in Asterisk SIP Core. Add or verify the **Caller ID
 assignments** record for `7101` separately: select its outbound provider,

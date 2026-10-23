@@ -313,6 +313,12 @@ var ivrAssetID = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`)
 var ivrDigits = regexp.MustCompile(`^[0-9*#]{1,8}$`)
 var upstreamCodecs = map[string]bool{"OPUS": true, "G722": true, "PCMU": true, "PCMA": true}
 
+func escapeXML(value string) string {
+	var escaped strings.Builder
+	xml.EscapeText(&escaped, []byte(value))
+	return escaped.String()
+}
+
 func validateCodecOrder(codecs []string) error {
 	if len(codecs) > len(upstreamCodecs) {
 		return errors.New("codec order has too many entries")
@@ -1311,7 +1317,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	context := r.Form.Get("Caller-Context")
-	if context != "core-managed-outbound" && context != "core-managed-inbound" {
+	if context != "core-managed-outbound" && context != "core-managed-inbound" && context != "ivr" && context != "ivr-targets" {
 		w.Header().Set("Content-Type", "text/xml")
 		io.WriteString(w, `<document type="freeswitch/xml"><section name="result"><result status="not found"/></section></document>`)
 		return
@@ -1336,6 +1342,9 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	gateway := ""
 	providerID := ""
 	codecOrder := []string(nil)
+	ivrID := strings.TrimSpace(r.Form.Get("variable_avoip_ivr_id"))
+	ivrActions := ""
+	transferIVRID := ""
 	callLinkedID := safeCorrelationID(r.Form.Get("variable_sip_h_X-Core-Call-Linkedid"))
 	originUniqueID := safeCorrelationID(r.Form.Get("variable_sip_h_X-Core-Origin-Uniqueid"))
 	resolveAudioEndpoint := func(endpoint audioEndpoint) {
@@ -1393,6 +1402,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 				switch d.Kind {
 				case "ivr":
 					transfer = "ivr-entry XML ivr"
+					transferIVRID = d.Destination
 				case "extension":
 					inboundExtensionRoute = true
 					if registrarGateway := strings.TrimSpace(os.Getenv("AVOIP_SIPCORE_REGISTRAR_GATEWAY")); registrarGateway == "sipcore-registrar" {
@@ -1424,8 +1434,90 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if context == "ivr" || context == "ivr-targets" {
+		var ivr *ivrDefinition
+		for index := range c.IVRs {
+			if c.IVRs[index].ID == ivrID && c.IVRs[index].Site == site {
+				ivr = &c.IVRs[index]
+				break
+			}
+		}
+		if ivrID == "" {
+			var onlySiteIVR *ivrDefinition
+			for index := range c.IVRs {
+				if c.IVRs[index].Site != site {
+					continue
+				}
+				if c.IVRs[index].ID == "main" {
+					ivr = &c.IVRs[index]
+					break
+				}
+				if onlySiteIVR != nil {
+					onlySiteIVR = nil
+					break
+				}
+				onlySiteIVR = &c.IVRs[index]
+			}
+			if ivr == nil {
+				ivr = onlySiteIVR
+			}
+		}
+		if ivr == nil {
+			io.WriteString(w, `<document type="freeswitch/xml"><section name="result"><result status="not found"/></section></document>`)
+			return
+		}
+		if context == "ivr" && destination == "ivr-entry" {
+			patternParts := make([]string, 0, len(ivr.Routes))
+			for _, route := range ivr.Routes {
+				patternParts = append(patternParts, regexp.QuoteMeta(route.Digits))
+			}
+			ivrActions = `<action application="answer"/><action application="log" data="INFO AVoIP managed IVR start ivr=` + escapeXML(ivr.ID) + ` name=` + escapeXML(ivr.Name) + ` call_id=${sip_call_id} uuid=${uuid}"/><action application="play_and_get_digits" data="1 ` + strconv.Itoa(ivr.MaxDigits) + ` ` + strconv.Itoa(ivr.InvalidRetries+1) + ` ` + strconv.Itoa(ivr.TimeoutMs) + ` # /usr/share/freeswitch/sounds/avoip-shared/` + escapeXML(ivr.GreetingAsset) + `.wav silence_stream://1000 ivr_extension ^(` + strings.Join(patternParts, "|") + `)$ ` + strconv.Itoa(ivr.DigitTimeoutMs) + `"/><action application="transfer" data="${ivr_extension} XML ivr-targets"/>`
+		} else if context == "ivr-targets" {
+			var selected *ivrDigitRoute
+			for index := range ivr.Routes {
+				if ivr.Routes[index].Digits == destination {
+					selected = &ivr.Routes[index]
+					break
+				}
+			}
+			if selected == nil {
+				ivrActions = `<action application="log" data="INFO AVoIP managed IVR ended without a valid route ivr=` + escapeXML(ivr.ID) + ` digits=${destination_number} call_id=${sip_call_id} uuid=${uuid}"/><action application="hangup" data="NO_USER_RESPONSE"/>`
+			} else {
+				switch selected.Kind {
+				case "audio_endpoint":
+					for _, endpoint := range c.AudioEndpoints {
+						if endpoint.ID == selected.Destination {
+							resolveAudioEndpoint(endpoint)
+							break
+						}
+					}
+				case "media":
+					playbackEndpoint = "media:" + selected.Destination
+					playback = "/usr/share/freeswitch/sounds/avoip-shared/" + selected.Destination + ".wav"
+				case "ivr":
+					transfer = "ivr-entry XML ivr"
+					transferIVRID = selected.Destination
+				case "extension", "relayed":
+					inboundExtensionRoute = true
+					bridge = "sofia/gateway/sipcore-registrar/" + selected.Destination
+				case "sip":
+					bridge = "sofia/external/" + selected.Destination
+				case "did", "relayed_did":
+					callerID = selected.CallerID
+					for _, provider := range c.Providers {
+						if provider.ID == selected.Provider {
+							gateway = provider.Gateways[site]
+							providerID = provider.ID
+							break
+						}
+					}
+					bridge = managedGatewayBridge(gateway, selected.Destination)
+				}
+			}
+		}
+	}
 	w.Header().Set("Content-Type", "text/xml")
-	if bridge == "" && transfer == "" && playback == "" {
+	if bridge == "" && transfer == "" && playback == "" && ivrActions == "" {
 		io.WriteString(w, `<document type="freeswitch/xml"><section name="result"><result status="not found"/></section></document>`)
 		return
 	}
@@ -1455,7 +1547,9 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>`
 		}
 	}
-	if playback != "" {
+	if ivrActions != "" {
+		text += ivrActions
+	} else if playback != "" {
 		text += `<action application="answer"/><action application="log" data="INFO AVoIP audio endpoint start endpoint=` + escape(playbackEndpoint) + ` call_id=${sip_call_id} uuid=${uuid}"/>`
 		for i := 0; i < playbackCount; i++ {
 			text += `<action application="playback" data="` + escape(playback) + `"/>`
@@ -1465,6 +1559,9 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 			text += `<action application="hangup" data="NORMAL_CLEARING"/>`
 		}
 	} else if transfer != "" {
+		if transferIVRID != "" {
+			text += `<action application="set" data="avoip_ivr_id=` + escape(transferIVRID) + `"/>`
+		}
 		text += `<action application="transfer" data="` + escape(transfer) + `"/>`
 	} else {
 		if inboundExtensionRoute {

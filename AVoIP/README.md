@@ -281,12 +281,11 @@ are enabled. Detected faxes enter the existing `fax-receive` path. SpanDSP
 color fax negotiation remains enabled through `freeswitch.fax.colour.enabled`. See the
 [current inbound call path](docs/PHONE-TREE.md).
 
-The chart enables the legacy IVR by default with the built-in `66` audio
-destination; site overlays may add only destinations backed by their configured
-Asterisk SIP Core or voicemail policy. Admin now supports catalog-managed IVR
-definitions, shared-library greetings, and validated digit routes. These
-definitions are persisted but are not live-routed until the dedicated IVR
-FreeSWITCH runtime and snapshot handoff are deployed; see the
+The legacy static FreeSWITCH IVR has been removed. AVoIP Admin is the source of
+truth for IVR definitions, shared-library greetings, and validated digit routes.
+FreeSWITCH obtains the selected IVR and each digit destination through its
+authenticated XML-curl runtime lookup; an empty legacy IVR DID destination uses
+the site's `main` IVR when present (or the only site IVR). See the
 [managed IVR migration](docs/IVR-ADMIN-MANAGED.md).
 
 When an IVR digit selects a registered SIP extension, FreeSWITCH sends the call

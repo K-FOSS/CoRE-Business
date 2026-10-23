@@ -455,6 +455,66 @@ func TestFreeSwitchManagedAudioEndpointRoute(t *testing.T) {
 	}
 }
 
+func TestFreeSwitchManagedIVRRoute(t *testing.T) {
+	t.Setenv("AVOIP_ROUTING_TOKEN", "fixture-routing-token-not-a-production-secret")
+	t.Setenv("AVOIP_SITE", "yvr")
+	enabled := true
+	catalog := fixtureCatalog()
+	catalog.AudioEndpoints = []audioEndpoint{{
+		ID: "black-alert", Name: "Black Alert", Site: "yvr", Enabled: &enabled,
+		MediaSourceType: "library", MediaAsset: "black-alert", PlaybackMode: "once",
+		HangupAfterPlayback: &enabled,
+	}}
+	catalog.IVRs = []ivrDefinition{{
+		ID: "main", Name: "Main", Site: "yvr", GreetingAsset: "welcome",
+		TimeoutMs: 15000, DigitTimeoutMs: 2000, MaxDigits: 1, InvalidRetries: 1,
+		Routes: []ivrDigitRoute{{Digits: "1", Kind: "audio_endpoint", Destination: "black-alert"}},
+	}}
+	catalog.DIDs[0].Kind = "ivr"
+	catalog.DIDs[0].Destination = "main"
+	s := &server{}
+	s.cacheCatalog(catalog)
+
+	lookup := func(form url.Values) string {
+		r := httptest.NewRequest(http.MethodPost, "http://local/routing/freeswitch", strings.NewReader(form.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.SetBasicAuth("routing", os.Getenv("AVOIP_ROUTING_TOKEN"))
+		w := httptest.NewRecorder()
+		s.freeSwitchRoute(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("FreeSWITCH managed IVR status %d: %s", w.Code, w.Body.String())
+		}
+		return w.Body.String()
+	}
+
+	inbound := lookup(url.Values{
+		"Caller-Context":                     {"core-managed-inbound"},
+		"Caller-Destination-Number":          {"+12065550100"},
+		"variable_sip_h_X-Core-Original-DID": {"+12065550100"},
+	})
+	if !strings.Contains(inbound, `data="avoip_ivr_id=main"`) || !strings.Contains(inbound, `data="ivr-entry XML ivr"`) {
+		t.Fatalf("inbound IVR route did not hand off the managed IVR ID: %s", inbound)
+	}
+
+	entry := lookup(url.Values{
+		"Caller-Context":            {"ivr"},
+		"Caller-Destination-Number": {"ivr-entry"},
+		"variable_avoip_ivr_id":     {"main"},
+	})
+	if !strings.Contains(entry, `application="play_and_get_digits"`) || !strings.Contains(entry, `/usr/share/freeswitch/sounds/avoip-shared/welcome.wav`) || !strings.Contains(entry, `data="${ivr_extension} XML ivr-targets"`) {
+		t.Fatalf("managed IVR entry was not generated dynamically: %s", entry)
+	}
+
+	target := lookup(url.Values{
+		"Caller-Context":            {"ivr-targets"},
+		"Caller-Destination-Number": {"1"},
+		"variable_avoip_ivr_id":     {"main"},
+	})
+	if !strings.Contains(target, `/usr/share/freeswitch/sounds/avoip-shared/black-alert.wav`) || strings.Contains(target, `context name="ivr"`) {
+		t.Fatalf("managed IVR target was not resolved without the static IVR context: %s", target)
+	}
+}
+
 func TestIVRMediaProxyRequiresAdminAndFiltersUnsafeAssets(t *testing.T) {
 	library := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

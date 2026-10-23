@@ -1175,10 +1175,11 @@ freeswitch:
     # Ring while waiting before answering on the authenticated inter-site IVR
     # ingress only. The active consumer is YXL's voice DID.
     ivrAnswerDelayMs: 0
+    # Admin-managed IVR selected for the optional inter-site IVR ingress.
+    ivrID: 'main'
   ivr:
-    # The built-in audio destination is safe to enable by default. Site
-    # overlays may add authorized Asterisk destinations when those endpoints
-    # are configured.
+    # Retained as validation/runtime defaults for legacy integrations. The
+    # FreeSWITCH IVR dialplan is now served dynamically from AVoIP Admin.
     enabled: true
     extensions: ['66']
     # Keep registered SIP endpoints ringing before the optional voicemail/GG
