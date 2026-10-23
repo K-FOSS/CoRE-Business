@@ -349,16 +349,6 @@ networkpolicies:
           ports:
             - port: {{ default (dig "defaults" "controlPort" 2046 $.Values.kamailio) $.Values.kamailio.controlPort }}
               protocol: 'TCP'
-        {{- range $instance := (include "avoip.kamailio.instances" $ | fromYamlArray) }}
-        {{- if and $instance.enabled $instance.registrar.enabled $instance.registrar.database.enabled }}
-        - toFQDNs:
-            - matchName: '{{ $instance.registrar.database.host }}'
-          toPorts:
-            - ports:
-                - port: '{{ $instance.registrar.database.port }}'
-                  protocol: 'TCP'
-        {{- end }}
-        {{- end }}
         - to:
             - podSelector:
                 matchLabels:
