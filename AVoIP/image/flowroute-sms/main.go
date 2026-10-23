@@ -194,12 +194,15 @@ func run(logger *slog.Logger) error {
 	if mode == "media" {
 		store, err := newMediaStore(context.Background())
 		if err != nil {
+			logger.Error("media service failed to initialize", "error", err)
 			return err
 		}
+		mediaServer := &server{mediaStore: store, logger: logger}
+		logger.Info("SMS media service started", "address", ":8080", "s3_configured", store != nil)
 		mux := http.NewServeMux()
-		mux.HandleFunc("GET /healthz", (&server{mediaStore: store}).health)
-		mux.HandleFunc("GET /readyz", (&server{mediaStore: store}).mediaReady)
-		mux.HandleFunc("GET /media/{token}", (&server{mediaStore: store}).serveProxyMedia)
+		mux.HandleFunc("GET /healthz", mediaServer.health)
+		mux.HandleFunc("GET /readyz", mediaServer.mediaReady)
+		mux.HandleFunc("GET /media/{token}", mediaServer.serveProxyMedia)
 		return http.ListenAndServe(":8080", mux)
 	}
 	if mode == "tts-cache" {

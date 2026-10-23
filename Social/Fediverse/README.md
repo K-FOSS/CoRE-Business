@@ -121,7 +121,10 @@ never be regenerated for an existing database.
 The Dragonfly password is pulled from the site-local path published by the
 [CoRE Dragonfly chart](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Storage/Dragonfly/CoRE):
 `Storage/DragonFly/CoRE/<region>/<datacenter>/<cluster>/Creds`. No runtime
-Secret values belong in Git.
+Secret values belong in Git. Mastodon web, streaming and Sidekiq pods watch the
+runtime S3 credentials Secret named by `mastodon.user.s3CredentialsSecretName`
+through [Stakater Reloader](https://github.com/stakater/Reloader), so a rotated
+S3 credential causes all three processes to restart and receive the new values.
 
 When Bluesky is enabled without `bluesky.existingSecret`, the default Vault path
 is `Social/Fediverse/<region>/<datacenter>/<cluster>/Bluesky` and stores

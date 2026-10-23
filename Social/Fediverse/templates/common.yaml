@@ -72,6 +72,8 @@ controllers:
       unavailable: 1
       surge: 1
     pod:
+      annotations:
+        secret.reloader.stakater.com/reload: {{ .Values.mastodon.user.s3CredentialsSecretName | quote }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -161,6 +163,8 @@ controllers:
       unavailable: 1
       surge: 1
     pod:
+      annotations:
+        secret.reloader.stakater.com/reload: {{ .Values.mastodon.user.s3CredentialsSecretName | quote }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -237,6 +241,8 @@ controllers:
       unavailable: 1
       surge: 1
     pod:
+      annotations:
+        secret.reloader.stakater.com/reload: {{ .Values.mastodon.user.s3CredentialsSecretName | quote }}
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

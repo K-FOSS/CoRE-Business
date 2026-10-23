@@ -6,8 +6,10 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"os"
@@ -45,8 +47,27 @@ func newMediaStore(ctx context.Context) (*mediaStore, error) {
 	accessKey := os.Getenv("MEDIA_S3_ACCESS_KEY")
 	secretKey := os.Getenv("MEDIA_S3_SECRET_KEY")
 	proxySecret := os.Getenv("MEDIA_PROXY_SECRET")
-	if endpoint == "" || bucket == "" || region == "" || accessKey == "" || secretKey == "" || len(proxySecret) < 32 {
-		return nil, fmt.Errorf("media S3 and proxy configuration is incomplete")
+	missing := make([]string, 0, 6)
+	if endpoint == "" {
+		missing = append(missing, "MEDIA_S3_ENDPOINT")
+	}
+	if bucket == "" {
+		missing = append(missing, "MEDIA_S3_BUCKET")
+	}
+	if region == "" {
+		missing = append(missing, "MEDIA_S3_REGION")
+	}
+	if accessKey == "" {
+		missing = append(missing, "MEDIA_S3_ACCESS_KEY")
+	}
+	if secretKey == "" {
+		missing = append(missing, "MEDIA_S3_SECRET_KEY")
+	}
+	if len(proxySecret) < 32 {
+		missing = append(missing, "MEDIA_PROXY_SECRET (minimum 32 bytes)")
+	}
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("media S3 and proxy configuration is incomplete: missing %s", strings.Join(missing, ", "))
 	}
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(region), awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")))
 	if err != nil {
@@ -145,41 +166,94 @@ func (s *server) mediaURL(ctx context.Context, id, owner string) (string, error)
 }
 
 func (s *server) serveProxyMedia(w http.ResponseWriter, r *http.Request) {
-	if s.mediaStore == nil {
+	started := time.Now()
+	stage := "validate_store"
+	outcome := "failed"
+	status := http.StatusNotFound
+	objectKeyHash := ""
+	errorType := ""
+	defer func() {
+		if s.logger == nil {
+			return
+		}
+		attrs := []any{
+			"stage", stage,
+			"outcome", outcome,
+			"response_status", status,
+			"duration_ms", time.Since(started).Milliseconds(),
+			"token_bytes", len(r.PathValue("token")),
+		}
+		if errorType != "" {
+			attrs = append(attrs, "error_type", errorType)
+		}
+		if objectKeyHash != "" {
+			attrs = append(attrs, "object_key_hash", objectKeyHash)
+		}
+		if outcome == "success" {
+			s.logger.Log(r.Context(), slog.LevelDebug, "SMS media proxy request completed", attrs...)
+		} else {
+			s.logger.Warn("SMS media proxy request failed", attrs...)
+		}
+	}()
+	notFound := func(nextStage string) {
+		stage = nextStage
 		http.NotFound(w, r)
+	}
+	if s.mediaStore == nil {
+		notFound("validate_store")
 		return
 	}
+	stage = "validate_token"
 	parts := strings.Split(r.PathValue("token"), ".")
 	if len(parts) != 2 {
-		http.NotFound(w, r)
+		notFound("validate_token_format")
 		return
 	}
 	mac := hmac.New(sha256.New, s.mediaStore.secret)
 	mac.Write([]byte(parts[0]))
 	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil || !hmac.Equal(signature, mac.Sum(nil)) {
-		http.NotFound(w, r)
+		notFound("validate_signature")
 		return
 	}
+	stage = "decode_payload"
 	payload, err := base64.RawURLEncoding.DecodeString(parts[0])
-	fields := strings.Split(string(payload), "\n")
-	if err != nil || len(fields) != 3 || len(fields[1]) == 0 || len(fields[2]) == 0 {
-		http.NotFound(w, r)
+	if err != nil {
+		notFound("decode_payload")
 		return
 	}
+	fields := strings.Split(string(payload), "\n")
+	if len(fields) != 3 || len(fields[1]) == 0 || len(fields[2]) == 0 {
+		notFound("validate_payload")
+		return
+	}
+	objectDigest := sha256.Sum256([]byte(fields[1]))
+	objectKeyHash = fmt.Sprintf("%x", objectDigest[:6])
+	stage = "validate_expiry"
 	expires, err := strconv.ParseInt(fields[0], 10, 64)
 	if err != nil || time.Now().After(time.Unix(expires, 0)) {
-		http.NotFound(w, r)
+		notFound("validate_expiry")
 		return
 	}
+	stage = "s3_get_object"
 	object, err := s.mediaStore.client.GetObject(r.Context(), &s3.GetObjectInput{Bucket: aws.String(s.mediaStore.bucket), Key: aws.String(fields[1])})
 	if err != nil {
-		http.NotFound(w, r)
+		errorType = fmt.Sprintf("%T", err)
+		notFound("s3_get_object")
 		return
 	}
 	defer object.Body.Close()
+	stage = "stream_object"
 	w.Header().Set("Content-Type", fields[2])
 	w.Header().Set("Cache-Control", "private, max-age=60")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	io.CopyN(w, object.Body, maxUploadBytes)
+	bytesWritten, copyErr := io.CopyN(w, object.Body, maxUploadBytes)
+	if copyErr != nil && !errors.Is(copyErr, io.EOF) {
+		if s.logger != nil {
+			s.logger.Warn("SMS media proxy stream failed", "stage", "stream_object", "error_type", fmt.Sprintf("%T", copyErr), "bytes", bytesWritten, "object_key_hash", objectKeyHash)
+		}
+		return
+	}
+	status = http.StatusOK
+	outcome = "success"
 }
