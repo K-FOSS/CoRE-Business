@@ -969,12 +969,11 @@ asterisk:
   # Site timezone used by Asterisk's local-time functions and log timestamps.
   timeZone: 'America/Vancouver'
   logging:
-    # Temporary troubleshooting verbosity routed to the container console.
-    # PJSIP packet traces can contain caller identities and SIP headers.
+    # Keep normal call notices visible without RTP/debug packet noise.
     enabled: true
-    verbose: 5
-    debug: 3
-    pjsip: true
+    verbose: 3
+    debug: 0
+    pjsip: false
   sip:
     serviceHost: ''
   # Asterisk and FreeSWITCH communicate over the cluster network. PJSIP
