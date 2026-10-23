@@ -284,6 +284,13 @@ service:
 networkpolicies:
   avoip-admin:
     controller: 'avoip-admin'
+    # The admin policy contains the existing Cilium-only FQDN egress rule,
+    # while the common chart emits it as a standard NetworkPolicy. Kubernetes
+    # prunes that field from the live object; disable only Argo's typed
+    # server-side diff for this resource so reconciliation can compare the
+    # effective policy without changing its traffic rules.
+    annotations:
+      argocd.argoproj.io/compare-options: 'ServerSideDiff=false'
     policyTypes: ['Ingress'{{ if or $settings.telephony.enabled (and $.Values.homer.soundLibrary.enabled $.Values.homer.storage.persistence.enabled) }}, 'Egress'{{ end }}]
     rules:
       ingress:
