@@ -16,6 +16,9 @@ data:
         <param name="tls-sip-port" value="5072"/>
         <param name="tls-cert-dir" value="/etc/freeswitch/tls"/>
         <param name="auth-calls" value="false"/>
+        <!-- Native clients commonly offer a 90-second RFC 4028 timer.
+             Do not reject that offer with FreeSWITCH's 120-second default. -->
+        <param name="minimum-session-expires" value="90"/>
         <param name="apply-inbound-acl" value="kamailio"/>
         {{- range $.Values.freeswitch.sipCore.candidateACLs }}
         <param name="apply-candidate-acl" value="{{ . }}"/>

@@ -111,3 +111,14 @@ unverified. The change addresses the demonstrated omission of private ICE
 candidates, but live calls must confirm that media negotiation was the
 remaining blocker. A successful render or a missing warning alone is not
 proof that WSS and native TLS calling work end to end.
+
+### Session timer negotiation (`422 Session Interval Too Small`)
+
+FreeSWITCH's `core-managed` profile accepts the RFC 4028 minimum session
+interval of 90 seconds. Native SIP clients may offer a 90-second
+`Session-Expires`; leaving FreeSWITCH's larger default in place causes it to
+return `422 Session Interval Too Small` with `Min-SE: 120` before call control
+can proceed. Kamailio forwards this response, so the correction belongs on
+the FreeSWITCH profile rather than in topology handling. The configured
+`minimum-session-expires=90` preserves session timers while accepting the
+client offer.
