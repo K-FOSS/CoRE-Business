@@ -158,12 +158,12 @@ data:
     modparam("websocket", "lf_keepalive_compat", 1)
     {{- end }}
     {{- end }}
-    {{- if or $websocketHA.enabled $websocketHA.legacyOwner (and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled) }}
+    {{- if or $websocketHA.enabled $websocketHA.legacyOwner .Values.kamailio.controlPort }}
     loadmodule "ctl.so"
     {{- if or $websocketHA.enabled $websocketHA.legacyOwner }}
     modparam("ctl", "binrpc", "unix:/tmp/kamailio_ctl")
     {{- end }}
-    {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
+    {{- if .Values.kamailio.controlPort }}
     # Restricted by the Admin-to-control network policy; one endpoint per pod.
     modparam("ctl", "binrpc", "tcp:*:{{ $.Values.kamailio.controlPort }}")
     {{- end }}
