@@ -1598,7 +1598,7 @@ jitsi-meet:
 
 # Site-local Authentik administration; enable separately from managed SIP routing.
 avoipAdmin:
-  enabled: false
+  enabled: true
   primaryRegion: 'yvr'
   databaseRemoteKey: 'AVoIP/Admin/Database'
   hostname: ''
