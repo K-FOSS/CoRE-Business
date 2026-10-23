@@ -143,7 +143,11 @@ The deployed offer also still contained ICE and DTLS attributes. The warning
 `NO candidate ACL defined, Defaulting to wan.auto` is emitted when a candidate
 is parsed, not proof that ICE caused the 488. The exact FreeSWITCH failing
 branch was not logged, so success of this compatibility setting and whether
-ICE/DTLS needs separate normalization remain live-verification questions.
+ICE/DTLS needs separate normalization remain live-verification questions. The
+active managed profile now also uses late SDP negotiation with generous codec
+selection, matching the existing Kamailio-facing profile. This is intended to
+accept the native client's mixed media offer without changing browser WebRTC
+policy; a live call is still required to prove that the 488 is resolved.
 Only SDP structure, suite names and counts were queried; no SRTP keys or ICE
 passwords were printed.
 

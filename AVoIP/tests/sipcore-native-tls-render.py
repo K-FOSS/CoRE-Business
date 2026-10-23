@@ -50,6 +50,9 @@ assert len(managed_configs) == 1
 managed_profile = ET.fromstring(managed_configs[0])
 assert managed_profile.attrib["name"] == "core-managed"
 assert len(managed_profile.findall("./settings/param[@name='NDLB-allow-crypto-in-avp'][@value='true']")) == 1
+managed_settings = {node.get('name'): node.get('value') for node in managed_profile.findall('./settings/param')}
+assert managed_settings['inbound-late-negotiation'] == 'true'
+assert managed_settings['inbound-codec-negotiation'] == 'generous'
 disabled_render = subprocess.check_output([
     "helm", "template", "core-home1-talos-prod", str(root / "AVoIP"),
     "--namespace", "core-prod", "-f",

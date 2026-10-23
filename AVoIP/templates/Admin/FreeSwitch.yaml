@@ -25,6 +25,8 @@ data:
              compatibility flag is limited to the trusted Kamailio hop. -->
         <param name="NDLB-allow-crypto-in-avp" value="true"/>
         {{- end }}
+        <param name="inbound-late-negotiation" value="true"/>
+        <param name="inbound-codec-negotiation" value="generous"/>
         <param name="inbound-codec-prefs" value="$${global_codec_prefs}"/>
         <param name="outbound-codec-prefs" value="$${outbound_codec_prefs}"/>
         <param name="disable-transcoding" value="false"/>
