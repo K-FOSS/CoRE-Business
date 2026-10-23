@@ -287,6 +287,7 @@ func run(logger *slog.Logger) error {
 		app.registerAdmin(mux)
 		mux.HandleFunc("GET /api/telephony", app.telephony)
 		mux.HandleFunc("POST /api/telephony/hangup", app.hangupCall)
+		mux.HandleFunc("POST /api/telephony/debug/freeswitch", app.freeSwitchDebug)
 	}
 	if mode == "admin" {
 		go app.refreshCatalog(ctx)

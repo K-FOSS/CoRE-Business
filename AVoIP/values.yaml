@@ -1232,16 +1232,6 @@ freeswitch:
     enabled: true
   sms:
     enabled: true
-  sipLogging:
-    # Sofia raw SIP request/response tracing is opt-in because it can expose
-    # call identities and signaling details.
-    enabled: false
-    # Sofia profile transaction diagnostics (0-9). Raise temporarily when
-    # investigating which 2xx response is waiting for an ACK.
-    # Sofia profile transaction diagnostics. This records dialog and
-    # transaction decisions without enabling raw SIP dumps, which can expose
-    # Digest credentials, SDP, or other endpoint-sensitive data.
-    sofiaDebug: 6
   media:
     # Snapshot per-call RTP statistics only when explicitly enabled.
     diagnostics:

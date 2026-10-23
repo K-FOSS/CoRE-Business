@@ -467,6 +467,61 @@ func (s *server) hangupCall(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func validFreeSwitchProfile(profile string) bool {
+	switch profile {
+	case "asterisk", "external", "kamailio", "core-managed", "flowroute":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *server) freeSwitchDebug(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r, true) {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	var request struct {
+		Profile string `json:"profile"`
+		Enabled bool   `json:"enabled"`
+	}
+	if json.NewDecoder(r.Body).Decode(&request) != nil || !validFreeSwitchProfile(request.Profile) {
+		http.Error(w, "invalid FreeSWITCH profile", http.StatusBadRequest)
+		return
+	}
+	level := "0"
+	trace := "off"
+	if request.Enabled {
+		level = "6"
+		trace = "on"
+	}
+	commands := []string{
+		"sofia profile " + request.Profile + " debug " + level,
+		"sofia profile " + request.Profile + " siptrace " + trace,
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	targets := controlTargets(ctx, telephonyEnv("AVOIP_ESL_ADDRESS"))
+	if len(targets) == 0 {
+		http.Error(w, "FreeSWITCH Event Socket is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	for _, target := range targets {
+		for _, command := range commands {
+			if _, err := eslCommand(ctx, target, telephonyEnv("AVOIP_ESL_SECRET"), command); err != nil {
+				s.logger.Warn("freeswitch debug control failed", "profile", request.Profile, "enabled", request.Enabled, "target", serviceName(target), "command", strings.TrimPrefix(command, "sofia profile "), "reason", telephonyErrorClass(err))
+				http.Error(w, "FreeSWITCH debug control failed", http.StatusBadGateway)
+				return
+			}
+		}
+	}
+	if _, err := s.pool.Exec(ctx, `INSERT INTO public.avoip_admin_audit(actor,action,object_id) VALUES($1,$2,$3)`, r.Header.Get("X-Authentik-Username"), "freeswitch_debug", request.Profile+":"+strconv.FormatBool(request.Enabled)); err != nil {
+		http.Error(w, "debug changed but audit write failed", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]any{"system": "freeswitch", "profile": request.Profile, "enabled": request.Enabled, "replicas": len(targets)})
+}
+
 func queryCDR(ctx context.Context, databaseURL, table, started, caller, called, duration, disposition string) ([]cdrRecord, error) {
 	if !validSQLIdentifier(table) {
 		return nil, errors.New("invalid CDR table")
@@ -657,18 +712,47 @@ func freeSwitchCalls(ctx context.Context, address, secret string) ([]liveCall, e
 			UUID    string `json:"uuid"`
 			Name    string `json:"name"`
 			CIDNum  string `json:"cid_num"`
+			CIDName string `json:"cid_name"`
 			Dest    string `json:"dest"`
+			Callee  string `json:"callee_num"`
 			State   string `json:"state"`
+			CallState string `json:"callstate"`
 			Created string `json:"created"`
+			CreatedEpoch int64 `json:"created_epoch"`
 		} `json:"rows"`
+	}
+	response = strings.TrimSpace(response)
+	if start := strings.IndexByte(response, '{'); start >= 0 {
+		response = response[start:]
 	}
 	if err = json.Unmarshal([]byte(response), &payload); err != nil {
 		return nil, err
 	}
 	out := []liveCall{}
 	for _, row := range payload.Rows {
-		t, _ := time.Parse("2006-01-02 15:04:05", row.Created)
-		out = append(out, liveCall{System: "freeswitch", ID: row.UUID, Name: row.Name, Caller: row.CIDNum, Called: row.Dest, State: row.State, StartedAt: t})
+		var t time.Time
+		for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339Nano} {
+			if parsed, parseErr := time.Parse(layout, row.Created); parseErr == nil {
+				t = parsed
+				break
+			}
+		}
+		if t.IsZero() && row.CreatedEpoch > 0 {
+			t = time.Unix(row.CreatedEpoch, 0).UTC()
+		}
+		state := row.State
+		if state == "" {
+			state = row.CallState
+		}
+		called := row.Dest
+		if called == "" {
+			called = row.Callee
+		}
+		name := row.Name
+		if name == "" {
+			name = row.CIDName
+		}
+		out = append(out, liveCall{System: "freeswitch", ID: row.UUID, Name: name, Caller: row.CIDNum, Called: called, State: state, StartedAt: t})
 	}
 	return out, nil
 }

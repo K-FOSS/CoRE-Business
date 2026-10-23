@@ -84,8 +84,6 @@ data:
         <domain name="all" alias="false" parse="true"/>
       </domains>
       <settings>
-        <param name="debug" value="0"/>
-        <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-capture" value="no"/>
         <param name="apply-inbound-acl" value="flowroute"/>
         <param name="rfc2833-pt" value="101"/>
@@ -144,7 +142,6 @@ data:
       {{- end }}
       {{- end }}
       <settings>
-        <param name="debug" value="{{ $.Values.freeswitch.sipLogging.sofiaDebug }}"/>
         <param name="sip-port" value="5060"/>
         <!-- Kamailio signaling is TLS-only; tls-only suppresses the plain
              UDP/TCP sip-port and binds only the TLS port. -->
@@ -168,7 +165,6 @@ data:
         {{- range $.Values.freeswitch.sipCore.candidateACLs }}
         <param name="apply-candidate-acl" value="{{ . }}"/>
         {{- end }}
-        <param name="sip-trace" value="{{ ternary "true" "false" $.Values.freeswitch.sipLogging.enabled }}"/>
         <param name="sip-capture" value="{{ ternary "yes" "no" (and $.Values.freeswitch.homer.sipCapture (ne (include "avoip.homer.enabled" $ | trim) "")) }}"/>
         <param name="sip-ip" value="$${local_ip_v4}"/>
         <param name="rtp-ip" value="$${local_ip_v4}"/>

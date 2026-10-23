@@ -229,9 +229,10 @@ bridged to Asterisk without LDAP authentication.
   in-dialog loose-route decisions when `kamailio.sipLogging.enabled` is true.
   It records method, source, destination, route URI, request URI, and Call-ID
   without dumping full SIP messages or SDP bodies.
-- Sofia raw SIP tracing is enabled by default on the Asterisk and external
-  profiles through `freeswitch.sipLogging.enabled`. It is intended for call
-  troubleshooting and includes signaling/SDP metadata in the pod logs.
+- Sofia SIP debug and tracing are enabled temporarily from the AVoIP Admin
+  Telephony tab through the authenticated FreeSWITCH Event Socket. Tracing
+  includes signaling/SDP metadata in the pod logs and should be disabled after
+  troubleshooting.
 - Public FreeSWITCH TCP/UDP SIP Gateway API routes are removed. The UDP SIP
   path uses the site's direct Kamailio Service. The `core-prod/main-gw` SIPS
   listener uses TLS passthrough to Kamailio and PROXY protocol v2.

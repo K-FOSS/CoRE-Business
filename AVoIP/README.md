@@ -578,16 +578,11 @@ itself; configure `flowrouteSMS.inbox.frameAncestor` for another trusted
 Nextcloud origin. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 injects the YVR site values.
 
-Sofia raw SIP tracing is enabled by default on the managed Asterisk, external,
-and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
-SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`
-when that exposure or log volume is not appropriate.
-
-Kamailio registrar and SIP Core routing diagnostics use core debug level 3 by
-default, and FreeSWITCH Sofia transaction diagnostics use level 6. These are
-metadata-level diagnostics: raw SIP tracing remains controlled separately by
-`freeswitch.sipLogging.enabled` and should only be enabled for a short,
-authorized capture because it can expose credentials and SDP.
+FreeSWITCH SIP debug and tracing are controlled at runtime from the Admin
+Telephony tab through the authenticated Event Socket. The control is applied to
+each resolved FreeSWITCH replica and should be disabled after a controlled
+capture because SIP tracing can expose credentials and SDP. There is no
+Helm-managed FreeSWITCH SIP debug setting.
 
 Failed inbound Asterisk handoffs in FreeSWITCH answer the caller, play
 the existing GG asset, and hang up normally by default; see the
