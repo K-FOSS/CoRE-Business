@@ -572,6 +572,12 @@ and Kamailio-facing profiles for troubleshooting; it records SIP signaling and
 SDP metadata in the FreeSWITCH logs, so disable `freeswitch.sipLogging.enabled`
 when that exposure or log volume is not appropriate.
 
+Kamailio registrar and SIP Core routing diagnostics use core debug level 3 by
+default, and FreeSWITCH Sofia transaction diagnostics use level 6. These are
+metadata-level diagnostics: raw SIP tracing remains controlled separately by
+`freeswitch.sipLogging.enabled` and should only be enabled for a short,
+authorized capture because it can expose credentials and SDP.
+
 Failed inbound Asterisk handoffs in FreeSWITCH answer the caller, play
 the existing GG asset, and hang up normally by default; see the
 [inbound failure policy](docs/PHONE-TREE.md#configured-did).

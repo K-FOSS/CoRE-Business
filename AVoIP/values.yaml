@@ -392,7 +392,7 @@ kamailio:
             enabled: true
             # Increase core diagnostics only on the dedicated WSS edge.
             # Do not enable raw SIP dumps, which can expose Digest responses.
-            coreDebug: 2
+            coreDebug: 3
         # Send unsolicited Pong frames to keep the upgraded stream active
         # without evicting clients that do not return Ping frames through an
         # intermediary. Asterisk OPTIONS remains the SIP flow health check.
@@ -476,7 +476,9 @@ kamailio:
   defaults:
     # Keep Kamailio core diagnostics at info level for every role, including
     # carrier instances that do not enable the more detailed SIP diagnostics.
-    coreDebug: 2
+    # Level 3 adds registrar/transaction/socket decisions without enabling
+    # full SIP message logging.
+    coreDebug: 3
     # Optional per-instance workload overrides. Empty values preserve the
     # existing carrier manifest. extraEnv is a replace-only list; entries may
     # use secretKeyRef, never inline credentials.
@@ -1232,7 +1234,10 @@ freeswitch:
     enabled: false
     # Sofia profile transaction diagnostics (0-9). Raise temporarily when
     # investigating which 2xx response is waiting for an ACK.
-    sofiaDebug: 0
+    # Sofia profile transaction diagnostics. This records dialog and
+    # transaction decisions without enabling raw SIP dumps, which can expose
+    # Digest credentials, SDP, or other endpoint-sensitive data.
+    sofiaDebug: 6
   media:
     # Snapshot per-call RTP statistics only when explicitly enabled.
     diagnostics:
