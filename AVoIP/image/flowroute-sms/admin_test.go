@@ -442,6 +442,17 @@ func TestFreeSwitchManagedAudioEndpointRoute(t *testing.T) {
 	if strings.Contains(w.Body.String(), `application="bridge"`) {
 		t.Fatalf("audio endpoint was incorrectly bridged: %s", w.Body.String())
 	}
+
+	catalog.AudioEndpoints[0].MediaSourceType = "remote_url"
+	catalog.AudioEndpoints[0].MediaAsset = ""
+	catalog.AudioEndpoints[0].MediaURL = "http://10.1.1.84/Sounds/endpoint.mp3"
+	t.Setenv("AVOIP_AUDIO_REMOTE_MEDIA_HOSTS", "10.1.1.84")
+	s.cacheCatalog(catalog)
+	w = httptest.NewRecorder()
+	s.freeSwitchRoute(w, r)
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `data="shout://10.1.1.84/Sounds/endpoint.mp3"`) || strings.Contains(w.Body.String(), `shout://http://`) {
+		t.Fatalf("HTTP audio endpoint was not normalized for mod_shout: %s", w.Body.String())
+	}
 }
 
 func TestIVRMediaProxyRequiresAdminAndFiltersUnsafeAssets(t *testing.T) {

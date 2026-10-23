@@ -1349,8 +1349,10 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 			playback = "/usr/share/freeswitch/sounds/avoip-shared/" + endpoint.MediaAsset + ".wav"
 			return
 		}
-		// Catalog validation has already enforced an exact HTTPS-host allowlist.
-		playback = "shout://" + strings.TrimPrefix(endpoint.MediaURL, "https://")
+		// Catalog validation has already enforced an exact HTTP(S)-host allowlist.
+		mediaURL := strings.TrimPrefix(endpoint.MediaURL, "https://")
+		mediaURL = strings.TrimPrefix(mediaURL, "http://")
+		playback = "shout://" + mediaURL
 	}
 	if context == "core-managed-outbound" && extensionID.MatchString(extension) {
 		for _, endpoint := range c.AudioEndpoints {
