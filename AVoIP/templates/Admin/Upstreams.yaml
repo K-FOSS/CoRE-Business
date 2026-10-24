@@ -1,7 +1,7 @@
 {{- define "avoip.upstream.gatewayXML" -}}
 {{- $root := .root -}}
 {{- $upstream := .upstream -}}
-{{- $private := include "avoip.kamailio.component" (dict "name" $root.Values.asterisk.sipCore.kamailioInstance) -}}
+{{- $private := include "avoip.kamailio.component" (dict "name" $root.Values.freeswitch.flowrouteOutbound.kamailioInstance) -}}
 {{- $proxy := include "avoip.sip.serviceHost" (dict "root" $root "component" $private) -}}
 <include>
   <gateway name="{{ $upstream.name }}">

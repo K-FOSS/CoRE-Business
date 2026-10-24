@@ -1,6 +1,15 @@
 {{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled }}
 {{- $fullName := include "avoip.fullname" . -}}
-{{- $privateComponent := include "avoip.kamailio.component" (dict "name" .Values.asterisk.sipCore.kamailioInstance) -}}
+{{- $egressInstanceFound := false -}}
+{{- range (include "avoip.kamailio.instances" . | fromYamlArray) -}}
+  {{- if and (eq .name $.Values.freeswitch.flowrouteOutbound.kamailioInstance) .enabled (eq .role "private-sbc") -}}
+    {{- $egressInstanceFound = true -}}
+  {{- end -}}
+{{- end -}}
+{{- if not $egressInstanceFound -}}
+  {{- fail (printf "freeswitch.flowrouteOutbound.kamailioInstance %s must name an enabled private-sbc Kamailio instance" .Values.freeswitch.flowrouteOutbound.kamailioInstance) -}}
+{{- end -}}
+{{- $privateComponent := include "avoip.kamailio.component" (dict "name" .Values.freeswitch.flowrouteOutbound.kamailioInstance) -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $privateComponent) -}}
 {{- if not (regexMatch "^[a-z0-9.-]+$" (toString .Values.freeswitch.flowrouteOutbound.regionalHost)) -}}
   {{- fail "freeswitch.flowrouteOutbound.regionalHost must be a regional Flowroute SIP hostname" -}}

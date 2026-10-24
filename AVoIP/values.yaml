@@ -989,7 +989,7 @@ asterisk:
     registrarBackend: 'asterisk'
     # Route SIP Core WebSocket signaling through this dedicated private SBC.
     # The selected instance must be enabled with role private-sbc.
-    kamailioInstance: 'internal-ha'
+    kamailioInstance: 'internal'
     # Optional Envoy backend selector for staged cutover/rollback. Empty follows
     # kamailioInstance; the selected instance above remains Asterisk's SIP path owner.
     ingressKamailioInstance: ''
@@ -1121,6 +1121,10 @@ freeswitch:
     # Outbound INVITEs use the existing private-to-carrier Kamailio path so
     # carrier Kamailio and RTPEngine continue anchoring the media leg.
     enabled: false
+    # Private Kamailio service used as the FreeSWITCH carrier egress proxy.
+    # YVR selects its three-replica internal-ha role; sites without that role
+    # must explicitly select their provisioned private SBC.
+    kamailioInstance: 'internal-ha'
     # Private TLS listener for Flowroute-profile dialogs. Kamailio routes
     # established carrier requests directly to the FreeSWITCH owner pod here.
     tlsPort: 5081
