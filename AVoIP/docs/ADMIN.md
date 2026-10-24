@@ -77,11 +77,17 @@ SMS provider APIs and webhook configuration are described in
 [SMS messaging](FLOWROUTE-SMS.md). SIP and SMS provider accounts are distinct;
 a shared product name does not make SIP credentials valid for the SMS API.
 
-The telephony viewer is opt-in and disabled by default. Configure dedicated
-read-only PostgreSQL connection Secrets for each CDR table if CDR viewing is
-needed; leaving those references empty enables management connections without
-granting CDR access. The Admin's own catalog database identity is not a CDR
-reader. The AMI and FreeSWITCH Event
+The telephony viewer is opt-in and disabled by default. When Asterisk and
+FreeSWITCH CDR writing are enabled, the chart passes each PBX's existing
+`psqlURI` connection Secret to Admin by default; an explicit
+`cdrConnectionSecret` can override either reference with a dedicated read-only
+reader. This reuses the current CDR databases without changing either PBX's
+configuration or writer. Admin sets PostgreSQL `default_transaction_read_only`
+for CDR sessions and runs fixed, identifier-validated queries that return at
+most 50 recent rows per database. The PBX connection roles retain their
+existing database grants, so deployments requiring database-enforced
+read-only credentials should provide the dedicated-reader overrides. The
+Admin's own catalog database identity is not a CDR reader. The AMI and FreeSWITCH Event
 Socket adapters use the retained generated `avoipAdmin.telephony.managementSecret`.
 The chart publishes that password to Vault, writes the Asterisk AMI user file
 at container startup, and binds both management interfaces only to private

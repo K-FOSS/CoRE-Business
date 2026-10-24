@@ -46,6 +46,10 @@
 {{- fail "avoipAdmin.bridgedCalls timeout, duration, horizon, or concurrency setting is outside its allowed range" }}
 {{- end }}
 {{- $dbName := printf "%s-admin-connection" (include "avoip.fullname" .) -}}
+{{- $asteriskCDRSecretName := default (printf "%s-asterisk" (include "avoip.fullname" .)) $settings.telephony.asterisk.cdrConnectionSecret.name -}}
+{{- $freeswitchCDRSecretName := default (printf "%s-freeswitch" (include "avoip.fullname" .)) $settings.telephony.freeswitch.cdrConnectionSecret.name -}}
+{{- $asteriskCDRConfigured := or (and .Values.asterisk.enabled .Values.asterisk.cdr.enabled) (ne $settings.telephony.asterisk.cdrConnectionSecret.name "") -}}
+{{- $freeswitchCDRConfigured := or (and .Values.freeswitch.enabled .Values.freeswitch.cdr.enabled) (ne $settings.telephony.freeswitch.cdrConnectionSecret.name "") -}}
 {{- $sipCoreRegistrarGateway := ternary "sipcore-registrar" "" (eq .Values.asterisk.sipCore.registrarBackend "kamailio") -}}
 controllers:
   avoip-admin:
@@ -199,11 +203,11 @@ controllers:
               secretKeyRef:
                 name: '{{ default (printf "%s-telephony-management" (include "avoip.fullname" .)) $settings.telephony.managementSecret.name }}'
                 key: '{{ $settings.telephony.managementSecret.key }}'
-          {{ if $settings.telephony.asterisk.cdrConnectionSecret.name }}
+          {{ if $asteriskCDRConfigured }}
           - name: 'AVOIP_ASTERISK_CDR_URL'
             valueFrom:
               secretKeyRef:
-                name: '{{ $settings.telephony.asterisk.cdrConnectionSecret.name }}'
+                name: '{{ $asteriskCDRSecretName }}'
                 key: '{{ $settings.telephony.asterisk.cdrConnectionSecret.key }}'
           - name: 'AVOIP_ASTERISK_CDR_TABLE'
             value: '{{ $settings.telephony.asterisk.cdrTable }}'
@@ -228,11 +232,11 @@ controllers:
                 key: 'psqlURI'
           {{- end }}
           {{- end }}
-          {{ if $settings.telephony.freeswitch.cdrConnectionSecret.name }}
+          {{ if $freeswitchCDRConfigured }}
           - name: 'AVOIP_FREESWITCH_CDR_URL'
             valueFrom:
               secretKeyRef:
-                name: '{{ $settings.telephony.freeswitch.cdrConnectionSecret.name }}'
+                name: '{{ $freeswitchCDRSecretName }}'
                 key: '{{ $settings.telephony.freeswitch.cdrConnectionSecret.key }}'
           - name: 'AVOIP_FREESWITCH_CDR_TABLE'
             value: '{{ $settings.telephony.freeswitch.cdrTable }}'
