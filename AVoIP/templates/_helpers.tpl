@@ -6,6 +6,15 @@ Expand the name of the chart.
 {{- default "avoip" .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/* Admin routing is normally disabled on WebSocket HA edges. Enable it only
+   on the explicitly selected FreeSWITCH carrier-egress instance. */}}
+{{- define "avoip.kamailio.adminRoutingEnabled" -}}
+{{- $root := .root -}}
+{{- $instance := .instance -}}
+{{- $websocketHA := $instance.websocketHA | default dict -}}
+{{- if and $root.Values.avoipAdmin.enabled $root.Values.avoipAdmin.routing.enabled (or (not $websocketHA.enabled) (and $root.Values.freeswitch.enabled $root.Values.freeswitch.flowrouteOutbound.enabled (eq $instance.name $root.Values.freeswitch.flowrouteOutbound.kamailioInstance))) -}}true{{- end -}}
+{{- end -}}
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).

@@ -2,12 +2,12 @@
 {{- $fullName := include "avoip.fullname" . -}}
 {{- $egressInstanceFound := false -}}
 {{- range (include "avoip.kamailio.instances" . | fromYamlArray) -}}
-  {{- if and (eq .name $.Values.freeswitch.flowrouteOutbound.kamailioInstance) .enabled (eq .role "private-sbc") -}}
+  {{- if and (eq .name $.Values.freeswitch.flowrouteOutbound.kamailioInstance) .enabled (eq .role "private-sbc") .carrierOutbound.enabled .carrierOutbound.clientIdentity.enabled -}}
     {{- $egressInstanceFound = true -}}
   {{- end -}}
 {{- end -}}
 {{- if not $egressInstanceFound -}}
-  {{- fail (printf "freeswitch.flowrouteOutbound.kamailioInstance %s must name an enabled private-sbc Kamailio instance" .Values.freeswitch.flowrouteOutbound.kamailioInstance) -}}
+  {{- fail (printf "freeswitch.flowrouteOutbound.kamailioInstance %s must name an enabled private-sbc instance with carrierOutbound and Vault clientIdentity" .Values.freeswitch.flowrouteOutbound.kamailioInstance) -}}
 {{- end -}}
 {{- $privateComponent := include "avoip.kamailio.component" (dict "name" .Values.freeswitch.flowrouteOutbound.kamailioInstance) -}}
 {{- $kamailioHost := include "avoip.sip.serviceHost" (dict "root" . "component" $privateComponent) -}}

@@ -122,9 +122,15 @@ Provider selection, site gateway mapping, extension authorization, caller-ID
 selection, and egress limits are managed in the shared AVoIP Admin SIP catalog.
 The FreeSWITCH-to-Kamailio transport target is deployment infrastructure: the
 chart defaults its separate `freeswitch.flowrouteOutbound.kamailioInstance`
-setting to `internal-ha`, and YVR selects that three-replica private SBC. Sites
-without that role select their provisioned private SBC explicitly. TLS identities,
-peer allowlists, and Kubernetes Services remain
+setting to `internal-ha`, and YVR provisions that three-replica private SBC
+with the carrier gateway, mTLS client identity, and authenticated FreeSWITCH
+peer route required for carrier egress. The selected instance must have
+`carrierOutbound.enabled` and `carrierOutbound.clientIdentity.enabled`; Helm
+validation fails otherwise. The selected HA instance alone loads the Admin
+routing snapshot client and receives the matching API egress allowance; the
+other WebSocket registrar replicas do not gain carrier routing policy. Sites
+without the HA role select and provision their existing private SBC explicitly.
+TLS identities, peer allowlists, and Kubernetes Services remain
 deployment-managed so Admin catalog changes cannot alter transport trust or
 network policy. The WebSocket registrar remains a distinct ingress service.
 

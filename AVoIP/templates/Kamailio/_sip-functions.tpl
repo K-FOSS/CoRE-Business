@@ -128,7 +128,7 @@
 {{- $carrierTrafficLogging := and (or (eq .Values.kamailio.role "carrier-sbc") (not (and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled))) (default false .Values.kamailio.sipLogging.carrierTraffic) }}
 {{- $sipCoreEnabled := and (eq .Values.kamailio.role "private-sbc") (or (eq .Values.kamailio.name $.Values.asterisk.sipCore.kamailioInstance) .Values.kamailio.websocketHA.enabled .Values.kamailio.websocketHA.legacyOwner) $.Values.asterisk.enabled $.Values.asterisk.sipCore.enabled -}}
     request_route {
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       $var(managed_json) = $sht(managed=>snapshot);
       $var(managed_provider) = "";
       {{- end }}
@@ -273,7 +273,7 @@
         ($proto == "udp" && $Rp == 5060) ||
         ($proto == "tcp" && $Rp == 5060)
       ) {
-        {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+        {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
         route(MANAGED_SOURCE);
         remove_hf("X-Core-Extension"); remove_hf("X-Core-Original-DID"); remove_hf("X-Core-Provider");
         if ($var(managed_provider) != "") {
@@ -603,7 +603,7 @@
         exit;
       }
 
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       route(MANAGED_DID);
       if (is_method("INVITE") && $var(side) != "inter-site") {
         sl_send_reply("404", "DID Not Configured"); exit;
@@ -871,7 +871,7 @@
       #
       # The only SIP peer FreeSWITCH has is Kamailio.
       #
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       if (has_totag() && $dlg_var(managed_target) != $null) {
         $du = $ru;
         $xavp(tls=>server_name) = $dlg_var(managed_target);

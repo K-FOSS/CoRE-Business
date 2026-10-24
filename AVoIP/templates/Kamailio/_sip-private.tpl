@@ -4,7 +4,7 @@
     # The private peer listener uses strict mTLS and an explicit allowlist.
     # The separate SIP Core return listener uses Cilium workload identity.
     request_route {
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       $var(managed_json) = $sht(managed=>snapshot);
       $var(managed_provider) = "";
       {{- end }}
@@ -257,7 +257,7 @@
       # Admin policy is authoritative for calls from the registered Flowroute
       # gateway. Static extension and caller-ID fallback routes are removed.
       if ($var(peer_name) == "freeswitch-flowroute") {
-        {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+        {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
         if ($var(managed_json) == $null) {
           xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_missing call_id=$ci method=$rm destination_class=nanp\n");
           {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -663,7 +663,7 @@
         exit;
       }
 
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       $var(core_managed_from_tag) = "";
       $var(core_managed_route_processed) = 0;
       if (has_totag() && is_present_hf("Route")) {

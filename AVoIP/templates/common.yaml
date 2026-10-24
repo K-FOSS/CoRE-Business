@@ -64,7 +64,7 @@
             - protocol: TCP
               port: 5062
       egress:
-        {{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+        {{ if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
         - to:
             - podSelector:
                 matchLabels:
@@ -180,7 +180,7 @@
 {{- $sipCoreTlsIngress := default (default .Values.asterisk.sipCore.kamailioInstance .Values.asterisk.sipCore.ingressKamailioInstance) .Values.asterisk.sipCore.tls.ingressKamailioInstance -}}
 {{- $sipCorePublicTlsEnabled := and .Values.asterisk.enabled .Values.asterisk.sipCore.enabled .Values.asterisk.sipCore.tls.enabled (eq .Values.kamailio.role "private-sbc") (eq .Values.kamailio.name $sipCoreTlsIngress) -}}
 {{- $kamailioImage := .Values.kamailio.image -}}
-{{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) -}}
+{{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim -}}
   {{- $kamailioImage = .Values.avoipAdmin.routing.image -}}
 {{- end -}}
 {{- $lfHeartbeat := (($websocketHA.compatibility | default dict).lfOnlyHeartbeat | default dict) -}}
@@ -345,7 +345,7 @@
             exec /usr/sbin/kamailio -m {{ .Values.kamailio.shmSizeMb }} -DD -E -P /tmp/kamailio.pid
             -f /etc/kamailio/kamailio.cfg
         env:
-{{ if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+{{ if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
           - name: 'AVOIP_ROUTING_TOKEN'
             valueFrom:
               secretKeyRef:

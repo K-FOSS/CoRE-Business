@@ -118,7 +118,7 @@ data:
     loadmodule "tls.so"
     loadmodule "tm.so"
     loadmodule "sl.so"
-    {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+    {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
     {{ include "avoip.admin.routing.modules" . | nindent 4 }}
     {{- end }}
     {{- if $sipCoreEnabled }}
@@ -127,7 +127,7 @@ data:
     # overrides the SIP message source address and port.
     {{- if .Values.asterisk.sipCore.tls.enabled }}
     loadmodule "tcpops.so"
-    {{- if not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not $websocketHA.enabled)) }}
+    {{- if not (include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim) }}
     loadmodule "htable.so"
     {{- end }}
     # Process-local socket IDs are deliberately not replicated through Redis.
@@ -135,7 +135,7 @@ data:
     # different TLS connection that later reuses Envoy's source tuple.
     modparam("htable", "htable", "sipcore_tls_dialog=>size=8;autoexpire=86400")
     {{- end }}
-    {{- if not (and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not $websocketHA.enabled)) }}
+    {{- if not (include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim) }}
     # SIP Core reads the managed extension codec policy on WSS INVITEs even
     # when the admin-routing module bundle is disabled on the HA edge.
     loadmodule "jansson.so"
@@ -431,7 +431,7 @@ data:
     }
     {{- end }}
 
-    {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+    {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
     {{ include "avoip.admin.routing.routes" . | nindent 4 }}
     {{- end }}
 

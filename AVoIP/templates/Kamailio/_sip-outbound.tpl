@@ -37,7 +37,7 @@
         exit;
       }
 
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       if ($var(managed_json) == $null) {
         xlog("L_WARN", "AVOIP_POLICY reject=managed_snapshot_missing call_id=$ci method=$rm destination_class=nanp\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}
@@ -47,13 +47,13 @@
       }
       route(MANAGED_EGRESS);
       {{- end }}
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       if ($var(managed_egress) == 1) route(MANAGED_CARRIER_IDENTITY);
       else route(MANAGED_HANDOFF);
       {{- end }}
 
       # New calls require the configured service identity and caller policy.
-      {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled (not (dig "websocketHA" "enabled" false .Values.kamailio)) }}
+      {{- if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
       if ($var(managed_egress) != 1) {
         xlog("L_WARN", "AVOIP_POLICY reject=managed_egress_unverified call_id=$ci extension=$hdr(X-Core-Extension) method=$rm\n");
         {{- if and .Values.kamailio.functions.sipTrace (include "avoip.homer.enabled" . | trim) }}

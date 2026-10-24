@@ -148,15 +148,16 @@ spec:
 {{- end }}
 {{- if and .Values.freeswitch.enabled .Values.freeswitch.flowrouteOutbound.enabled }}
 {{- $flowrouteIssuer := dict "name" "" -}}
-{{- $flowrouteIssuerCount := 0 -}}
+{{- $flowrouteEgressInstance := .Values.freeswitch.flowrouteOutbound.kamailioInstance -}}
+{{- $flowrouteEgressInstanceFound := false -}}
 {{- range $instance := (include "avoip.kamailio.instances" . | fromYamlArray) -}}
-  {{- if and $instance.enabled (eq $instance.role "private-sbc") $instance.carrierOutbound.enabled $instance.carrierOutbound.clientIdentity.enabled -}}
+  {{- if and (eq $instance.name $flowrouteEgressInstance) $instance.enabled (eq $instance.role "private-sbc") $instance.carrierOutbound.enabled $instance.carrierOutbound.clientIdentity.enabled -}}
     {{- $_ := set $flowrouteIssuer "name" $instance.carrierOutbound.clientIdentity.issuerName -}}
-    {{- $flowrouteIssuerCount = add1 $flowrouteIssuerCount -}}
+    {{- $flowrouteEgressInstanceFound = true -}}
   {{- end -}}
 {{- end -}}
-{{- if ne $flowrouteIssuerCount 1 -}}
-  {{- fail "freeswitch.flowrouteOutbound.enabled requires exactly one enabled private Kamailio with Vault clientIdentity" -}}
+{{- if not $flowrouteEgressInstanceFound -}}
+  {{- fail (printf "freeswitch.flowrouteOutbound.kamailioInstance %s must name an enabled private Kamailio with carrierOutbound and Vault clientIdentity" $flowrouteEgressInstance) -}}
 {{- end }}
 ---
 apiVersion: cert-manager.io/v1
