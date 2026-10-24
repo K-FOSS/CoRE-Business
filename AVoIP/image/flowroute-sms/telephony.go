@@ -490,14 +490,14 @@ func (s *server) freeSwitchDebug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	level := "0"
-	trace := "off"
 	if request.Enabled {
 		level = "6"
-		trace = "on"
 	}
 	commands := []string{
 		"sofia profile " + request.Profile + " debug " + level,
-		"sofia profile " + request.Profile + " siptrace " + trace,
+		// Never enable raw SIP tracing here: it can persist Digest
+		// Authorization headers in application logs.
+		"sofia profile " + request.Profile + " siptrace off",
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
