@@ -30,7 +30,6 @@ asterisk:
         secret:
           remoteKey: 'Tests/SIPCore/7101'
           property: 'Password'
-        allowCallsTo: ['9090']
 kamailio:
   enabled: true
   instances:

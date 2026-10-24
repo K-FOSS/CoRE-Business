@@ -108,13 +108,13 @@ The public/private route pair is constructed once per direction with `record_rou
 
 The `sips-tls` Gateway listener uses TLS passthrough to the Kamailio `TLSRoute`; it does not terminate the SIP TLS session. Envoy Gateway normally matches the route hostname against SNI. The fallback [EnvoyPatchPolicy](https://gateway.envoyproxy.io/docs/tasks/extensibility/envoy-patch-policy/) removes the `server_names` match from the one SIPS filter chain, allowing no-SNI TLS clients to reach that same TLSRoute without changing the backend or terminating TLS. This relies on the SIPS listener having one TLSRoute/backend; adding another SIPS route requires revisiting the fallback so it cannot route unrelated SNI traffic incorrectly. Envoy prepends PROXY protocol v2, which Kamailio consumes before its native TLS handshake. Kamailio presents its chart-managed cert-manager certificate; its SAN list includes the site hostname, shared SIP alias, and private Kamailio service name. `sip.tls.issuerName` must issue publicly trusted certificates for the public names. Verify the Kamailio `Certificate` is Ready and run the TLS verification below before testing Flowroute. The private hops remain Kamailio to FreeSWITCH on TLS 5061 at the Kamailio service's private port 5062 and FreeSWITCH to Asterisk on TLS 5061; Sofia verifies the Asterisk server certificate.
 
-The Admin catalog selects inbound destinations for both sites. It currently
-routes the voice DID to YVR extension `67` and the other DID to YVR extension
-`66`; YXL uses the existing carrier mTLS peer for the managed handoff. The
-top-level `avoip.did` and `fax.did` values remain for other identity settings,
-but no longer match inbound routes. Each DID has a post-answer fax detection
-switch. Existing records default to enabled, and detected faxes transfer to
-the retained `fax-receive` path. See the [inbound call path](PHONE-TREE.md).
+The Admin catalog selects inbound destinations for both sites, including
+managed Audio Endpoints; YXL uses the existing carrier mTLS peer for the
+managed handoff. The top-level `avoip.did` and `fax.did` values remain for
+other identity settings, but no longer match inbound routes. Each DID has a
+post-answer fax detection switch. Existing records default to enabled, and
+detected faxes transfer to the retained `fax-receive` path. See the
+[inbound call path](PHONE-TREE.md).
 Temporary call recording is controlled separately by
 `freeswitch.media.diagnostics.callRecording.enabled`.
 

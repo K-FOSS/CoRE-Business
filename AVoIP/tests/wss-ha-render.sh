@@ -12,8 +12,7 @@ legacy_sipcore="$(mktemp)"
 invalid="$(mktemp)"
 compat="$(mktemp)"
 asterisk_file="$(mktemp)"
-external_callback="$(mktemp)"
-trap 'rm -f "$rendered" "$frontend" "$pilot" "$cutover" "$split" "$legacy" "$legacy_sipcore" "$invalid" "$compat" "$asterisk_file" "$external_callback"' EXIT
+trap 'rm -f "$rendered" "$frontend" "$pilot" "$cutover" "$split" "$legacy" "$legacy_sipcore" "$invalid" "$compat" "$asterisk_file"' EXIT
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \
@@ -110,82 +109,15 @@ grep -Fq 'username=7101' "$rendered"
 ! grep -Fq 'outbound_proxy=sip:core-home1-talos-prod-avoip-kamailio-internal-wss-sipcore-return' "$rendered"
 grep -Fq 'type=auth' "$rendered"
 grep -Fq 'context=from-sipcore-7101' "$rendered"
-grep -Fq 'exten => 9090,1,Answer()' "$rendered"
-grep -Fq 'exten => 66,1,Dial(PJSIP/gg-audio@freeswitch,30,g)' "$rendered"
-grep -Fq 'exten => 1234,1,Answer()' "$rendered"
-sed -n '/\[sipcore-callback-contact-7101\]/,/^    \[/p' "$rendered" | grep -Fq 'Dial(${PJSIP_DIAL_CONTACTS(7101)},30)'
-sed -n '/\[sipcore-callback-contact-7101\]/,/^    \[/p' "$rendered" | grep -Fq 'Set(CALLERID(num)=1234)'
-echo 'PASS: callback rings all registered SIP Core contacts in parallel'
-! grep -Fq 'X-AVOIP-External-Callback' "$rendered"
-echo 'PASS: public-IVR external callback is absent unless explicitly enabled'
+! grep -Eq 'exten => (66|67|9090|1234),' "$rendered"
+! grep -Eq 'gg-audio|clang-audio|sipcore-callback|hello-world' "$rendered"
+managed_audio_context="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$rendered")"
+grep -Fq 'transfer" data="${destination_number} XML core-managed-outbound"' <<<"$managed_audio_context"
+echo 'PASS: legacy Asterisk audio/callback routes are absent; FreeSWITCH uses the managed Admin route'
 
-helm template core-home1-talos-prod "$chart_dir" \
-  --namespace core-prod \
-  -f "$(dirname "${BASH_SOURCE[0]}")/fixtures/wss-ha.yaml" \
-  --set asterisk.enabled=true \
-  --set asterisk.sipCore.externalCallback.enabled=true \
-  --set avoipAdmin.enabled=true \
-  --set avoipAdmin.routing.enabled=true \
-  --set freeswitch.ivr.enabled=true \
-  --set-string freeswitch.ivr.extensions[0]=1234 \
-  --set freeswitch.flowrouteOutbound.enabled=true \
-  --set freeswitch.highAvailability.enabled=true \
-  --set kamailio.instances[1].carrierOutbound.enabled=true \
-  --set kamailio.instances[1].carrierOutbound.clientIdentity.enabled=true \
-  --set-string kamailio.instances[1].carrierOutbound.clientIdentity.issuerName=kjdev-cluster \
-  --set-string kamailio.instances[1].carrierOutbound.peer.secretName=flowroute-ca \
-  --set-string kamailio.instances[1].carrierOutbound.peer.cidr=192.0.2.0/24 \
-  --set-string kamailio.instances[1].carrierOutbound.peer.sanHostname=flowroute.test \
-  --set-string kamailio.instances[1].carrierOutbound.peer.serviceHost=flowroute.test \
-  --set-string kamailio.instances[1].carrierOutbound.peer.controller=flowroute \
-  --set-string kamailio.instances[1].carrierOutbound.gatewayServiceHost=gateway.test \
-  --set-string kamailio.instances[1].privateRouting.peers[0].name=carrier \
-  --set-string kamailio.instances[1].privateRouting.peers[0].controller=freeswitch \
-  --set-string kamailio.instances[1].privateRouting.peers[0].cidr=192.0.2.0/24 \
-  --set-string kamailio.instances[1].privateRouting.peers[0].sanHostname=flowroute.test \
-  --set-string freeswitch.flowrouteOutbound.regionalHost=us-west-or.sip.flowroute.com \
-  --set-string avoip.did=callback-test-did > "$external_callback"
-external_asterisk="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-asterisk-configs") | .data["extensions.conf"]' "$external_callback")"
-external_freeswitch="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["asterisk.xml"]' "$external_callback")"
-external_public="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-freeswitch-dialplan-configs") | .data["public.xml"]' "$external_callback")"
-grep -Fq 'REGEX("^\\+1[0-9]{10}$" ${CALLERID(num)})' <<<"$external_asterisk"
-grep -Fq 'Set(CHANNEL(hangup_handler_push)=sipcore-external-callback,s,1(${CALLERID(num)}))' <<<"$external_asterisk"
-grep -Fq 'same => n,Playback(hello-world)' <<<"$external_asterisk"
-grep -Fq 'Originate(Local/${ARG1}@sipcore-external-callback-contact/n,exten,from-external-callback,66,1,70,a)' <<<"$external_asterisk"
-grep -Fq 'exten => _+1XXXXXXXXXX,1,Set(CALLERID(num)=callback-test-did)' <<<"$external_asterisk"
-grep -Fq 'Dial(PJSIP/${EXTEN}@carrier-outbound,30,b(sipcore-managed-outbound-headers^s^1(1234)))' <<<"$external_asterisk"
-grep -Fq 'PJSIP_HEADER(add,X-Core-Extension)=${ARG1}' <<<"$external_asterisk"
-! grep -Fq 'X-AVOIP-External-Callback' <<<"$external_asterisk"
-! grep -Fq 'authenticated-external-callback' <<<"$external_freeswitch"
-! grep -Fq 'flowroute-rendezvous' <<<"$external_freeswitch"
-! grep -Fq 'sofia/gateway/flowroute-tls/' <<<"$external_freeswitch"
-callback_handoff="$(sed -n '/<extension name="ivr-destination-1234">/,/<\/extension>/p' <<<"$external_public")"
-grep -Fq 'AVoIP IVR handing callback request to Asterisk' <<<"$callback_handoff"
-grep -Fq 'application="bridge" data="sofia/gateway/asterisk/${destination_number}"' <<<"$callback_handoff"
-! grep -Fq 'AVoIP inbound bridge failed' <<<"$callback_handoff"
-! grep -Fq 'application="playback" data="shout://' <<<"$callback_handoff"
-grep -Fq 'external-callback-route-diagnostic' <<<"$external_freeswitch"
-grep -Fq 'channel-match=true' <<<"$external_freeswitch"
-grep -Fq 'peer-match=true' <<<"$external_freeswitch"
-grep -Fq 'destination-shape=nanp' <<<"$external_freeswitch"
-grep -Fq 'destination-shape=nanp-without-plus' <<<"$external_freeswitch"
-grep -Fq 'destination-shape=national-nanp' <<<"$external_freeswitch"
-grep -Fq 'destination-shape=plus-national-nanp' <<<"$external_freeswitch"
-grep -Fq 'authenticated-external-callback-without-plus' <<<"$external_freeswitch"
-grep -Fq 'destination-format=nanp-without-plus' <<<"$external_freeswitch"
-grep -Fq 'sofia/gateway/flowroute-tls/+${destination_number}' <<<"$external_freeswitch"
-grep -Fq 'authenticated-external-callback-national-format' <<<"$external_freeswitch"
-grep -Fq 'destination-format=national-nanp' <<<"$external_freeswitch"
-grep -Fq 'sofia/gateway/flowroute-tls/+1${destination_number}' <<<"$external_freeswitch"
-grep -Fq 'authenticated-external-callback-plus-national-format' <<<"$external_freeswitch"
-grep -Fq 'destination-format=plus-national-nanp' <<<"$external_freeswitch"
-grep -Fq 'sofia/gateway/flowroute-tls/+1${destination_number:1}' <<<"$external_freeswitch"
-echo 'PASS: external callback preserves full +1 numbers and uses dynamic carrier routing'
-echo 'PASS: callback IVR handoff bypasses the generic GG bridge-failure fallback'
 grep -Fq 'exten => 5550100,1,Dial(${PJSIP_DIAL_CONTACTS(7101)},30)' "$rendered"
 grep -Fq 'exten => 5550101,1,Dial(${PJSIP_DIAL_CONTACTS(7101)},30)' "$rendered"
-sed -n '/\[sipcore-callback-contact-7101\]/,/^    \[/p' "$rendered" | grep -Fq 'Dial(${PJSIP_DIAL_CONTACTS(7101)},30)'
-echo 'PASS: inbound and callback routes fan out to all registered SIP Core contacts'
+echo 'PASS: inbound routes fan out to all registered SIP Core contacts'
 
 helm template core-home1-talos-prod "$chart_dir" \
   --namespace core-prod \

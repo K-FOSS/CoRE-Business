@@ -1,10 +1,10 @@
 # Managed carrier egress
 
-YVR outbound PSTN calls use the Asterisk SIP Core identity and the live AVoIP Admin routing catalog. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml) configures the site services and Vault backed mTLS peers. Provider, extension, caller ID, and DID assignments remain dynamic catalog data.
+YVR outbound PSTN calls use FreeSWITCH, internal Kamailio and the live AVoIP Admin routing catalog. Asterisk is retained for voicemail only. The [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml) configures the site services and Vault-backed mTLS peers. Provider, extension, caller ID, and DID assignments remain dynamic catalog data.
 
 ## Signaling path
 
-Asterisk sends an already canonical `+1` followed by ten digits to its selected private Kamailio. The private Kamailio authenticates the extension header and selects the authorized caller ID, provider, and site target from the current Admin snapshot. It preserves the Request-URI unchanged while forwarding through the authenticated carrier Kamailio peer. Carrier Kamailio applies the configured quota, sends the same full `+1` user part upstream, and anchors media through the existing RTPEngine path. No FreeSWITCH provider route or number prefix participates in outbound calls.
+FreeSWITCH sends the canonical `+1` plus ten-digit destination and authenticated extension identity to internal Kamailio. Internal Kamailio selects the authorized caller ID, provider, and site target from the current Admin snapshot, then forwards through the authenticated carrier Kamailio peer. Carrier Kamailio applies the configured quota, sends the same full `+1` user part upstream, and anchors media through the existing RTPEngine path. Asterisk does not participate in outbound call routing.
 
 The FreeSWITCH Flowroute registration remains available for the inbound carrier profile and as a gateway target selected by the dynamic provider catalog. Its registration and TLS identity are transport configuration; Admin chooses the provider route for each call.
 

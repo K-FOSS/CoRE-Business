@@ -742,7 +742,6 @@
     {{- $sipCoreWebsocketHA = .websocketHA.enabled -}}
   {{- end -}}
 {{- end -}}
-{{- if and .Values.asterisk.sipCore.callbackAudioDiagnostics.enabled (or (lt (int .Values.asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs) 0) (gt (int .Values.asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs) 1000)) }}{{- fail "asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs must be between 0 and 1000" }}{{- end }}
 {{- if and (include "avoip.homer.enabled" . | trim) (include "avoip.kamailio.carrier.enabled" . | trim) .Values.homer.recordings.enabled .Values.freeswitch.enabled .Values.freeswitch.media.diagnostics.callRecording.enabled }}
 {{- if lt (int .Values.homer.recordings.retentionDays) 1 }}{{- fail "homer.recordings.retentionDays must be at least one day" }}{{- end }}
 {{- if ne (clean .Values.freeswitch.media.diagnostics.callRecording.path) (clean .Values.freeswitch.fax.spoolPath) }}{{- fail "FreeSWITCH callRecording.path must match fax.spoolPath when Homer playback is enabled" }}{{- end }}

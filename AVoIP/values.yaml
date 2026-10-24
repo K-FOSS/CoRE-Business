@@ -1019,33 +1019,8 @@ asterisk:
     # SIP Core WebSocket contacts. The normal Kamailio/FreeSWITCH listener stays
     # on 5062; this port is restricted to the Asterisk workload.
     privateEgressPort: 5063
-    echoExtension: '9090'
-    # Authenticated SIP Core and IVR destination that plays a remote clip
-    # through the authenticated FreeSWITCH peer.
-    soundClipExtension: '67'
-    soundClipDestination: 'clang-audio'
     # Optional SIP Core endpoint to ring for inbound calls to the voice DID.
     inboundVoiceExtension: ''
-    externalCallback:
-      # Opt-in IVR callback to the authenticated carrier caller's full +1 plus
-      # ten digit number. The configured main DID is caller ID; Asterisk
-      # originates via dynamic Admin routing.
-      enabled: false
-      # Allow the original carrier call to finish clearing before starting
-      # the callback. This is deliberately separate from ringTimeoutSeconds.
-      delaySeconds: 30
-      ringTimeoutSeconds: 30
-    ggAudioExtension: '66'
-    ggAudioDestination: 'gg-audio'
-    helloCallbackExtension: '1234'
-    callbackAudioDiagnostics:
-      enabled: true
-      # Send initial silence as RTP before the GG stream. Set to 0 for a
-      # baseline call without pre-roll after testing the startup hypothesis.
-      rtpLeadInMs: 100
-    ggCallbackCallerIdName: 'Important Message'
-    ggCallbackDelaySeconds: 120
-    ggCallbackRingTimeoutSeconds: 30
     # Clear a carrier leg when the PSTN provider omits its in-dialog BYE and
     # stops sending RTP. This is a bounded fallback; normal SIP BYE handling
     # remains authoritative and is not delayed by this timer.
@@ -1067,14 +1042,12 @@ asterisk:
     #     secret:
     #       remoteKey: 'AVoIP/SIPCore/YVR/Home1/7101'
     #       property: 'Password'
-    #     allowCallsTo: ['9090', '7102']
     # `allowedOrigins` must list the HTTPS origin(s) hosting Home Assistant,
     # not the SIP/WSS hostname (for example: ['https://ha.example.net']).
     #
     # Endpoint secrets must be random 32+ character hexadecimal passwords.
-    # The chart reserves `echoExtension`, `ggAudioExtension`, and
-    # `soundClipExtension` as local service destinations. `allowCallsTo` may
-    # name another configured extension; it can never match a PSTN dial.
+    # In Kamailio registrar mode these identities are provisioned at Kamailio;
+    # Asterisk does not register endpoints or route calls.
   # Stable locally administered Asterisk Entity ID; do not derive it from the
   # pod network interface because pod MAC addresses are not deployment state.
   entityID: '02:dc:1a:22:2a:01'
@@ -1178,17 +1151,12 @@ freeswitch:
     # Admin-managed IVR selected for the optional inter-site IVR ingress.
     ivrID: 'main'
   ivr:
-    # Retained as validation/runtime defaults for legacy integrations. The
-    # FreeSWITCH IVR dialplan is now served dynamically from AVoIP Admin.
+    # FreeSWITCH IVR routing is served dynamically from AVoIP Admin.
     enabled: true
-    extensions: ['66']
-    # Keep registered SIP endpoints ringing before the optional voicemail/GG
-    # fallback is entered. This is deliberately longer than a provisional
+    # Keep registered SIP endpoints ringing before the optional voicemail or
+    # inbound-media fallback is entered. This is deliberately longer than a provisional
     # response delay so a phone can finish alerting and answer.
     registeredExtensionRingTimeoutSeconds: 30
-    timeoutMs: 15000
-    digitTimeoutMs: 2000
-    greeting: '/usr/share/freeswitch/sounds/avoip-shared/IVRGreet.wav'
   homer:
     # Send internal FreeSWITCH SIP and channel metadata to site-local Homer.
     sipCapture: true
@@ -1223,9 +1191,8 @@ freeswitch:
     # sound asset. Enable explicitly only when a post-answer prompt is wanted.
     enabled: false
     url: 'http://10.1.1.84/Sounds/gg-sound-effect.mp3'
-  soundClip:
-    # FreeSWITCH mod_shout streams the reserved SIP Core and IVR destination.
-    url: 'http://10.1.1.84/Sounds/clang.mp3'
+  # Local FreeSWITCH diagnostics only; Asterisk has no audio service routes.
+  echoExtension: '9090'
   inboundBridgeFailure:
     # Answer failed inbound Asterisk handoffs, play the GG asset above, and
     # hang up normally. Successful bridges terminate without this fallback.

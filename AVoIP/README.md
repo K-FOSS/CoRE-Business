@@ -134,12 +134,13 @@ three-replica `websocketHA` instance for WSS and TLS, a dedicated PostgreSQL
 `User` claim and connection Secret, a Vault-backed credential-sync CronJob,
 and a FreeSWITCH mTLS peer. That instance authenticates REGISTER and client
 INVITEs, stores per-pod Contact Paths, and forwards calls to FreeSWITCH.
-FreeSWITCH and AVoIP Admin retain outbound routing and policy and deliver
-inbound extensions through the `sipcore-registrar` gateway. The switch omits
-7101's Asterisk PJSIP auth/AOR/endpoint and temporarily disables the 1234
-callback; Asterisk voicemail remains configured. The YVR IVR's configured
-7101 selection and authenticated YXL-to-YVR 7101 handoff also use this
-gateway, while the IVR's 9090 echo is local to FreeSWITCH. The current
+FreeSWITCH, AVoIP Admin and Kamailio own endpoint call routing and carrier
+policy. They deliver inbound extensions through the `sipcore-registrar`
+gateway. The switch omits 7101's Asterisk PJSIP auth/AOR/endpoint. Asterisk
+remains in the call path only for voicemail, reached over the private
+FreeSWITCH peer.
+The YVR IVR's configured 7101 selection and authenticated YXL-to-YVR 7101
+handoff also use this gateway. The current
 [YVR ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 selects this backend. Reverting the switch restores Asterisk's
 endpoint, but active registrations must re-register because the two registrar
@@ -163,10 +164,9 @@ prefixes are applied once by carrier Kamailio on the final upstream hop, while
 the internal call path retains the full `+1` plus ten digit destination.
 YXL PSTN call origination remains disabled. YXL's direct public SIP
 Service remains disabled, so public TCP SIP is disabled there while the
-outbound SIPS TLSRoute stays enabled. The Admin catalog currently sends both
-sites' inbound DIDs to YVR: the voice DID to extension `67` and the other DID
-to extension `66`. YXL uses the existing authenticated carrier inter-site link
-for that handoff. Admin can instead select the configured YVR FreeSWITCH IVR or
+outbound SIPS TLSRoute stays enabled. Inbound DID destinations are managed in
+AVoIP Admin, including Audio Endpoints. YXL uses the existing authenticated
+carrier inter-site link for that handoff. Admin can select a FreeSWITCH IVR or
 another configured destination. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
 for the Asterisk-to-Kamailio carrier path, dynamic provider selection, trust
 boundaries, canonical number format and quotas, and the
@@ -251,17 +251,10 @@ Path Route only when its Contact Request-URI names the exact receiving owner
 pod, then resolves the local WebSocket alias. Requests for another owner and
 other owner-routed methods still require a valid Path Route.
 
-The SIP Core callback targets the authenticated source extension and rings all
-of its registered contacts in parallel, like inbound DID fan-out. When one
-contact answers, Asterisk cancels the other attempts. See the
+SIP Core media destinations are managed Audio Endpoints. Asterisk has no audio
+playback extensions, callback greetings, endpoint dialing or carrier call
+routes; it provides voicemail only. See the
 [SIP Core configuration and behavior](docs/SIPCORE-HASS.md).
-The public-IVR callback is a separate, opt-in route. When enabled, it returns
-an exact configured internal account identity or a caller identity already in
-full `+1` plus ten digit form. External callbacks use the configured main voice
-DID as caller ID and send the call through Asterisk's managed `carrier-outbound`
-route. The Admin catalog selects the provider and caller ID; FreeSWITCH does not
-normalize the number or select a static provider route.
-The YVR opt-in is owned by the [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml).
 
 Routr Connect 2.13.6 is integrated as optional workloads in this chart's
 BJW-S common-library render, based on the [upstream Connect chart](https://github.com/fonoster/routr/tree/v2.13.6/ops/charts/connect)
@@ -272,10 +265,9 @@ databases 155 (Location) and 156 (Registry). Location and Registry require
 patched images built from the pinned Routr source to select those databases.
 See [Routr pilot notes](docs/ROUTR.md) before enabling it.
 
-The Admin catalog currently routes the voice DID to YVR extension `67` and
-the other DID to YVR extension `66` at both sites. It can select the configured
-FreeSWITCH IVR instead; that IVR accepts configured Asterisk destinations and
-voicemail access. Managed inbound calls preserve the post-answer fax detector
+The Admin catalog selects each DID destination, including a managed Audio
+Endpoint or the configured FreeSWITCH IVR. Managed inbound calls preserve the
+post-answer fax detector
 when the DID's **Detect fax after answer** switch and the site-wide fax settings
 are enabled. Detected faxes enter the existing `fax-receive` path. SpanDSP
 color fax negotiation remains enabled through `freeswitch.fax.colour.enabled`. See the
@@ -292,8 +284,8 @@ When an IVR digit selects a registered SIP extension, FreeSWITCH sends the call
 to the SIP Core registrar and keeps the registered endpoint ringing for the
 configurable `freeswitch.ivr.registeredExtensionRingTimeoutSeconds` window
 (30 seconds by default). Only after that bridge times out does the configured
-voicemail or inbound-audio fallback run; audio destinations such as `66` keep
-their explicit answer-and-playback behavior.
+voicemail or inbound-audio fallback run. Audio Endpoint routes resolve through
+the managed XML-curl catalog and carry their own playback behavior.
 
 Inter-site voice uses the carrier Service on TLS/5061 and its public TLS
 listener, with a site-specific optional-client-certificate TLS profile. The
@@ -346,13 +338,12 @@ exercise denied sources, registration, unmatched outbound destinations, and
 bad private-peer credentials on an isolated deployment. Carrier DID calls use
 the source ACL rather than SIP digest authentication.
 FreeSWITCH public inbound DID routing is selected by Admin through Kamailio.
-YVR's managed Asterisk route sends full `+1` plus ten digit calls directly
-through private Kamailio using the SIP Core `carrier-outbound` PJSIP endpoint.
-The Admin database maps each permitted extension to its caller ID and provider
-route. The authenticated FreeSWITCH carrier leg carries the extension identity
-through private Kamailio; carrier Kamailio rechecks the extension, selected
-provider, verified caller ID, and limit profile against the Admin snapshot
-before admission. The identity header is removed before the provider hop.
+Outbound PSTN calls use the FreeSWITCH/AVoIP Admin route into internal
+Kamailio; Asterisk does not originate calls. The Admin database maps each
+permitted extension to its caller ID and provider route. Carrier Kamailio
+rechecks the extension, selected provider, verified caller ID, and limit
+profile against the Admin snapshot before admission. The identity header is
+removed before the provider hop.
 YXL keeps PSTN origination disabled. FreeSWITCH still registers to the regional
 Flowroute SIP endpoint using the existing Vault record
 `AVoIP/SIP/FlowRoute` (`Username` and `Password`) for its separate inbound
@@ -363,7 +354,7 @@ RTPEngine handle signaling and media. The Flowroute gateway profile remains
 transport configuration for inbound registration and for provider routes
 selected by the dynamic Admin catalog. The `sip.siteHost` advertised identity
 is used in the public TLS route and provider-facing Record-Route. Voice numbers
-stay in full `+1` plus ten digit form from Asterisk through carrier Kamailio;
+stay in full `+1` plus ten digit form from FreeSWITCH through carrier Kamailio;
 no number rewriting, provider prefix, or destination allow/block list is
 applied.
 
@@ -427,7 +418,7 @@ Component behavior is controlled by chart values and the ApplicationSet merge:
 
 | Component | Current role | More detail |
 | --- | --- | --- |
-| Asterisk | Private voice PBX; authenticates to FreeSWITCH over TLS with Secret-backed SIP Digest credentials, offers Opus then G.722 with PCMU fallback on the FreeSWITCH peer, records CDRs in site-local PostgreSQL, and transfers extension 66 to FreeSWITCH's `gg-audio` dialplan user. The SIP Core callback test adds a configurable 100 ms RTP silence lead-in and correlated media logs. | [Call path](docs/PHONE-TREE.md), [Home Assistant SIP Core and GG audio](docs/SIPCORE-HASS.md), [internal TLS check](#internal-asterisk-sip-identity) |
+| Asterisk | Voicemail service and CDRs in site-local PostgreSQL. FreeSWITCH reaches its voicemail applications through a private SIP peer. | [Voicemail](docs/VOICEMAIL.md), [call path](docs/PHONE-TREE.md), [internal TLS check](#internal-asterisk-sip-identity) |
 | Kamailio | Public carrier SIP border and private TLS relay with TOPOS. | [Values](docs/KAMAILIO-VALUES.md), [SIP identity](docs/SIP-IDENTITY.md) |
 | FreeSWITCH | Private call control, voice DID, fax `rxfax`, and Secret-backed configuration. | [Call path](docs/PHONE-TREE.md), [fax verification](docs/SIP-IDENTITY.md) |
 | RTPEngine | Public media anchor with private NG control and Valkey recovery state. | [RTPEngine HA](docs/avoip/rtpengine-ha.md) |

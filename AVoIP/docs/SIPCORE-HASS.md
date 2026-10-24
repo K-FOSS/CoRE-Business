@@ -1,4 +1,4 @@
-# Home Assistant SIP Core with static Asterisk extensions
+# Home Assistant SIP Core with Kamailio registration
 
 AVoIP uses [TECH7Fox/sipcore-hass-integration](https://github.com/TECH7Fox/sipcore-hass-integration)
 for Home Assistant SIP. The currently running integration version is **v5.1.2**,
@@ -87,7 +87,7 @@ extension `7101`, the generated endpoint accepts the `username` and
 `auth_username` identifiers, and its Digest `auth` object still validates the
 password. Selecting endpoint `7101` does not authenticate the request. The
 endpoint keeps its private `from-sipcore-7101` context and exact
-`allowCallsTo` destinations, including `9090` when configured. A spoofed
+`allowCallsTo` destinations for configured local extensions. A spoofed
 `X-Forwarded-For` value cannot select the endpoint, authenticate SIP, or change
 the actual PJSIP transport peer.
 
@@ -382,95 +382,16 @@ behavior.
   private policy admits the Envoy data-plane on that port and the
   Asterisk workload on the TLS return port. No public Asterisk SIP or AMI
   listener is added.
-- Places every SIP Core extension in its own dialplan context. `allowCallsTo`
-  lists exact local extension numbers and may include the configured echo
-  extension for a loopback audio check. The configured `ggAudioExtension`
-  (default `66`) remains an Asterisk entry point that transfers the SIP user
-  `gg-audio` to the authenticated FreeSWITCH peer on its dedicated TLS port
-  `5064`. This listener is separate from the Kamailio-facing FreeSWITCH TLS
-  listener on `5061`, which uses the public context. The Asterisk profile
-  uses TLS on a dedicated internal port and requires SIP Digest. The
-  currently selected public ACME issuer returns a server-auth-only certificate,
-  so FreeSWITCH does not request it as a client certificate. Asterisk still
-  verifies FreeSWITCH's TLS server certificate, and FreeSWITCH's `auth-calls`
-  setting validates the peer's Digest credentials before entering
-  `from-asterisk`. A future mTLS configuration needs a separate client
-  certificate issued by an approved internal CA and trusted by FreeSWITCH. The
-  destination is configurable with `asterisk.sipCore.ggAudioDestination`.
-  The reserved `asterisk.sipCore.helloCallbackExtension`
-  plays Asterisk's `hello-world` prompt, hangs up the incoming leg, and runs a
-  hangup handler that asynchronously calls back the authenticated SIP Core
-  source extension's registered contacts. If a device answers, Asterisk sends the
-  call into the existing `ggAudioExtension` route so
-  FreeSWITCH plays the GG audio. This service extension is not a SIP account
-  and has no password; the callback target comes from the authenticated
-  extension's dedicated dialplan context, not caller-supplied Caller ID. The
-  callback rings with the configured display name
-  `asterisk.sipCore.ggCallbackCallerIdName` (default `Important Message`).
-  The callback greeting logs the Asterisk unique ID and audio formats before
-  and after playback; the GG route logs its FreeSWITCH media and RTP counters.
-  Kamailio aliases the WebSocket Contact in the callback response so Asterisk's
-  later ACK and BYE reuse the active WebSocket flow.
-  The callback uses `PJSIP_DIAL_CONTACTS()` to ring all current AOR contacts
-  in parallel, matching the inbound DID fan-out. Its destination is derived
-  from the authenticated extension's private dialplan context, not
-  caller-supplied Caller ID. Kamailio routes each explicit contact URI only
-  through its owning WebSocket pod; Asterisk cancels the other attempts when
-  one contact answers. Asterisk starts the callback independently of the ended source
-  channel, then enters the GG route and dials FreeSWITCH only after a contact
-  answers. If no contact answers
-  within the configured `asterisk.sipCore.ggCallbackRingTimeoutSeconds`
-  (default 30 seconds), it ends without starting the GG call. The callback
-  starts one minute after the hello-world call ends by default, controlled by
-  `asterisk.sipCore.ggCallbackDelaySeconds`.
-  A later inbound capture showed the fan-out reached the registered owner
-  pods, but each branch was rejected with `404 SIP Contact Owner Path Missing`
-  before WebSocket forwarding. The return-route guard treated the explicit
-  per-contact INVITE URI as invalid whenever its Path Route was absent or
-  unusable, even though the Request-URI already named that contact's owner.
-  HA routing now allows this fallback only for an initial INVITE on the
-  Asterisk-restricted TLS listener whose Request-URI hostname exactly matches
-  the receiving owner pod; Kamailio must still resolve the local Contact
-  alias. Other methods, wrong-owner targets and unresolvable aliases remain
-  rejected. A live inbound test confirmed three registered contacts rang and
-  answering on one cancelled the other attempts. The callback uses the same
-  fan-out behavior.
-  Separately, the public FreeSWITCH IVR callback is controlled by
-  `asterisk.sipCore.externalCallback.enabled` and is disabled by default. When
-  enabled, it returns the caller identity over the authenticated
-  FreeSWITCH-to-Asterisk leg. Asterisk accepts an exact configured internal
-  account identity or a number already in full `+1` plus ten digit form. It
-  passes that value unchanged to Asterisk's `carrier-outbound` endpoint, where
-  Admin's dynamic provider policy selects the authorized provider and caller
-  ID. FreeSWITCH does not select a static provider route or normalize numbers.
-  Carrier-side ANI validation remains an operational trust assumption for the
-  inbound identity. The feature is enabled only in YVR site values. If the
-  received identity exactly matches a configured SIP Core account, the
-  callback instead rings that account's registered contacts in parallel.
-  The `gg-audio` route emits correlated start, media-established, and playback
-  completion logs with codec and outbound RTP packet/byte counters. It sends a
-  configurable 100 ms `silence_stream` RTP lead-in before the remote audio by
-  default, to test whether media startup is discarding the first audio frames.
-  Set `asterisk.sipCore.callbackAudioDiagnostics.rtpLeadInMs: 0` for a
-  no-lead-in comparison. The lead-in affects only this test audio route and
-  does not record call audio.
-  With the HA WSS instance selected, Asterisk must use the Path stored with
-  each PJSIP contact. The endpoint therefore has no `outbound_proxy`: a fixed
-  endpoint proxy overrides the per-contact owner Path. Asterisk logs from the
-  YVR investigation showed the previous loopback sink proxy caused callback
-  INVITEs to fail locally with 503 before reaching Kamailio. The chart now
-  leaves this proxy unset for HA while Kamailio rejects REGISTER without a
-  valid owner Path. Existing contacts created by the legacy path should
-  re-register through the HA endpoint before calls or callbacks can reach them.
-  FreeSWITCH matches `gg-audio` in the dedicated `from-asterisk` context and
-  plays the configured GG audio. Its dedicated Asterisk
-  profile requires SIP Digest and selects `from-asterisk`; the private-network
-  ACL does not bypass authentication. The peer password is mounted from its
-  Secret into both SIP processes. Add site-specific destinations and scripts
-  to the `asterisk.xml` dialplan in
-  [FreeSwitchDialplanConfig.yaml](../templates/FreeSwitch/FreeSwitchDialplanConfig.yaml).
-  The `from-asterisk` context has no catch-all or PSTN route; only the explicit
-  `gg-audio` route is included by default.
+- Asterisk is retained for voicemail only. Endpoint registration, extension
+  delivery and carrier call policy remain on Kamailio/FreeSWITCH/AVoIP Admin.
+  Asterisk has no endpoint dialing, carrier routes, audio playback extensions
+  or callback greetings. The old `66`, `67`, `9090`, and `1234` service routes
+  are removed from its dialplan. Managed Audio Endpoint
+  calls enter FreeSWITCH through Kamailio; FreeSWITCH resolves the destination
+  extension against the site-scoped AVoIP Admin catalog and generates playback
+  actions from the endpoint's media and playback policy. There is no static
+  `gg-audio` or `clang-audio` FreeSWITCH route. Asterisk receives only
+  voicemail access and deposit handoffs over the private FreeSWITCH peer.
 
 The FreeSWITCH-to-Asterisk TLS peer offers Opus first, then G.722, with PCMU
 fallback; Asterisk's FreeSWITCH endpoint allows all three. SIP Core endpoints
@@ -502,27 +423,23 @@ asterisk:
     hostname: 'sipcore.mylogin.space'
     gatewaySectionName: 'https-myloginspace'
     allowedOrigins: ['https://ha.mylogin.space']
-    ggAudioExtension: '66'
     extensions:
       - number: '7101'
         secret:
           remoteKey: 'AVoIP/SIPCore/YVR/Home1/7101'
           property: 'Password'
-        allowCallsTo: ['9090']
+        allowCallsTo: []
 ```
 
 Create the remote Vault property with a unique random hexadecimal password; do
 not put it in ApplicationSet values. The rendered `ExternalSecret` syncs the
 externally managed password to a namespace-local Secret with key `password`.
-The chart fails rendering for
-missing password references, invalid or duplicate extension numbers, and
-destinations that are not configured extensions or reserved test extensions.
-A SIP Core caller can dial `9090` for the echo test or the configured
-`ggAudioExtension` (default `66`) to transfer to the configurable SIP user
-`ggAudioDestination` (default `gg-audio`) on FreeSWITCH. Other transfer
-destinations can be added to the FreeSWITCH `asterisk.xml` dialplan. A
-changed password triggers an Asterisk restart so PJSIP auth and endpoint state
-are regenerated together.
+The chart fails rendering for missing password references, invalid or
+duplicate extension numbers, and destinations outside the configured local
+extension allowlist. Audio playback is managed in AVoIP Admin and runs on the
+FreeSWITCH XML-curl path; Asterisk is not a playback destination. A changed
+password triggers an Asterisk restart so PJSIP auth and endpoint state are
+regenerated together.
 
 Install SIP Core through HACS using the upstream repository, restart Home
 Assistant, then add/configure SIP Core under Settings → Devices & Services.
@@ -570,7 +487,8 @@ works.
 
 ## Verified pilot
 
-On 2026-10-08, extension `7101` registered successfully with Asterisk using
+Historical pre-migration observation: on 2026-10-08, extension `7101`
+registered successfully with Asterisk using
 SIP Digest authentication. A Home Assistant-originated call to the configured
 echo destination `9090` reached the Asterisk echo extension, as confirmed by
 the operator. This verifies the registration, signaling, and echo-destination

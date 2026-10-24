@@ -17,10 +17,6 @@ asterisk:
         secret:
           remoteKey: AVoIP/SIPCore/YVR/Home1/7101
           property: Password
-        allowCallsTo:
-          - '9090'
-          - '66'
-          - '1234'
 kamailio:
   instances:
     - name: carrier

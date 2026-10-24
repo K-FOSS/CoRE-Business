@@ -16,7 +16,6 @@ freeswitch:
     ivrExtension: '7102'
   ivr:
     enabled: true
-    extensions: ['7101', '9090', '66', '1234']
 asterisk:
   sipCore:
     enabled: true
@@ -28,7 +27,6 @@ asterisk:
         secret:
           remoteKey: 'AVoIP/SIPCore/YVR/Home1/7101'
           property: 'Password'
-        allowCallsTo: ['9090', '66', '1234']
 kamailio:
   enabled: true
   instances:
