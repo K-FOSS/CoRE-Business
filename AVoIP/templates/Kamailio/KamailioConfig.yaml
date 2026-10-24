@@ -79,7 +79,7 @@ data:
     # This owner token is substituted by Kamailio's preprocessor from POD_NAME.
     # The rest of the SIP script remains untouched by generic envsubst.
     #!substdef "/SIPCORE_OWNER_POD/$env(POD_NAME)/"
-    listen=tls:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "SIPCORE_OWNER_POD.{{ $ownerHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_owner_tls"
+    listen=tls:0.0.0.0:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "SIPCORE_OWNER_POD.{{ $ownerHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_owner_tls"
     alias="SIPCORE_OWNER_POD.{{ $ownerHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}"
     {{- else }}
     listen=tls:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }} advertise "{{ $sipCoreReturnHost }}":{{ $.Values.asterisk.sipCore.privateEgressPort }} name "sipcore_private_tls"
@@ -456,9 +456,9 @@ data:
   tls.cfg: |
     [server:default]
     method = TLSv1.2+
-    # WebSocket HA has two private TLS policies: FreeSWITCH mTLS on 5062 and
-    # server-authenticated owner forwarding on 5063. The default must remain
-    # usable when Sofia omits SNI for the owner connection.
+    # Sofia omits SNI on the per-replica owner connection. Keep this default
+    # server-authenticated; the SIP route and network policy enforce the
+    # private FreeSWITCH peer on 5062, while owner forwarding stays usable.
     verify_certificate = {{ if and (eq .Values.kamailio.role "private-sbc") (not $websocketHA.enabled) }}yes{{ else }}no{{ end }}
     require_certificate = {{ if and (eq .Values.kamailio.role "private-sbc") (not $websocketHA.enabled) }}yes{{ else }}no{{ end }}
     {{- if eq .Values.kamailio.role "private-sbc" }}
@@ -468,13 +468,13 @@ data:
     certificate = /etc/kamailio/tls/tls.crt
 
     {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled }}
-    # Keep the FreeSWITCH call-control listener strictly mTLS-authenticated;
-    # only the owner listener falls back to the relaxed default profile.
+    # FreeSWITCH sends owner requests without SNI. This listener is bound to
+    # the wildcard address so the port-specific server profile is selected;
+    # the normal private 5062 listener keeps the strict mTLS default.
     [server:0.0.0.0:{{ $.Values.asterisk.sipCore.privateEgressPort }}]
     method = TLSv1.2+
-    verify_certificate = yes
-    require_certificate = yes
-    ca_list = /etc/kamailio/freeswitch-peer-ca/ca.crt
+    verify_certificate = no
+    require_certificate = no
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
     {{- end }}
