@@ -1091,6 +1091,21 @@
     {{- end }}
 
     route[PRIVATE_RELAY] {
+      # Shared usrloc can contain legacy WebSocket Contacts whose browser
+      # hostname is intentionally non-resolvable (*.invalid). Resolve the
+      # nathelper alias on the final relay boundary so an inbound branch uses
+      # the live flow even before that client refreshes its registration with
+      # the owner Contact form. This is only accepted for the trusted SIP Core
+      # side and only for the synthetic .invalid host; ordinary SIP targets
+      # retain their normal DNS/transport behavior.
+      if ($var(side) eq "sipcore" && $du == $null && $(ru{uri.host}) =~ "\\.invalid$") {
+        handle_ruri_alias();
+        if ($rc == 1) {
+          xlog("L_INFO", "SIPCORE FLOW stage=websocket-alias-resolved pod=$env(POD_NAME) callid=$ci method=$rm ruri=$ru destination=$du transport=$dP socket=$fsn cseq=$hdr(CSeq)\n");
+        } else {
+          xlog("L_WARN", "SIPCORE FLOW stage=websocket-alias-unavailable pod=$env(POD_NAME) callid=$ci method=$rm ruri=$ru destination=$du transport=$dP socket=$fsn cseq=$hdr(CSeq)\n");
+        }
+      }
       if (is_method("BYE")) {
         # $var() values are request-local and may be empty once TM enters a
         # failure/reply route. Preserve the selected dialog path in XAVPs,
