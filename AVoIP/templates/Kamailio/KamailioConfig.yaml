@@ -491,6 +491,17 @@ data:
     # Pod SNI names share a cert-manager wildcard SAN for the owner Service.
     # This exception is source-restricted to Asterisk/edge Cilium identities;
     # the strict default mTLS profile remains active on 5062.
+    # FreeSWITCH Sofia does not reliably send SNI for sequential requests to
+    # the pod owner URI. Select the same policy by the local owner listener
+    # before SNI matching, otherwise the strict default profile rejects the
+    # valid FreeSWITCH connection during certificate verification.
+    [server:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}]
+    method = TLSv1.2+
+    verify_certificate = no
+    require_certificate = no
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
+
     [server:any]
     server_name = {{ $ownerHost }}
     server_name_mode = 2
