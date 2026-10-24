@@ -1222,6 +1222,16 @@
       remove_hf("Path");
       {{- if .Values.kamailio.websocketHA.enabled }}
       if ($var(side) eq "sipcore") {
+        # Some SIP/WebSocket clients do not advertise RFC 3327 Path support.
+        # Keep their opaque Contact alias, but replace the non-routable browser
+        # host with this registration pod's owner listener. The owner listener
+        # consumes the alias and writes the request to the existing local WS
+        # flow; it is not a new client connection or a fixed pod affinity rule.
+        if ($proto == "ws" && is_present_hf("Contact") && $hdr(Contact) != "*" &&
+            !subst_hf("Contact", "/@[^;>; ]+;transport=ws/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/ig", "a")) {
+          sl_send_reply("400", "Unsupported WebSocket Contact");
+          exit;
+        }
         # Build the owner route through path.so instead of appending a raw
         # header. The registrar stores Path only when the path module has
         # created the header on the selected advertised socket. Without that
