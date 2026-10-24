@@ -99,7 +99,7 @@ data:
     {{- end }}
 
     # Private application/B2BUA-facing identity.
-    listen=tls:{{ $bindAddress }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
+    listen=tls:{{ if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled }}0.0.0.0{{ else }}{{ $bindAddress }}{{ end }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
 
     {{- if eq .Values.kamailio.role "carrier-sbc" }}
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
@@ -469,12 +469,21 @@ data:
 
     {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled }}
     # FreeSWITCH sends owner requests without SNI. This listener is bound to
-    # the wildcard address so the port-specific server profile is selected;
-    # the normal private 5062 listener keeps the strict mTLS default.
+    # the wildcard address so the port-specific server profile is selected.
     [server:0.0.0.0:{{ $.Values.asterisk.sipCore.privateEgressPort }}]
     method = TLSv1.2+
     verify_certificate = no
     require_certificate = no
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
+
+    # FreeSWITCH call control has its own wildcard listener and retains strict
+    # client certificate verification even though the owner default is relaxed.
+    [server:0.0.0.0:5062]
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = yes
+    ca_list = /etc/kamailio/freeswitch-peer-ca/ca.crt
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
     {{- end }}
