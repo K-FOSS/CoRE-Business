@@ -184,7 +184,7 @@ data:
             {{- end }}
             {{- if and $.Values.freeswitch.fax.enabled $.Values.freeswitch.fax.autoDetect }}
             <action application="log" data="INFO AVoIP managed DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/>
-            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML public' 20"/>
+            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML core-managed-inbound' 20"/>
             {{- end }}
           </condition>
         </extension>

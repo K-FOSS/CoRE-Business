@@ -49,6 +49,66 @@ type didRoute struct {
 	TenantID            string   `json:"tenant_id,omitempty"`
 }
 
+type faxRuntimeConfig struct {
+	Enabled    bool   `json:"enabled"`
+	AutoDetect bool   `json:"autoDetect"`
+	SpoolPath  string `json:"spoolPath"`
+	G711Only   struct {
+		Enabled bool `json:"enabled"`
+	} `json:"g711Only"`
+	T38 struct {
+		RxReinvitePacketCount int  `json:"rxReinvitePacketCount"`
+		DisableV17            bool `json:"disableV17"`
+		UseEcm                bool `json:"useEcm"`
+	} `json:"t38"`
+}
+
+func configuredFax() faxRuntimeConfig {
+	config := faxRuntimeConfig{SpoolPath: "/var/spool/freeswitch/fax", AutoDetect: true}
+	_ = json.Unmarshal([]byte(os.Getenv("AVOIP_FAX_JSON")), &config)
+	if config.SpoolPath == "" {
+		config.SpoolPath = "/var/spool/freeswitch/fax"
+	}
+	if config.T38.RxReinvitePacketCount < 1 {
+		config.T38.RxReinvitePacketCount = 20
+	}
+	return config
+}
+
+func faxPostAnswerActions(config faxRuntimeConfig) string {
+	if !config.Enabled || !config.AutoDetect {
+		return ""
+	}
+	return `<action application="log" data="INFO AVoIP managed DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/><action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML core-managed-inbound' 20"/>`
+}
+
+func faxReceiveActions(config faxRuntimeConfig) string {
+	if !config.Enabled {
+		return ""
+	}
+	t38Enabled, requestT38, codec := "true", "true", "PCMU,PCMA"
+	if config.G711Only.Enabled {
+		t38Enabled, requestT38, codec = "false", "false", "PCMU"
+	}
+	return `<action application="log" data="INFO AVoIP fax receive start caller=${caller_id_number} did=${fax_original_destination} uuid=${uuid}"/>` +
+		`<action application="set" data="fax_enable_t38=` + t38Enabled + `"/>` +
+		`<action application="set" data="fax_enable_t38_request=` + requestT38 + `"/>` +
+		`<action application="set" data="fax_verbose=true"/>` +
+		`<action application="set" data="fax_t38_rx_reinvite_packet_count=` + strconv.Itoa(config.T38.RxReinvitePacketCount) + `"/>` +
+		`<action application="set" data="fax_disable_v17=` + strconv.FormatBool(config.T38.DisableV17) + `"/>` +
+		`<action application="set" data="fax_use_ecm=` + strconv.FormatBool(config.T38.UseEcm) + `"/>` +
+		`<action application="set" data="absolute_codec_string=` + codec + `"/>` +
+		`<action application="set" data="log_audio_stats_on_hangup=true"/>` +
+		`<action application="set" data="execute_on_media=log INFO AVoIP RTP media established"/>` +
+		`<action application="log" data="INFO AVoIP fax parameters uuid=${uuid} call_id=${sip_call_id} caller=${caller_id_number} did=${fax_original_destination} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} t38=${fax_t38_status} rx_reinvite_packets=${fax_t38_rx_reinvite_packet_count} enable_t38=${fax_enable_t38} enable_t38_request=${fax_enable_t38_request} disable_v17=${fax_disable_v17} use_ecm=${fax_use_ecm}"/>` +
+		`<action application="ring_ready"/><action application="answer"/><action application="set_media_stats"/>` +
+		`<action application="log" data="INFO AVoIP RTP before rxfax uuid=${uuid} call_id=${sip_call_id} local=${local_media_ip}:${local_media_port} remote=${remote_media_ip}:${remote_media_port} read_codec=${read_codec} write_codec=${write_codec} negotiated_codec=${rtp_use_codec_string} t38=${fax_t38_status} in_packets=${rtp_audio_in_packet_count} out_packets=${rtp_audio_out_packet_count} in_bytes=${rtp_audio_in_media_bytes} out_bytes=${rtp_audio_out_media_bytes}"/>` +
+		`<action application="rxfax" data="` + escapeXML(config.SpoolPath) + `/${uuid}.tif"/>` +
+		`<action application="set_media_stats"/>` +
+		`<action application="log" data="INFO AVoIP fax result uuid=${uuid} call_id=${sip_call_id} caller=${caller_id_number} did=${fax_original_destination} success=${fax_success} result_code=${fax_result_code} result=${fax_result_text} t38=${fax_t38_status} ecm=${fax_ecm_status} pages=${fax_document_transferred_pages} total_pages=${fax_document_total_pages} file=` + escapeXML(config.SpoolPath) + `/${uuid}.tif"/>` +
+		`<action application="hangup"/>`
+}
+
 // IVR definitions use stable IDs and asset names, never dialplan fragments.
 // Route destinations are resolved against the same catalog as ordinary DID
 // routing so IVR cannot introduce a second outbound authorization policy.
@@ -1433,6 +1493,8 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	playbackCount := 1
 	inboundExtensionRoute := false
 	detectFax := false
+	managedActions := ""
+	faxConfig := configuredFax()
 	callerID := ""
 	gateway := ""
 	providerID := ""
@@ -1491,10 +1553,21 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	}
 	if context == "core-managed-inbound" {
 		did := r.Form.Get("variable_sip_h_X-Core-Original-DID")
-		for _, d := range c.DIDs {
-			if d.Number == did && d.Site == site {
-				detectFax = d.detectFax()
-				switch d.Kind {
+		if destination == "did-post-answer" {
+			for _, d := range c.DIDs {
+				if d.Number == did && d.Site == site && d.detectFax() {
+					managedActions = faxPostAnswerActions(faxConfig)
+					break
+				}
+			}
+		} else if destination == "fax-receive" {
+			managedActions = faxReceiveActions(faxConfig)
+		}
+		if destination != "did-post-answer" && destination != "fax-receive" {
+			for _, d := range c.DIDs {
+				if d.Number == did && d.Site == site {
+					detectFax = d.detectFax()
+					switch d.Kind {
 				case "ivr":
 					transfer = "ivr-entry XML ivr"
 					transferIVRID = d.Destination
@@ -1524,6 +1597,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 						if endpoint.ID == d.Destination && endpoint.Site == site && endpoint.active() {
 							resolveAudioEndpoint(endpoint)
 						}
+					}
 					}
 				}
 			}
@@ -1612,7 +1686,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "text/xml")
-	if bridge == "" && transfer == "" && playback == "" && ivrActions == "" {
+	if bridge == "" && transfer == "" && playback == "" && ivrActions == "" && managedActions == "" {
 		io.WriteString(w, `<document type="freeswitch/xml"><section name="result"><result status="not found"/></section></document>`)
 		return
 	}
@@ -1639,8 +1713,11 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	if context == "core-managed-inbound" {
 		text += `<action application="set" data="fax_original_destination=` + escape(destination) + `"/>`
 		if detectFax {
-			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>`
+			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML core-managed-inbound"/>`
 		}
+	}
+	if managedActions != "" {
+		text += managedActions
 	}
 	if ivrActions != "" {
 		text += ivrActions
