@@ -37,6 +37,9 @@ data:
       {{- if and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled }}
       <X-PRE-PROCESS cmd="env-set" data="event_socket_password=$EVENT_SOCKET_PASSWORD"/>
       {{- end }}
+      {{- if or $.Values.freeswitch.cdr.enabled (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled) }}
+      <X-PRE-PROCESS cmd="env-set" data="core_db_dsn=$CORE_DB_DSN"/>
+      {{- end }}
       {{- if .Values.asterisk.enabled }}
       <X-PRE-PROCESS cmd="env-set" data="asterisk_peer_password=$ASTERISK_PEER_PASSWORD"/>
       {{- end }}

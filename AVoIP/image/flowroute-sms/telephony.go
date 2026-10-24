@@ -251,7 +251,10 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 	if address := telephonyEnv("AVOIP_ESL_ADDRESS"); address != "" {
 		var err error
 		connected := false
-		for _, target := range controlTargets(ctx, address) {
+		callQueriesOK := 0
+		var callQueryErr error
+		targets := controlTargets(ctx, address)
+		for _, target := range targets {
 			if _, currentErr := freeSwitchStatus(ctx, target, telephonyEnv("AVOIP_ESL_SECRET")); currentErr == nil {
 				connected = true
 				replicas = append(replicas, serviceReplica{Service: serviceName(address), Target: target, State: "connected"})
@@ -261,6 +264,10 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 			}
 			if currentCalls, currentErr := freeSwitchCalls(ctx, target, telephonyEnv("AVOIP_ESL_SECRET")); currentErr == nil {
 				calls = append(calls, currentCalls...)
+				callQueriesOK++
+			} else {
+				callQueryErr = currentErr
+				s.logger.Warn("freeswitch active channel query failed", "reason", telephonyErrorClass(currentErr), "detail", safeInterfaceError(currentErr))
 			}
 		}
 		if connected {
@@ -276,6 +283,13 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 			detail = safeInterfaceError(err)
 		}
 		systems = append(systems, telephonyStatus{Name: "FreeSWITCH Event Socket", State: state, Detail: detail})
+		if callQueriesOK == len(targets) {
+			systems = append(systems, telephonyStatus{Name: "FreeSWITCH active channels", State: "connected", Detail: fmt.Sprintf("Queried %d replica(s)", callQueriesOK)})
+		} else if callQueriesOK > 0 {
+			systems = append(systems, telephonyStatus{Name: "FreeSWITCH active channels", State: "degraded", Detail: fmt.Sprintf("Queried %d of %d replicas; one or more queries failed", callQueriesOK, len(targets))})
+		} else if callQueryErr != nil {
+			systems = append(systems, telephonyStatus{Name: "FreeSWITCH active channels", State: "unavailable", Detail: safeInterfaceError(callQueryErr)})
+		}
 	} else {
 		systems = append(systems, telephonyStatus{Name: "FreeSWITCH Event Socket", State: "not configured"})
 	}
@@ -329,8 +343,27 @@ func (s *server) telephony(w http.ResponseWriter, r *http.Request) {
 		}
 		systems = append(systems, telephonyStatus{Name: config.name, State: state, Detail: detail})
 	}
+	calls = uniqueLiveCalls(calls)
 	result["systems"], result["replicas"], result["registrations"], result["registrar_databases"], result["calls"], result["cdr"] = systems, replicas, registrations, registrarSystems, calls, cdr
 	writeJSON(w, result)
+}
+
+func uniqueLiveCalls(calls []liveCall) []liveCall {
+	seen := make(map[string]struct{}, len(calls))
+	unique := make([]liveCall, 0, len(calls))
+	for _, call := range calls {
+		if call.ID == "" {
+			unique = append(unique, call)
+			continue
+		}
+		key := call.System + "\x00" + call.ID
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		unique = append(unique, call)
+	}
+	return unique
 }
 
 func queryRegistrarContacts(ctx context.Context, database registrarDatabase) ([]registrationContact, error) {
@@ -508,7 +541,11 @@ func (s *server) freeSwitchDebug(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, target := range targets {
 		for _, command := range commands {
-			if _, err := eslCommand(ctx, target, telephonyEnv("AVOIP_ESL_SECRET"), command); err != nil {
+			response, err := eslCommand(ctx, target, telephonyEnv("AVOIP_ESL_SECRET"), command)
+			if err == nil && (strings.HasPrefix(strings.TrimSpace(response), "-ERR") || strings.HasPrefix(strings.TrimSpace(response), "-USAGE")) {
+				err = errors.New("FreeSWITCH rejected the logging command")
+			}
+			if err != nil {
 				s.logger.Warn("freeswitch debug control failed", "profile", request.Profile, "enabled", request.Enabled, "target", serviceName(target), "command", strings.TrimPrefix(command, "sofia profile "), "reason", telephonyErrorClass(err))
 				http.Error(w, "FreeSWITCH debug control failed", http.StatusBadGateway)
 				return
@@ -766,12 +803,25 @@ func freeSwitchHangup(ctx context.Context, address, secret, id string) error {
 		}
 	}
 	var lastErr error
+	found := false
 	for _, target := range controlTargets(ctx, address) {
+		exists, err := eslCommand(ctx, target, secret, "uuid_exists "+id)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if !strings.EqualFold(strings.TrimSpace(exists), "true") {
+			continue
+		}
+		found = true
 		if _, err := eslCommand(ctx, target, secret, "uuid_kill "+id+" NORMAL_CLEARING"); err == nil {
 			return nil
 		} else {
 			lastErr = err
 		}
+	}
+	if !found && lastErr == nil {
+		lastErr = errors.New("FreeSWITCH call UUID is not active on any replica")
 	}
 	return lastErr
 }

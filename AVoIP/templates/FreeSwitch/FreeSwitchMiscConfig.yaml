@@ -69,6 +69,9 @@ data:
       <modules>
         <load module="mod_console"/>
         <load module="mod_logfile"/>
+        {{- if or $.Values.freeswitch.cdr.enabled (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled) }}
+        <load module="mod_pgsql"/>
+        {{- end }}
         <load module="mod_sofia"/>
         {{- if $.Values.freeswitch.ldap.enabled }}
         <load module="mod_xml_ldap"/>
@@ -116,6 +119,12 @@ data:
         <param name="dialplan-timestamps" value="false"/>
         <param name="max-db-handles" value="50"/>
         <param name="db-handle-timeout" value="10"/>
+        {{- if or $.Values.freeswitch.cdr.enabled (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled) }}
+        <param name="core-db-dsn" value="$${core_db_dsn}"/>
+        <!-- FreeSWITCH replicas share this service database; startup must not
+             clear another live replica's channel rows. -->
+        <param name="auto-clear-sql" value="false"/>
+        {{- end }}
         <param name="max-sessions" value="1000"/>
         <param name="sessions-per-second" value="30"/>
         <param name="loglevel" value="info"/>
