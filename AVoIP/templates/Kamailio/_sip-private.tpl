@@ -1227,10 +1227,8 @@
         # created the header on the selected advertised socket. Without that
         # metadata lookup("location") falls back to a browser's randomized
         # .invalid Contact host and never reaches the live WebSocket flow.
-        if (!add_path_advertised_address(
-            "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}",
-            "owner",
-            "transport=tls")) {
+        set_send_socket_name("sipcore_owner_tls");
+        if (!add_path()) {
           sl_send_reply("503", "SIP Owner Path Unavailable");
           exit;
         }
