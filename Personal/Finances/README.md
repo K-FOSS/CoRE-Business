@@ -17,8 +17,12 @@ self-hosted personal finance manager, with the
 [BJW-S Common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 It serves `firefly.mylogin.space` through a Gateway API HTTPRoute and uses the
 upstream Firefly III container image at version `6.7.9`, pinned to its
-multi-platform Docker Hub manifest digest. Access is protected by Authentik
-forward authentication.
+multi-platform Docker Hub manifest digest. The digest was refreshed to the
+October 21 rebuild, which uses PHP 8.5.12 to fix the October PHP security
+release. The chart enforces the image's documented `www-data` identity as
+UID/GID 33, disables Kubernetes service-account token mounts, and applies
+resource limits to the web and scheduler containers. Access is protected by
+Authentik forward authentication.
 
 Authentication is intended to be seamless: Envoy sends the request to the
 site Authentik outpost, the outpost returns the authenticated user's email,
@@ -157,17 +161,17 @@ is intentionally not exposed through Forecastle because Forecastle is reserved
 for public services.
 
 The pattern follows the existing
-[Office ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml)
+[Office ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Office.yaml)
 and is selected by the current
-[Personal/Finances ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Finances.yaml).
+[Personal/Finances ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Finances.yaml).
 That ApplicationSet renders `Personal/Finances` with the Lovely plugin into
 `core-prod` on `core-home1-talos-prod`; its injected values provide the cluster,
 datacenter, region, and `psql-home1-yvr` PostgreSQL providers. The
-[Fitness Authentik configuration](https://github.com/K-FOSS/CoRE-Business/blob/main/Personal/Fitness/templates/Authentik.yaml)
+[Fitness Authentik configuration](https://slop.writemy.codes/CoRE/CoRE-Business/src/branch/main/Personal/Fitness/templates/Authentik.yaml)
 is also a reference for the access pattern.
 
 Firefly III creates its PostgreSQL role and database through the current
-[Backplane `mylogin.space` User resource definition](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml),
+[Backplane `mylogin.space` User resource definition](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml),
 using the generated connection Secret for `DB_DATABASE`, `DB_USERNAME` and
 `DB_PASSWORD`; Backplane
 auto-generates the username and matching database name. The chart uses the
@@ -188,7 +192,7 @@ The database host defaults to the local-scoped PostgreSQL endpoint
 ApplicationSet must inject those site values and the matching PostgreSQL
 provider references.
 
-The current [Personal/Finances ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Finances.yaml)
+The current [Personal/Finances ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Finances.yaml)
 selects this chart for `core-home1-talos-prod` in `core-prod`, uses the Lovely
 renderer, and injects `firefly-app-key` plus the Firefly PostgreSQL provider
 pair `psql-home1-yvr`.

@@ -52,6 +52,13 @@ sharing:
           repository: 'docker.io/alpine/socat'
           tag: '1.8.0.3'
           pullPolicy: 'IfNotPresent'
+        resources:
+          requests:
+            cpu: '10m'
+            memory: '16Mi'
+          limits:
+            cpu: '100m'
+            memory: '64Mi'
         port: '6380'
       host: ''
       port: '6379'

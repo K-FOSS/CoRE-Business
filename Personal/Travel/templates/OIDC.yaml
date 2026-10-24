@@ -140,6 +140,7 @@ spec:
         - name: 'configure'
           image: '{{ .Values.adventurelog.image.backendRepository }}:{{ .Values.adventurelog.image.tag }}@{{ .Values.adventurelog.image.backendDigest }}'
           imagePullPolicy: 'IfNotPresent'
+          resources: {{- toYaml .Values.adventurelog.resources.oidcSetup | nindent 12 }}
           command: ['/bin/sh', '-c']
           args:
             - >-

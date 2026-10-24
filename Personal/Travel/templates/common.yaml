@@ -479,7 +479,7 @@ route:
   "UPLOAD_LOCATION" "/app/uploads"
 }}
 {{- $_ := set .Values.controllers.airtrail.containers.airtrail "env" $airtrailEnv -}}
-{{- $_ := set .Values.controllers.airtrail.containers.airtrail "resources" .Values.trek.resources -}}
+{{- $_ := set .Values.controllers.airtrail.containers.airtrail "resources" .Values.airtrail.resources -}}
 {{- $_ := set .Values.persistence.media "storageClass" .Values.storage.className -}}
 {{- $_ := set .Values.persistence.media "size" .Values.storage.mediaSize -}}
 {{- $_ := set (index .Values.persistence "trek-data") "storageClass" .Values.storage.className -}}

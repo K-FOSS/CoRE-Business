@@ -2,19 +2,26 @@
 
 This chart deploys the [OpenProject Community image](https://www.openproject.org/)
 with the [BJW-S common library](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
-The active [Projects ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Projects.yaml)
+The active [Projects ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Projects.yaml)
 selects `core-home1-talos-prod`, renders this path with Lovely and deploys it to
 `core-prod` at `projects.mylogin.space`.
 
 ## Identity and secret loading
 
 The chart uses the current
-[`mylogin.space/v1alpha1` User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+[`mylogin.space/v1alpha1` User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
 and its active `sso-user` Composition. The claim grants the existing
 `Gmdfb5HXbk` PostgreSQL database and named S3 bucket, creates temporary
 LDAP-derived S3 credentials, and writes them to
 `business-projects-openproject-s3-prod`. The required credential reference is
 explicit because the XRD rejects `createCredentials: true` without it.
+
+The OpenProject pod disables service-account token mounting and has explicit
+CPU and memory requests and limits. The image remains on the `12` release line;
+the required major-version database migration path has not been staged in this
+change. The container user is not overridden because the current image startup
+and mounted-volume ownership behavior have not been validated for a forced
+non-root UID.
 
 The OpenProject pod reads the User claim Secret for the generated PostgreSQL
 username/password and bucket directory, and reads the generated S3 Secret for

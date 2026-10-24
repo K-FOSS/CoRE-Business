@@ -6,6 +6,7 @@ global:
   nameOverride: {{ .Release.Name | quote }}
 
 defaultPodOptions:
+  automountServiceAccountToken: false
   labels:
     logs: 'loki-myloginspace'
 

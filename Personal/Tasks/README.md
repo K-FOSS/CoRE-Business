@@ -44,8 +44,10 @@ with the strict redirect URI `https://habits.mylogin.space/auth-callback`,
 restricted to `Home Users`. HabitSync uses its own retained JWT Secret and
 does not share Donetick's credentials. Its upstream entrypoint must start as
 root to create UID/GID `6842`, repair `/data` ownership, and then drop to that
-UID/GID with `su-exec`; the chart grants only the required bootstrap
-capabilities and keeps the application process unprivileged.
+UID/GID with `su-exec`; the chart grants only `CHOWN`, `SETGID`, and `SETUID`
+for that bootstrap, drops other capabilities, and keeps the application
+process unprivileged. Both containers have bounded CPU and memory requests and
+limits, and neither pod mounts a Kubernetes service-account token.
 The HabitSync issuer URL intentionally retains Authentik's trailing `/` so
 Spring Security's issuer validation matches the discovery document.
 
@@ -63,16 +65,16 @@ Workspaces remain separate application login clients. The forward-auth
 applications set Authentik's `meta_hide` flag, so they do not appear in users'
 Application Dashboard while remaining available to the outpost.
 
-No Backplane ApplicationSet currently selects `Personal/Tasks` in this
-worktree. Before activation, add or confirm the owning ApplicationSet and
-configure its Lovely renderer, destination namespace, Gateway attachment and
-site-specific values, including `cluster.name`, `datacenter` and `region`.
-The current storage definitions are the Backplane
-[storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
-and [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml);
+The active [Personal Tasks ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Tasks.yaml)
+selects `core-home1-talos-prod`, renders this chart through Lovely, and deploys
+to `core-prod`. It injects `cluster.name`, `datacenter`, and `region`, and
+attaches both routes to `main-gw` / `https-myloginspace`. The current storage
+definitions are the Backplane
+[storage ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml)
+and [PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml);
 PostgreSQL host/provider selection follows those injected site values; do not
 replace it with local defaults. The User API contract is defined by the
-Backplane [User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
+Backplane [User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
 Back up both application databases and the
 uploads PVC before migration or deletion. The StorageClass is Retain and is
 site-specific; do not rename it after provisioning without planning a volume

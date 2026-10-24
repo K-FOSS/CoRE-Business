@@ -26,7 +26,7 @@ dawarich:
     - 'history.core-prod.svc.cluster.local'
   image:
     repository: 'docker.io/freikin/dawarich'
-    tag: '1.15.0@sha256:56be3eb19c9a1d735217e8c16283a9ec63e47d91d9d70cdd23102181d51b579b'
+    tag: '1.17.0@sha256:207dc86f8baa8fcf5b585f31186bf81b55added9c102a96f308d640e964ea60f'
     pullPolicy: 'IfNotPresent'
   database:
     # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.

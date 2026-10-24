@@ -42,6 +42,8 @@ are pruned only after the replacement resources become healthy.
 All Mail Deployments opt into [Stakater Reloader](https://docs.stakater.com/reloader/)
 automatic discovery, so changes to referenced ConfigMaps and Secrets trigger
 their normal Kubernetes rolling-update strategy.
+Workload pods disable automatic service-account token mounts; Mail containers
+do not need Kubernetes API credentials.
 
 ```text
 Internet SMTP :25/:465/:587

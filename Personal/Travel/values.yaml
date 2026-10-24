@@ -110,14 +110,21 @@ adventurelog:
       limits:
         cpu: '2'
         memory: '2Gi'
+    oidcSetup:
+      requests:
+        cpu: '100m'
+        memory: '256Mi'
+      limits:
+        cpu: '1'
+        memory: '1Gi'
 
 trek:
   hostname: 'trek.mylogin.space'
   allowInternalNetwork: true
   image:
     repository: 'docker.io/mauriceboe/trek'
-    tag: '4.3.0'
-    digest: 'sha256:3521a3a2f121f59c3a30253a8f34fc7941a41ea73e8a6450769ae60e81f1de2a'
+    tag: '4.3.4'
+    digest: 'sha256:6b7c8f275cc0ff3ca44979084bf078f553c96a0564493a132c1631ffaf6c3e77'
   runtimeSecret:
     generatorName: 'trek-runtime-generator'
     secretName: 'trek-runtime'
@@ -145,8 +152,15 @@ airtrail:
   hostname: 'airtrail.mylogin.space'
   image:
     repository: 'docker.io/johly/airtrail'
-    tag: 'v3.12.0'
-    digest: 'sha256:4de4ca7dd57a95dac88af3f3e0cd5309006d9f672859a58b28d0c1ca1c31986d'
+    tag: 'v3.13.0'
+    digest: 'sha256:b49918c441cd52ffd2ef795738e58031abbcfd1e8094a4365672282bb6b805b1'
+  resources:
+    requests:
+      cpu: '100m'
+      memory: '256Mi'
+    limits:
+      cpu: '1'
+      memory: '1Gi'
   database:
     # AirTrail's DB_USERNAME and DB_DATABASE_NAME use the generated User
     # secret's username, matching the database created by the Backplane User.

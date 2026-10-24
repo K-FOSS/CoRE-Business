@@ -29,7 +29,7 @@ authentik:
 firefly:
   hostname: 'firefly.mylogin.space'
   imageTag: 'latest'
-  imageDigest: 'sha256:a2b53539338d1cd04d341b229c3806cb178cf64c72459060e3ed34bec4167bd8'
+  imageDigest: 'sha256:4409f9f0f87378ba95d40811352f4f49338d276bb638c1e6d18a5579f332fbe8'
   # Created once by External Secrets; keep this stable because changing APP_KEY
   # invalidates encrypted sessions and existing encrypted data.
   appKeySecret: 'firefly-app-key'

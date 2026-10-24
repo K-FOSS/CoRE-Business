@@ -15,24 +15,27 @@ It serves `gym.mylogin.space` through a Gateway API HTTPRoute. The web
 container proxies `/api` to the internal API Service so openGym's WebAuthn
 passkey flow remains on one HTTPS origin.
 
-The owning [Fitness ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Fitness.yaml)
+The owning [Fitness ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Fitness.yaml)
 selects `core-home1-talos-prod`, deploys to `core-fitness-prod`, and renders
 this path with the [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
 It injects the cluster identity and the `main-gw` / `https-myloginspace` Gateway
 attachment. The live endpoint is `https://gym.mylogin.space`.
 
-The chart uses the upstream `1.3.5` web and API images and initializes the
-exercise media PVC from a pinned commit of the
-[exercise dataset](https://github.com/hasaneyldrm/exercises-dataset). User
-profiles, passkeys, workout history, session state and generated notification
-keys are retained on a 10Gi Longhorn PVC at `/data`; the media PVC is retained
-separately. Back up both claims before removal or migration.
+The chart uses the upstream [openGym v1.4.2 release](https://github.com/DuarteSantos8/openGym/releases/tag/v1.4.2).
+That release includes its exercise media in the web image, so the chart no
+longer downloads or mounts a separate media dataset. User profiles, passkeys,
+workout history, session state and generated notification keys remain on the
+10Gi Longhorn PVC at `/data`. The former 2Gi media PVC remains retained in the
+chart but is no longer mounted; inspect it before any manual cleanup. Back up
+the `/data` claim before migration or removal.
 
-The web container drops all Linux capabilities except `CHOWN`, `SETGID` and
-`SETUID`. These narrow exceptions are required because the upstream
-[Nginx web image](https://github.com/DuarteSantos8/openGym/blob/main/web/Dockerfile)
-changes ownership of `/var/cache/nginx/client_temp` and drops workers to UID/GID
-101 during startup.
+Both application pods disable automatic Kubernetes service-account token
+mounts and run non-root with `RuntimeDefault` seccomp. The API runs as UID/GID
+65532 with a matching `fsGroup` for `/data`, and both containers use a read-only
+root filesystem with a bounded `/tmp` `emptyDir`. The web image runs as UID/GID
+101 and listens on port 8080, so it needs no added Linux capabilities.
+Upstream's API and web Dockerfiles upgrade Alpine packages during the release
+image build, which brings in the current Node.js and CA certificate fixes.
 
 The web container's Docker-only `127.0.0.11` resolver is overridden with the
 site's cluster DNS endpoint, currently `k0s.resolvemy.host` (resolved in-cluster

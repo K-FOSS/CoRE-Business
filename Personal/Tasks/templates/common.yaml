@@ -71,7 +71,7 @@ controllers:
           runAsGroup: 0
           runAsNonRoot: false
           capabilities:
-            add: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID']
+            add: ['CHOWN', 'SETGID', 'SETUID']
             drop: ['ALL']
         env: {}
         resources: {}

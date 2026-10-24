@@ -22,7 +22,11 @@ controllers:
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
+            add: ['CHOWN', 'SETGID', 'SETUID']
             drop: ['ALL']
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         env: {}
         resources: {}
     containers:
@@ -36,7 +40,11 @@ controllers:
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
+            add: ['CHOWN', 'SETGID', 'SETUID']
             drop: ['ALL']
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         env: {}
         resources: {}
         probes:
@@ -82,7 +90,11 @@ controllers:
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
+            add: ['CHOWN', 'SETGID', 'SETUID']
             drop: ['ALL']
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
         env: {}
         resources: {}
         probes:
@@ -203,6 +215,8 @@ route:
   "OIDC_AUTO_REGISTER" "true"
   "ALLOW_EMAIL_PASSWORD_REGISTRATION" "false"
   "ALLOW_EMAIL_PASSWORD_LOGIN" "false"
+  "PUID" "1000"
+  "PGID" "1000"
 }}
 {{- $_ := set .Values.controllers.app.containers.dawarich "env" $env -}}
 {{- $_ := set .Values.controllers.app.initContainers.migrate "env" $env -}}

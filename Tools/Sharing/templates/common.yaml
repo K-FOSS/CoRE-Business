@@ -236,7 +236,8 @@ route:
     "pullPolicy" .Values.sharing.kutt.redis.tlsProxy.image.pullPolicy
   )
   "command" (list "socat" (printf "TCP-LISTEN:%s,fork,reuseaddr,bind=127.0.0.1" .Values.sharing.kutt.redis.tlsProxy.port) (printf "OPENSSL:%s:%s,verify=0" $redisHost .Values.sharing.kutt.redis.port))
-  "securityContext" (dict "allowPrivilegeEscalation" false "capabilities" (dict "drop" (list "ALL")))
+  "securityContext" (dict "allowPrivilegeEscalation" false "runAsNonRoot" true "runAsUser" 65532 "runAsGroup" 65532 "capabilities" (dict "drop" (list "ALL")))
+  "resources" .Values.sharing.kutt.redis.tlsProxy.resources
 ) -}}
 {{- $_ := set $env "REDIS_HOST" "127.0.0.1" -}}
 {{- $_ := set $env "REDIS_PORT" .Values.sharing.kutt.redis.tlsProxy.port -}}

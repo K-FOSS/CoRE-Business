@@ -17,10 +17,7 @@ gateway:
 
 opengym:
   hostname: 'gym.mylogin.space'
-  imageTag: '1.3.5'
-  mediaImage:
-    repository: 'alpine/git'
-    tag: '2.45.2'
+  imageTag: '1.4.2'
   resources:
     web:
       requests:
@@ -28,14 +25,14 @@ opengym:
         memory: '64Mi'
       limits:
         cpu: '500m'
-        memory: '256Mi'
+        memory: '128Mi'
     api:
       requests:
         cpu: '25m'
         memory: '64Mi'
       limits:
         cpu: '500m'
-        memory: '256Mi'
+        memory: '512Mi'
 
 authentik:
   application:

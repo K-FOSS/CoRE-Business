@@ -751,6 +751,7 @@ global:
   createDefaultServiceAccount: false
 
 defaultPodOptions:
+  automountServiceAccountToken: false
   labels:
     logs: loki-myloginspace
 

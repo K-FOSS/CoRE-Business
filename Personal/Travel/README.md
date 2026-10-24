@@ -4,7 +4,9 @@ This directory contains personal travel, flight, routing, adventure planning,
 logging, and tracking applications for
 [K-FOSS/CoRE-Business](https://github.com/K-FOSS/CoRE-Business).
 
-The current stack is AdventureLog, TREK, and AirTrail: personal
+The active stack is AdventureLog, TREK, and AirTrail, deployed by the
+[Personal Travel ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Travel.yaml)
+to `core-home1-talos-prod` in `core-prod` through Lovely. It is a
 [BJW-S Common library chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 AdventureLog is the [self-hosted travel tracker and trip planner](https://adventurelog.app/)
 from [seanmorley15/AdventureLog](https://github.com/seanmorley15/AdventureLog), pinned here
@@ -23,7 +25,11 @@ TREK's `ALLOW_INTERNAL_NETWORK` setting is configurable as the boolean
 Its `ALLOWED_ORIGINS` includes both the public hostname and the in-cluster
 Service DNS address generated from the release namespace.
 The Authentik provider uses the site's `tls` certificate key pair so TREK receives
-an asymmetric (RS256) ID token, as required by TREK 4.3.0.
+an asymmetric (RS256) ID token, as required by TREK 4.3.4.
+TREK is pinned to v4.3.4, whose release rebuilds the image with patched Node.js.
+Its entrypoint starts as root to fix data ownership, then drops to the image's
+`node` user; `CHOWN`, `SETUID`, and `SETGID` are retained only for that
+transition.
 
 The AdventureLog frontend, AdventureLog API, TREK UI, and AirTrail routes are protected
 fail-closed by Envoy Gateway
@@ -50,10 +56,10 @@ the site's shared Backplane database service through a
 `mylogin.space/v1alpha1 User` resource, and the chart enables the required
 PostGIS extension with Crossplane.
 The relevant site services are owned by the Backplane
-[`Storage/Base.yaml`](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
-and [`Storage/PSQL.yaml`](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
+[Storage ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml)
+and [PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
 ApplicationSets; the database user contract is defined by the
-[Backplane User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
+[Backplane User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
 The generated Django secret and first-admin password are retained by External
 Secrets; no credential values are committed.
 
@@ -69,7 +75,7 @@ The chart also provisions an independent PostgreSQL identity for AirTrail throug
 `mylogin.space/v1alpha1 User` resource. It publishes the generated
 `username/password` connection secret as `airtrail-database`; AirTrail's
 `DB_USERNAME`, `DB_DATABASE_NAME`, and `DB_URL` use that generated username
-field. AirTrail is pinned to v3.12.0 by digest, exposed at
+field. AirTrail is pinned to v3.13.0 by digest, exposed at
 `airtrail.mylogin.space`, and stores uploads on a retained Longhorn PVC. This
 follows [AirTrail's PostgreSQL configuration](https://github.com/JohanOhly/AirTrail/blob/main/.env.example)
 and its [production Compose definition](https://github.com/JohanOhly/AirTrail/blob/main/docker/production/compose.yml).
@@ -89,14 +95,12 @@ PVC names changed from the earlier `adventurelog-trek-*` names; the old claims
 are retained by Kubernetes and require an explicit data migration before their
 contents can be used by the renamed claims.
 
-The current Backplane tree does not yet contain an owning AdventureLog
-ApplicationSet. Add one under
-[`Apps/Business/Personal/`](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Apps/Business/Personal)
-before expecting Argo CD to deploy this directory. That ApplicationSet must
-inject `cluster.name`, `datacenter`, and `region`; PostgreSQL provider names
-default to `psql-<datacenter>-<region>` and can be overridden when needed. It
-must render this directory through the
-[Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
+All four application containers disable Kubernetes service-account token
+mounting and have CPU and memory requests and limits. The AdventureLog OIDC
+setup Job also has bounded resources. TREK and AirTrail use independently
+configured limits. The current AirTrail image embeds Node
+22.23.3, which predates the October 21 Node.js security release; no later
+stable image rebuild with Node 22.23.4 was available during this review.
 
 The first-admin password is generated into the `adventurelog-admin` Secret and
 must be retrieved through the cluster's approved secret-access workflow. For

@@ -148,7 +148,7 @@ notes:
 | [Terminal](Terminal/README.md) | [Terminal](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Terminal.yaml) | Browser-accessible terminal workload. |
 | [CyberChef](Tools/CyberChef/README.md) | [Cyberchef](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Cyberchef.yaml) | Public/private Gateway API route for CyberChef. |
 | [Draw.io](Tools/DrawIO/README.md) | [DrawIO](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/DrawIO.yaml) | Public/private Gateway API route for Draw.io. |
-| [openGym](Personal/Fitness/README.md) | [Fitness](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Fitness.yaml) | Personal workout tracker at `gym.mylogin.space`, with retained Longhorn data and exercise-media storage. |
+| [openGym](Personal/Fitness/README.md) | [Fitness](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Fitness.yaml) | Personal workout tracker at `gym.mylogin.space`, with retained Longhorn data, bundled exercise media, and a retained legacy media claim. |
 | [SnapOtter conversions](Tools/Conversions/README.md) | [Conversions](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Conversions.yaml) | Private Authentik-secured conversion service at `conotter.mylogin.space`, with PostgreSQL, Dragonfly and retained Longhorn data. |
 | [Fediverse social](Social/Fediverse/README.md) | [Fediverse](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Social/Fediverse.yaml) | Live federated-social stack currently serving Mastodon at `mastodon.mylogin.space`, with Bluesky support and room for PeerTube/Lemmy. |
 

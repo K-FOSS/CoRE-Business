@@ -416,14 +416,18 @@ public route.
 ## Repository status
 
 The live [openGym chart](../Personal/Fitness/README.md) is owned by the
-[Fitness ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Personal/Fitness.yaml).
+[Fitness ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Personal/Fitness.yaml).
 It deploys through Lovely to `core-fitness-prod` on
 `core-home1-talos-prod`, with a Gateway API route at `gym.mylogin.space`,
-retained Longhorn data and exercise-media claims, and Authentik forward-auth.
-The ApplicationSet preserves resources on deletion; back up both claims before
-maintenance, migration or removal. Verify `/api/health`, profile creation,
-passkey sign-in from a second device and exercise-media loading after
-reconciliation.
+retained Longhorn data and a legacy exercise-media claim, and Authentik
+forward-auth. openGym v1.4.2 bundles exercise media in its web image; the
+legacy media claim is retained but unmounted. Both pods disable automatic
+service-account token mounts, run non-root with read-only root filesystems,
+bounded `/tmp` storage and resource limits. The ApplicationSet preserves
+resources on deletion; back up the `/data` claim before migration or removal,
+and inspect the legacy media claim before manual cleanup. Verify
+`/api/health`, profile creation, passkey sign-in from a second device and
+exercise-media loading after reconciliation.
 
 The prepared [LinkStack chart](../Social/Links/README.md) has no active
 Backplane owner. It follows the current single-replica, retained-Longhorn and

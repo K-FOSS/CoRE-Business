@@ -35,7 +35,13 @@ openproject:
     crossplaneProvider: ''
     terraformProvider: ''
 
-  resources: {}
+  resources:
+    requests:
+      cpu: '1'
+      memory: '2Gi'
+    limits:
+      cpu: '3'
+      memory: '6Gi'
 
   persistence:
     storageClassName: 'local-path'

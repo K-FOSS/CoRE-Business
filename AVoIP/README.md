@@ -338,6 +338,10 @@ and [RTPEngine NG protocol documentation](https://github.com/sipwise/rtpengine/b
 
 ## Components and security
 
+Generated application pods disable Kubernetes service-account token mounts by
+default; the services communicate through their declared SIP, HTTP, database,
+and cache endpoints rather than the Kubernetes API.
+
 The complete current DID flow, SIP messaging path, registration behavior, and
 operational caveats are documented in [docs/PHONE-TREE.md](docs/PHONE-TREE.md).
 The optional direct-extension voicemail path, including voicemail-only sites
