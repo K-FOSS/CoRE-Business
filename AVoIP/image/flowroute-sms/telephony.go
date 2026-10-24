@@ -500,37 +500,27 @@ func (s *server) hangupCall(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func validFreeSwitchProfile(profile string) bool {
-	switch profile {
-	case "asterisk", "external", "kamailio", "core-managed", "flowroute":
-		return true
-	default:
-		return false
-	}
-}
-
 func (s *server) freeSwitchDebug(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r, true) {
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	var request struct {
-		Profile string `json:"profile"`
-		Enabled bool   `json:"enabled"`
+		Enabled *bool `json:"enabled"`
 	}
-	if json.NewDecoder(r.Body).Decode(&request) != nil || !validFreeSwitchProfile(request.Profile) {
-		http.Error(w, "invalid FreeSWITCH profile", http.StatusBadRequest)
+	if json.NewDecoder(r.Body).Decode(&request) != nil || request.Enabled == nil {
+		http.Error(w, "enabled is required", http.StatusBadRequest)
 		return
 	}
-	level := "0"
-	if request.Enabled {
-		level = "6"
+	level := "info"
+	if *request.Enabled {
+		level = "debug"
 	}
 	commands := []string{
-		"sofia profile " + request.Profile + " debug " + level,
-		// Never enable raw SIP tracing here: it can persist Digest
-		// Authorization headers in application logs.
-		"sofia profile " + request.Profile + " siptrace off",
+		"fsctl loglevel " + level,
+		// Keep packet tracing disabled: it can persist Digest Authorization
+		// headers and other credentials in application logs.
+		"sofia global siptrace off",
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
@@ -546,17 +536,17 @@ func (s *server) freeSwitchDebug(w http.ResponseWriter, r *http.Request) {
 				err = errors.New("FreeSWITCH rejected the logging command")
 			}
 			if err != nil {
-				s.logger.Warn("freeswitch debug control failed", "profile", request.Profile, "enabled", request.Enabled, "target", serviceName(target), "command", strings.TrimPrefix(command, "sofia profile "), "reason", telephonyErrorClass(err))
+				s.logger.Warn("freeswitch debug control failed", "enabled", *request.Enabled, "target", serviceName(target), "command", command, "reason", telephonyErrorClass(err))
 				http.Error(w, "FreeSWITCH debug control failed", http.StatusBadGateway)
 				return
 			}
 		}
 	}
-	if _, err := s.pool.Exec(ctx, `INSERT INTO public.avoip_admin_audit(actor,action,object_id) VALUES($1,$2,$3)`, r.Header.Get("X-Authentik-Username"), "freeswitch_debug", request.Profile+":"+strconv.FormatBool(request.Enabled)); err != nil {
+	if _, err := s.pool.Exec(ctx, `INSERT INTO public.avoip_admin_audit(actor,action,object_id) VALUES($1,$2,$3)`, r.Header.Get("X-Authentik-Username"), "freeswitch_debug", "global:"+strconv.FormatBool(*request.Enabled)); err != nil {
 		http.Error(w, "debug changed but audit write failed", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, map[string]any{"system": "freeswitch", "profile": request.Profile, "enabled": request.Enabled, "replicas": len(targets)})
+	writeJSON(w, map[string]any{"system": "freeswitch", "scope": "global", "enabled": *request.Enabled, "replicas": len(targets)})
 }
 
 func queryCDR(ctx context.Context, databaseURL, table, started, caller, called, duration, disposition string) ([]cdrRecord, error) {
