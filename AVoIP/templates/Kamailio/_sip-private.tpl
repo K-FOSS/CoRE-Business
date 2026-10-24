@@ -1222,7 +1222,18 @@
       remove_hf("Path");
       {{- if .Values.kamailio.websocketHA.enabled }}
       if ($var(side) eq "sipcore") {
-        append_hf("Path: <sip:SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr>\r\n");
+        # Build the owner route through path.so instead of appending a raw
+        # header. The registrar stores Path only when the path module has
+        # created the header on the selected advertised socket. Without that
+        # metadata lookup("location") falls back to a browser's randomized
+        # .invalid Contact host and never reaches the live WebSocket flow.
+        if (!add_path_advertised_address(
+            "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}",
+            "owner",
+            "transport=tls")) {
+          sl_send_reply("503", "SIP Owner Path Unavailable");
+          exit;
+        }
       }
       {{- end }}
       # registrar.save() sends its own 200 or error response.
