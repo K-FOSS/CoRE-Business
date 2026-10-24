@@ -1960,9 +1960,9 @@ controllers:
           - |
             {{- if or .Values.freeswitch.cdr.enabled (and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled) }}
             # Core channel inventory and CDR use this service's PostgreSQL DB.
-            exec /usr/bin/freeswitch -nonat -nocal -nort -nf -nc </dev/null
+            exec /usr/bin/freeswitch -nonat -nocal -nort -nf </dev/null
             {{- else }}
-            exec /usr/bin/freeswitch -nonat -nocal -nort -nosql -nf -nc </dev/null
+            exec /usr/bin/freeswitch -nonat -nocal -nort -nosql -nf </dev/null
             {{- end }}
         image:
           repository: '{{ .Values.freeswitch.image.repository }}'
