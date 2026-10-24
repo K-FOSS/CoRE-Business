@@ -495,7 +495,7 @@ data:
     # the pod owner URI. Select the same policy by the local owner listener
     # before SNI matching, otherwise the strict default profile rejects the
     # valid FreeSWITCH connection during certificate verification.
-    [server:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}]
+    [server:0.0.0.0:{{ $.Values.asterisk.sipCore.privateEgressPort }}]
     method = TLSv1.2+
     verify_certificate = no
     require_certificate = no
