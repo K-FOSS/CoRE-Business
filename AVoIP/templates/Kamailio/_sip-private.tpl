@@ -863,7 +863,9 @@
       # belongs to Envoy's real peer. handle_ruri_alias() only sets $du;
       # without otcpid Kamailio may dial Envoy's ephemeral source port.
       if ($var(sipcore_alias_result) == 1 && $dP == "tls" && $du != $null) {
-        $var(sipcore_flow_peer) = "$dd:$dp";
+        # Build the peer from runtime pseudo-variables. Quoting "$dd:$dp"
+        # leaves those tokens literal for tcp_get_conid() to resolve.
+        $var(sipcore_flow_peer) = $dd + ":" + $dp;
         $var(sipcore_flow_conid) = 0;
         if (!tcp_get_conid("$var(sipcore_flow_peer)", "$var(sipcore_flow_conid)") ||
             !tcp_conid_alive("$var(sipcore_flow_conid)")) {
