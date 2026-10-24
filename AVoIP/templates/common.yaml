@@ -1463,6 +1463,7 @@ controllers:
         seccompProfile:
           type: 'RuntimeDefault'
       labels:
+        app.kubernetes.io/name: 'avoip-registrar-credential-sync'
         app.kubernetes.io/controller: '{{ include "avoip.kamailio.component" $instance }}'
         app.kubernetes.io/instance: '{{ $.Release.Name }}'
     containers:
