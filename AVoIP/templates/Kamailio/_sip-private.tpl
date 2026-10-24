@@ -1227,10 +1227,13 @@
         # host with this registration pod's owner listener. The owner listener
         # consumes the alias and writes the request to the existing local WS
         # flow; it is not a new client connection or a fixed pod affinity rule.
-        if ($proto == "ws" && is_present_hf("Contact") && $hdr(Contact) != "*" &&
-            !subst_hf("Contact", "/@[^;>; ]+;transport=ws/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls/ig", "a")) {
-          sl_send_reply("400", "Unsupported WebSocket Contact");
-          exit;
+        if ($proto == "ws" && is_present_hf("Contact") && $hdr(Contact) != "*") {
+          if (!subst_hf("Contact", "/@[^;>; ]+/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}/ig", "a") ||
+              !subst_hf("Contact", "/;transport=ws/;transport=tls/ig", "a")) {
+            sl_send_reply("400", "Unsupported WebSocket Contact");
+            exit;
+          }
+          xlog("L_INFO", "SIPCORE FLOW stage=registrar-owner-contact pod=$env(POD_NAME) callid=$ci method=REGISTER contact=$hdr(Contact) transport=$proto cseq=$hdr(CSeq)\n");
         }
         # Build the owner route through path.so instead of appending a raw
         # header. The registrar stores Path only when the path module has
