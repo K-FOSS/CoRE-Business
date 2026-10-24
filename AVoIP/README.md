@@ -153,8 +153,11 @@ and SDES from the independent internal RTP/AVP leg. This does not change the
 SIP source allowlist. See [registered-client call troubleshooting](docs/SIP-CLIENT-CALL-FAILURES.md)
 for the observed `INCOMPATIBLE_DESTINATION` failures and live verification.
 
-YXL's and YVR's `internal` and `carrier` Kamailio instances are configured
-for a mutual-TLS SIPS transport through the existing Envoy Gateway. The
+YXL's and YVR's `internal-ha` and `carrier` Kamailio instances are configured
+for a mutual-TLS SIPS transport through the existing Envoy Gateway. YVR's
+FreeSWITCH outbound proxy defaults to the three-replica `internal-ha` service;
+the separate `internal-websocket` service remains the client registration and
+WebSocket ingress path. The
 client identities use each site's existing Vault backed `core-tls-vault`
 ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
 `7101` to place full `+1` plus ten digit calls through the managed extension

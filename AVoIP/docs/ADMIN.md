@@ -118,6 +118,14 @@ optional absolute expiry. Overlapping signaling networks across providers are
 rejected because the source would be ambiguous. Number ownership evidence is
 an admin-reviewed entitlement, not STIR/SHAKEN authentication of an inbound caller.
 
+Provider selection, site gateway mapping, extension authorization, caller-ID
+selection, and egress limits are managed in the shared AVoIP Admin SIP catalog.
+The FreeSWITCH-to-Kamailio transport target is deployment infrastructure: the
+chart defaults it to `internal-ha`, and YVR explicitly selects that three-replica
+private SBC. TLS identities, peer allowlists, and Kubernetes Services remain
+deployment-managed so Admin catalog changes cannot alter transport trust or
+network policy. The WebSocket registrar remains a distinct ingress service.
+
 Provider **Supported codecs** declares the upstream capability set, and
 **Codec order** sets its preferred order. The FreeSWITCH XML dialplan applies
 that order to the outbound gateway leg with the documented

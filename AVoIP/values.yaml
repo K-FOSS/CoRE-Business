@@ -989,7 +989,7 @@ asterisk:
     registrarBackend: 'asterisk'
     # Route SIP Core WebSocket signaling through this dedicated private SBC.
     # The selected instance must be enabled with role private-sbc.
-    kamailioInstance: 'internal'
+    kamailioInstance: 'internal-ha'
     # Optional Envoy backend selector for staged cutover/rollback. Empty follows
     # kamailioInstance; the selected instance above remains Asterisk's SIP path owner.
     ingressKamailioInstance: ''
