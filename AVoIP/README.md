@@ -555,6 +555,18 @@ names as `psql-<datacenter>-<region>`, and FreeSWITCH connects to
 limited to application-table creation because the pinned SQL provider manages
 PostgreSQL roles, databases, and schemas, not tables.
 
+When the AVoIP Admin telephony viewer is enabled, its CDR reader uses the
+existing Asterisk and FreeSWITCH `User` connection Secrets (`psqlURI`) by
+default, provided each PBX's CDR writer is enabled. This only adds read-side
+references to the Admin Deployment; it does not change either PBX's CDR
+configuration, credentials, or writes. Admin marks its PostgreSQL sessions
+read-only and queries at most 50 recent rows from each existing `cdr` table.
+Set `avoipAdmin.telephony.asterisk.cdrConnectionSecret` or
+`avoipAdmin.telephony.freeswitch.cdrConnectionSecret` to override either
+reference with a database-enforced read-only connection. The PBX roles retain
+their existing database grants, so use those overrides when credential-level
+read-only access is required.
+
 When `flowrouteSMS.enabled` is true, the chart creates a
 `User.mylogin.space/v1alpha1` claim named `core-voice-<cluster>-<region>` with
 `spec.name: CoRE-Voice` and no fixed username. The current Backplane User
