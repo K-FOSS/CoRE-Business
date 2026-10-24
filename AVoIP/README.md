@@ -168,7 +168,7 @@ outbound SIPS TLSRoute stays enabled. Inbound DID destinations are managed in
 AVoIP Admin, including Audio Endpoints. YXL uses the existing authenticated
 carrier inter-site link for that handoff. Admin can select a FreeSWITCH IVR or
 another configured destination. See the [outbound runbook](docs/OUTBOUND-PILOT.md)
-for the Asterisk-to-Kamailio carrier path, dynamic provider selection, trust
+for the managed FreeSWITCH-to-Kamailio carrier path, dynamic provider selection, trust
 boundaries, canonical number format and quotas, and the
 [inter-site voice guide](docs/INTERSITE-VOICE.md) for transfer and rollout
 verification. The [Flowroute teardown runbook](docs/avoip/runbooks/outbound-flowroute-teardown.md)
@@ -450,8 +450,8 @@ The Asterisk `freeswitch` endpoint is identified by its SIP username and
 authenticates inbound requests with SIP Digest. An External Secrets Password
 generator creates a random peer password in an immutable, retained Secret
 referenced by both Asterisk and FreeSWITCH; no internal pod IP or cluster CIDR
-is used as identity. Asterisk's existing outbound auth remains configured.
-Raw SIP packet traces are suppressed on the authenticated peer path so Digest
+is used as identity. Asterisk only authenticates FreeSWITCH's incoming private
+voicemail handoff. Raw SIP packet traces are suppressed on that peer path so Digest
 Authorization headers are not written to logs. See
 [SIPCORE-HASS.md](docs/SIPCORE-HASS.md) for endpoint identification and the
 WebSocket transport boundary.

@@ -31,7 +31,7 @@ The Admin catalog is the source of truth for both DID destinations. A DID may
 select an IVR, extension, or managed Audio Endpoint; playback endpoints are
 resolved from Admin at runtime and are not backed by static FreeSWITCH or
 Asterisk extension blocks. Personal SIP Core extensions ring all registered
-contacts in parallel.
+contacts in parallel through Kamailio and FreeSWITCH.
 
 YXL sends Admin-selected YVR DIDs across the existing carrier Kamailio
 SIPS/mTLS link. YVR validates the peer certificate identity, pod CIDR,

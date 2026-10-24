@@ -182,26 +182,16 @@ data:
     [freeswitch]
     type=endpoint
     transport=transport-tls
-    ; Keep the TLS next-hop identity on the service DNS name when a dialog
-    ; Contact uses the FreeSWITCH ClusterIP.
-    outbound_proxy=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:{{ .Values.freeswitch.asterisk.tlsPort }}\;transport=tls\;lr
-    outbound_auth=freeswitch-auth
     auth=freeswitch-inbound-auth
-    ; FreeSWITCH sends the preserved inbound caller identity in P-Asserted-Identity.
+    ; FreeSWITCH is the SIP client for this private voicemail handoff.
     trust_id_inbound=yes
-    trust_id_outbound=yes
     from_user=freeswitch
     from_domain={{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
     identify_by=username,auth_username
-    aors=freeswitch
     context=from-external
     disallow=all
     allow={{ join "," .Values.codecs.asterisk.freeswitch }}
     rtp_ipv6=no
     direct_media=no
-
-    [freeswitch]
-    type=aor
-    contact=sip:{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}:{{ .Values.freeswitch.asterisk.tlsPort }};transport=tls
     {{- end }}
 {{- end }}

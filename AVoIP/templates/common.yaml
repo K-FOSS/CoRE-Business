@@ -1136,11 +1136,10 @@ controllers:
             cat /etc/ssl/certs/ca-certificates.crt /etc/asterisk/sipcore-ca/ca.crt > /tmp/avoip-ca-bundle.pem
             chmod 0444 /tmp/avoip-ca-bundle.pem
             {{- end }}
-            printf '[freeswitch-auth]\ntype=auth\nauth_type=userpass\nusername=freeswitch\npassword=%s\n' \
-              "$(cat /tmp/avoip-freeswitch-peer-password)" > /tmp/avoip-pjsip-auth.conf
+            : > /tmp/avoip-pjsip-auth.conf
             {{- if .Values.freeswitch.enabled }}
-            printf '\n[freeswitch-inbound-auth]\ntype=auth\nauth_type=userpass\nusername=freeswitch\npassword=%s\n' \
-              "$(cat /tmp/avoip-freeswitch-peer-password)" >> /tmp/avoip-pjsip-auth.conf
+            printf '[freeswitch-inbound-auth]\ntype=auth\nauth_type=userpass\nusername=freeswitch\npassword=%s\n' \
+              "$(cat /tmp/avoip-freeswitch-peer-password)" > /tmp/avoip-pjsip-auth.conf
             {{- end }}
             {{- if .Values.asterisk.sipCore.enabled }}
             : > /tmp/avoip-sipcore-pjsip.conf
@@ -1170,10 +1169,6 @@ controllers:
             } >> /tmp/avoip-sipcore-pjsip.conf
             unset sip_password
             {{- end }}
-            {{- end }}
-            {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.routing.enabled }}
-            printf '\n[carrier-outbound]\ntype=aor\ncontact=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\n\n' >> /tmp/avoip-sipcore-pjsip.conf
-              printf '[carrier-outbound]\ntype=endpoint\ntransport=transport-tls\naors=carrier-outbound\noutbound_proxy=sip:{{ include "avoip.sip.sipCoreReturnHost" (dict "root" $) }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}\\;transport=tls\\;lr\ncontext=carrier-outbound-deny\ndirect_media=no\nrtp_ipv6=no\nrtp_timeout={{ $.Values.asterisk.sipCore.carrierRtpTimeoutSeconds }}\ndisallow=all\nallow={{ join "," $.Values.codecs.asterisk.sipCore }}\n' >> /tmp/avoip-sipcore-pjsip.conf
             {{- end }}
             {{- end }}
             {{- if and .Values.asterisk.turn.enabled .Values.asterisk.sipCore.enabled }}

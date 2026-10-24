@@ -313,16 +313,18 @@ pinned deployed image before activation. Missing managed mappings return XML
 not-found rather than inventing a destination. TLS, media, topology, fax,
 voicemail, IVR, registrations and teardown require end-to-end regression evidence.
 
-### Asterisk TLS trust for managed outbound calls
+### Private FreeSWITCH-to-Asterisk voicemail TLS
 
-When SIP Core is enabled, Asterisk builds its TLS trust bundle from the image's
-public CA bundle plus `ca.crt` from the TLS Secret of the selected
+When SIP Core is enabled, Asterisk's TLS listener uses the image's public CA
+bundle plus `ca.crt` from the TLS Secret of the selected
 `asterisk.sipCore.kamailioInstance`. The private CA Secret is mounted read-only;
 its rotation triggers an Asterisk rollout so the PJSIP transport reloads the
-new trust chain. `verify_server=yes` remains enabled. Do not work around a
-trust failure by disabling verification. A TLS transport CA change requires a
-complete Asterisk restart in Asterisk 20, so validate the rendered config and
-certificate chain before rollout. See the official
+new trust chain. TLS verification remains enabled for any Asterisk-originated
+TLS connection. Do not work around a trust failure by disabling verification.
+A TLS transport CA change requires a complete Asterisk restart in Asterisk 20,
+so validate the rendered config and certificate chain before rollout. The
+current YVR call path uses Asterisk only as a voicemail server; FreeSWITCH
+initiates this private SIP connection. See the official
 [Asterisk 20 PJSIP transport documentation](https://docs.asterisk.org/Asterisk_20_Documentation/API_Documentation/Module_Configuration/res_pjsip/).
 
 ## Rollout, verification and rollback

@@ -1,5 +1,10 @@
 # Asterisk managed outbound BYE return routing
 
+> Historical runbook: the current YVR Asterisk role is voicemail-only and it no
+> longer originates carrier calls. Use the [managed carrier egress runbook](../../OUTBOUND-PILOT.md)
+> for the active FreeSWITCH/Kamailio signaling path. The trace below documents
+> the former Asterisk-originated route and is retained for incident history.
+
 The Asterisk `carrier-outbound` endpoint sends its initial request to the
 private Kamailio SIP Core listener. Its in-dialog requests must return through
 the dedicated `sipcore-return` Service and port configured by
