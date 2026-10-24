@@ -1982,7 +1982,7 @@ controllers:
                 key: password
         {{- if or .Values.freeswitch.cdr.enabled (and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled) }}
           - name: CORE_DB_DSN
-            value: 'pgsql://hostaddr={{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host }} port={{ .Values.freeswitch.cdr.port }}'
+            value: 'pgsql://host={{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host }} port={{ .Values.freeswitch.cdr.port }}'
           - name: PGDATABASE
             valueFrom:
               secretKeyRef:
