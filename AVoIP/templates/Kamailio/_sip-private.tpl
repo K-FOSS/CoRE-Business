@@ -1098,7 +1098,8 @@
       # the owner Contact form. This is only accepted for the trusted SIP Core
       # side and only for the synthetic .invalid host; ordinary SIP targets
       # retain their normal DNS/transport behavior.
-      if ($var(side) eq "sipcore" && $du == $null && $(ru{uri.host}) =~ "\\.invalid$") {
+      if (($var(side) eq "sipcore" || $var(peer_name) eq "freeswitch-registrar") &&
+          $du == $null && $(ru{uri.host}) =~ "\\.invalid$") {
         handle_ruri_alias();
         if ($rc == 1) {
           xlog("L_INFO", "SIPCORE FLOW stage=websocket-alias-resolved pod=$env(POD_NAME) callid=$ci method=$rm ruri=$ru destination=$du transport=$dP socket=$fsn cseq=$hdr(CSeq)\n");
