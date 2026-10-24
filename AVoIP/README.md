@@ -542,8 +542,12 @@ provisions the service-account role and database; the chart uses the generated
 Secret's username and password through
 [mod_cdr_pg_csv](https://developer.signalwire.com/freeswitch/module-reference/event-handlers/mod_cdr_pg_csv/)
 for call-detail records. The PostgreSQL client init container creates the CDR
-table before FreeSWITCH starts. FreeSWITCH operational logs continue to stream
-to stdout for Kubernetes log collection.
+table before FreeSWITCH starts. FreeSWITCH runs in the foreground with
+`-nf -nc`; its console logger stays at INFO and operational logs go to
+stdout through `mod_logfile` for Loki. The AVoIP Admin debug control raises the
+core threshold on connected replicas without enabling console debug or SIP
+packet tracing. `-nc` and `-nf` remain part of the FreeSWITCH startup command.
+See the [FreeSWITCH logging reference](https://developer.signalwire.com/freeswitch/configuration/core-settings/).
 
 The User claim derives the site-local Terraform and Crossplane SQL provider
 names as `psql-<datacenter>-<region>`, and FreeSWITCH connects to

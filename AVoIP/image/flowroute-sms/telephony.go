@@ -518,9 +518,9 @@ func (s *server) freeSwitchDebug(w http.ResponseWriter, r *http.Request) {
 	}
 	commands := []string{
 		"fsctl loglevel " + level,
-		"console loglevel " + strings.ToUpper(level),
 		// Keep packet tracing disabled: it can persist Digest Authorization
-		// headers and other credentials in application logs.
+		// headers and other credentials. mod_logfile continues to send logs to
+		// stdout for Loki; the console logger itself stays at INFO.
 		"sofia global siptrace off",
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)

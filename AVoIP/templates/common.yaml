@@ -1958,7 +1958,7 @@ controllers:
           - -c
         args:
           - |
-            exec /usr/bin/freeswitch -nonat -nocal -nort -nf </dev/null
+            exec /usr/bin/freeswitch -nonat -nocal -nort -nf -nc </dev/null
         image:
           repository: '{{ .Values.freeswitch.image.repository }}'
           tag: '{{ .Values.freeswitch.image.tag }}'
