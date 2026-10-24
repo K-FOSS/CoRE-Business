@@ -87,21 +87,15 @@ data:
         <!-- Required by the temporary inbound-call WAV capture. -->
         <load module="mod_sndfile"/>
         <load module="mod_spandsp"/>
+        {{- if or $.Values.freeswitch.cdr.enabled (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled) }}
+        <load module="mod_pgsql"/>
+        {{- end }}
         {{- if $.Values.freeswitch.cdr.enabled }}
         <load module="mod_cdr_pg_csv"/>
         {{- end }}
         <load module="mod_commands"/>
         <load module="mod_event_socket"/>
         <load module="mod_opus"/>
-      </modules>
-    </configuration>
-
-  pre_load_modules.conf.xml: |
-    <configuration name="pre_load_modules.conf" description="Pre-load Modules">
-      <modules>
-        {{- if or $.Values.freeswitch.cdr.enabled (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled) }}
-        <load module="mod_pgsql"/>
-        {{- end }}
       </modules>
     </configuration>
 
@@ -125,12 +119,6 @@ data:
         <param name="dialplan-timestamps" value="false"/>
         <param name="max-db-handles" value="50"/>
         <param name="db-handle-timeout" value="10"/>
-        {{- if or $.Values.freeswitch.cdr.enabled (and $.Values.avoipAdmin.enabled $.Values.avoipAdmin.telephony.enabled) }}
-        <param name="core-db-dsn" value="$${core_db_dsn}"/>
-        <!-- FreeSWITCH replicas share this service database; startup must not
-             clear another live replica's channel rows. -->
-        <param name="auto-clear-sql" value="false"/>
-        {{- end }}
         <param name="max-sessions" value="1000"/>
         <param name="sessions-per-second" value="30"/>
         <param name="loglevel" value="info"/>

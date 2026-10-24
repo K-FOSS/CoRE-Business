@@ -1958,12 +1958,7 @@ controllers:
           - -c
         args:
           - |
-            {{- if or .Values.freeswitch.cdr.enabled (and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled) }}
-            # Core channel inventory and CDR use this service's PostgreSQL DB.
             exec /usr/bin/freeswitch -nonat -nocal -nort -nf </dev/null
-            {{- else }}
-            exec /usr/bin/freeswitch -nonat -nocal -nort -nosql -nf </dev/null
-            {{- end }}
         image:
           repository: '{{ .Values.freeswitch.image.repository }}'
           tag: '{{ .Values.freeswitch.image.tag }}'
@@ -1980,25 +1975,6 @@ controllers:
               secretKeyRef:
                 name: '{{ include "avoip.fullname" . }}-freeswitch'
                 key: password
-        {{- if or .Values.freeswitch.cdr.enabled (and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled) }}
-          - name: CORE_DB_DSN
-            value: 'pgsql://host={{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.freeswitch.cdr.host }} port={{ .Values.freeswitch.cdr.port }}'
-          - name: PGDATABASE
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "avoip.fullname" . }}-freeswitch'
-                key: database
-          - name: PGUSER
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "avoip.fullname" . }}-freeswitch'
-                key: username
-          - name: PGPASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: '{{ include "avoip.fullname" . }}-freeswitch'
-                key: password
-        {{- end }}
         {{- if and .Values.avoipAdmin.enabled .Values.avoipAdmin.telephony.enabled }}
           - name: EVENT_SOCKET_PASSWORD
             valueFrom:
@@ -2779,7 +2755,7 @@ persistence:
     advancedMounts:
       freeswitch:
         freeswitch:
-{{- range $file := list "pre_load_modules.conf.xml" "opus.conf.xml" "modules.conf.xml" "console.conf.xml" "switch.conf.xml" "logfile.conf.xml" "event_socket.conf.xml" "cdr_pg_csv.conf.xml" "spandsp.conf.xml" "acl.conf.xml" "sofia.conf.xml" }}
+{{- range $file := list "opus.conf.xml" "modules.conf.xml" "console.conf.xml" "switch.conf.xml" "logfile.conf.xml" "event_socket.conf.xml" "cdr_pg_csv.conf.xml" "spandsp.conf.xml" "acl.conf.xml" "sofia.conf.xml" }}
           - path: /etc/freeswitch/autoload_configs/{{ $file }}
             subPath: {{ $file }}
 {{- end }}

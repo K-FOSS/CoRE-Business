@@ -146,14 +146,13 @@ selects this backend. Reverting the switch restores Asterisk's
 endpoint, but active registrations must re-register because the two registrar
 databases do not share Contact state.
 
-When CDR or AVoIP Admin telephony integration is enabled, FreeSWITCH uses its
-service-owned PostgreSQL database for core channel inventory through
-`mod_pgsql` and `core-db-dsn`; the FreeSWITCH service identity is defined in
-[FreeSwitchUser.yaml](templates/FreeSwitch/FreeSwitchUser.yaml). Core channel
-rows and CDR data share that service database, while the Admin API queries
-each FreeSWITCH replica and deduplicates channels by UUID. SQL table clearing
-on startup is disabled so a rolling restart cannot erase another live
-replica's channel rows. The database is provisioned by the current
+When CDR or AVoIP Admin telephony integration is enabled, FreeSWITCH writes
+persistent CDR data to PostgreSQL through `mod_pgsql`; the FreeSWITCH service
+identity is defined in [FreeSwitchUser.yaml](templates/FreeSwitch/FreeSwitchUser.yaml).
+Active channel inventory remains local to each FreeSWITCH replica, and the
+Admin API queries every replica and deduplicates channels by UUID. This avoids
+making transient channel state depend on a shared database schema while still
+using PostgreSQL for durable CDR records. The database is provisioned by the current
 [PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
 and [SSO User Composition](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserComposition.yaml).
 See FreeSWITCH's [core database settings](https://developer.signalwire.com/freeswitch/configuration/core-settings/)
