@@ -1227,6 +1227,10 @@
         # created the header on the selected advertised socket. Without that
         # metadata lookup("location") falls back to a browser's randomized
         # .invalid Contact host and never reaches the live WebSocket flow.
+        # Advertise Path support on behalf of the proxy-generated owner route;
+        # some registrar builds otherwise discard the Path lump during save()
+        # even when registrar.path_mode is configured for lazy storage.
+        append_hf("Supported: path\r\n");
         set_send_socket_name("sipcore_owner_tls");
         if (!add_path()) {
           sl_send_reply("503", "SIP Owner Path Unavailable");
