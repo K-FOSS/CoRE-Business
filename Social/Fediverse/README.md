@@ -10,9 +10,9 @@ Mastodon web, streaming, Sidekiq and database migrations are rendered through
 Common. The public [Gateway API](https://gateway-api.sigs.k8s.io/) route sends
 `/api/v1/streaming` to Mastodon’s streaming process and all other paths to web.
 The web, Sidekiq and migration workloads use the
-[Glitch-soc Mastodon](https://github.com/glitch-soc/mastodon) 4.7.2 image pinned
+[Glitch-soc Mastodon](https://github.com/glitch-soc/mastodon) 4.7.3 image pinned
 to an immutable GHCR manifest digest. Streaming uses Mastodon’s separate
-`mastodon-streaming` 4.7.0 image, also pinned to its immutable digest; the
+`mastodon-streaming` 4.7.3 image, also pinned to its immutable digest; the
 official container documentation uses that image for the streaming process.
 
 When `bluesky.enabled` is true, this chart also deploys the official
@@ -22,7 +22,7 @@ PDS Deployment, Service, retained Longhorn PVC and public HTTPRoute are kept
 under the separate `bluesky` values subtree. The PDS uses SQLite and site-local
 S3. By default, its JWT and PLC rotation secrets are generated once, pushed to
 Vault and pulled back into the runtime Secret; its admin password comes from the
-generated `password` in the Bluesky [mylogin.space User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
+generated `password` in the Bluesky [mylogin.space User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml)
 connection Secret. Set `bluesky.existingSecret` to retain the legacy complete
 Secret override. It does not use Mastodon’s PostgreSQL, Redis, Authentik or
 migration configuration; those remain scoped to the Mastodon path.
@@ -68,7 +68,7 @@ not yet rendered by this chart.
 
 ## Ownership and activation
 
-The active owner is the [Fediverse ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Social/Fediverse.yaml)
+The active owner is the [Fediverse ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Social/Fediverse.yaml)
 in CoRE-Backplane. Its merge generator selects `core-home1-talos-prod` when the
 cluster has tenant `core.mylogin.space`, bare-metal infrastructure and region
 `yvr`; it renders this repository at `targetRevision: HEAD` with the
@@ -80,9 +80,9 @@ provider names. `examples/site.yaml` mirrors those production merge values for
 local rendering; it contains no credentials.
 
 The PostgreSQL and object-storage prerequisites are owned by the
-[storage PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml)
-and [storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
-The claim follows the current [mylogin.space User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
+[storage PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml)
+and [storage base ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml).
+The claim follows the current [mylogin.space User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
 Those prerequisites must be healthy before the application can become ready:
 the `User` claim creates the `mastodon_production` database and
 `mastodon-media` bucket, then writes PostgreSQL/S3 connection material to
@@ -101,7 +101,7 @@ all of these resources rather than against `templates/` in isolation.
 ## Secrets and identity
 
 No credentials are generated in Helm values. Following the [Backplane Dragonfly
-secret pattern](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Storage/Dragonfly/CoRE/templates),
+secret pattern](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Storage/Dragonfly/CoRE/templates),
 External Secrets uses a `Password` generator and a `CreatedOnce` generator-backed
 ExternalSecret to create a one-time bootstrap Secret containing Mastodon
 `SECRET_KEY_BASE` and `OTP_SECRET`. PushSecret persists them to the configured
@@ -119,7 +119,7 @@ stores `ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY`,
 never be regenerated for an existing database.
 
 The Dragonfly password is pulled from the site-local path published by the
-[CoRE Dragonfly chart](https://github.com/K-FOSS/CoRE-Backplane/tree/main/Storage/Dragonfly/CoRE):
+[CoRE Dragonfly chart](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Storage/Dragonfly/CoRE):
 `Storage/DragonFly/CoRE/<region>/<datacenter>/<cluster>/Creds`. No runtime
 Secret values belong in Git. Mastodon web, streaming and Sidekiq pods watch the
 runtime S3 credentials Secret named by `mastodon.user.s3CredentialsSecretName`
@@ -234,7 +234,7 @@ PostgreSQL is the durable application store and S3 is the durable media store.
 The 50Gi [`ReadWriteMany` Longhorn](https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/rwx-volumes/) upload PVC is shared by web and Sidekiq
 replicas for transient files. It is created in `core-prod` before the wave-20
 Deployments using the Home1 `mastodon-upload-rwx` class from the
-[storage base ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
+[storage base ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml).
 That class sets `migratable: 'false'` for filesystem RWX use and must exist
 before the PVC is synced. The PVC does not replace S3 backups. Removing it from the chart
 allows Argo CD to prune it; deleting the owning ApplicationSet preserves managed

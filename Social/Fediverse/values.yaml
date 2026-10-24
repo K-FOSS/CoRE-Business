@@ -22,11 +22,11 @@ mastodon:
   domain: ''
   image:
     repository: 'ghcr.io/glitch-soc/mastodon'
-    tag: 'v4.7.2@sha256:e41c60edd9cc4e6eee8ff80fe478cc06d17309afd26834aa1648ae3364cd9820'
+    tag: 'v4.7.3@sha256:33b2e00cf01121439bb8ed79d7064913cfa0d24d0901852a089995bd4c562431'
     pullPolicy: 'IfNotPresent'
   streamingImage:
     repository: 'ghcr.io/mastodon/mastodon-streaming'
-    tag: 'v4.7.0@sha256:5f5c6fee47c3cd39fe15b6bf968b36dfcc778c58e78788e1bce04df5d4b29284'
+    tag: 'v4.7.3@sha256:770f2e1f734fd0ed69628292638211f909eb87769f73db026c36f484ad3c6bd6'
     pullPolicy: 'IfNotPresent'
   user:
     name: 'mastodon'

@@ -10,7 +10,7 @@ rendering Helm templates alone does not reproduce the complete Argo CD output.
 
 ## Deployment ownership
 
-[The NextCloud ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/NextCloud.yaml)
+[The NextCloud ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/NextCloud.yaml)
 currently generates the Home1 YVR production Office Application in `core-prod`.
 It enables namespace creation, preserves resources when an ApplicationSet
 entry disappears, and injects the following through Lovely:
@@ -41,8 +41,10 @@ pdf.mylogin.space HTTPRoute
 - Nextcloud uses the FPM image with nginx enabled, a task-processing worker
   Deployment, and a separate five-minute CronJob for general `cron.php`
   background jobs. The web, worker, and CronJob use the same pinned Nextcloud
-  35.0.1 Alpine FPM image digest. The worker and CronJob run as Alpine
-  `www-data` (UID 82), use the chart's Nextcloud environment and config/PVC
+  35.0.2 Alpine FPM image digest. This rebuild includes PHP 8.5.12, which fixes
+  the PHP2Shell vulnerabilities CVE-2026-109618 and CVE-2026-109619. The
+  worker and CronJob run as Alpine `www-data` (UID 82), use the chart's
+  Nextcloud environment and config/PVC
   mounts, and have required pod affinity to the web pod so the `ReadWriteOnce`
   data PVC stays on the same node. The old standalone ReplicaSet has a different
   component selector; normal Argo CD pruning removes it during the kind change,
@@ -147,7 +149,9 @@ pdf.mylogin.space HTTPRoute
   on that interface.
 - Keep the rendered WOPI/post-allow restrictions aligned with the Nextcloud
   hostname whenever hostnames or gateway topology change.
-- The Nextcloud image is pinned to the `35.0.1-fpm-alpine` linux/amd64 digest.
+- The Nextcloud image is pinned to the multi-architecture
+  `35.0.2-fpm-alpine` manifest digest. This version contains the PHP 8.5.12
+  fix for CVE-2026-109618 and CVE-2026-109619.
   The PDF image still uses the mutable `latest` tag. A PDF workload restart can
   therefore change software without a repository commit.
 - Nextcloud persistence is `ReadWriteOnce`. Confirm scheduling and replacement
@@ -200,7 +204,7 @@ site-local certificate.
 
 - [Nextcloud website](https://nextcloud.com/), [administrator documentation](https://docs.nextcloud.com/server/latest/admin_manual/) and [pinned Helm chart 9.4.0](https://github.com/nextcloud/helm/tree/nextcloud-9.4.0/charts/nextcloud)
 - [Nextcloud background-job documentation](https://docs.nextcloud.com/server/stable/admin_manual/configuration_server/background_jobs_configuration.html) and [AI task-processing worker documentation](https://docs.nextcloud.com/server/stable/admin_manual/ai/overview.html)
-- [Pinned Nextcloud 35 Alpine FPM image](https://hub.docker.com/layers/library/nextcloud/35.0.1-fpm-alpine/images/sha256-f77b02a52251e408a4fbc232f27817eaedeb4acbf3c3dbd0daf72cf1e1c88601)
+- [Pinned Nextcloud 35.0.2 Alpine FPM image](https://hub.docker.com/layers/library/nextcloud/35.0.2-fpm-alpine/images/sha256-ee5b5612f24984941cdfaeeccb073e048370fd1e44104719149820eae3e28419)
 - [MinIO website](https://min.io/), [documentation](https://min.io/docs/minio/kubernetes/upstream/) and [`aminueza/minio` Terraform provider](https://registry.terraform.io/providers/aminueza/minio/3.40.1/docs)
 - [Collabora Online website](https://www.collaboraonline.com/), [SDK documentation](https://sdk.collaboraonline.com/docs/) and [Helm chart](https://github.com/CollaboraOnline/online/tree/main/kubernetes/helm/collabora-online)
 - [Stirling website](https://www.stirling.com/), [documentation](https://docs.stirlingpdf.com/) and [source](https://github.com/Stirling-Tools/Stirling-PDF)
