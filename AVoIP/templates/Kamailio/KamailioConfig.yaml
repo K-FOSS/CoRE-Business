@@ -456,13 +456,28 @@ data:
   tls.cfg: |
     [server:default]
     method = TLSv1.2+
-    verify_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
-    require_certificate = {{ if eq .Values.kamailio.role "private-sbc" }}yes{{ else }}no{{ end }}
+    # WebSocket HA has two private TLS policies: FreeSWITCH mTLS on 5062 and
+    # server-authenticated owner forwarding on 5063. The default must remain
+    # usable when Sofia omits SNI for the owner connection.
+    verify_certificate = {{ if and (eq .Values.kamailio.role "private-sbc") (not $websocketHA.enabled) }}yes{{ else }}no{{ end }}
+    require_certificate = {{ if and (eq .Values.kamailio.role "private-sbc") (not $websocketHA.enabled) }}yes{{ else }}no{{ end }}
     {{- if eq .Values.kamailio.role "private-sbc" }}
     ca_list = {{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}/etc/kamailio/peer-ca/ca.crt{{ else if and .Values.freeswitch.enabled (eq .Values.kamailio.role "private-sbc") }}/etc/kamailio/freeswitch-peer-ca/ca.crt{{ else }}/etc/ssl/certs/ca-certificates.crt{{ end }}
     {{- end }}
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
+
+    {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled }}
+    # Keep the FreeSWITCH call-control listener strictly mTLS-authenticated;
+    # only the owner listener falls back to the relaxed default profile.
+    [server:0.0.0.0:{{ $.Values.asterisk.sipCore.privateEgressPort }}]
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = yes
+    ca_list = /etc/kamailio/freeswitch-peer-ca/ca.crt
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
+    {{- end }}
 
     {{- if $sipCoreTlsEnabled }}
     # Public SIP Core SNI presents its dedicated ACME certificate. The default
