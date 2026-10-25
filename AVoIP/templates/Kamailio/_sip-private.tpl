@@ -50,7 +50,18 @@
       }
       {{- end }}
 
-      if ($proto != "tls" || $Rp != 5062 || $tls_peer_verified != 1) {
+      if ($proto != "tls") {
+        xlog("L_WARN", "SIPCORE FLOW stage=private-inbound-ingress result=reject reason=wrong_transport pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto\n");
+        if (!is_method("ACK")) sl_send_reply("403", "Peer Not Authorized");
+        exit;
+      }
+      if ($Rp != 5062) {
+        xlog("L_WARN", "SIPCORE FLOW stage=private-inbound-ingress result=reject reason=wrong_listener pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto\n");
+        if (!is_method("ACK")) sl_send_reply("403", "Peer Not Authorized");
+        exit;
+      }
+      if ($tls_peer_verified != 1) {
+        xlog("L_WARN", "SIPCORE FLOW stage=private-inbound-ingress result=reject reason=client_certificate_unverified pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto tls_verified=$tls_peer_verified tls_sni=$tls_peer_server_name tls_san=$tls_peer_san_hostname\n");
         if (!is_method("ACK")) sl_send_reply("403", "Peer Not Authorized");
         exit;
       }
@@ -76,13 +87,16 @@
       }
       {{- end }}
       if ($var(peer_allowed) != 1) {
+        $var(peer_reject_reason) = "client_certificate_san_mismatch";
+        if (src_ip != {{ .Values.kamailio.backend.podCIDR }}) $var(peer_reject_reason) = "source_not_allowed";
         xlog(
           "L_WARN",
-          "Private SIP peer rejected pod=$env(POD_NAME) source=$si:$sp transport=$proto receive_port=$Rp tls_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname method=$rm callid=$ci\n"
+          "SIPCORE FLOW stage=private-inbound-ingress result=reject reason=$var(peer_reject_reason) pod=$env(POD_NAME) source=$si:$sp recv=$Ri:$Rp/$proto tls_verified=$tls_peer_verified tls_sni=$tls_peer_server_name tls_san=$tls_peer_san_hostname method=$rm callid=$ci\n"
         );
         if (!is_method("ACK")) sl_send_reply("403", "Peer Not Authorized");
         exit;
       }
+      xlog("L_INFO", "SIPCORE FLOW stage=private-peer-authenticated pod=$env(POD_NAME) peer=$var(peer_name) callid=$ci method=$rm source=$si:$sp recv=$Ri:$Rp/$proto\n");
 
       # Let TM replay the cached final response to a retransmitted BYE before
       # topology, media, or teardown side effects run again.
