@@ -1341,11 +1341,11 @@
           }
           xlog("L_INFO", "SIPCORE FLOW stage=registrar-owner-contact pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
         }
-        set_send_socket_name("sipcore_owner_tls");
-        if (!add_path()) {
-          sl_send_reply("503", "SIP Owner Path Unavailable");
-          exit;
-        }
+        # This REGISTER terminates locally, so there is no outbound send
+        # socket for path.add_path() to substitute. Build the same trusted
+        # loose-route URI explicitly from the StatefulSet owner identity;
+        # SIPCORE_OWNER_POD is replaced from POD_NAME during pod startup.
+        append_hf("Path: <sip:SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr>\r\n");
         if (!msg_apply_changes()) {
           xlog("L_ERR", "SIPCORE FLOW stage=registrar-owner-headers-failed pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
           sl_send_reply("500", "SIP Owner Registration Failed");
