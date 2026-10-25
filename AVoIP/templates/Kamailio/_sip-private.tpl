@@ -420,6 +420,10 @@
             sl_send_reply("400", "Bad Contact");
             exit;
           }
+          # WebSocket dialogs require the same process-local connection
+          # binding as native TLS. A later FreeSWITCH BYE must match the
+          # accepted browser flow before Kamailio writes to that socket.
+          $sht(sipcore_tls_dialog=>$ci) = $conid;
         } else {
           if (!set_contact_alias("1")) {
             sl_send_reply("400", "Bad Contact");
@@ -1010,7 +1014,12 @@
       if ($var(sipcore_client_reply) == 1 &&
           !is_method("REGISTER") && is_present_hf("Contact")) {
         $var(sipcore_reply_alias_result) = -1;
-        if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+        # FreeSWITCH replies can return through the client-facing local TLS
+        # socket selected for the request, so $Rp alone does not identify an
+        # endpoint response. Its application listener source port does.
+        if ($proto == "tls" && $sp == 5072) {
+          $var(sipcore_reply_alias_result) = add_contact_alias("$si", "$sp", "tls");
+        } else if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
           $var(sipcore_reply_alias_result) = add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws");
         } else if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
           $var(sipcore_reply_alias_result) = add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls");
@@ -1339,23 +1348,9 @@
             sl_send_reply("400", "Unsupported WebSocket Contact");
             exit;
           }
-          xlog("L_INFO", "SIPCORE FLOW stage=registrar-owner-contact pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
-        }
-        # This REGISTER terminates locally, so there is no outbound send
-        # socket for path.add_path() to substitute. Build the same trusted
-        # loose-route URI explicitly from the StatefulSet owner identity;
-        # SIPCORE_OWNER_POD is replaced from POD_NAME during pod startup.
-        append_hf("Path: <sip:SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr>\r\n");
-        if (!msg_apply_changes()) {
-          xlog("L_ERR", "SIPCORE FLOW stage=registrar-owner-headers-failed pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
-          sl_send_reply("500", "SIP Owner Registration Failed");
-          exit;
-        }
-        # Add the process-local flow alias only after parsing the rewritten
-        # Contact and owner Path. nathelper marks alias substitutions as
-        # send-socket-dependent, so applying them with msg_apply_changes()
-        # before TM selects a send socket corrupts this REGISTER transaction.
-        if (is_present_hf("Contact") && $hdr(Contact) != "*") {
+          # Persist the accepted process-local flow alongside the stable
+          # owner Contact. Explicit peer arguments avoid any send-socket
+          # substitution while retaining the Envoy-side connection tuple.
           if ($proto == "ws") {
             if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws")) {
               sl_send_reply("400", "Bad WebSocket Contact");
@@ -1367,6 +1362,17 @@
               exit;
             }
           }
+          xlog("L_INFO", "SIPCORE FLOW stage=registrar-owner-contact pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
+        }
+        # This REGISTER terminates locally, so there is no outbound send
+        # socket for path.add_path() to substitute. Build the same trusted
+        # loose-route URI explicitly from the StatefulSet owner identity;
+        # SIPCORE_OWNER_POD is replaced from POD_NAME during pod startup.
+        append_hf("Path: <sip:SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr>\r\n");
+        if (!msg_apply_changes()) {
+          xlog("L_ERR", "SIPCORE FLOW stage=registrar-owner-headers-failed pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
+          sl_send_reply("500", "SIP Owner Registration Failed");
+          exit;
         }
       }
       {{- end }}
