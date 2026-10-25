@@ -365,13 +365,14 @@
       # A public client must never be able to select the owner-forward path.
       remove_hf("X-Core-Frontend-Owner-Forward");
       # Every front-end registration and initial client dialog must retain the
-      # client flow through this Kamailio owner. Envoy's PROXY header changes
-      # $si/$sp, so TLS and WebSocket aliases use the accepted peer tuple.
+      # client flow through this Kamailio owner. Native TLS uses the trusted
+      # PROXY-reported source tuple, which is also how Kamailio indexes that
+      # connection. WebSocket uses the accepted Envoy peer tuple.
       {{- if not .Values.kamailio.registrar.enabled }}
       if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
         {{- if .Values.asterisk.sipCore.tls.enabled }}
         if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
-          if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
+          if (!add_contact_alias("$si", "$sp", "tls")) {
             sl_send_reply("400", "Bad Contact");
             exit;
           }
@@ -408,14 +409,14 @@
       if (!is_method("REGISTER") && !has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
         {{- if .Values.asterisk.sipCore.tls.enabled }}
         if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
-          if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
+          if (!add_contact_alias("$si", "$sp", "tls")) {
             sl_send_reply("400", "Bad Contact");
             exit;
           }
           # Keep the actual accepted socket ID on this owner, separate from
           # the redis-backed TOPOS dialog. It cannot move to another pod.
           $sht(sipcore_tls_dialog=>$ci) = $conid;
-          $sht(sipcore_dialog_destination=>$ci) = "sip:" + $tcp(c_si) + ":" + $tcp(c_sp) + ";transport=tls";
+          $sht(sipcore_dialog_destination=>$ci) = "sip:" + $si + ":" + $sp + ";transport=tls";
         } else if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
           if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws")) {
             sl_send_reply("400", "Bad Contact");
@@ -1367,16 +1368,16 @@
             sl_send_reply("400", "Unsupported WebSocket Contact");
             exit;
           }
-          # Persist the accepted process-local flow alongside the stable
-          # owner Contact. Explicit peer arguments avoid any send-socket
-          # substitution while retaining the Envoy-side connection tuple.
+          # Persist the process-local flow alongside the stable owner Contact.
+          # Native TLS is indexed by Kamailio using the trusted PROXY source;
+          # WebSocket is indexed by its accepted Envoy peer tuple.
           if ($proto == "ws") {
             if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws")) {
               sl_send_reply("400", "Bad WebSocket Contact");
               exit;
             }
           } else if ($proto == "tls") {
-            if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
+            if (!add_contact_alias("$si", "$sp", "tls")) {
               sl_send_reply("400", "Bad TLS Contact");
               exit;
             }
