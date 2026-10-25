@@ -63,7 +63,7 @@ spec:
     kind: ClusterIssuer
     name: '{{ required "sip.tls.issuerName is required for public SIP Core TLS" .Values.sip.tls.issuerName }}'
 {{- end }}
-{{- if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
+{{- if or .Values.kamailio.carrierOutbound.clientIdentity.enabled (and .Values.kamailio.websocketHA.enabled .Values.kamailio.registrar.enabled) }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -82,15 +82,21 @@ spec:
     - 'client auth'
   issuerRef:
     kind: ClusterIssuer
-    name: '{{ required "kamailio.carrierOutbound.clientIdentity.issuerName is required" .Values.kamailio.carrierOutbound.clientIdentity.issuerName }}'
+    name: '{{ if .Values.kamailio.carrierOutbound.clientIdentity.enabled }}{{ required "kamailio.carrierOutbound.clientIdentity.issuerName is required" .Values.kamailio.carrierOutbound.clientIdentity.issuerName }}{{ else }}{{ required "registrar client identity requires a configured Vault peer issuer" .RegistrarClientIssuer }}{{ end }}'
 {{- end }}
 {{ end }}
 {{- $root := . -}}
+{{- $registrarClientIssuer := "" -}}
+{{- range $peer := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
+  {{- if $peer.carrierOutbound.clientIdentity.enabled -}}
+    {{- $registrarClientIssuer = $peer.carrierOutbound.clientIdentity.issuerName -}}
+  {{- end -}}
+{{- end -}}
 {{- range $instance := (include "avoip.kamailio.instances" $root | fromYamlArray) -}}
 {{- if $instance.enabled -}}
 {{- $values := deepCopy $root.Values -}}
 {{- $_ := set $values "kamailio" $instance -}}
-{{- $ctx := dict "Values" $values "Release" $root.Release "Chart" $root.Chart "Files" $root.Files "Capabilities" $root.Capabilities -}}
+{{- $ctx := dict "Values" $values "Release" $root.Release "Chart" $root.Chart "Files" $root.Files "Capabilities" $root.Capabilities "RegistrarClientIssuer" $registrarClientIssuer -}}
 {{ include "avoip.kamailio.certificate" $ctx }}
 {{ end }}
 {{ end }}

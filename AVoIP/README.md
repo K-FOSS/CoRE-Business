@@ -148,7 +148,11 @@ verified certificate SAN and allowed source, assigns the
 `freeswitch-registrar` role, and limits inbound lookup to configured AoRs
 such as `7101`; Kamailio's location database and contact Path select the
 registered endpoint owner. See [Kamailio's TLS profile documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/tls.html)
-for IP and port matching. The Home1 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+for IP and port matching. The registrar has its own
+Vault-issued client certificate and FreeSWITCH-specific TLS client profile for
+endpoint-initiated BYEs returning to the FreeSWITCH service. This profile
+verifies FreeSWITCH with the internal CA; its certificate is mounted only in
+the registrar pods and does not change carrier egress authorization. The Home1 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 injects the registrar peer and allowed extension in `core-prod`. A scoped
 ConfigMap and StatefulSet reconciliation rolls the three owners in sequence;
 validate a live inbound call and registration refresh after the rollout.
