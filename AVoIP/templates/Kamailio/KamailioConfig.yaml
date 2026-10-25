@@ -174,6 +174,7 @@ data:
     loadmodule "maxfwd.so"
     loadmodule "sanity.so"
     loadmodule "pv.so"
+    loadmodule "ipops.so"
     loadmodule "rr.so"
     loadmodule "siputils.so"
     loadmodule "textops.so"
