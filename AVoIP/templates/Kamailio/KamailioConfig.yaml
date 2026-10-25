@@ -99,7 +99,7 @@ data:
     {{- end }}
 
     # Private application/B2BUA-facing identity.
-    listen=tls:{{ if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled }}0.0.0.0{{ else }}{{ $bindAddress }}{{ end }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
+    listen=tls:{{ if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled (not .Values.kamailio.registrar.enabled) }}0.0.0.0{{ else }}{{ $bindAddress }}{{ end }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
 
     {{- if eq .Values.kamailio.role "carrier-sbc" }}
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
@@ -478,10 +478,10 @@ data:
     certificate = /etc/kamailio/tls/tls.crt
 
     {{- if and $websocketHA.enabled .Values.kamailio.registrar.enabled }}
-    # FreeSWITCH omits SNI. An IP:port profile for 0.0.0.0 does not match
-    # the accepted connection's pod IP, so it falls back to the relaxed owner
-    # default and cannot verify a client certificate. The startup command
-    # replaces this token with the actual pod IP before loading tls.cfg.
+    # FreeSWITCH omits SNI. Bind the private listener to the pod IP and use
+    # the same IP in its strict TLS profile; the wildcard profile fell back
+    # to the relaxed owner default and did not request a client certificate.
+    # The startup command replaces this token before loading tls.cfg.
     [server:KAMAILIO_POD_IP:5062]
     {{- else }}
     [server:0.0.0.0:5062]

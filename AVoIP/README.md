@@ -140,9 +140,9 @@ gateway. The switch omits 7101's Asterisk PJSIP auth/AOR/endpoint. Asterisk
 remains in the call path only for voicemail, reached over the private
 FreeSWITCH peer.
 FreeSWITCH sends this gateway's TLS traffic without SNI. For the HA registrar,
-the pod startup command writes a TLS profile using its current pod IP before
-Kamailio starts. This makes private port `5062` request and verify the
-FreeSWITCH client certificate while the separate owner port `5063` retains
+the private `5062` listener binds the pod IP and the startup command writes a
+matching TLS profile before Kamailio starts. This makes that port request and
+verify the FreeSWITCH client certificate while the separate owner port `5063` retains
 its existing server-authenticated behavior. The SIP route then checks the
 verified certificate SAN and allowed source, assigns the
 `freeswitch-registrar` role, and limits inbound lookup to configured AoRs
