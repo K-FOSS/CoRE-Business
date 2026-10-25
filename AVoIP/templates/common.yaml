@@ -1944,6 +1944,7 @@ controllers:
             cat /tls-kamailio/tls.key >> /tls-kamailio-output/agent.pem
             awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n > 1 { print }' /tls-kamailio/tls.crt >> /tls-kamailio-output/agent.pem
             cp /etc/ssl/certs/ca-certificates.crt /tls-kamailio-output/cafile.pem
+            cat /tls-kamailio/ca.crt >> /tls-kamailio-output/cafile.pem
 {{- if .Values.freeswitch.flowrouteOutbound.enabled }}
             awk 'BEGIN { n = 0 } /BEGIN CERTIFICATE/ { n++ } n == 1 { print }' /tls-flowroute/tls.crt > /tls-flowroute-output/agent.pem
             cat /tls-flowroute/tls.key >> /tls-flowroute-output/agent.pem

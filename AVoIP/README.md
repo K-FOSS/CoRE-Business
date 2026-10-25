@@ -151,8 +151,11 @@ registered endpoint owner. See [Kamailio's TLS profile documentation](https://ww
 for IP and port matching. The registrar has its own
 Vault-issued client certificate and FreeSWITCH-specific TLS client profile for
 endpoint-initiated BYEs returning to the FreeSWITCH service. This profile
-verifies FreeSWITCH with the internal CA; its certificate is mounted only in
-the registrar pods and does not change carrier egress authorization. The Home1 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+verifies FreeSWITCH with the internal CA. FreeSWITCH's Kamailio-only Sofia
+profile includes that same CA in its client certificate trust bundle, so an
+endpoint BYE can return over mutual TLS. The registrar certificate is mounted
+only in the registrar pods and does not change carrier egress authorization.
+The Home1 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 injects the registrar peer and allowed extension in `core-prod`. A scoped
 ConfigMap and StatefulSet reconciliation rolls the three owners in sequence;
 validate a live inbound call and registration refresh after the rollout.
