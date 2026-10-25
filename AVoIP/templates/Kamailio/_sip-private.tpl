@@ -1008,6 +1008,8 @@
     reply_route {
       $var(sipcore_client_reply) = 0;
       if (($proto == "tls" && $Rp == 5062) ||
+          ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) ||
+          ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) ||
           $(hfl(Via)[-1]) =~ "^SIP/2.0/WSS") {
         $var(sipcore_client_reply) = 1;
       }
