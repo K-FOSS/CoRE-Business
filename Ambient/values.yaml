@@ -1,6 +1,40 @@
 image: ghcr.io/remvze/moodist
 
-tag: latest
+tag: 'v3.0.0'
+digest: 'sha256:e2d9e0ed3b27b5fde8d869c5f8bdddee28d68277ca7826a9121baffc2215c01c'
+
+replicas: 2
+
+resources:
+  requests:
+    cpu: '25m'
+    memory: '64Mi'
+  limits:
+    cpu: '500m'
+    memory: '256Mi'
+
+domains:
+  - 'sounds.mylogin.space'
+
+k8gb:
+  enabled: true
+  strategy: 'roundRobin'
+  dnsTtlSeconds: 30
+  domain: 'gslb.mylogin.space'
+
+route:
+  moodist:
+    annotations:
+      forecastle.stakater.com/expose: 'true'
+      forecastle.stakater.com/instance: 'core'
+      forecastle.stakater.com/group: 'Tools'
+      forecastle.stakater.com/appName: 'Moodist'
+    labels:
+      wan-mode: 'public'
+      lan-mode: 'private'
+  moodist-k8gb:
+    annotations: {}
+    labels: {}
 
 env: testing
 

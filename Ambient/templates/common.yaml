@@ -2,31 +2,96 @@
 {{- include "bjw-s.common.loader.init" . }}
 
 {{- define "app-template.hardcodedValues" -}}
-# Set the nameOverride based on the release name if no override has been set
-{{ if not .Values.global.nameOverride }}
 global:
-  nameOverride: 'core-ambient'
+  nameOverride: {{ .Release.Name | quote }}
 
-  fullnameOverride: core-ambient
-{{ end }}
+defaultPodOptions:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
 
 controllers:
   moodist:
-    # For Deployments, valid values are Recreate (default) and RollingUpdate.
-    # For StatefulSets, valid values are OnDelete and RollingUpdate (default).
-    # DaemonSets/CronJobs ignore this.
     strategy: RollingUpdate
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    revisionHistoryLimit: 3
+    replicas: {{ .Values.replicas }}
+
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/controller: moodist
+              app.kubernetes.io/instance: {{ .Release.Name | quote }}
+
+    podDisruptionBudget:
+      minAvailable: 1
 
     containers:
       moodist:
         image:
-          repository: {{ .Values.image }}
-          tag: {{ default "latest" .Values.tag }}
+          repository: {{ .Values.image | quote }}
+          tag: {{ .Values.tag | quote }}
+          digest: {{ .Values.digest | quote }}
           pullPolicy: IfNotPresent
-      
+
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+        probes:
+          liveness:
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8080
+            spec:
+              periodSeconds: 30
+              timeoutSeconds: 5
+              failureThreshold: 3
+          readiness:
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8080
+            spec:
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 3
+          startup:
+            enabled: true
+            type: HTTP
+            path: /
+            port: 8080
+            spec:
+              periodSeconds: 5
+              timeoutSeconds: 5
+              failureThreshold: 12
+
         ports:
           - name: http
             containerPort: 8080
+
+networkpolicies:
+  moodist:
+    enabled: true
+    controller: moodist
+    policyTypes:
+      - Egress
+    rules:
+      egress: []
 
 service:
   moodist:
@@ -87,51 +152,62 @@ service:
 
 route:
   moodist:
-    # -- Enables or disables the route
     enabled: true
-
-    # -- Set the route kind
-    # Valid options are GRPCRoute, HTTPRoute, TCPRoute, TLSRoute, UDPRoute
     kind: HTTPRoute
-
-    # -- Provide additional labels which may be required.
     labels:
-      wan-mode: 'public'
-      lan-mode: 'private'
-
+      {{- toYaml .Values.route.moodist.labels | nindent 6 }}
     hostnames:
-      - sounds.mylogin.space
-
-    # -- Provide additional annotations which may be required.
+      {{- range $domain := .Values.domains }}
+      - {{ $domain | quote }}
+      {{- end }}
     annotations:
-      forecastle.stakater.com/expose: 'true'
-      forecastle.stakater.com/instance: 'core'
-      forecastle.stakater.com/group: 'Tools'
-      forecastle.stakater.com/appName: 'Moodist'
-
-    # -- Configure the resource the route attaches to.
+      {{- toYaml .Values.route.moodist.annotations | nindent 6 }}
     parentRefs:
-      - # Group of the referent resource.
+      -
         group: gateway.networking.k8s.io
-
-        # Kind of the referent resource.
         kind: Gateway
-
-        # Name of the referent resource
-        name: {{ $.Values.gateway.name }}
-
-        sectionName: {{ $.Values.gateway.sectionName }}
-
-        # Namespace of the referent resource
-        namespace: {{ $.Values.gateway.namespace }}
-
-    # -- Configure rules for routing. Defaults to the primary service.
+        name: {{ .Values.gateway.name | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
     rules:
-      - backendRefs:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
           - kind: Service
             port: 80
             identifier: moodist
             weight: 1
+  {{- if .Values.k8gb.enabled }}
+  moodist-k8gb:
+    enabled: true
+    kind: HTTPRoute
+    labels:
+      {{- toYaml (index .Values.route "moodist-k8gb").labels | nindent 6 }}
+    annotations:
+      {{- toYaml (index .Values.route "moodist-k8gb").annotations | nindent 6 }}
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: {{ .Values.gateway.name | quote }}
+        namespace: {{ .Values.gateway.namespace | quote }}
+        sectionName: {{ .Values.gateway.sectionName | quote }}
+    hostnames:
+      {{- range $domain := .Values.domains }}
+      - {{ printf "%s.%s" (first (splitList "." $domain)) $.Values.k8gb.domain | quote }}
+      {{- end }}
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - kind: Service
+            identifier: moodist
+            port: 80
+            weight: 1
+  {{- end }}
 
 {{- end -}}
 {{- $_ := mergeOverwrite .Values (include "app-template.hardcodedValues" . | fromYaml) -}}
