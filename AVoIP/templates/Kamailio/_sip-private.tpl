@@ -367,6 +367,7 @@
       # Every front-end registration and initial client dialog must retain the
       # client flow through this Kamailio owner. Envoy's PROXY header changes
       # $si/$sp, so TLS and WebSocket aliases use the accepted peer tuple.
+      {{- if not .Values.kamailio.registrar.enabled }}
       if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
         {{- if .Values.asterisk.sipCore.tls.enabled }}
         if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
@@ -402,7 +403,9 @@
           "SIPCORE FLOW stage=frontend-contact-aliased pod=$env(POD_NAME) callid=$ci method=$rm source=$si:$sp transport=$proto cseq=$hdr(CSeq)\n"
         );
         {{- end }}
-      } else if (!has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
+      }
+      {{- end }}
+      if (!is_method("REGISTER") && !has_totag() && is_method("INVITE") && is_present_hf("Contact")) {
         {{- if .Values.asterisk.sipCore.tls.enabled }}
         if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
           if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
@@ -1011,6 +1014,12 @@
           $var(sipcore_reply_alias_result) = add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws");
         } else if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
           $var(sipcore_reply_alias_result) = add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls");
+        } else if ($proto == "tls") {
+          # A browser-originated dialog's FreeSWITCH response returns over
+          # the internal TLS connection, not the endpoint's WSS/TLS socket.
+          # Keep that exact backend tuple in Contact so a later client BYE
+          # returns to the FreeSWITCH dialog owner instead of the HA Service.
+          $var(sipcore_reply_alias_result) = add_contact_alias("$si", "$sp", "tls");
         } else {
           $var(sipcore_reply_alias_result) = set_contact_alias("1");
         }
@@ -1342,6 +1351,23 @@
           sl_send_reply("500", "SIP Owner Registration Failed");
           exit;
         }
+        # Add the process-local flow alias only after parsing the rewritten
+        # Contact and owner Path. nathelper marks alias substitutions as
+        # send-socket-dependent, so applying them with msg_apply_changes()
+        # before TM selects a send socket corrupts this REGISTER transaction.
+        if (is_present_hf("Contact") && $hdr(Contact) != "*") {
+          if ($proto == "ws") {
+            if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws")) {
+              sl_send_reply("400", "Bad WebSocket Contact");
+              exit;
+            }
+          } else if ($proto == "tls") {
+            if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
+              sl_send_reply("400", "Bad TLS Contact");
+              exit;
+            }
+          }
+        }
       }
       {{- end }}
       # registrar.save() sends its own 200 or error response.
@@ -1369,6 +1395,16 @@
       }
       if ($au != $fU) {
         sl_send_reply("403", "Caller Not Authorized");
+        return;
+      }
+      # Valid Digest credentials alone are not sufficient to originate a
+      # SIP Core call. Require an active AoR binding as well, for internal
+      # extensions and PSTN destinations alike. Use the authenticated user,
+      # never the caller-controlled Request-URI or From display identity.
+      $var(authenticated_device_aor) = "sip:" + $au + "@{{ .Values.kamailio.registrar.realm }}";
+      if (!registered("location", "$var(authenticated_device_aor)")) {
+        xlog("L_WARN", "SIPCORE AUTH reject=authenticated-device-not-registered pod=$env(POD_NAME) callid=$ci auth_user=$au method=$rm destination=$rU\n");
+        sl_send_reply("403", "Authenticated Device Not Registered");
         return;
       }
       # The frontend has consumed this Digest challenge. Never pass the

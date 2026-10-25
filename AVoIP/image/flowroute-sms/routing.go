@@ -1739,6 +1739,9 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 		if inboundExtensionRoute {
 			text += `<action application="ring_ready"/><action application="set" data="bridge_answer_timeout=` + strconv.Itoa(inboundExtensionRingTimeoutSeconds()) + `"/>`
 		}
+		if inboundExtensionRoute && os.Getenv("AVOIP_ASTERISK_VOICEMAIL_ENABLED") == "true" {
+			text += `<action application="set" data="continue_on_fail=true"/>`
+		}
 		text += `<action application="set" data="hangup_after_bridge=true"/><action application="bridge" data="` + escape(bridge) + `"/>`
 		if inboundExtensionRoute && os.Getenv("AVOIP_ASTERISK_VOICEMAIL_ENABLED") == "true" {
 			text += `<action application="log" data="INFO AVoIP registrar extension unanswered; forwarding caller=${caller_id_number} to Asterisk voicemail"/><action application="bridge" data="sofia/gateway/asterisk/voicemail"/>`

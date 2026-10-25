@@ -177,6 +177,14 @@ rows with `.invalid` Contacts and no valid owner Path are dropped as individual
 branches until the client registers again; other active branches continue.
 After a chart rollout, allow clients to refresh registrations before expecting
 all pre-existing contacts to ring.
+When the Kamailio registrar is enabled, every new SIP Core client call must
+pass Digest authentication and have an active registration for that
+authenticated AoR. This applies to internal extension dialing and authorized
+PSTN destinations; valid credentials alone do not permit calls from an
+unregistered account. Inbound calls from the trusted FreeSWITCH registrar peer
+use the separate extension authorization route. If extension ringing is
+unanswered and Asterisk voicemail is enabled, FreeSWITCH continues the
+configured bridge sequence to voicemail.
 The YVR IVR's configured 7101 selection and authenticated YXL-to-YVR 7101
 handoff also use this gateway. The current
 [YVR ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
