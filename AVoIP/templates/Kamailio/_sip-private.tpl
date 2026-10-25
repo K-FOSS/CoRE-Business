@@ -492,6 +492,21 @@
           xlog("L_INFO", "SIPCORE FLOW stage=frontend-dialog-backend-alias pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn\n");
         }
       }
+      {{- if .Values.kamailio.registrar.enabled }}
+      # Inbound registrar calls are originated by FreeSWITCH's kamailio
+      # profile. Their endpoint-side Route set can restore the SIP Core owner
+      # return listener before the request reaches this branch. Do not send
+      # that dialog request back through the Asterisk-facing listener: return
+      # it to the FreeSWITCH registrar profile that owns the bridge. Client-
+      # originated dialogs retain their application-profile target on 5072.
+      if (has_totag() && $du != $null &&
+          $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
+        $du = "sips:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}:{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }};transport=tls";
+        $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
+        set_send_socket_name("private_tls");
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-inbound-dialog-backend-return pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn\n");
+      }
+      {{- end }}
       # RFC 4028 does not permit a UAS minimum below 90 seconds.  The deployed
       # FreeSWITCH build retains its effective 120-second floor even when a
       # lower profile value is rendered. Some browser clients offer a
