@@ -415,6 +415,7 @@
           # Keep the actual accepted socket ID on this owner, separate from
           # the redis-backed TOPOS dialog. It cannot move to another pod.
           $sht(sipcore_tls_dialog=>$ci) = $conid;
+          $sht(sipcore_dialog_destination=>$ci) = "sip:" + $tcp(c_si) + ":" + $tcp(c_sp) + ";transport=tls";
         } else if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
           if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws")) {
             sl_send_reply("400", "Bad Contact");
@@ -424,6 +425,7 @@
           # binding as native TLS. A later FreeSWITCH BYE must match the
           # accepted browser flow before Kamailio writes to that socket.
           $sht(sipcore_tls_dialog=>$ci) = $conid;
+          $sht(sipcore_dialog_destination=>$ci) = "sip:" + $tcp(c_si) + ":" + $tcp(c_sp) + ";transport=ws";
         } else {
           if (!set_contact_alias("1")) {
             sl_send_reply("400", "Bad Contact");
