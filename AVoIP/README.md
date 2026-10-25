@@ -165,6 +165,18 @@ injects the registrar peer and allowed extension in `core-prod`. A scoped
 ConfigMap and StatefulSet reconciliation rolls the three owners in sequence;
 validate a live inbound call and registration refresh after the rollout.
 Kamailio now defaults to core debug level `1` without enabling raw SIP dumps.
+For the HA registrar, each StatefulSet pod starts with a distinct Kamailio
+`server_id`; registration rows therefore cannot mistake a process-local
+WebSocket/TLS connection ID from one replica for a local connection on
+another. REGISTER handling rewrites the Contact to its replica owner and
+stores that owner's TLS Path before saving the location row. Inbound
+FreeSWITCH extension lookups use Kamailio's parallel location branches and
+retain each branch's owner Path. The owner pod alone resolves the Contact
+alias and writes to its accepted TLS or WebSocket flow. Legacy WebSocket
+rows with `.invalid` Contacts and no valid owner Path are dropped as individual
+branches until the client registers again; other active branches continue.
+After a chart rollout, allow clients to refresh registrations before expecting
+all pre-existing contacts to ring.
 The YVR IVR's configured 7101 selection and authenticated YXL-to-YVR 7101
 handoff also use this gateway. The current
 [YVR ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
@@ -777,10 +789,9 @@ Current YVR route idle/duration policies do not explain a reported 30-second
 disconnect; SIP Core flow and WebSocket-close markers help correlate the next
 disconnect without logging SIP bodies or Digest credentials.
 
-Run `helm lint AVoIP` and `AVoIP/tests/wss-ha-render.sh` for the WSS edge
-rendering checks. The working tree does not include the older Kamailio,
-registrar, outbound or SIP-security shell tests referenced by earlier docs;
-see [test notes](tests/README.md). Review the rendered carrier selector,
+The AVoIP test suite is currently disabled pending the repository owner's
+manual rewrite; see [test notes](tests/README.md). Do not run the existing
+scripts as verification. Review the rendered carrier selector,
 public Contact, source ACL, and private target before scoped Argo CD
 reconciliation. For live acceptance, correlate one Call-ID across both Kamailio legs and FreeSWITCH:
 require the 2xx ACK at FreeSWITCH, a call lasting beyond 60 seconds, and

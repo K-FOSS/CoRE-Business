@@ -238,7 +238,9 @@ data:
     # inbound calls to all registered TLS and WebSocket endpoints.
     modparam("registrar", "append_branches", 1)
     modparam("registrar", "use_path", 1)
-    modparam("registrar", "path_mode", 1)
+    # Store the generated owner Path without returning it to clients that do
+    # not advertise Path support.
+    modparam("registrar", "path_mode", 0)
     {{- end }}
     {{- end }}
 

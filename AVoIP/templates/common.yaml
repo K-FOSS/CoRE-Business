@@ -345,9 +345,18 @@
             test -n "$POD_IP" &&
             sed "s/KAMAILIO_POD_IP/${POD_IP}/g" /etc/kamailio/tls.cfg > /tmp/kamailio-tls.cfg &&
             {{- end }}
+            {{- if and .Values.kamailio.registrar.enabled $websocketHA.enabled }}
+            test -n "$POD_NAME" &&
+            case "${POD_NAME##*-}" in ''|*[!0-9]*) exit 1 ;; esac &&
+            KAMAILIO_SERVER_ID=$(( ${POD_NAME##*-} + 1 )) &&
+            {{- end }}
+            {{ if and .Values.kamailio.registrar.enabled $websocketHA.enabled }}
+            /usr/sbin/kamailio -c --server-id="$KAMAILIO_SERVER_ID" -f /etc/kamailio/kamailio.cfg &&
+            exec /usr/sbin/kamailio -m {{ .Values.kamailio.shmSizeMb }} -DD -E -P /tmp/kamailio.pid --server-id="$KAMAILIO_SERVER_ID" -f /etc/kamailio/kamailio.cfg
+            {{ else }}
             /usr/sbin/kamailio -c -f /etc/kamailio/kamailio.cfg &&
-            exec /usr/sbin/kamailio -m {{ .Values.kamailio.shmSizeMb }} -DD -E -P /tmp/kamailio.pid
-            -f /etc/kamailio/kamailio.cfg
+            exec /usr/sbin/kamailio -m {{ .Values.kamailio.shmSizeMb }} -DD -E -P /tmp/kamailio.pid -f /etc/kamailio/kamailio.cfg
+            {{ end }}
         env:
 {{ if include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim }}
           - name: 'AVOIP_ROUTING_TOKEN'

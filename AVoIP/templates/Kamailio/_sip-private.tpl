@@ -235,6 +235,7 @@
           sl_send_reply("404", "User Not Registered");
           exit;
         }
+        t_on_branch("SIPCORE_INBOUND_FORK");
         record_route();
         route(PRIVATE_RELAY);
         exit;
@@ -364,14 +365,11 @@
       # A public client must never be able to select the owner-forward path.
       remove_hf("X-Core-Frontend-Owner-Forward");
       # Every front-end registration and initial client dialog must retain the
-      # client flow through this Kamailio owner. TLS behind Envoy uses its actual
-      # accepted peer tuple; other transports use the received source tuple.
+      # client flow through this Kamailio owner. Envoy's PROXY header changes
+      # $si/$sp, so TLS and WebSocket aliases use the accepted peer tuple.
       if (is_method("REGISTER") && is_present_hf("Contact") && $hdr(Contact) != "*") {
         {{- if .Values.asterisk.sipCore.tls.enabled }}
         if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
-          # PROXY v2 changes $si/$sp to the phone tuple. Store the actual
-          # Envoy-to-Kamailio peer tuple so in-dialog TLS requests reuse the
-          # accepted upstream connection instead of dialing the phone tuple.
           if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls")) {
             sl_send_reply("400", "Bad Contact");
             exit;
@@ -379,6 +377,11 @@
           {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog("L_INFO", "SIPCORE FLOW stage=frontend-contact-flow-aliased pod=$env(POD_NAME) callid=$ci method=$rm client=$si:$sp flow_peer=$tcp(c_si):$tcp(c_sp) transport=$proto cseq=$hdr(CSeq)\n");
           {{- end }}
+        } else if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+          if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws")) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
         } else {
           if (!set_contact_alias("1")) {
             sl_send_reply("400", "Bad Contact");
@@ -409,6 +412,11 @@
           # Keep the actual accepted socket ID on this owner, separate from
           # the redis-backed TOPOS dialog. It cannot move to another pod.
           $sht(sipcore_tls_dialog=>$ci) = $conid;
+        } else if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+          if (!add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws")) {
+            sl_send_reply("400", "Bad Contact");
+            exit;
+          }
         } else {
           if (!set_contact_alias("1")) {
             sl_send_reply("400", "Bad Contact");
@@ -876,15 +884,15 @@
       # PROXY v2 reports the phone in $si/$sp, while the accepted TLS socket
       # belongs to Envoy's real peer. handle_ruri_alias() only sets $du;
       # without otcpid Kamailio may dial Envoy's ephemeral source port.
-      if ($var(sipcore_alias_result) == 1 && $dP == "tls" && $du != $null) {
+      if ($var(sipcore_alias_result) == 1 && ($dP == "tls" || $dP == "ws") && $du != $null) {
         # Build the peer from runtime pseudo-variables. Quoting "$dd:$dp"
         # leaves those tokens literal for tcp_get_conid() to resolve.
         $var(sipcore_flow_peer) = $dd + ":" + $dp;
         $var(sipcore_flow_conid) = 0;
         if (!tcp_get_conid("$var(sipcore_flow_peer)", "$var(sipcore_flow_conid)") ||
             !tcp_conid_alive("$var(sipcore_flow_conid)")) {
-          xlog("L_WARN", "SIPCORE FLOW stage=tls-owner-flow-gone pod=$env(POD_NAME) callid=$ci method=$rm peer=$var(sipcore_flow_peer) cseq=$hdr(CSeq) response=430\n");
-          if (!is_method("ACK")) sl_send_reply("430", "TLS Flow Failed");
+          xlog("L_WARN", "SIPCORE FLOW stage=client-owner-flow-gone pod=$env(POD_NAME) callid=$ci method=$rm transport=$dP peer=$var(sipcore_flow_peer) cseq=$hdr(CSeq) response=430\n");
+          if (!is_method("ACK")) sl_send_reply("430", "Client Flow Failed");
           exit;
         }
         if (has_totag()) {
@@ -894,16 +902,16 @@
             if (!is_method("ACK")) sl_send_reply("430", "TLS Dialog Flow Gone");
             exit;
           }
-        } else if (is_method("INVITE")) {
+        } else if (!has_totag() && is_method("INVITE")) {
           $sht(sipcore_tls_dialog=>$ci) = $var(sipcore_flow_conid);
         }
         if (!tcp_set_otcpid("$var(sipcore_flow_conid)")) {
-          xlog("L_ERR", "SIPCORE FLOW stage=tls-owner-flow-select-failed pod=$env(POD_NAME) callid=$ci method=$rm connection_id=$var(sipcore_flow_conid) cseq=$hdr(CSeq)\n");
-          if (!is_method("ACK")) sl_send_reply("430", "TLS Flow Failed");
+          xlog("L_ERR", "SIPCORE FLOW stage=client-owner-flow-select-failed pod=$env(POD_NAME) callid=$ci method=$rm transport=$dP connection_id=$var(sipcore_flow_conid) cseq=$hdr(CSeq)\n");
+          if (!is_method("ACK")) sl_send_reply("430", "Client Flow Failed");
           exit;
         }
         tcp_set_otcpid_flag(1);
-        xlog("L_INFO", "SIPCORE FLOW stage=tls-owner-flow-selected pod=$env(POD_NAME) callid=$ci method=$rm connection_id=$var(sipcore_flow_conid) peer=$var(sipcore_flow_peer) cseq=$hdr(CSeq)\n");
+        xlog("L_INFO", "SIPCORE FLOW stage=client-owner-flow-selected pod=$env(POD_NAME) callid=$ci method=$rm transport=$dP connection_id=$var(sipcore_flow_conid) peer=$var(sipcore_flow_peer) cseq=$hdr(CSeq)\n");
       }
       {{- end }}
       route(SIPCORE_CONTENT_TYPE);
@@ -998,7 +1006,15 @@
       }
       if ($var(sipcore_client_reply) == 1 &&
           !is_method("REGISTER") && is_present_hf("Contact")) {
-        if (set_contact_alias("1")) {
+        $var(sipcore_reply_alias_result) = -1;
+        if ($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) {
+          $var(sipcore_reply_alias_result) = add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "ws");
+        } else if ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}) {
+          $var(sipcore_reply_alias_result) = add_contact_alias("$tcp(c_si)", "$tcp(c_sp)", "tls");
+        } else {
+          $var(sipcore_reply_alias_result) = set_contact_alias("1");
+        }
+        if ($var(sipcore_reply_alias_result) >= 0) {
           {{- if .Values.kamailio.sipLogging.sipCore }}
           xlog(
             "L_INFO",
@@ -1197,6 +1213,38 @@
       exit;
     }
 
+    {{- if and .Values.kamailio.registrar.enabled .Values.kamailio.websocketHA.enabled }}
+    branch_route[SIPCORE_INBOUND_FORK] {
+      $var(inbound_branch_owner) = "contact";
+      if ($du != $null) {
+        $var(inbound_branch_owner) = $dd + ":" + $dp;
+      } else if ($(ru{uri.host}) =~ "\\.invalid$") {
+        # Legacy Contacts without an owner Path cannot safely reuse a
+        # process-local WebSocket connection on another replica.
+        xlog("L_WARN", "SIPCORE FLOW stage=inbound-branch-unreachable result=drop reason=owner_path_missing pod=$env(POD_NAME) callid=$ci ruri=$ru transport=$dP\n");
+        drop;
+      }
+      if ($(ru{uri.host}) =~ "\\.invalid$" &&
+          ($du == $null || $(du{uri.param,transport}) != "tls" ||
+           $(du{uri.port}) != {{ $.Values.asterisk.sipCore.privateEgressPort }})) {
+        # PRIVATE_RELAY has a compatibility alias resolver for old records.
+        # It can only resolve a PROXY peer tuple, not another pod's local WS
+        # socket; reject that unusable legacy branch without affecting siblings.
+        xlog("L_WARN", "SIPCORE FLOW stage=inbound-branch-unreachable result=drop reason=invalid-owner-path pod=$env(POD_NAME) callid=$ci ruri=$ru destination=$du\n");
+        drop;
+      }
+      if ($(ru{uri.host}) =~ "\\.invalid$") {
+        if ($(du{uri.host}) =~ "^{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}-[0-9]+\\.") {
+          xlog("L_INFO", "SIPCORE FLOW stage=inbound-path-restored pod=$env(POD_NAME) callid=$ci ruri=$ru destination=$du\n");
+        } else {
+          xlog("L_WARN", "SIPCORE FLOW stage=inbound-branch-unreachable result=drop reason=invalid-owner-host pod=$env(POD_NAME) callid=$ci ruri=$ru destination=$du\n");
+          drop;
+        }
+      }
+      xlog("L_INFO", "SIPCORE FLOW stage=inbound-branch-selected pod=$env(POD_NAME) callid=$ci ruri=$ru destination=$du owner=$var(inbound_branch_owner)\n");
+    }
+    {{- end }}
+
     {{- if .Values.kamailio.sipLogging.diagnostics.enabled }}
     onsend_route {
       if ($var(side) eq "sipcore" && is_method("ACK|INFO")) {
@@ -1266,35 +1314,32 @@
         exit;
       }
       # Never trust a device-supplied Path. DB-only usrloc is shared among HA
-      # pods, but the live TLS/WS connection belongs to this StatefulSet pod.
+      # pods, but each TLS/WS connection belongs to this StatefulSet pod.
       remove_hf("Path");
       {{- if .Values.kamailio.websocketHA.enabled }}
-      if ($var(side) eq "sipcore") {
-        # Some SIP/WebSocket clients do not advertise RFC 3327 Path support.
-        # Keep their opaque Contact alias, but replace the non-routable browser
-        # host with this registration pod's owner listener. The owner listener
-        # consumes the alias and writes the request to the existing local WS
-        # flow; it is not a new client connection or a fixed pod affinity rule.
-        if ($proto == "ws" && is_present_hf("Contact") && $hdr(Contact) != "*") {
+      if ($var(side) eq "sipcore" &&
+          (($proto == "ws" && $Rp == {{ $.Values.asterisk.sipCore.httpPort }}) ||
+           ($proto == "tls" && $Rp == {{ $.Values.asterisk.sipCore.tls.port }}))) {
+        # Persist a stable per-replica Contact and Path. The owner listener
+        # consumes the retained Contact alias on the process that owns the
+        # accepted TLS/WS connection. msg_apply_changes() is required before
+        # save() so registrar parses these generated headers into usrloc.
+        if (is_present_hf("Contact") && $hdr(Contact) != "*") {
           if (!subst_hf("Contact", "/@[^;>; ]+/@SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }}/ig", "a") ||
-              !subst_hf("Contact", "/;transport=ws/;transport=tls/ig", "a")) {
+              ($proto == "ws" && !subst_hf("Contact", "/;transport=ws/;transport=tls/ig", "a"))) {
             sl_send_reply("400", "Unsupported WebSocket Contact");
             exit;
           }
-          xlog("L_INFO", "SIPCORE FLOW stage=registrar-owner-contact pod=$env(POD_NAME) callid=$ci method=REGISTER contact=$hdr(Contact) transport=$proto cseq=$hdr(CSeq)\n");
+          xlog("L_INFO", "SIPCORE FLOW stage=registrar-owner-contact pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
         }
-        # Build the owner route through path.so instead of appending a raw
-        # header. The registrar stores Path only when the path module has
-        # created the header on the selected advertised socket. Without that
-        # metadata lookup("location") falls back to a browser's randomized
-        # .invalid Contact host and never reaches the live WebSocket flow.
-        # Advertise Path support on behalf of the proxy-generated owner route;
-        # some registrar builds otherwise discard the Path lump during save()
-        # even when registrar.path_mode is configured for lazy storage.
-        append_hf("Supported: path\r\n");
         set_send_socket_name("sipcore_owner_tls");
         if (!add_path()) {
           sl_send_reply("503", "SIP Owner Path Unavailable");
+          exit;
+        }
+        if (!msg_apply_changes()) {
+          xlog("L_ERR", "SIPCORE FLOW stage=registrar-owner-headers-failed pod=$env(POD_NAME) callid=$ci method=REGISTER transport=$proto cseq=$hdr(CSeq)\n");
+          sl_send_reply("500", "SIP Owner Registration Failed");
           exit;
         }
       }

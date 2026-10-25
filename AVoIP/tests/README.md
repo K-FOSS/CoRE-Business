@@ -1,5 +1,11 @@
 # AVoIP render checks
 
+> **Testing is currently disabled pending the repository owner's manual
+> rewrite of this test suite.** Do not treat the scripts documented here or
+> existing automated results as valid verification until that rewrite is
+> complete. For an implementation task, report any separate syntax, render,
+> and live-call checks that were actually performed.
+
 Native TLS signaling regressions are checked with
 `AVoIP/tests/sipcore-native-tls-render.py` and, where a pinned Kamailio 6.1.4
 runtime with SQLite is available,
