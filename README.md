@@ -56,6 +56,9 @@ with the existing Authentik access group. See the [sound library guide](AVoIP/do
 for its data path, recording format, access boundary and verification steps.
 AVoIP's default Kamailio and RTPEngine listeners use each pod's address so
 locally emitted Homer traces identify their source; see [capture verification](AVoIP/docs/HOMER.md#verification).
+The [AVoIP registrar path](AVoIP/README.md) now uses a pod-specific TLS
+profile for FreeSWITCH's extension bridge, which sends no SNI, and defaults Kamailio core
+logging to level `1`.
 Kamailio uses private UDP NG control to RTPEngine with explicit command retries
 and periodic endpoint redetection after transient errors; see
 [RTPEngine recovery](AVoIP/docs/avoip/rtpengine-ha.md).

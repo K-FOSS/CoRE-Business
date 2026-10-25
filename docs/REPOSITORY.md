@@ -19,6 +19,9 @@ For remote hangups, also check the [retransmitted-answer Contact alias
 repair](../AVoIP/docs/SIPCORE-REMOTE-HANGUP.md).
 For native SIP-over-TLS ACK loss, Envoy flow reuse and retransmitted SDP,
 use the [TLS dialog runbook](../AVoIP/docs/NATIVE-SIP-TLS.md).
+The [AVoIP registrar path](../AVoIP/README.md) uses each Kamailio pod's
+private TLS profile to verify FreeSWITCH before looking up extension `7101`;
+Kamailio core logging defaults to level `1`.
 Its Home1-only FreeSWITCH AVP/SDES compatibility setting must be verified
 with a live Groundwire call after the scoped rollout.
 

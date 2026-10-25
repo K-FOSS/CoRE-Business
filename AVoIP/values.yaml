@@ -390,9 +390,9 @@ kamailio:
         sipLogging:
           diagnostics:
             enabled: true
-            # Increase core diagnostics only on the dedicated WSS edge.
-            # Do not enable raw SIP dumps, which can expose Digest responses.
-            coreDebug: 0
+            # Keep level 1 core diagnostics without raw SIP dumps, which can
+            # expose Digest responses.
+            coreDebug: 1
         # Send unsolicited Pong frames to keep the upgraded stream active
         # without evicting clients that do not return Ping frames through an
         # intermediary. Asterisk OPTIONS remains the SIP flow health check.
@@ -474,8 +474,8 @@ kamailio:
       role: 'carrier-sbc'
       replicas: 3
   defaults:
-    # Keep Kamailio core debug output disabled in normal operation. Explicit
-    # L_INFO routing and telephony markers remain enabled by the SIP routes.
+    # Emit Kamailio level 1 core diagnostics by default alongside the
+    # explicit SIP routing and telephony markers.
     coreDebug: 1
     # Optional per-instance workload overrides. Empty values preserve the
     # existing carrier manifest. extraEnv is a replace-only list; entries may
@@ -576,7 +576,7 @@ kamailio:
         # Temporarily enabled while investigating the recurring 30-second call
         # failure. This emits routing/transaction markers and no full SIP body.
         enabled: true
-        # Keep module DEBUG noise disabled while retaining route L_INFO logs.
+        # Emit level 1 core diagnostics alongside route L_INFO logs.
         coreDebug: 1
         # Log sanitized SIP routing metadata and SDP before/after RTPEngine.
         # Disable after the media investigation because SDP can expose endpoint

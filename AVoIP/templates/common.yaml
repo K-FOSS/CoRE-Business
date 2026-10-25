@@ -341,6 +341,10 @@
           - -c
         args:
           - >-
+            {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled .Values.kamailio.registrar.enabled }}
+            test -n "$POD_IP" &&
+            sed "s/KAMAILIO_POD_IP/${POD_IP}/g" /etc/kamailio/tls.cfg > /tmp/kamailio-tls.cfg &&
+            {{- end }}
             /usr/sbin/kamailio -c -f /etc/kamailio/kamailio.cfg &&
             exec /usr/sbin/kamailio -m {{ .Values.kamailio.shmSizeMb }} -DD -E -P /tmp/kamailio.pid
             -f /etc/kamailio/kamailio.cfg

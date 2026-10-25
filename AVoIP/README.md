@@ -139,6 +139,20 @@ policy. They deliver inbound extensions through the `sipcore-registrar`
 gateway. The switch omits 7101's Asterisk PJSIP auth/AOR/endpoint. Asterisk
 remains in the call path only for voicemail, reached over the private
 FreeSWITCH peer.
+FreeSWITCH sends this gateway's TLS traffic without SNI. For the HA registrar,
+the pod startup command writes a TLS profile using its current pod IP before
+Kamailio starts. This makes private port `5062` request and verify the
+FreeSWITCH client certificate while the separate owner port `5063` retains
+its existing server-authenticated behavior. The SIP route then checks the
+verified certificate SAN and allowed source, assigns the
+`freeswitch-registrar` role, and limits inbound lookup to configured AoRs
+such as `7101`; Kamailio's location database and contact Path select the
+registered endpoint owner. See [Kamailio's TLS profile documentation](https://www.kamailio.org/docs/modules/6.1.x/modules/tls.html)
+for IP and port matching. The Home1 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
+injects the registrar peer and allowed extension in `core-prod`. A scoped
+ConfigMap and StatefulSet reconciliation rolls the three owners in sequence;
+validate a live inbound call and registration refresh after the rollout.
+Kamailio now defaults to core debug level `1` without enabling raw SIP dumps.
 The YVR IVR's configured 7101 selection and authenticated YXL-to-YVR 7101
 handoff also use this gateway. The current
 [YVR ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)

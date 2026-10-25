@@ -296,7 +296,7 @@ data:
     }
     {{- end }}
 
-    modparam("tls", "config", "/etc/kamailio/tls.cfg")
+    modparam("tls", "config", "{{ if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled .Values.kamailio.registrar.enabled }}/tmp/kamailio-tls.cfg{{ else }}/etc/kamailio/tls.cfg{{ end }}")
     modparam("tls", "xavp_cfg", "tls")
 
     #
@@ -477,9 +477,15 @@ data:
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 
-    # FreeSWITCH call control has its own wildcard listener and retains strict
-    # client certificate verification even though the owner default is relaxed.
+    {{- if and $websocketHA.enabled .Values.kamailio.registrar.enabled }}
+    # FreeSWITCH omits SNI. An IP:port profile for 0.0.0.0 does not match
+    # the accepted connection's pod IP, so it falls back to the relaxed owner
+    # default and cannot verify a client certificate. The startup command
+    # replaces this token with the actual pod IP before loading tls.cfg.
+    [server:KAMAILIO_POD_IP:5062]
+    {{- else }}
     [server:0.0.0.0:5062]
+    {{- end }}
     method = TLSv1.2+
     verify_certificate = yes
     require_certificate = yes
