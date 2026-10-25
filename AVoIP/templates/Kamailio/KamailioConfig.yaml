@@ -134,6 +134,7 @@ data:
     # A restarted owner must fail an old dialog rather than attach it to a
     # different TLS connection that later reuses Envoy's source tuple.
     modparam("htable", "htable", "sipcore_tls_dialog=>size=8;autoexpire=86400")
+    modparam("htable", "htable", "sipcore_dialog_destination=>size=8;autoexpire=86400")
     {{- end }}
     {{- if not (include "avoip.kamailio.adminRoutingEnabled" (dict "root" . "instance" .Values.kamailio) | trim) }}
     # SIP Core reads the managed extension codec policy on WSS INVITEs even

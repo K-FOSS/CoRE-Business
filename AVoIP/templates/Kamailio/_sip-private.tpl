@@ -798,11 +798,27 @@
       $var(sipcore_loose_route_result) = 0;
       $var(sipcore_local_route_hops) = 0;
       $var(sipcore_alias_result) = 0;
+      $var(sipcore_cached_flow) = 0;
       if (has_totag()) {
         $var(sipcore_flow_token_result) = check_flow_token();
         $var(sipcore_loose_route_result) = loose_route();
+        # The initial inbound branch already resolved the registration's
+        # owner-local alias and selected its live TCP connection. Reuse that
+        # exact pair for subsequent requests instead of trying to derive an
+        # Envoy-side TLS/WSS flow from the endpoint's reply Contact.
+        if ($sht(sipcore_tls_dialog=>$ci) != $null &&
+            $sht(sipcore_dialog_destination=>$ci) != $null &&
+            tcp_conid_alive("$sht(sipcore_tls_dialog=>$ci)")) {
+          $du = $sht(sipcore_dialog_destination=>$ci);
+          if (tcp_set_otcpid("$sht(sipcore_tls_dialog=>$ci)")) {
+            tcp_set_otcpid_flag(1);
+            $var(sipcore_cached_flow) = 1;
+            $var(sipcore_dialog_routed) = 1;
+            xlog("L_INFO", "SIPCORE FLOW stage=client-dialog-flow-restored pod=$env(POD_NAME) callid=$ci method=$rm destination=$du transport=$dP connection_id=$sht(sipcore_tls_dialog=>$ci) cseq=$hdr(CSeq)\n");
+          }
+        }
       }
-      if ($var(sipcore_loose_route_result) > 0) {
+      if ($var(sipcore_loose_route_result) > 0 && $var(sipcore_cached_flow) != 1) {
         $var(sipcore_dialog_routed) = 1;
         $var(sipcore_local_route_hops) = 0;
 
@@ -911,6 +927,7 @@
           }
         } else if (!has_totag() && is_method("INVITE")) {
           $sht(sipcore_tls_dialog=>$ci) = $var(sipcore_flow_conid);
+          $sht(sipcore_dialog_destination=>$ci) = $du;
         }
         if (!tcp_set_otcpid("$var(sipcore_flow_conid)")) {
           xlog("L_ERR", "SIPCORE FLOW stage=client-owner-flow-select-failed pod=$env(POD_NAME) callid=$ci method=$rm transport=$dP connection_id=$var(sipcore_flow_conid) cseq=$hdr(CSeq)\n");
