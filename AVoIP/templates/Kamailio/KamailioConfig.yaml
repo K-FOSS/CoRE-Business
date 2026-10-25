@@ -598,10 +598,11 @@ data:
     {{- end }}
     {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled .Values.kamailio.registrar.enabled .Values.freeswitch.enabled }}
 
-    # Endpoint BYEs return to FreeSWITCH through its internal TLS listener.
-    # Use the Vault CA and this registrar's client certificate only for the
-    # exact FreeSWITCH service identity; the default profile stays unchanged.
+    # FreeSWITCH's registrar listener and application listener share a DNS
+    # name but present certificates from different CAs. Select each client
+    # profile explicitly by server_id on the trusted routing boundary.
     [client:any]
+    server_id = freeswitch-registrar-return
     server_name = {{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
     method = TLSv1.2+
     verify_certificate = yes
@@ -609,6 +610,16 @@ data:
     ca_list = /etc/kamailio/freeswitch-peer-ca/ca.crt
     private_key = /etc/kamailio/mtls/tls.key
     certificate = /etc/kamailio/mtls/tls.crt
+
+    [client:any]
+    server_id = freeswitch-application
+    server_name = {{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
+    method = TLSv1.2+
+    verify_certificate = yes
+    require_certificate = no
+    ca_list = /etc/ssl/certs/ca-certificates.crt
+    private_key = /etc/kamailio/tls/tls.key
+    certificate = /etc/kamailio/tls/tls.crt
     {{- end }}
     {{- if and (eq .Values.kamailio.role "private-sbc") .Values.freeswitch.enabled .Values.kamailio.carrierOutbound.clientIdentity.enabled }}
 

@@ -155,6 +155,11 @@ verifies FreeSWITCH with the internal CA. FreeSWITCH's Kamailio-only Sofia
 profile includes that same CA in its client certificate trust bundle, so an
 endpoint BYE can return over mutual TLS. The registrar certificate is mounted
 only in the registrar pods and does not change carrier egress authorization.
+Kamailio selects that Vault client profile for the FreeSWITCH registrar
+listener on port `5061`; extension-originated application calls to port `5072`
+use a separate profile that verifies FreeSWITCH's public certificate with the
+system CA bundle. Both profiles require the configured FreeSWITCH destination
+and an explicit server ID selected by the trusted routing script.
 The Home1 [AVoIP ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/AVoIP.yaml)
 injects the registrar peer and allowed extension in `core-prod`. A scoped
 ConfigMap and StatefulSet reconciliation rolls the three owners in sequence;

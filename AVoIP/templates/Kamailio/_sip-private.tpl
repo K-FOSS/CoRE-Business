@@ -1107,6 +1107,22 @@
     {{- end }}
 
     route[PRIVATE_RELAY] {
+      {{- if and .Values.kamailio.websocketHA.enabled .Values.kamailio.registrar.enabled .Values.freeswitch.enabled }}
+      # The FreeSWITCH service name is shared by its Vault-backed registrar
+      # listener and publicly signed application listener. Only trusted route
+      # selection may choose a TLS identity; SIP headers never select it.
+      if ($du != $null && $dP == "tls" &&
+          $xavp(tls=>server_name) == "{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}") {
+        if ($(du{uri.port}) == "{{ .Values.freeswitch.publicExposure.kamailio.backendPort }}") {
+          $xavp(tls[0]=>server_id) = "freeswitch-registrar-return";
+        } else if ($(du{uri.port}) == "5072") {
+          $xavp(tls[0]=>server_id) = "freeswitch-application";
+        }
+        if ($xavp(tls[0]=>server_id) != $null) {
+          xlog("L_INFO", "SIPCORE FLOW stage=freeswitch-tls-profile-selected pod=$env(POD_NAME) callid=$ci method=$rm destination=$du profile=$xavp(tls[0]=>server_id)\n");
+        }
+      }
+      {{- end }}
       # Shared usrloc can contain legacy WebSocket Contacts whose browser
       # hostname is intentionally non-resolvable (*.invalid). Resolve the
       # nathelper alias on the final relay boundary so an inbound branch uses
