@@ -3,7 +3,6 @@
     loadmodule "http_client.so"
     loadmodule "rtimer.so"
     loadmodule "jansson.so"
-    loadmodule "ipops.so"
     modparam("htable", "htable", "managed=>size=4;autoexpire=0;")
     modparam("http_client", "timeout_mode", 2)
     modparam("http_client", "connection_timeout", 1000)

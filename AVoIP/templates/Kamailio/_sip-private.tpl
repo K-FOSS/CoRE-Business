@@ -535,6 +535,9 @@
         }
         $du = "sips:" + $var(inbound_owner_ip) + ":{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }};transport=tls";
         $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
+        # The pod IP is the routing destination, while the registrar listener
+        # requires the Vault-backed mTLS client identity for this profile.
+        $xavp(tls[0]=>server_id) = "freeswitch-registrar-return";
         set_send_socket_name("private_tls");
         xlog("L_INFO", "SIPCORE FLOW stage=frontend-inbound-dialog-backend-return result=owner-pinned pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) owner=$var(inbound_owner_ip) destination=$du socket=$fsn\n");
       }
