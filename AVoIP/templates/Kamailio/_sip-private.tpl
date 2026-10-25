@@ -235,6 +235,22 @@
           sl_send_reply("404", "User Not Registered");
           exit;
         }
+        # The inbound bridge is process-local to the FreeSWITCH pod that sent
+        # this INVITE. Persist that authenticated peer in shared state before
+        # the request is forked across registrar replicas, so a later endpoint
+        # BYE can return to the exact process that owns the PSTN leg.
+        $var(inbound_owner_key) = "avoip:sipcore:inbound-owner:" + $ci;
+        $var(inbound_owner_write_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX',86400);return 1";
+        if (!redis_cmd(
+          "topos", "EVAL %s 1 %s %s",
+          "$var(inbound_owner_write_script)", "$var(inbound_owner_key)",
+          "$si", "inbound_owner_write"
+        ) || $redis(inbound_owner_write=>type) != $redisd(rpl_int) ||
+            $redis(inbound_owner_write=>value) != 1) {
+          xlog("L_ERR", "SIPCORE FLOW stage=inbound-owner-write result=failed pod=$env(POD_NAME) callid=$ci owner=$si\n");
+          sl_send_reply("503", "Call Routing State Unavailable");
+          exit;
+        }
         t_on_branch("SIPCORE_INBOUND_FORK");
         record_route();
         route(PRIVATE_RELAY);
@@ -497,14 +513,30 @@
       # profile. Their endpoint-side Route set can restore the SIP Core owner
       # return listener before the request reaches this branch. Do not send
       # that dialog request back through the Asterisk-facing listener: return
-      # it to the FreeSWITCH registrar profile that owns the bridge. Client-
-      # originated dialogs retain their application-profile target on 5072.
+      # it to the exact FreeSWITCH pod whose registrar profile owns the bridge.
+      # Client-originated dialogs retain their application-profile target on
+      # 5072.
       if (has_totag() && $du != $null &&
           $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
-        $du = "sips:{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}:{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }};transport=tls";
+        $var(inbound_owner_key) = "avoip:sipcore:inbound-owner:" + $ci;
+        if (!redis_cmd(
+          "topos", "GET %s", "$var(inbound_owner_key)",
+          "inbound_owner_read"
+        ) || $redis(inbound_owner_read=>type) != $redisd(rpl_str)) {
+          xlog("L_ERR", "SIPCORE FLOW stage=frontend-inbound-dialog-backend-return result=owner-unavailable pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq)\n");
+          if (!is_method("ACK")) sl_send_reply("503", "Call Routing State Unavailable");
+          exit;
+        }
+        $var(inbound_owner_ip) = $redis(inbound_owner_read=>value);
+        if (!is_in_subnet($var(inbound_owner_ip), "{{ .Values.kamailio.backend.podCIDR }}")) {
+          xlog("L_ERR", "SIPCORE FLOW stage=frontend-inbound-dialog-backend-return result=owner-invalid pod=$env(POD_NAME) callid=$ci method=$rm owner=$var(inbound_owner_ip)\n");
+          if (!is_method("ACK")) sl_send_reply("503", "Call Routing State Invalid");
+          exit;
+        }
+        $du = "sips:" + $var(inbound_owner_ip) + ":{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }};transport=tls";
         $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
         set_send_socket_name("private_tls");
-        xlog("L_INFO", "SIPCORE FLOW stage=frontend-inbound-dialog-backend-return pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) destination=$du socket=$fsn\n");
+        xlog("L_INFO", "SIPCORE FLOW stage=frontend-inbound-dialog-backend-return result=owner-pinned pod=$env(POD_NAME) callid=$ci method=$rm cseq=$hdr(CSeq) owner=$var(inbound_owner_ip) destination=$du socket=$fsn\n");
       }
       {{- end }}
       # RFC 4028 does not permit a UAS minimum below 90 seconds.  The deployed
