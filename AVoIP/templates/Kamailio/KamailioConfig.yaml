@@ -99,7 +99,7 @@ data:
     {{- end }}
 
     # Private application/B2BUA-facing identity.
-    listen=tls:{{ if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled (not .Values.kamailio.registrar.enabled) }}0.0.0.0{{ else }}{{ $bindAddress }}{{ end }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
+    listen=tls:{{ $bindAddress }}:5062 advertise "{{ $kamailioHost }}":5062 name "private_tls"
 
     {{- if eq .Values.kamailio.role "carrier-sbc" }}
     alias="{{ .Values.sip.globalHost }}:{{ .Values.kamailio.advertisedTLSPort }}"
@@ -296,7 +296,7 @@ data:
     }
     {{- end }}
 
-    modparam("tls", "config", "{{ if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled .Values.kamailio.registrar.enabled }}/tmp/kamailio-tls.cfg{{ else }}/etc/kamailio/tls.cfg{{ end }}")
+    modparam("tls", "config", "{{ if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled }}/tmp/kamailio-tls.cfg{{ else }}/etc/kamailio/tls.cfg{{ end }}")
     modparam("tls", "xavp_cfg", "tls")
 
     #
@@ -477,14 +477,12 @@ data:
     private_key = /etc/kamailio/tls/tls.key
     certificate = /etc/kamailio/tls/tls.crt
 
-    {{- if and $websocketHA.enabled .Values.kamailio.registrar.enabled }}
+    {{- if $websocketHA.enabled }}
     # FreeSWITCH omits SNI. Bind the private listener to the pod IP and use
     # the same IP in its strict TLS profile; the wildcard profile fell back
     # to the relaxed owner default and did not request a client certificate.
     # The startup command replaces this token before loading tls.cfg.
     [server:KAMAILIO_POD_IP:5062]
-    {{- else }}
-    [server:0.0.0.0:5062]
     {{- end }}
     method = TLSv1.2+
     verify_certificate = yes

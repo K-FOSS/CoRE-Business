@@ -341,7 +341,7 @@
           - -c
         args:
           - >-
-            {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled .Values.kamailio.registrar.enabled }}
+            {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled }}
             test -n "$POD_IP" &&
             sed "s/KAMAILIO_POD_IP/${POD_IP}/g" /etc/kamailio/tls.cfg > /tmp/kamailio-tls.cfg &&
             {{- end }}

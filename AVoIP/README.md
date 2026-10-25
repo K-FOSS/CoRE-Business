@@ -197,7 +197,12 @@ FreeSWITCH outbound proxy uses the three-replica `internal-ha` service;
 the separate `internal-websocket` service remains the client registration and
 WebSocket ingress path. The
 client identities use each site's existing Vault backed `core-tls-vault`
-ClusterIssuer. The desired YVR configuration enables Asterisk SIP Core account
+ClusterIssuer. On YVR `internal-ha`, the outbound peer's private TLS listener
+on `5062` binds the pod IP so its strict client-certificate profile is selected
+when FreeSWITCH omits SNI. FreeSWITCH's Flowroute profile presents its Vault
+certificate and verifies Kamailio on that leg. The separate owner listener on
+`5063` retains its existing TLS behavior. The
+desired YVR configuration enables Asterisk SIP Core account
 `7101` to place full `+1` plus ten digit calls through the managed extension
 route. AVoIP Admin supplies that extension's caller ID and eligible provider;
 the provider's `caller_ids` policy must authorize it. Optional provider egress
