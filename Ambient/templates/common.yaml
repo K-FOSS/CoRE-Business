@@ -3,7 +3,8 @@
 
 {{- define "app-template.hardcodedValues" -}}
 global:
-  nameOverride: {{ .Release.Name | quote }}
+  nameOverride: 'core-ambient'
+  fullnameOverride: core-ambient
 
 defaultPodOptions:
   automountServiceAccountToken: false
