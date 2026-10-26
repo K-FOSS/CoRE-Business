@@ -178,7 +178,7 @@ data:
             <!-- Inbound fax machines answer with CED. The detector defaults
                  to CNG, which is the sending-side tone and never activates
                  reliably on this receiving leg. -->
-            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML core-managed-inbound' 20 ced"/>
+            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML public' 20 ced"/>
             {{- end }}
           </condition>
         </extension>
