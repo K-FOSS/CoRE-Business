@@ -41,6 +41,10 @@
         }
         $var(managed_i) = $var(managed_i) + 1;
       }
+      xlog(
+        "L_WARN",
+        "SIP peer source classification=unmatched reason=source-prefix-mismatch source=$si:$sp listener=$Rn/$Ri:$Rp/$proto tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname call_id=$ci method=$rm\n"
+      );
     }
     {{- if ne .Values.kamailio.role "private-sbc" }}
     route[MANAGED_DID] {
@@ -64,6 +68,10 @@
       jansson_get("providers", "$var(managed_route)", "$var(managed_allowed)");
       $var(managed_match) = "," + $var(managed_provider) + ",";
       if ($var(managed_provider) == "" || !in_list("$var(managed_provider)", "$var(managed_allowed)", ",")) {
+        xlog(
+          "L_WARN",
+          "SIP peer authorization=denied reason=provider-not-authorized provider=$var(managed_provider) did=$var(managed_number) allowed=$var(managed_allowed) source=$si:$sp listener=$Rn/$Ri:$Rp/$proto call_id=$ci method=$rm\n"
+        );
         sl_send_reply("403", "DID Provider Not Authorized"); exit;
       }
       if (t_check_trans()) exit;

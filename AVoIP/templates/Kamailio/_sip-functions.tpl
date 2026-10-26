@@ -365,9 +365,17 @@
         exit;
       }
 
+      $var(unclassified_reason) = "source-prefix-mismatch";
+      if ($proto != "tls" && $proto != "udp" && $proto != "tcp") {
+        $var(unclassified_reason) = "unsupported-transport";
+      } else if (($proto == "tls" && $Rp != 5061) || (($proto == "udp" || $proto == "tcp") && $Rp != 5060)) {
+        $var(unclassified_reason) = "listener-mismatch";
+      } else if ($proto == "tls" && $Rp == 5061 && $tls_peer_verified != 0) {
+        $var(unclassified_reason) = "tls-authentication-policy";
+      }
       xlog(
         "L_WARN",
-        "SIP peer decision class=unclassified authorization=denied reason=source-or-socket pod=$env(POD_NAME) method=$rm source=$si:$sp listener=$Rn/$Ri:$Rp/$proto tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname call_id=$ci\n"
+        "SIP peer decision class=unclassified authorization=denied reason=$var(unclassified_reason) pod=$env(POD_NAME) method=$rm source=$si:$sp listener=$Rn/$Ri:$Rp/$proto tls_peer_verified=$tls_peer_verified tls_peer_san=$tls_peer_san_hostname call_id=$ci\n"
       );
 
       if (!is_method("ACK")) {

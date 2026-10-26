@@ -293,7 +293,13 @@ registration and reads `Username` and `Password` from the
 must be enabled for the trunk; add or verify the `telnyx` voice provider in the
 Admin catalog with `telnyx` as its site gateway, and ensure the site-specific
 `avoipAdmin.routing.upstreamCIDRs` layer permits the Telnyx SIP signaling ranges.
-See Telnyx's [SIP trunk configuration guidance](https://support-v2.telnyx.com/en/articles/8096455-how-to-configure-a-sip-trunk).
+The provider catalog's inbound CIDRs must match the selected Telnyx SIP region;
+for example, the Canada region uses `192.76.120.31/32` and `64.16.250.13/32`.
+See Telnyx's [SIP signaling regions and IP allowlist](https://sip.telnyx.com/?lang=ip)
+and [SIP trunk configuration guidance](https://support-v2.telnyx.com/en/articles/8096455-how-to-configure-a-sip-trunk).
+Carrier-boundary logs identify source-prefix, listener, transport, and TLS policy
+failures separately; an IP-authenticated public TLS provider does not require a
+client certificate.
 
 YVR provisions `twilio-west` as an IP ACL gateway to the
 [Twilio Oregon termination URI](https://www.twilio.com/docs/sip-trunking), with
