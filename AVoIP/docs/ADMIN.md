@@ -293,7 +293,9 @@ outbound authentication, so FreeSWITCH loads the `Username` and `Password`
 from the `AVoIP/SIP/Telnyx` CoreVault record but does not send REGISTER. Add or
 verify the `telnyx` voice provider in the Admin catalog with `telnyx` as its
 site gateway, and ensure the site-specific `avoipAdmin.routing.upstreamCIDRs`
-layer permits the Telnyx SIP signaling ranges.
+layer permits the Telnyx SIP signaling ranges. Credential-backed gateways set
+the FreeSWITCH Contact user part to the Telnyx username on the first INVITE, as
+required for Telnyx connection identification.
 The provider catalog's inbound CIDRs must match the selected Telnyx SIP region;
 for example, the Canada region uses `192.76.120.31/32` and `64.16.250.13/32`.
 See Telnyx's [SIP signaling regions and IP allowlist](https://sip.telnyx.com/?lang=ip),

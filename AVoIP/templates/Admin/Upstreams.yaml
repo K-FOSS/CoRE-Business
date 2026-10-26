@@ -9,6 +9,8 @@
     <param name="username" value="{{ `{{ .username | replace "&" "&amp;" | replace "<" "&lt;" | replace ">" "&gt;" | replace "\"" "&quot;" | replace "'" "&apos;" }}` }}"/>
     <param name="auth-username" value="{{ `{{ .username | replace "&" "&amp;" | replace "<" "&lt;" | replace ">" "&gt;" | replace "\"" "&quot;" | replace "'" "&apos;" }}` }}"/>
     <param name="password" value="{{ `{{ .password | replace "&" "&amp;" | replace "<" "&lt;" | replace ">" "&gt;" | replace "\"" "&quot;" | replace "'" "&apos;" }}` }}"/>
+    <param name="extension" value="{{ `{{ .username | replace "&" "&amp;" | replace "<" "&lt;" | replace ">" "&gt;" | replace "\"" "&quot;" | replace "'" "&apos;" }}` }}"/>
+    <param name="extension-in-contact" value="true"/>
     {{- end }}
     <param name="proxy" value="{{ $upstream.host }}"/>
     <param name="from-domain" value="{{ include "avoip.sip.siteHost" $root }}"/>
