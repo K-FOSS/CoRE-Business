@@ -160,8 +160,6 @@ data:
         </extension>
         {{- end }}
         {{- end }}
-      </context>
-      <context name="core-managed-inbound">
         <extension name="did-post-answer">
           <condition field="destination_number" expression="^did-post-answer$">
             {{- if $.Values.freeswitch.media.diagnostics.enabled }}
@@ -180,7 +178,7 @@ data:
             <!-- Inbound fax machines answer with CED. The detector defaults
                  to CNG, which is the sending-side tone and never activates
                  reliably on this receiving leg. -->
-            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML core-managed-inbound' 20 ced"/>
+            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML public' 20 ced"/>
             {{- end }}
           </condition>
         </extension>
@@ -229,8 +227,6 @@ data:
           </condition>
         </extension>
         {{- end }}
-      </context>
-      <context name="public">
         <extension name="reject-unmatched-public-destination">
           <condition field="destination_number" expression="^.+$">
             <action application="log" data="WARNING AVoIP rejecting unmatched public destination=${destination_number} uuid=${uuid} call_id=${sip_call_id} profile=${sofia_profile_name} context=${context} request_uri=${sip_req_uri} to_user=${sip_to_user} inter_site_marker=${sip_h_X-Core-InterSite} source=${sip_network_ip}"/>
