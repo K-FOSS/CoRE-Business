@@ -510,14 +510,21 @@
       }
       {{- if .Values.kamailio.registrar.enabled }}
       # Inbound registrar calls are originated by FreeSWITCH's kamailio
-      # profile. Their endpoint-side Route set can restore the SIP Core owner
-      # return listener before the request reaches this branch. Do not send
-      # that dialog request back through the Asterisk-facing listener: return
-      # it to the exact FreeSWITCH pod whose registrar profile owns the bridge.
+      # profile. Their endpoint-side Route set can restore the owner listener
+      # or public TLS/WSS route. Return that request to the exact FreeSWITCH
+      # pod whose registrar profile owns the bridge.
       # Client-originated dialogs retain their application-profile target on
       # 5072.
+      $var(inbound_public_route) = 0;
+      if ($du != $null &&
+          $(du{uri.host}) == "{{ $.Values.asterisk.sipCore.hostname }}" &&
+          ($(du{uri.port}) == "443" ||
+           $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.tls.gatewayPort }}")) {
+        $var(inbound_public_route) = 1;
+      }
       if (has_totag() && $du != $null &&
-          $(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}") {
+          ($(du{uri.port}) == "{{ $.Values.asterisk.sipCore.privateEgressPort }}" ||
+           $var(inbound_public_route) == 1)) {
         $var(inbound_owner_key) = "avoip:sipcore:inbound-owner:" + $ci;
         if (!redis_cmd(
           "topos", "GET %s", "$var(inbound_owner_key)",
@@ -533,6 +540,10 @@
           if (!is_method("ACK")) sl_send_reply("503", "Call Routing State Invalid");
           exit;
         }
+        # A client BYE can restore the public Record-Route as its next hop.
+        # The validated owner mapping supplies the backend hop, so do not
+        # pass that public Route back to FreeSWITCH.
+        if ($var(inbound_public_route) == 1) remove_hf("Route");
         $du = "sips:" + $var(inbound_owner_ip) + ":{{ $.Values.freeswitch.publicExposure.kamailio.backendPort }};transport=tls";
         $xavp(tls=>server_name) = "{{ include "avoip.sip.serviceHost" (dict "root" $ "component" "freeswitch") }}";
         # The pod IP is the routing destination, while the registrar listener
