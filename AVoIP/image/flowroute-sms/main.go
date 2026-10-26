@@ -292,6 +292,7 @@ func run(logger *slog.Logger) error {
 		mux.HandleFunc("GET /api/esim-groups", app.listESIMGroups)
 		mux.HandleFunc("POST /api/esims/purchase", app.purchaseESIMs)
 		mux.HandleFunc("GET /api/esims/{id}/activation-code", app.esimActivationCode)
+		mux.HandleFunc("GET /api/esims/{id}/activation-qr", app.esimActivationQR)
 		mux.HandleFunc("POST /api/esims/{id}/actions/{action}", app.esimAction)
 		mux.HandleFunc("GET /api/telephony", app.telephony)
 		mux.HandleFunc("POST /api/telephony/hangup", app.hangupCall)

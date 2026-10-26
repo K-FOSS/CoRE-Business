@@ -2,7 +2,10 @@ module slop.writemy.codes/CoRE/CoRE-Business/AVoIP/image/flowroute-sms
 
 go 1.25.0
 
-require github.com/jackc/pgx/v5 v5.11.0
+require (
+	github.com/jackc/pgx/v5 v5.11.0
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+)
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.38.0 // indirect

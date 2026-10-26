@@ -30,6 +30,7 @@ function renderESIMs() {
   if(record.tags?.length)card.append(node('p','muted',`Tags ${record.tags.join(', ')}`));
   const actions=node('div','dialog-actions');
   const code=node('button','text-button','Show activation code');code.type='button';code.onclick=()=>showESIMActivation(record.id);actions.append(code);
+  const qr=node('button','text-button','Show QR code');qr.type='button';qr.onclick=()=>showESIMQRCode(record.id);actions.append(qr);
   for(const [action,label] of [['enable','Enable'],['disable','Disable'],['set_standby','Standby']]){const button=node('button',`text-button ${action==='disable'?'danger':''}`,label);button.type='button';button.onclick=()=>changeESIMState(record,action);actions.append(button)}
   card.append(actions);root.append(card);
  }
@@ -47,6 +48,9 @@ async function changeESIMState(record,action){
 }
 async function showESIMActivation(id){
  try{const result=await api(`/api/esims/${encodeURIComponent(id)}/activation-code`),data=result?.data||result,dialog=document.createElement('dialog');dialog.className='esim-dialog';const form=document.createElement('form');form.method='dialog';const title=node('h2','','eSIM activation details'),help=node('p','muted','Treat this activation data as sensitive. It is shown only to the authenticated Admin.');const pre=node('pre','esim-code',JSON.stringify(data,null,2));const actions=node('div','dialog-actions'),copy=node('button','dialog-primary','Copy JSON');copy.type='button';copy.onclick=()=>navigator.clipboard?.writeText(JSON.stringify(data,null,2)).then(()=>notice('Activation data copied.'));const close=node('button','','Close');close.value='close';actions.append(copy,close);form.append(title,help,pre,actions);dialog.append(form);document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal()}catch(error){notice(error.message)}
+}
+async function showESIMQRCode(id){
+ try{const response=await fetch(`/api/esims/${encodeURIComponent(id)}/activation-qr`,{cache:'no-store'});if(!response.ok)throw Error((await response.text()).trim()||'Unable to load eSIM QR code');const url=URL.createObjectURL(await response.blob()),dialog=document.createElement('dialog');dialog.className='esim-dialog';const form=document.createElement('form');form.method='dialog';const title=node('h2','','eSIM QR code'),help=node('p','muted','Scan this one-time activation QR code with the device being provisioned. Treat it as sensitive.');const image=document.createElement('img');image.className='esim-qr';image.src=url;image.alt='eSIM activation QR code';const close=node('button','','Close');close.value='close';form.append(title,help,image,close);dialog.append(form);document.body.append(dialog);dialog.addEventListener('close',()=>{URL.revokeObjectURL(url);dialog.remove()},{once:true});dialog.showModal()}catch(error){notice(error.message)}
 }
 function purchaseESIMs(){
  const root=$('edit-fields');root.replaceChildren();$('edit-error').textContent='';$('edit-title').textContent='Add one Telnyx eSIM';
