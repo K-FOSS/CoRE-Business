@@ -1566,6 +1566,13 @@ jitsi-meet:
 avoipAdmin:
   enabled: true
   primaryRegion: 'yvr'
+  providerCredentials:
+    SMS_PROVIDER_TELNYX_KEY:
+      name: 'avoip-sms-telnyx'
+      key: 'Key'
+      remoteRef:
+        key: 'AVoIP/SIP/Telnyx'
+        property: 'Key'
   databaseRemoteKey: 'AVoIP/Admin/Database'
   hostname: ''
   dns:

@@ -86,6 +86,13 @@ controllers:
             value: '{{ .Values.flowrouteSMS.legacyFlowroute.enabled }}'
           - name: 'SMS_PROVIDERS_JSON'
             value: '{{ toJson .Values.flowrouteSMS.providers | replace "'" "''" }}'
+          {{ range $name, $secret := $settings.providerCredentials }}
+          - name: '{{ $name }}'
+            valueFrom:
+              secretKeyRef:
+                name: '{{ required "Admin provider credential Secret name required" $secret.name }}'
+                key: '{{ required "Admin provider credential Secret key required" $secret.key }}'
+          {{ end }}
           {{ range $name, $secret := .Values.flowrouteSMS.providerCredentials }}
           - name: '{{ $name }}'
             valueFrom:
