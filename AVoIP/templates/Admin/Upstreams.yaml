@@ -6,9 +6,9 @@
 <include>
   <gateway name="{{ $upstream.name }}">
     {{- if eq .authentication "credentials" }}
-    <param name="username" value="{{ `{{ .username | htmlEscape }}` }}"/>
-    <param name="auth-username" value="{{ `{{ .username | htmlEscape }}` }}"/>
-    <param name="password" value="{{ `{{ .password | htmlEscape }}` }}"/>
+    <param name="username" value="{{ `{{ .username | replace "&" "&amp;" | replace "<" "&lt;" | replace ">" "&gt;" | replace "\"" "&quot;" | replace "'" "&apos;" }}` }}"/>
+    <param name="auth-username" value="{{ `{{ .username | replace "&" "&amp;" | replace "<" "&lt;" | replace ">" "&gt;" | replace "\"" "&quot;" | replace "'" "&apos;" }}` }}"/>
+    <param name="password" value="{{ `{{ .password | replace "&" "&amp;" | replace "<" "&lt;" | replace ">" "&gt;" | replace "\"" "&quot;" | replace "'" "&apos;" }}` }}"/>
     {{- end }}
     <param name="proxy" value="{{ $upstream.host }}"/>
     <param name="from-domain" value="{{ include "avoip.sip.siteHost" $root }}"/>
