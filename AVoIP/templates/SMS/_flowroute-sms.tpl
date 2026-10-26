@@ -116,6 +116,7 @@ controllers:
             value: '{{ join "," $settings.localNumbers }}'
           - name: 'SMS_PROVIDERS_JSON'
             value: '{{ toJson $settings.providers | replace "'" "''" }}'
+          {{- if or (eq $mode "api") (eq $mode "webhook") }}
           {{- range $name, $secret := $settings.providerCredentials }}
           {{- if not (regexMatch "^SMS_PROVIDER_[A-Z0-9_]{1,100}$" $name) }}{{ fail "provider credential names must start with SMS_PROVIDER_" }}{{ end }}
           - name: '{{ $name }}'
@@ -123,6 +124,7 @@ controllers:
               secretKeyRef:
                 name: '{{ required "provider credential Secret name required" $secret.name }}'
                 key: '{{ required "provider credential Secret key required" $secret.key }}'
+          {{- end }}
           {{- end }}
           - name: 'DATABASE_URL'
             valueFrom:
