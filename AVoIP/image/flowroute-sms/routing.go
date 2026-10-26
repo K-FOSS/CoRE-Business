@@ -1712,8 +1712,8 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	}
 	if context == "core-managed-inbound" {
 		text += `<action application="set" data="fax_original_destination=` + escape(destination) + `"/>`
-		if detectFax {
-			text += `<action application="set" data="execute_on_answer=execute_extension did-post-answer XML public"/>`
+		if detectFax && faxConfig.Enabled && faxConfig.AutoDetect {
+			text += `<action application="set" data="execute_on_answer=spandsp_start_fax_detect transfer 'fax-receive XML core-managed-inbound' 20 ced"/>`
 		}
 	}
 	if managedActions != "" {
