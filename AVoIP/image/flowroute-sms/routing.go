@@ -79,7 +79,7 @@ func faxPostAnswerActions(config faxRuntimeConfig) string {
 	if !config.Enabled || !config.AutoDetect {
 		return ""
 	}
-	return `<action application="log" data="INFO AVoIP managed DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/><action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML public' 20 ced"/>`
+	return `<action application="log" data="INFO AVoIP managed DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/><action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML public' 20"/>`
 }
 
 func faxReceiveActions(config faxRuntimeConfig) string {
@@ -1713,7 +1713,7 @@ func (s *server) freeSwitchRoute(w http.ResponseWriter, r *http.Request) {
 	if context == "core-managed-inbound" {
 		text += `<action application="set" data="fax_original_destination=` + escape(destination) + `"/>`
 		if detectFax && faxConfig.Enabled && faxConfig.AutoDetect {
-			text += `<action application="set" data="execute_on_answer=spandsp_start_fax_detect transfer 'fax-receive XML core-managed-inbound' 20 ced"/>`
+			text += `<action application="set" data="execute_on_answer=spandsp_start_fax_detect transfer 'fax-receive XML core-managed-inbound' 20"/>`
 		}
 	}
 	if managedActions != "" {
