@@ -1663,9 +1663,9 @@ avoipAdmin:
   # Provider gateway credentials are supplied from Vault, never literal values.
   upstreams:
     - name: 'telnyx'
-      host: 'sip.telnyx.com'
+      host: 'sip.telnyx.ca'
       authentication: 'credentials'
-      register: true
+      register: false
       remoteKey: 'AVoIP/SIP/Telnyx'
       usernameProperty: 'Username'
       passwordProperty: 'Password'

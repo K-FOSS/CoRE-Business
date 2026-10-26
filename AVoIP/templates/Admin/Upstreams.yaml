@@ -14,8 +14,8 @@
     <param name="from-domain" value="{{ include "avoip.sip.siteHost" $root }}"/>
     {{- if $upstream.register }}
     <param name="register-proxy" value="{{ $upstream.host }}"/>
-    {{- end }}
     <param name="register-transport" value="tls"/>
+    {{- end }}
     <param name="register" value="{{ $upstream.register | default false }}"/>
     <param name="caller-id-in-from" value="true"/>
     <param name="outbound-proxy" value="sips:{{ $proxy }}:5062;transport=tls"/>

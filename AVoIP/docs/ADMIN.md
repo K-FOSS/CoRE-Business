@@ -287,16 +287,18 @@ must agree. Adding or rotating credentials requires a controlled FreeSWITCH
 reload/rescan or rollout; metadata editing does not independently register a new
 carrier account. Keep existing Flowroute gateway names reserved.
 
-The configured Telnyx credential gateway uses `sip.telnyx.com` with TLS
-registration and reads `Username` and `Password` from the
-`AVoIP/SIP/Telnyx` CoreVault record. Telnyx's credential-based SIP connection
-must be enabled for the trunk; add or verify the `telnyx` voice provider in the
-Admin catalog with `telnyx` as its site gateway, and ensure the site-specific
-`avoipAdmin.routing.upstreamCIDRs` layer permits the Telnyx SIP signaling ranges.
+The configured Telnyx gateway uses `sip.telnyx.ca` with TLS and no SIP
+registration. The Telnyx connection uses FQDN routing with credential-based
+outbound authentication, so FreeSWITCH loads the `Username` and `Password`
+from the `AVoIP/SIP/Telnyx` CoreVault record but does not send REGISTER. Add or
+verify the `telnyx` voice provider in the Admin catalog with `telnyx` as its
+site gateway, and ensure the site-specific `avoipAdmin.routing.upstreamCIDRs`
+layer permits the Telnyx SIP signaling ranges.
 The provider catalog's inbound CIDRs must match the selected Telnyx SIP region;
 for example, the Canada region uses `192.76.120.31/32` and `64.16.250.13/32`.
-See Telnyx's [SIP signaling regions and IP allowlist](https://sip.telnyx.com/?lang=ip)
-and [SIP trunk configuration guidance](https://support-v2.telnyx.com/en/articles/8096455-how-to-configure-a-sip-trunk).
+See Telnyx's [SIP signaling regions and IP allowlist](https://sip.telnyx.com/?lang=ip),
+[FQDN connection guidance](https://support.telnyx.com/en/articles/4245868-sip-connection-types),
+and [FreeSWITCH IP trunk guidance](https://support.telnyx.com/en/articles/1616935-freeswitch-ip-trunk-setup).
 Carrier-boundary logs identify source-prefix, listener, transport, and TLS policy
 failures separately; an IP-authenticated public TLS provider does not require a
 client certificate.
