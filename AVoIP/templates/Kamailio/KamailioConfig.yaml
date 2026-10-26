@@ -112,6 +112,14 @@ data:
     {{- end }}
     {{- end }}
     alias="{{ $kamailioHost }}:5062"
+    {{- if $sipCoreEnabled }}
+    # The WSS Gateway and native SIP/TLS Gateway are separate public routes.
+    # Both must be recognized as local when a dialog returns on any replica.
+    alias="{{ $.Values.asterisk.sipCore.hostname }}:443"
+    {{- if .Values.asterisk.sipCore.tls.enabled }}
+    alias="{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }}"
+    {{- end }}
+    {{- end }}
 
     # tls must precede modules that initialize thread-local/OpenSSL state.
     # The registrar's libpq TLS connections are opened again in forked workers.

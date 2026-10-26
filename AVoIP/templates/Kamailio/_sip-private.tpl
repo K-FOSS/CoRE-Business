@@ -950,7 +950,25 @@
         }
         if (is_method("INVITE") && !has_totag()) {
           {{- if .Values.kamailio.websocketHA.enabled }}
-          record_route_preset("SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
+          # TOPOS derives its client-side Contact from this route pair. Keep
+          # the first route public and transport-specific; the second route
+          # pins backend requests to the live registration owner.
+          if ($dP == "ws") {
+            record_route_preset(
+              "{{ $.Values.asterisk.sipCore.hostname }}:443;transport=wss;lr;sn=sipcore_ws;r2=on",
+              "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr;sn=sipcore_owner_tls;r2=on"
+            );
+          {{- if .Values.asterisk.sipCore.tls.enabled }}
+          } else if ($dP == "tls") {
+            record_route_preset(
+              "{{ $.Values.asterisk.sipCore.hostname }}:{{ $.Values.asterisk.sipCore.tls.gatewayPort }};transport=tls;lr;sn=sipcore_client_tls;r2=on",
+              "SIPCORE_OWNER_POD.{{ include "avoip.kamailio.resourceName" (dict "root" $ "instance" .Values.kamailio "suffix" "owner") }}.{{ $.Release.Namespace }}.svc.{{ $.Values.cluster.domain }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr;sn=sipcore_owner_tls;r2=on"
+            );
+          {{- end }}
+          } else {
+            sl_send_reply("488", "Unsupported Client Transport");
+            exit;
+          }
           {{- else }}
           record_route_preset("{{ $sipCoreReturnHost }}:{{ $.Values.asterisk.sipCore.privateEgressPort }};transport=tls;lr");
           {{- end }}
