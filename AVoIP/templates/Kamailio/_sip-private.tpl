@@ -1212,12 +1212,12 @@
 
     route[PRIVATE_RELAY] {
       {{- if and .Values.kamailio.websocketHA.enabled .Values.kamailio.registrar.enabled .Values.freeswitch.enabled }}
-      # The FreeSWITCH service name is shared by its Vault-backed registrar
-      # listener and publicly signed application listener. Only trusted route
-      # selection may choose a TLS identity; SIP headers never select it.
+      # The registrar uses a distinct certificate SAN and SNI. Choose it from
+      # the trusted destination port before TLS opens the connection.
       if ($du != $null &&
           $xavp(tls=>server_name) == "{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}") {
         if ($(du{uri.port}) == "{{ .Values.freeswitch.publicExposure.kamailio.backendPort }}") {
+          $xavp(tls=>server_name) = "registrar.{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}";
           $xavp(tls[0]=>server_id) = "freeswitch-registrar-return";
         } else if ($(du{uri.port}) == "5072") {
           $xavp(tls[0]=>server_id) = "freeswitch-application";
@@ -1259,27 +1259,7 @@
         hlog("$ci", "kamailio_event=call_teardown component=kamailio stage=private_bye_relay_attempt call_id=$ci method=BYE side=$var(side) peer=$var(peer_name) cseq=$hdr(CSeq) from_tag=$ft to_tag=$tt site={{ .Values.region }}");
         {{- end }}
       }
-      {{- if and .Values.kamailio.websocketHA.enabled .Values.kamailio.registrar.enabled .Values.freeswitch.enabled }}
-      # TM can open the TLS connection after request XAVPs have gone out of
-      # scope. Select the same client profile for the next connect explicitly;
-      # clear it after t_relay so a reused connection cannot leak the choice
-      # to another SIP request handled by this worker.
-      if ($du != $null &&
-          $xavp(tls=>server_name) == "{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}") {
-        if ($(du{uri.port}) == "{{ .Values.freeswitch.publicExposure.kamailio.backendPort }}") {
-          tls_set_connect_server_id("freeswitch-registrar-return");
-        } else if ($(du{uri.port}) == "5072") {
-          tls_set_connect_server_id("freeswitch-application");
-        }
-        if (is_method("BYE")) {
-          xlog("L_WARN", "SIPCORE FLOW stage=freeswitch-bye-tls-selection pod=$env(POD_NAME) callid=$ci destination=$du profile=$xavp(tls[0]=>server_id) socket=$fsn\n");
-        }
-      }
-      {{- end }}
       $var(private_relay_result) = t_relay();
-      {{- if and .Values.kamailio.websocketHA.enabled .Values.kamailio.registrar.enabled .Values.freeswitch.enabled }}
-      tls_set_connect_server_id("");
-      {{- end }}
       if ($var(side) eq "sipcore" && is_method("INFO")) {
         xlog("L_INFO", "SIPCORE INFO relay callid=$ci cseq=$hdr(CSeq) method=$rm content_type=$cT branch=$var(sipcore_info_branch) relay_result=$var(private_relay_result)\n");
       }

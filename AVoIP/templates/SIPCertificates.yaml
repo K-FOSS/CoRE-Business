@@ -129,6 +129,7 @@ spec:
   commonName: '{{ printf "%s.svc" (first (splitList "." (include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch")))) }}'
   dnsNames:
     - '{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
+    - 'registrar.{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}'
   usages:
     - 'digital signature'
     - 'key encipherment'

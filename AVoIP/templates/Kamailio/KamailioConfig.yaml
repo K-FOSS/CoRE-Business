@@ -69,11 +69,6 @@ data:
     # Envoy TLS passthrough + PROXY v2 for carrier SIP and optional SIP Core TLS.
     tcp_accept_haproxy={{ if or (eq .Values.kamailio.role "carrier-sbc") $sipCoreTlsEnabled }}yes{{ else }}no{{ end }}
     enable_tls=1
-    {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled .Values.kamailio.registrar.enabled .Values.freeswitch.enabled }}
-    # The registrar and application profiles can connect to the same
-    # FreeSWITCH pod with different certificate authorities and identities.
-    tls_connection_match_domain=yes
-    {{- end }}
     {{- if $sipCoreEnabled }}
     tcp_accept_no_cl=yes
     listen=tcp:{{ $bindAddress }}:{{ $.Values.asterisk.sipCore.httpPort }} name "sipcore_ws"
@@ -605,12 +600,11 @@ data:
     {{- end }}
     {{- if and (eq .Values.kamailio.role "private-sbc") $websocketHA.enabled .Values.kamailio.registrar.enabled .Values.freeswitch.enabled }}
 
-    # FreeSWITCH's registrar listener and application listener share a DNS
-    # name but present certificates from different CAs. Select each client
-    # profile explicitly by server_id on the trusted routing boundary.
+    # Give the Vault-backed registrar a distinct SNI from the publicly signed
+    # application listener so TLS can select its client identity on connect.
     [client:any]
     server_id = freeswitch-registrar-return
-    server_name = {{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
+    server_name = registrar.{{ include "avoip.sip.serviceHost" (dict "root" . "component" "freeswitch") }}
     method = TLSv1.2+
     verify_certificate = yes
     require_certificate = no
