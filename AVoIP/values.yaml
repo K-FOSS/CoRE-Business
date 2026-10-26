@@ -1573,6 +1573,12 @@ avoipAdmin:
       remoteRef:
         key: 'AVoIP/SIP/Telnyx'
         property: 'Key'
+    SMS_PROVIDER_TELNYX_PUBLIC_KEY:
+      name: 'avoip-sms-telnyx'
+      key: 'PublicKey'
+      remoteRef:
+        key: 'AVoIP/SIP/Telnyx'
+        property: 'PublicKey'
   databaseRemoteKey: 'AVoIP/Admin/Database'
   hostname: ''
   dns:
