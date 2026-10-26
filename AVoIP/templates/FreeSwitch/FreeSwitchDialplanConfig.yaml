@@ -175,7 +175,10 @@ data:
             {{- end }}
             {{- if and $.Values.freeswitch.fax.enabled $.Values.freeswitch.fax.autoDetect }}
             <action application="log" data="INFO AVoIP managed DID fax detection enabled uuid=${uuid} did=${fax_original_destination}"/>
-            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML core-managed-inbound' 20"/>
+            <!-- Inbound fax machines answer with CED. The detector defaults
+                 to CNG, which is the sending-side tone and never activates
+                 reliably on this receiving leg. -->
+            <action application="spandsp_start_fax_detect" data="transfer 'fax-receive XML core-managed-inbound' 20 ced"/>
             {{- end }}
           </condition>
         </extension>
