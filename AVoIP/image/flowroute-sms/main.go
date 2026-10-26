@@ -289,6 +289,7 @@ func run(logger *slog.Logger) error {
 		mux.HandleFunc("DELETE /api/providers/{id}", app.deleteProvider)
 		app.registerAdmin(mux)
 		mux.HandleFunc("GET /api/esims", app.listESIMs)
+		mux.HandleFunc("GET /api/esim-groups", app.listESIMGroups)
 		mux.HandleFunc("POST /api/esims/purchase", app.purchaseESIMs)
 		mux.HandleFunc("GET /api/esims/{id}/activation-code", app.esimActivationCode)
 		mux.HandleFunc("POST /api/esims/{id}/actions/{action}", app.esimAction)

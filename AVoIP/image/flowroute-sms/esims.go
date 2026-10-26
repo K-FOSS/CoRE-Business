@@ -45,7 +45,7 @@ func (s *server) telnyxRequest(w http.ResponseWriter, r *http.Request, method, p
 		http.Error(w, "Telnyx API key is not configured", http.StatusServiceUnavailable)
 		return
 	}
-	if !strings.HasPrefix(path, "/sim_cards") && !strings.HasPrefix(path, "/actions/purchase/esims") {
+	if !strings.HasPrefix(path, "/sim_cards") && !strings.HasPrefix(path, "/sim_card_groups") && !strings.HasPrefix(path, "/actions/purchase/esims") {
 		http.Error(w, "unsupported Telnyx resource", http.StatusInternalServerError)
 		return
 	}
@@ -99,6 +99,21 @@ func (s *server) listESIMs(w http.ResponseWriter, r *http.Request) {
 		pageSize = "100"
 	}
 	s.telnyxRequest(w, r, http.MethodGet, "/sim_cards?page[size]="+pageSize, nil)
+}
+
+func (s *server) listESIMGroups(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r, false) {
+		return
+	}
+	query := r.URL.Query()
+	pageSize := query.Get("page[size]")
+	if pageSize == "" {
+		pageSize = "250"
+	}
+	if pageSize != "250" {
+		pageSize = "100"
+	}
+	s.telnyxRequest(w, r, http.MethodGet, "/sim_card_groups?page[size]="+pageSize, nil)
 }
 
 func (s *server) purchaseESIMs(w http.ResponseWriter, r *http.Request) {

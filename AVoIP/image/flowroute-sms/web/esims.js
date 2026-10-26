@@ -3,6 +3,9 @@
 function esimData(result) {
  return Array.isArray(result?.data) ? result.data : result?.data ? [result.data] : [];
 }
+function esimGroupLabel(group) {
+ return [group.name||group.display_name||'Unnamed group',group.id,group.sim_card_count==null?'':`${group.sim_card_count} SIMs`].filter(Boolean).join(' · ');
+}
 function esimStatus(record) {
  const status=record?.status;
  if(typeof status==='string')return status;
@@ -35,6 +38,9 @@ async function loadESIMs(){
  $('records').replaceChildren(node('p','muted','Loading Telnyx eSIMs…'));
  try{state.esims=esimData(await api('/api/esims'));renderESIMs()}catch(error){$('records').replaceChildren(node('p','admin-error',error.message))}
 }
+async function loadESIMGroups(){
+ state.esimGroups=esimData(await api('/api/esim-groups'));return state.esimGroups;
+}
 async function changeESIMState(record,action){
  if(!await confirmDelete(`${action==='disable'?'Disable':action==='set_standby'?'Put in standby':'Enable'} eSIM ${record.iccid||record.id}? Telnyx processes this asynchronously.`))return;
  try{await api(`/api/esims/${encodeURIComponent(record.id)}/actions/${action}`,'POST');notice('Telnyx eSIM action submitted.');await loadESIMs()}catch(error){notice(error.message)}
@@ -43,12 +49,13 @@ async function showESIMActivation(id){
  try{const result=await api(`/api/esims/${encodeURIComponent(id)}/activation-code`),data=result?.data||result,dialog=document.createElement('dialog');dialog.className='esim-dialog';const form=document.createElement('form');form.method='dialog';const title=node('h2','','eSIM activation details'),help=node('p','muted','Treat this activation data as sensitive. It is shown only to the authenticated Admin.');const pre=node('pre','esim-code',JSON.stringify(data,null,2));const actions=node('div','dialog-actions'),copy=node('button','dialog-primary','Copy JSON');copy.type='button';copy.onclick=()=>navigator.clipboard?.writeText(JSON.stringify(data,null,2)).then(()=>notice('Activation data copied.'));const close=node('button','','Close');close.value='close';actions.append(copy,close);form.append(title,help,pre,actions);dialog.append(form);document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal()}catch(error){notice(error.message)}
 }
 function purchaseESIMs(){
- const root=$('edit-fields');root.replaceChildren();$('edit-error').textContent='';$('edit-title').textContent='Purchase Telnyx eSIMs';
+ const root=$('edit-fields');root.replaceChildren();$('edit-error').textContent='';$('edit-title').textContent='Add one Telnyx eSIM';
  const field=(key,label,type='text',value='')=>{const wrap=node('label','admin-field',label),input=node('input');input.name=key;input.id=`field-${key}`;input.type=type;input.value=value;wrap.append(input);root.append(wrap);return input};
- field('amount','Quantity','number','1');field('sim_card_group_id','SIM card group ID');field('whitelabel_name','White-label name');field('tags','Tags (one per line)','text');
+ const groupWrap=node('label','admin-field','SIM card group'),groupSelect=node('select');groupSelect.id='field-sim_card_group_id';const noGroup=node('option','',state.esimGroups?.length?'Select a group':'No groups available');noGroup.value='';groupSelect.append(noGroup);for(const group of state.esimGroups||[]){const option=node('option','',esimGroupLabel(group));option.value=group.id;groupSelect.append(option)}groupWrap.append(groupSelect);root.append(groupWrap);
+ field('whitelabel_name','White-label name');field('tags','Tags (one per line)','text');
  const status=node('label','admin-field','Initial status'),select=node('select');select.id='field-status';for(const value of ['standby','enabled','disabled']){const option=node('option','',value);option.value=value;select.append(option)}status.append(select);root.append(status);
- $('edit-form').onsubmit=async event=>{event.preventDefault();const amount=Number($('field-amount').value),body={amount,status:select.value};const group=$('field-sim_card_group_id').value.trim(),brand=$('field-whitelabel_name').value.trim(),tags=$('field-tags').value.split('\n').map(item=>item.trim()).filter(Boolean);if(group)body.sim_card_group_id=group;if(brand){body.product='whitelabel';body.whitelabel_name=brand}if(tags.length)body.tags=tags;try{await api('/api/esims/purchase','POST',body);$('edit-record').close();notice('Telnyx eSIM purchase submitted.');await loadESIMs()}catch(error){$('edit-error').textContent=error.message}};$('edit-record').showModal();root.querySelector('input')?.focus();
+ const form=$('edit-form'),submit=form.querySelector('[type="submit"]');if(submit)submit.textContent='Add one eSIM';let pending=false;form.onsubmit=async event=>{event.preventDefault();if(pending)return;pending=true;if(submit){submit.disabled=true;submit.textContent='Adding eSIM…'}$('edit-error').textContent='Telnyx is adding one eSIM. Please wait; do not click again.';const body={amount:1,status:select.value},group=groupSelect.value,brand=$('field-whitelabel_name').value.trim(),tags=$('field-tags').value.split('\n').map(item=>item.trim()).filter(Boolean);if(group)body.sim_card_group_id=group;if(brand){body.product='whitelabel';body.whitelabel_name=brand}if(tags.length)body.tags=tags;try{await api('/api/esims/purchase','POST',body);$('edit-record').close();notice('One Telnyx eSIM purchase submitted.');await loadESIMs()}catch(error){pending=false;if(submit){submit.disabled=false;submit.textContent='Add one eSIM'}$('edit-error').textContent=error.message}};$('edit-record').showModal();root.querySelector('select')?.focus();
 }
 function installESimsTab(){
- const before=document.querySelector('[data-tab="telephony"]');if(!before||document.querySelector('[data-tab="esims"]'))return;const tab=node('button','', 'eSIMs');tab.dataset.tab='esims';tab.type='button';tab.onclick=()=>{state.tab='esims';document.querySelectorAll('[data-tab]').forEach(item=>item.setAttribute('aria-selected',String(item===tab)));$('add-record').onclick=purchaseESIMs;$('record-search').oninput=renderESIMs;loadESIMs()};before.parentNode.insertBefore(tab,before);
+ const before=document.querySelector('[data-tab="telephony"]');if(!before||document.querySelector('[data-tab="esims"]'))return;const tab=node('button','', 'eSIMs');tab.dataset.tab='esims';tab.type='button';tab.onclick=async()=>{state.tab='esims';document.querySelectorAll('[data-tab]').forEach(item=>item.setAttribute('aria-selected',String(item===tab)));const add=$('add-record');add.onclick=purchaseESIMs;$('record-search').oninput=renderESIMs;add.disabled=true;try{await Promise.all([loadESIMs(),loadESIMGroups()])}catch(error){notice(error.message)}finally{add.disabled=false}};before.parentNode.insertBefore(tab,before);
 }
