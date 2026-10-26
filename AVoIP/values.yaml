@@ -1661,7 +1661,14 @@ avoipAdmin:
           kind: 'ClusterSecretStore'
           name: 'corevault-rootsecrets'
   # Provider gateway credentials are supplied from Vault, never literal values.
-  upstreams: []
+  upstreams:
+    - name: 'telnyx'
+      host: 'sip.telnyx.com'
+      authentication: 'credentials'
+      register: true
+      remoteKey: 'AVoIP/SIP/Telnyx'
+      usernameProperty: 'Username'
+      passwordProperty: 'Password'
   routing:
     enabled: true
     upstreamCIDRs: []

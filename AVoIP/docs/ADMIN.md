@@ -282,6 +282,14 @@ must agree. Adding or rotating credentials requires a controlled FreeSWITCH
 reload/rescan or rollout; metadata editing does not independently register a new
 carrier account. Keep existing Flowroute gateway names reserved.
 
+The configured Telnyx credential gateway uses `sip.telnyx.com` with TLS
+registration and reads `Username` and `Password` from the
+`AVoIP/SIP/Telnyx` CoreVault record. Telnyx's credential-based SIP connection
+must be enabled for the trunk; add or verify the `telnyx` voice provider in the
+Admin catalog with `telnyx` as its site gateway, and ensure the site-specific
+`avoipAdmin.routing.upstreamCIDRs` layer permits the Telnyx SIP signaling ranges.
+See Telnyx's [SIP trunk configuration guidance](https://support-v2.telnyx.com/en/articles/8096455-how-to-configure-a-sip-trunk).
+
 YVR provisions `twilio-west` as an IP ACL gateway to the
 [Twilio Oregon termination URI](https://www.twilio.com/docs/sip-trunking), with
 no registration. The site policy permits outbound TLS signaling to Twilio's
