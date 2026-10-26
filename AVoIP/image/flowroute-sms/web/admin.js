@@ -232,3 +232,4 @@ function renderFreeSwitchDebug(root){const card=node('section','admin-card telep
 async function setFreeSwitchDebug(enabled){if(!await confirmDelete(`${enabled?'Enable':'Disable'} global FreeSWITCH debug logging on every connected replica? Raw SIP packet tracing will remain disabled.`))return;try{const result=await api('/api/telephony/debug/freeswitch','POST',{enabled});notice(`Global FreeSWITCH debug logging ${enabled?'enabled':'disabled'} on ${result.replicas} replica(s).`);await loadTelephony()}catch(error){notice(error.message)}}
 function editRecord(record={},index=-1){if(state.tab==='audio_endpoints')return editAudioEndpoint(record,index);if(state.tab==='ivrs')return editIVRRecord(record,index);return editRecordBase(record,index)}
 installAudioEndpointsTab();
+installESimsTab();

@@ -288,6 +288,10 @@ func run(logger *slog.Logger) error {
 		mux.HandleFunc("PUT /api/providers/{id}", app.saveProvider)
 		mux.HandleFunc("DELETE /api/providers/{id}", app.deleteProvider)
 		app.registerAdmin(mux)
+		mux.HandleFunc("GET /api/esims", app.listESIMs)
+		mux.HandleFunc("POST /api/esims/purchase", app.purchaseESIMs)
+		mux.HandleFunc("GET /api/esims/{id}/activation-code", app.esimActivationCode)
+		mux.HandleFunc("POST /api/esims/{id}/actions/{action}", app.esimAction)
 		mux.HandleFunc("GET /api/telephony", app.telephony)
 		mux.HandleFunc("POST /api/telephony/hangup", app.hangupCall)
 		mux.HandleFunc("POST /api/telephony/debug/freeswitch", app.freeSwitchDebug)
@@ -821,7 +825,7 @@ func (s *server) inbox(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) asset(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if name != "admin.js" && name != "app.css" && name != "telephony.css" && name != "ivr.css" && name != "app.js" && name != "attachments.js" && name != "bridged-calls.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
+	if name != "admin.js" && name != "esims.js" && name != "app.css" && name != "telephony.css" && name != "ivr.css" && name != "app.js" && name != "attachments.js" && name != "bridged-calls.js" && name != "Roboto-Regular.ttf" && name != "Roboto-Medium.ttf" && name != "Roboto-Bold.ttf" {
 		http.NotFound(w, r)
 		return
 	}
