@@ -81,6 +81,21 @@
         xlog("L_INFO", "AVOIP_POLICY managed_egress decision=prefix_applied provider_host=$var(managed_host) request_user=$rU call_id=$ci method=$rm\n");
       }
 
+      # FreeSWITCH sends the carrier's Digest challenge response as a new
+      # INVITE with the same Call-ID. It is already admitted by the original
+      # INVITE's reservation; do not charge that authenticated retry as a new
+      # call. Only skip admission when the trusted peer presents an auth
+      # header and the original Call-ID reservation exists in Dragonfly.
+      $var(outbound_call_key) = "avoip:out:call:" + $ci;
+      $var(outbound_auth_retry) = 0;
+      if ((is_present_hf("Authorization") || is_present_hf("Proxy-Authorization")) &&
+          redis_cmd("topos", "GET %s", "$var(outbound_call_key)", "outbound_call_existing") &&
+          $redis(outbound_call_existing=>type) == $redisd(rpl_str)) {
+        $var(outbound_auth_retry) = 1;
+        xlog("L_INFO", "SIP outbound auth retry callid=$ci cseq=$hdr(CSeq)\n");
+      }
+
+      if ($var(outbound_auth_retry) == 0) {
       # The managed routing snapshot must provide complete, numeric limits.
       # Reject an incomplete record before constructing the Redis Lua payload;
       # otherwise tonumber(nil) can turn a policy error into a SIP 500.
@@ -145,7 +160,6 @@
       # Quota admission is shared across carrier replicas. Keep the mapping
       # outside Kamailio's process-local dialog table so a later BYE handled by
       # another replica can release the same reservation.
-      $var(outbound_call_key) = "avoip:out:call:" + $ci;
       $var(outbound_call_ttl) = $var(managed_max_duration_seconds) + 86400;
       $var(outbound_call_map_script) = "redis.call('SET',KEYS[1],ARGV[1],'EX'," + $var(outbound_call_ttl) + ");return 1";
       if (!redis_cmd(
@@ -159,6 +173,7 @@
         route(OUTBOUND_RELEASE);
         sl_send_reply("503", "Outbound Limits Unavailable");
         exit;
+      }
       }
 
       remove_hf("P-Asserted-Identity");
