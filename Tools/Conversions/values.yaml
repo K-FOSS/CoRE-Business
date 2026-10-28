@@ -17,6 +17,7 @@ snapotter:
   image:
     repository: 'ghcr.io/snapotter-hq/snapotter'
     tag: '2.2.0'
+    digest: 'sha256:2e11b4fa9138fa93e0fdfde5da3a2d042eebcfa81dd51286488872a3eb8086c8'
     pullPolicy: 'IfNotPresent'
 
   # Required namespace-local Secret; see README for keys and provisioning.

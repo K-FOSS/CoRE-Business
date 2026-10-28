@@ -4,6 +4,8 @@ This Helm chart runs [SnapOtter](https://snapotter.com/) at
 `https://conotter.mylogin.space` using the same BJW-S Common 5.0.1 loader
 structure as CyberChef. It pins the application to
 [SnapOtter 2.2.0](https://github.com/snapotter-hq/SnapOtter/releases/tag/v2.2.0).
+The image is pinned to the immutable multi-platform digest
+`sha256:2e11b4fa9138fa93e0fdfde5da3a2d042eebcfa81dd51286488872a3eb8086c8`.
 See the [release source](https://github.com/snapotter-hq/SnapOtter/tree/v2.2.0),
 [deployment documentation](https://docs.snapotter.com/guide/deployment), and
 [BJW-S Common documentation](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
