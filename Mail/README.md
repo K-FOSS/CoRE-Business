@@ -44,6 +44,15 @@ automatic discovery, so changes to referenced ConfigMaps and Secrets trigger
 their normal Kubernetes rolling-update strategy.
 Workload pods disable automatic service-account token mounts; Mail containers
 do not need Kubernetes API credentials.
+The chart applies the Kubernetes `RuntimeDefault` seccomp profile to every Mail
+pod, disables privilege escalation, and drops all Linux capabilities by default.
+Rspamd runs as its upstream UID/GID `11333`, Maddy runs as UID/GID `1000`, and
+the Postfix exporter runs as UID/GID `65534`. Dovecot and Postfix retain root
+master processes because their images require service-user management and
+privileged SMTP binding; they receive only the narrowly required filesystem,
+set-id and bind capabilities, while their worker processes retain their native
+service users. SimpleLogin is disabled by default but receives the same seccomp,
+capability-drop and no-escalation settings when enabled.
 
 ```text
 Internet SMTP :25/:465/:587

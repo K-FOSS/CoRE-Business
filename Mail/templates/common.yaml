@@ -7,6 +7,9 @@ global:
 
 defaultPodOptions:
   automountServiceAccountToken: false
+  securityContext:
+    seccompProfile:
+      type: 'RuntimeDefault'
   labels:
     logs: 'loki-myloginspace'
 
@@ -29,6 +32,13 @@ controllers:
           repository: 'dovecot/dovecot'
           tag: '2.4.4'
           pullPolicy: IfNotPresent
+        securityContext:
+          # Dovecot's master process starts as root so it can manage its
+          # service users and mailbox access; it drops privileges internally.
+          allowPrivilegeEscalation: false
+          capabilities:
+            add: ['CHOWN', 'DAC_OVERRIDE', 'SETGID', 'SETUID']
+            drop: ['ALL']
         ports:
           - name: sasl
             containerPort: 12345
@@ -54,12 +64,25 @@ controllers:
     pod:
       labels:
         app.kubernetes.io/component: 'maddy'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: 'OnRootMismatch'
+        seccompProfile:
+          type: 'RuntimeDefault'
     containers:
       maddy:
         image:
           repository: 'foxcpp/maddy'
           tag: '0.9.0'
           pullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add: ['NET_BIND_SERVICE']
+            drop: ['ALL']
         stdin: true
         tty: true
         env:
@@ -128,6 +151,13 @@ controllers:
           tag: 'core'
           digest: 'sha256:a799022b5250ecf83b3cb2d3a07ea6bf492a63a8fece7a1de1e5f37288305593'
           pullPolicy: IfNotPresent
+        securityContext:
+          # Postfix master starts as root to bind SMTP ports and manage its
+          # internal service users; worker processes run with Postfix's users.
+          allowPrivilegeEscalation: false
+          capabilities:
+            add: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'NET_BIND_SERVICE', 'SETGID', 'SETUID']
+            drop: ['ALL']
         resources:
           requests:
             cpu: '15m'
@@ -151,6 +181,13 @@ controllers:
           repository: 'ghcr.io/hsn723/postfix_exporter'
           tag: '0.20.0'
           pullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          capabilities:
+            drop: ['ALL']
         args:
           - '--postfix.logfile_path=/dev/null'
         resources:
@@ -171,6 +208,14 @@ controllers:
       labels:
         app.kubernetes.io/component: 'rspam'
         app.kubernetes.io/worker: 'proxy'
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 11333
+        runAsGroup: 11333
+        fsGroup: 11333
+        fsGroupChangePolicy: 'OnRootMismatch'
+        seccompProfile:
+          type: 'RuntimeDefault'
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -189,6 +234,10 @@ controllers:
           repository: {{ .Values.rspamd.image.repository | quote }}
           tag: {{ .Values.rspamd.image.tag | quote }}
           pullPolicy: {{ .Values.rspamd.image.pullPolicy | quote }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
         ports:
           - name: proxy
             containerPort: 11332
@@ -209,6 +258,10 @@ controllers:
         image:
           repository: 'simplelogin/app'
           tag: '3.4.0'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
         command:
           - 'flask'
         args:
@@ -221,6 +274,10 @@ controllers:
         image:
           repository: 'simplelogin/app'
           tag: '3.4.0'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
         command:
           - 'python'
         args:
@@ -231,6 +288,10 @@ controllers:
         image:
           repository: 'simplelogin/app'
           tag: '3.4.0'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
         envFrom: *simpleloginEnv
         ports:
           - name: http
@@ -257,6 +318,10 @@ controllers:
         image:
           repository: 'simplelogin/app'
           tag: '3.4.0'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
         command:
           - 'python'
         args:
