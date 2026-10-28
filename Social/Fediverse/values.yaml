@@ -79,7 +79,7 @@ mastodon:
         memory: '512Mi'
     sidekiq:
       requests:
-        cpu: '500m'
+        cpu: '64m'
         memory: '1Gi'
       limits:
         memory: '2Gi'
