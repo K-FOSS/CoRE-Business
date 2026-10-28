@@ -19,6 +19,7 @@ spec:
     name: '{{ $oidc.workspaceName }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       cluster_name: '{{ .Values.cluster.name }}'
       datacenter: '{{ .Values.datacenter }}'
@@ -128,6 +129,7 @@ spec:
     name: '{{ $habitOidc.workspaceName }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       cluster_name: '{{ .Values.cluster.name }}'
       datacenter: '{{ .Values.datacenter }}'

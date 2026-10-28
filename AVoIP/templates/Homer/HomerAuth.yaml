@@ -23,6 +23,7 @@ spec:
     name: '{{ $oidc.workspaceName }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       application_slug: '{{ $oidcSlug }}'
       access_group: '{{ $oidc.accessGroup }}'
@@ -135,6 +136,7 @@ spec:
     name: '{{ $forwardAuth.providerConfigRef }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       access_group: '{{ $forwardAuth.accessGroup }}'
       display_name: '{{ $forwardAuthDisplayName }}'

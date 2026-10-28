@@ -11,6 +11,7 @@ spec:
     name: {{ printf "%s-paperclip-oidc" .Release.Name | quote }}
   forProvider:
     source: Inline
+    initArgs: ['-upgrade']
     module: |
       data "authentik_flow" "authorization" {
         slug = "default-provider-authorization-explicit-consent"

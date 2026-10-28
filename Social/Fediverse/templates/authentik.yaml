@@ -11,6 +11,7 @@ spec:
     name: {{ .Release.Name }}-oidc
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       cluster_name: {{ .Values.cluster.name | quote }}
       datacenter: {{ .Values.datacenter | quote }}

@@ -20,6 +20,7 @@ spec:
     name: '{{ $forwardAuth.providerConfigRef }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       access_group: '{{ $forwardAuth.accessGroup }}'
       display_name: '{{ $forwardAuth.displayName }}'

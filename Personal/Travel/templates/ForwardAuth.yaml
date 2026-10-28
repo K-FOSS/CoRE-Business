@@ -70,6 +70,7 @@ spec:
     name: '{{ $.Values.authentik.providerConfigRef }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     module: | # hcl
       data "authentik_flow" "authorization" {
         slug = "default-provider-authorization-implicit-consent"

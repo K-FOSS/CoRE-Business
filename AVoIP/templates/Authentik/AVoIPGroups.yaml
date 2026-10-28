@@ -17,6 +17,7 @@ spec:
     name: '{{ $authentik.providerConfigRef }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       users_group: '{{ $authentik.usersGroup }}'
       admins_group: '{{ $authentik.adminsGroup }}'

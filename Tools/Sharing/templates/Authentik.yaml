@@ -15,6 +15,7 @@ spec:
     name: '{{ .Release.Name }}-kutt-oidc'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       cluster_name: '{{ .Values.cluster.name }}'
       datacenter: '{{ .Values.datacenter }}'

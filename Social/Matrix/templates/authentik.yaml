@@ -11,6 +11,7 @@ spec:
     name: {{ .Values.synapse.oidc.secretName | quote }}
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       cluster_name: {{ .Values.cluster.name | quote }}
       datacenter: {{ .Values.datacenter | quote }}

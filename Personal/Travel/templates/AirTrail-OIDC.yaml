@@ -21,6 +21,7 @@ spec:
     name: '{{ $oidc.workspaceName }}'
   forProvider:
     source: 'Inline'
+    initArgs: ['-upgrade']
     varmap:
       access_group: '{{ $oidc.accessGroup }}'
       airtrail_url: 'https://{{ .Values.airtrail.hostname }}'

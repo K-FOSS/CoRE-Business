@@ -9,6 +9,7 @@ spec:
     name: {{ .Values.auth.providerConfigRef | quote }}
   forProvider:
     source: Inline
+    initArgs: ['-upgrade']
     module: |
       data "authentik_flow" "authorization" {
         slug = "default-provider-authorization-implicit-consent"
