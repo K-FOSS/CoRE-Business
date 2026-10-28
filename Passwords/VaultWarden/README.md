@@ -1,19 +1,25 @@
 # CoRE Vaultwarden
 
 This chart deploys the upstream [Vaultwarden](https://www.vaultwarden.net/)
-container with the [BJW-S common library
+`1.37.4` security release with the [BJW-S common library
 chart](https://bjw-s-labs.github.io/helm-charts/docs/common-library/). The active
-[VaultWarden ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/VaultWarden.yaml)
+[VaultWarden ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/VaultWarden.yaml)
 renders the chart with Lovely into `core-prod` on the selected bare-metal
 clusters.
 
 The public HTTPRoute is annotated for discovery by the `core` Forecastle
 instance.
 
+The image is pinned to the multi-platform `1.37.4` manifest digest. This
+release includes fixes for organization member revocation, two-factor
+authentication, organization invitations, attachments, event logs and
+organization API keys; review the [upstream release notes](https://github.com/dani-garcia/vaultwarden/releases/tag/1.37.4)
+before reconciliation.
+
 ## Identity and PostgreSQL
 
 Vaultwarden uses the current [`mylogin.space/v1alpha1` User
-claim](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
+claim](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
 The claim enables PostgreSQL explicitly, grants the stable `bitwarden`
 database to the stable `vaultwarden-prod` service account and selects the
 site's `psql-<datacenter>-<region>` Crossplane and Terraform providers. Its
@@ -36,9 +42,9 @@ not follow the site convention, and `vaultwarden.user.enabled`. Enable the
 User only where `cluster.name` equals `vaultwarden.user.hubCluster`; the chart
 checks both values and otherwise omits the claim. The current hub and each
 site's PGPool topology are defined by the [PostgreSQL
-ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml).
+ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml).
 Storage prerequisites remain owned by the [storage base
-ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml).
+ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml).
 
 The database role and database use orphaning provider behavior, so removing the
 claim or chart does not by itself remove PostgreSQL data. Vaultwarden's `/data`
@@ -71,6 +77,7 @@ helm lint Passwords/VaultWarden \
   --set datacenter=dc1 \
   --set region=yxl \
   --set vaultwarden.user.enabled=true \
+  --set vaultwarden.user.hubCluster=dc1-k3s-node1 \
   --set vaultwarden.psql.host=psql.core-dc1-talos-prod.dc1.yxl.mylogin.space
 helm template core-dc1-talos-prod-business-passwords-vaultwarden \
   Passwords/VaultWarden \
@@ -79,6 +86,7 @@ helm template core-dc1-talos-prod-business-passwords-vaultwarden \
   --set datacenter=dc1 \
   --set region=yxl \
   --set vaultwarden.user.enabled=true \
+  --set vaultwarden.user.hubCluster=dc1-k3s-node1 \
   --set vaultwarden.psql.host=psql.core-dc1-talos-prod.dc1.yxl.mylogin.space \
   >/tmp/core-business-vaultwarden.yaml
 ```
