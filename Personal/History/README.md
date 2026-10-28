@@ -16,9 +16,8 @@ seeds before the web container starts. Dawarich's web entrypoint remains on the
 web container as an idempotent upgrade safeguard, while Sidekiq waits for the
 same database to become available.
 
-The chart uses the pinned upstream `freikin/dawarich:1.17.0` multi-platform
-image digest. This image was rebuilt after the October Node.js security release
-with Node 22.23.4 and includes current Debian package updates. Its upstream
+The chart uses the pinned upstream `freikin/dawarich:1.18.1` multi-platform
+image digest. Its upstream
 entrypoint starts with only `CHOWN`, `SETGID`, and `SETUID` capabilities to
 correct mounted-volume ownership, then re-execs the Rails and Sidekiq processes
 as UID/GID 1000. Kubernetes service-account token mounts remain disabled and
@@ -74,7 +73,7 @@ helm template core-business-history Personal/History --namespace core-history-pr
 ```
 
 Review the [Dawarich self-hosting guide](https://dawarich.app/docs/self-hosting/introduction/),
-[Dawarich 1.17.0 release notes](https://github.com/Freika/dawarich/releases/tag/1.17.0),
+[Dawarich 1.18.1 release notes](https://github.com/Freika/dawarich/releases/tag/1.18.1),
 [Dawarich environment variables](https://dawarich.app/docs/self-hosting/environment-variables/),
 [Dawarich OIDC guide](https://dawarich.app/docs/self-hosting/configuration/oidc-authentication/),
 [Dawarich source repository](https://github.com/Freika/dawarich),
@@ -85,9 +84,12 @@ Review the [Dawarich self-hosting guide](https://dawarich.app/docs/self-hosting/
 
 After activation, verify the User and Workspace conditions, ExternalSecret
 readiness, PostgreSQL migrations, Dragonfly TLS connectivity, OIDC callback,
-location import, background processing and restoration of all three PVCs. For
-the 1.15.0 map and trip changes, review affected trips and use Dawarich's
-recalculation action where their saved routes or distances need updating.
+location import, background processing and restoration of all three PVCs. The
+OIDC environment is rendered into all three Dawarich containers: issuer,
+redirect URI, provider name and boolean settings are concrete values, while the
+client ID and secret use the generated Workspace Secret. Verify the rendered
+manifests contain no unexpanded template markers before syncing. For the 1.18.1
+map, Immich and trip changes, review affected data after the upgrade.
 Removing the chart preserves the PVCs, generated runtime secret and database
 connection Secret; treat those retained resources as a deliberate migration
 and deletion decision.
