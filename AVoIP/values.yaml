@@ -425,7 +425,7 @@ kamailio:
         keepaliveMechanism: 1
       resources:
         requests:
-          cpu: '100m'
+          cpu: '16m'
           memory: '256Mi'
       # SIP Core's dedicated TLS/WebSocket proxy needs headroom for TLS
       # handshakes and the topology module. The implicit Kamailio default is
