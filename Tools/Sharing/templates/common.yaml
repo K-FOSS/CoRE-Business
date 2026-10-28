@@ -21,6 +21,7 @@ controllers:
         image:
           repository: 'docker.io/kutt/kutt'
           tag: ''
+          digest: ''
           pullPolicy: 'IfNotPresent'
         securityContext:
           allowPrivilegeEscalation: false
@@ -225,6 +226,7 @@ route:
 {{- end }}
 {{- $_ := set .Values.controllers.kutt.containers.app.image "tag" .Values.sharing.kutt.image.tag -}}
 {{- $_ := set .Values.controllers.kutt.containers.app.image "repository" .Values.sharing.kutt.image.repository -}}
+{{- $_ := set .Values.controllers.kutt.containers.app.image "digest" .Values.sharing.kutt.image.digest -}}
 {{- $_ := set .Values.controllers.kutt.containers.app.image "pullPolicy" .Values.sharing.kutt.image.pullPolicy -}}
 {{- $_ := set .Values.controllers.kutt.containers.app "env" $env -}}
 {{- $_ := set .Values.controllers.kutt.containers.app "resources" .Values.sharing.kutt.resources -}}
@@ -233,6 +235,7 @@ route:
   "image" (dict
     "repository" .Values.sharing.kutt.redis.tlsProxy.image.repository
     "tag" .Values.sharing.kutt.redis.tlsProxy.image.tag
+    "digest" .Values.sharing.kutt.redis.tlsProxy.image.digest
     "pullPolicy" .Values.sharing.kutt.redis.tlsProxy.image.pullPolicy
   )
   "command" (list "socat" (printf "TCP-LISTEN:%s,fork,reuseaddr,bind=127.0.0.1" .Values.sharing.kutt.redis.tlsProxy.port) (printf "OPENSSL:%s:%s,verify=0" $redisHost .Values.sharing.kutt.redis.port))

@@ -10,6 +10,12 @@ configured for the `Sharing Users` group.
 The chart now creates a dedicated two-replica Dragonfly instance for this
 stack, rather than sharing the platform cache.
 
+Kutt is pinned to `v3.2.6` with manifest digest
+`sha256:fa3d24a89b04e0feb542ed7d3c77993d58dbcc1406e5291a369595d543886146`.
+The socat TLS bridge is pinned to `1.8.1.3` with manifest digest
+`sha256:603174b77eebaba25ba8f8ebb15e1234d6600409554e95d6fb203fd106150287`.
+Zipline remains pinned to its existing `4.8.2` digest-qualified image.
+
 The active [Sharing ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Sharing.yaml)
 owns this chart. It selects bare-metal infrastructure clusters in the YVR
 region, renders `Tools/Sharing` through the

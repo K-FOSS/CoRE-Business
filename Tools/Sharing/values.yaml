@@ -21,6 +21,7 @@ sharing:
     image:
       repository: 'docker.io/kutt/kutt'
       tag: 'v3.2.6'
+      digest: 'sha256:fa3d24a89b04e0feb542ed7d3c77993d58dbcc1406e5291a369595d543886146'
       pullPolicy: 'IfNotPresent'
     database:
       # Defaults to psql-local.<cluster>.<datacenter>.<region>.mylogin.space.
@@ -50,7 +51,8 @@ sharing:
         enabled: true
         image:
           repository: 'docker.io/alpine/socat'
-          tag: '1.8.0.3'
+          tag: '1.8.1.3'
+          digest: 'sha256:603174b77eebaba25ba8f8ebb15e1234d6600409554e95d6fb203fd106150287'
           pullPolicy: 'IfNotPresent'
         resources:
           requests:
