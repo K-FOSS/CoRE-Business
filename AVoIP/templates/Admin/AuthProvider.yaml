@@ -8,6 +8,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '-6'
 spec:
+  pluginCache: false
   credentials:
     - source: 'Secret'
       filename: 'authentik-credentials'
