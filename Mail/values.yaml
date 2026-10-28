@@ -59,6 +59,10 @@ simplelogin:
   enabled: false
 
 rspamd:
+  image:
+    repository: 'rspamd/rspamd'
+    tag: '4.2.3@sha256:47e00f62105f8a60009a30a590ebcf3bfd0b992d45468222d34afa5ca2103690'
+    pullPolicy: 'IfNotPresent'
   redis:
     enabled: false
 

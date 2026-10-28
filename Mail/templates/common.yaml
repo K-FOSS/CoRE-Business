@@ -186,9 +186,9 @@ controllers:
     containers:
       rspamd:
         image:
-          repository: 'rspamd/rspamd'
-          tag: 'latest'
-          pullPolicy: IfNotPresent
+          repository: {{ .Values.rspamd.image.repository | quote }}
+          tag: {{ .Values.rspamd.image.tag | quote }}
+          pullPolicy: {{ .Values.rspamd.image.pullPolicy | quote }}
         ports:
           - name: proxy
             containerPort: 11332

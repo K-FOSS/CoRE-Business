@@ -78,6 +78,9 @@ Mail client IMAP :143/:993
   configuration.
 - Rspamd provides proxy, normal-worker and controller ports and uses the
   site-local, TLS-enabled Dragonfly endpoint when Redis support is enabled.
+  The container is pinned to the official Rspamd `4.2.3` multi-platform
+  manifest digest; review the [Rspamd 4.2.3 release notes](https://github.com/rspamd/rspamd/releases/tag/4.2.3)
+  before changing that pin.
   `rspamd.redis.enabled` defaults to `false`; enabling it renders the
   Dragonfly ExternalSecret and Redis mount, and enables Redis-backed Bayes,
   MX-check, URL-reputation and URL-tag features. With the default, those
