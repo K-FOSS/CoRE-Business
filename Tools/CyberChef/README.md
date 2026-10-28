@@ -16,11 +16,12 @@ a `ZoneDelegation`, so it does not change parent-zone delegation records. See th
 [K8GB resource reference documentation](https://www.k8gb.io/latest/resource_ref/)
 and [dynamic zone documentation](https://www.k8gb.io/latest/dynamic_zones/).
 
-[The Cyberchef ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Cyberchef.yaml) selects YVR bare-metal
+[The Cyberchef ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Cyberchef.yaml) selects YVR bare-metal
 infrastructure clusters and deploys to `core-prod` without Lovely-injected
 values. Site-specific gateway, domain, replica, image and resource settings are
 kept in `values.yaml`; the rendered workload configuration lives in
-`templates/common.yaml`. The image uses a digest-qualified `latest` reference;
+`templates/common.yaml`. The image uses the digest-qualified `11.5.0` release
+`sha256:fa74354a9c5dd014c8dacee843eb9218fb13465d678d8b049e97bc26a69a1640`;
 preserve digest pinning when updating it. The chart creates a dedicated
 ServiceAccount but does not mount its token. The pod and container use a
 non-root, RuntimeDefault seccomp profile with privilege escalation and Linux
