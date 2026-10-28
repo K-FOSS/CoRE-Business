@@ -12,5 +12,5 @@ dependencies:
     version: '5.0.1'
     repository: 'https://bjw-s-labs.github.io/helm-charts/'
   - name: 'forecastle'
-    version: '2.1.1'
+    version: '2.1.4'
     repository: 'https://stakater.github.io/stakater-charts/'
