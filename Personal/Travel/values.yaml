@@ -98,21 +98,21 @@ adventurelog:
   resources:
     frontend:
       requests:
-        cpu: '100m'
+        cpu: '16m'
         memory: '256Mi'
       limits:
         cpu: '1'
         memory: '1Gi'
     backend:
       requests:
-        cpu: '100m'
+        cpu: '16m'
         memory: '512Mi'
       limits:
         cpu: '2'
         memory: '2Gi'
     oidcSetup:
       requests:
-        cpu: '100m'
+        cpu: '16m'
         memory: '256Mi'
       limits:
         cpu: '1'
