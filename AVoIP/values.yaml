@@ -1133,10 +1133,15 @@ freeswitch:
       surge: '0'
       unavailable: 1
   flowrouteOutbound:
-    # Flowroute registration is separate from its SIP-REG inbound DID route.
     # Outbound INVITEs use the existing private-to-carrier Kamailio path so
     # carrier Kamailio and RTPEngine continue anchoring the media leg.
     enabled: false
+    registration:
+      # One registered Flowroute identity per FreeSWITCH replica causes
+      # carrier contact contention and registration retry churn. Keep this
+      # disabled for the active-active deployment unless registration
+      # ownership is made singleton and the inbound SIP-REG route is tested.
+      enabled: false
     # Private Kamailio service used as the FreeSWITCH carrier egress proxy.
     # YVR selects its three-replica internal-ha role; sites without that role
     # must explicitly select their provisioned private SBC.
@@ -1144,8 +1149,8 @@ freeswitch:
     # Private TLS listener for Flowroute-profile dialogs. Kamailio routes
     # established carrier requests directly to the FreeSWITCH owner pod here.
     tlsPort: 5081
-    # Regional Flowroute edge used by its inbound registration and the
-    # Admin-managed dynamic provider catalog.
+    # Regional Flowroute edge used by the optional inbound registration and
+    # the Admin-managed dynamic provider catalog.
     regionalHost: ''
     secretStoreRef:
       kind: 'ClusterSecretStore'

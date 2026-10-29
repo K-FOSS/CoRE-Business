@@ -53,14 +53,13 @@ mismatch. The missing TCP/TLS receive and Sofia timestamps remain necessary.
 
 The current source selects the non-registering `flowroute-tls` gateway for
 all outbound NANP calls, with `register-transport=tls` and the Flowroute
-profile's 5081 TLS listener. The existing `flowroute` gateway remains
-registered over UDP for Flowroute's SIP-REG inbound route. No outbound
-dialplan path selects that UDP registration gateway. Both gateway entries
-are generated from the same ExternalSecret template, and the FreeSWITCH
-controller already watches that Secret and the Flowroute client certificate
-for reloader-triggered pod rollout. This explicit selection corrects the
-Contact inconsistency; earlier calls on the same TLS-gateway pattern also
-timed out, so it is not considered a proven fix for intermittent delivery.
+profile's 5081 TLS listener. The UDP `flowroute` gateway is also configured
+with registration disabled in the active-active deployment; this intentionally
+removes Flowroute SIP-REG inbound delivery until registration ownership is
+made singleton. No outbound dialplan path selects that UDP gateway. Both
+gateway entries are generated from the same ExternalSecret template, and the
+FreeSWITCH controller watches that Secret and the Flowroute client certificate
+for reloader-triggered pod rollout.
 This source was pushed as `c38937f` and selectively reconciled to the Home1
 AVoIP child on 2026-10-17. The Flowroute ExternalSecret is Ready, the
 FreeSWITCH dialplan and both Kamailio ConfigMaps report Synced, and both new

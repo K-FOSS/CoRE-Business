@@ -6,7 +6,11 @@ YVR outbound PSTN calls use FreeSWITCH, internal Kamailio and the live AVoIP Adm
 
 FreeSWITCH sends the canonical `+1` plus ten-digit destination and authenticated extension identity to internal Kamailio. Internal Kamailio selects the authorized caller ID, provider, and site target from the current Admin snapshot, then forwards through the authenticated carrier Kamailio peer. Carrier Kamailio applies the configured quota, sends the same full `+1` user part upstream, and anchors media through the existing RTPEngine path. Asterisk does not participate in outbound call routing.
 
-The FreeSWITCH Flowroute registration remains available for the inbound carrier profile and as a gateway target selected by the dynamic provider catalog. Its registration and TLS identity are transport configuration; Admin chooses the provider route for each call.
+The FreeSWITCH Flowroute registration is disabled for the active-active
+deployment to avoid duplicate carrier contacts. The non-registering TLS
+gateway remains available as a provider target selected by the dynamic Admin
+catalog; registration ownership must become singleton before restoring the
+inbound carrier profile.
 
 The site SIP identity advertised in Record-Route is `sip.<cluster>.<datacenter>.<region>.resolvemy.host` unless the site overrides `sip.siteHost` or the carrier instance `advertisedHost`. Public TLS routing uses the same site hostname. The chart's `RR_BACKEND_TO_CARRIER` route sets the provider-facing Record-Route to that public identity and the private leg to the internal Kamailio service identity.
 

@@ -58,19 +58,23 @@ spec:
                 <param name="auth-username" value="{{ `{{ .username }}` }}"/>
                 <param name="password" value="{{ `{{ .password }}` }}"/>
                 <param name="proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
+                {{- if $.Values.freeswitch.flowrouteOutbound.registration.enabled }}
                 <param name="register-proxy" value="{{ $.Values.freeswitch.flowrouteOutbound.regionalHost }}"/>
+                {{- end }}
                 <param name="register-transport" value="udp"/>
+                <param name="register" value="{{ $.Values.freeswitch.flowrouteOutbound.registration.enabled }}"/>
+                {{- if $.Values.freeswitch.flowrouteOutbound.registration.enabled }}
                 <param name="expire-seconds" value="600"/>
-                <param name="register" value="true"/>
                 <param name="retry-seconds" value="30"/>
+                {{- end }}
                 <param name="ping" value="25"/>
                 <param name="caller-id-in-from" value="true"/>
                 <param name="outbound-proxy" value="sips:{{ $kamailioHost }}:5062;transport=tls"/>
               </gateway>
-              <!-- Keep registration transport explicit for the Flowroute
-                   SIP-REG inbound route. Outbound calls use the separate
-                   TLS-only gateway below so their Contact advertises the
-                   listener that carrier Kamailio can reach. -->
+              <!-- Keep the optional UDP registration transport explicit.
+                   Outbound calls use the separate TLS-only gateway below so
+                   their Contact advertises the listener that carrier
+                   Kamailio can reach. -->
               <gateway name="flowroute-tls">
                 <param name="username" value="{{ `{{ .username }}` }}"/>
                 <param name="auth-username" value="{{ `{{ .username }}` }}"/>
@@ -100,7 +104,7 @@ spec:
                    this carrier profile as the existing external profile. -->
               <param name="rfc2833-pt" value="101"/>
               <!-- TLS is available for the non-registering outbound gateway;
-                   the registered inbound SIP-REG gateway remains UDP. -->
+                   the optional SIP-REG gateway uses UDP when enabled. -->
               <param name="tls" value="true"/>
               <param name="tls-only" value="false"/>
               <!-- The registration gateway uses UDP on sip-port. Do not let

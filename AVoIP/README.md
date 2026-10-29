@@ -414,15 +414,18 @@ permitted extension to its caller ID and provider route. Carrier Kamailio
 rechecks the extension, selected provider, verified caller ID, and limit
 profile against the Admin snapshot before admission. The identity header is
 removed before the provider hop.
-YXL keeps PSTN origination disabled. FreeSWITCH still registers to the regional
-Flowroute SIP endpoint using the existing Vault record
+YXL keeps PSTN origination disabled. The optional FreeSWITCH registration to
+the regional Flowroute SIP endpoint uses the existing Vault record
 `AVoIP/SIP/FlowRoute` (`Username` and `Password`) for its separate inbound
 role. The managed DID catalog supports IVR and direct extension destinations
 for each number; see the [Admin configuration steps](docs/ADMIN.md#configure-the-current-inbound-numbers-in-admin).
 YXL uses the US-East-VA PoP and YVR uses US-West-OR. The carrier path and
 RTPEngine handle signaling and media. The Flowroute gateway profile remains
-transport configuration for inbound registration and for provider routes
-selected by the dynamic Admin catalog. The `sip.siteHost` advertised identity
+transport configuration for provider routes selected by the dynamic Admin
+catalog. Flowroute SIP-REG registration is disabled for the active-active
+FreeSWITCH deployment to avoid duplicate carrier contacts; inbound delivery
+that depends on that registration is unavailable until singleton registration
+ownership is implemented. The `sip.siteHost` advertised identity
 is used in the public TLS route and provider-facing Record-Route. Voice numbers
 stay in full `+1` plus ten digit form from FreeSWITCH through carrier Kamailio;
 no number rewriting, provider prefix, or destination allow/block list is
