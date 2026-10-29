@@ -2411,6 +2411,9 @@ service:
   rtpengine:
     forceRename: '{{ include "avoip.fullname" . }}-rtpengine'
     controller: rtpengine
+    # Prefer the RTPEngine endpoint on Kamailio's node, with Service-level
+    # fallback to another Ready endpoint when the local node is unavailable.
+    trafficDistribution: 'PreferSameNode'
 {{- include "avoip.service.options" (dict "root" $ "name" "rtpengine") | nindent 4 }}
     ports:
       control:
