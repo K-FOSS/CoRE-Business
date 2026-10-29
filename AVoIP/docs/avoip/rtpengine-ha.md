@@ -119,12 +119,11 @@ This adapts the operator's all-node headless Service for RTPEngine's direct
 Redis client, which does not follow Redis Cluster redirects. Call-state
 restoration and switchover still require live validation.
 
-The three Valkey pods (one primary and two replicas) use required hostname
-spreading, matching the current three-node media pool. The chart also runs
-three primary-aware HAProxy proxies so RTPEngine clients have one proxy on
-each media node. A fourth Valkey pod should not be requested until a fourth
-eligible node exists: the operator's required anti-affinity would otherwise
-leave it Pending. A chart-owned Cilium policy permits Valkey client traffic
+The three Valkey pods (one primary and two replicas) prefer hostname
+spreading, but may co-locate when the available node pool is smaller than the
+cluster. The chart also runs three primary-aware HAProxy proxies and three
+RTPEngine replicas; both workloads prefer one pod per node while allowing
+co-location during recovery. A chart-owned Cilium policy permits Valkey client traffic
 from the proxy and operator plus TCP/6379 and the Valkey cluster bus on
 TCP/16379 between Valkey nodes. Without the cluster-bus path, the operator can
 leave the cluster in `SlotsUnassigned` even while all pods report Ready.

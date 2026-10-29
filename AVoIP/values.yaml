@@ -761,7 +761,9 @@ rtpengine:
     shards: 1
     replicas: 2
     clusterNodeTimeout: '5000'
-    spreadMode: 'Required'
+    # Prefer one Valkey pod per node, but permit co-location when the node pool
+    # is smaller than the requested cluster or a node is temporarily absent.
+    spreadMode: 'Preferred'
     persistence:
       storageClass: 'longhorn'
       size: '1Gi'

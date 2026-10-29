@@ -1563,11 +1563,13 @@ controllers:
         # for a live-reload annotation to watch.
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: '{{ include "avoip.fullname" . }}-rtpengine'
-              topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: '{{ include "avoip.fullname" . }}-rtpengine'
+                topologyKey: kubernetes.io/hostname
     containers:
       rtpengine:
         command:
@@ -1732,11 +1734,13 @@ controllers:
         app: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
       affinity:
         podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
-              topologyKey: kubernetes.io/hostname
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: '{{ include "avoip.rtpengine.valkeyProxyName" . }}'
+                topologyKey: kubernetes.io/hostname
     containers:
       haproxy:
         command:
