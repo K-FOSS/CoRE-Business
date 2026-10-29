@@ -96,6 +96,9 @@ serviceOptions:
     type: 'ClusterIP'
     annotations: {}
     labels: {}
+    # Prefer the RTPEngine endpoint on Kamailio's node. Kubernetes falls back
+    # to a Ready endpoint on another node when the local endpoint disappears.
+    trafficDistribution: 'PreferSameNode'
   rtpengine-media:
     type: 'LoadBalancer'
     annotations: {}
@@ -692,7 +695,9 @@ rtpengine:
   # second media owner available. Redis/Valkey recovery state does not by
   # itself prove active-call continuity; validate the site media path before
   # increasing this further.
-  replicas: 2
+  # One media owner per current eligible node; the Service prefers the local
+  # owner and falls back to another Ready owner when a node is lost.
+  replicas: 3
   control:
     # Keep UDP as the primary NG control socket. The WebSocket listener is
     # independently exposed as a secondary control socket for validation and
@@ -712,17 +717,17 @@ rtpengine:
     # Cap call lifetime at five minutes.
     finalTimeoutSeconds: 300
   recovery:
-    # Probe the stable control Service frequently and retry soon after a
-    # timeout marks it unavailable during an RTPEngine rollout or outage.
-    disableTimeoutSeconds: 5
+    # Probe the stable control Service frequently and fail over quickly when
+    # the preferred same-node RTPEngine endpoint disappears.
+    disableTimeoutSeconds: 2
     aggressiveRedetection: true
     # Keep these explicit rather than depending on Kamailio module defaults:
-    # retry NG commands after timeouts and probe the configured node at startup
-    # and periodically so a transiently disabled Service endpoint is rediscovered.
-    controlTimeoutMilliseconds: 1000
-    commandRetries: 5
+    # bound each NG command attempt tightly, retry once, and probe the Service
+    # so Kubernetes can select a Ready endpoint on another node.
+    controlTimeoutMilliseconds: 300
+    commandRetries: 2
     pingOnStartup: true
-    pingIntervalSeconds: 5
+    pingIntervalSeconds: 2
   valkey:
     # The ValkeyCluster is watched by the Backplane-installed operator in
     # valkey-operator-system. HAProxy selects its current primary for RTPEngine.
@@ -733,7 +738,8 @@ rtpengine:
     host: ''
     port: 6379
     proxy:
-      replicas: 2
+      # Keep one primary-aware proxy beside each Kamailio/RTPEngine node.
+      replicas: 3
       port: 6379
       healthPort: 8404
       image:

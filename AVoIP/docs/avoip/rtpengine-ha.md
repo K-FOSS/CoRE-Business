@@ -9,9 +9,14 @@ media sessions.
 The current chart uses site-local Valkey state, keyspace subscription,
 `--redis-resolve-on-reconnect`, and `--active-switchover`. This is recovery
 state, not proof that a second pod owns the same UDP socket, public address,
-or port. Before increasing replicas, choose deterministic public media
-ownership (unique addresses, node-bound addresses, proven ECMP, or controlled
-active/standby takeover).
+or port. The chart now runs three replicas with required hostname anti-affinity
+so the media owners are placed one per current eligible node. This is a
+minimum availability step, not proof that an active call survives pod or node
+loss.
+Deterministic public media ownership (unique addresses, node-bound addresses,
+proven ECMP, or controlled active/standby takeover) and a controlled live-call
+test remain required before increasing the replica count beyond the current
+node pool.
 
 Rolling replacement keeps `maxUnavailable: 0` and permits one surge pod. The
 post-Helm Kustomize layer applies `minReadySeconds: 60` to RTPEngine as well as
@@ -39,14 +44,17 @@ This verifies the restore-marker readiness gate, Deployment strategy and
 continuity for an active call.
 
 Kamailio controls RTPEngine through the stable internal Service DNS name and
-UDP NG port; its configuration does not pin a pod IP. The [Kamailio RTPEngine
-module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html) is
-configured explicitly with `rtpengine_tout_ms=1000`, `rtpengine_retr=5`,
-`rtpengine_disable_tout=5`, `aggressive_redetection=1`, `ping_mode=1`, and
-`ping_interval=5`. A command timeout is retried; an unavailable node is
-periodically probed and becomes eligible again when it responds. This is
-control-plane recovery, not active-call migration: a media session pinned to a
-failed RTPEngine still requires the Redis-backed restoration/takeover path.
+UDP NG port; its configuration does not pin a pod IP. The control Service uses
+Kubernetes `trafficDistribution: PreferSameNode`, so each Kamailio prefers the
+RTPEngine endpoint on its own node while the Service automatically falls back
+to another Ready node when the local endpoint is absent. The [Kamailio
+RTPEngine module](https://kamailio.org/docs/modules/6.1.x/modules/rtpengine.html)
+is configured explicitly with `rtpengine_tout_ms=300`, `rtpengine_retr=2`,
+`rtpengine_disable_tout=2`, `aggressive_redetection=1`, `ping_mode=1`, and
+`ping_interval=2`. A command timeout is bounded and retried; an unavailable
+endpoint is detected and probed again quickly. This is control-plane recovery,
+not active-call migration: a media session pinned to a failed RTPEngine still
+requires the Redis-backed restoration/takeover path.
 The restore-marker readiness probe keeps a replacement out of Service
 endpoints until Redis state restoration completes; the 60-second minimum-ready
 interval then retains the previous endpoint while the new pod settles. During
@@ -110,6 +118,16 @@ with `INFO replication`. New connections go only to the node reporting
 This adapts the operator's all-node headless Service for RTPEngine's direct
 Redis client, which does not follow Redis Cluster redirects. Call-state
 restoration and switchover still require live validation.
+
+The three Valkey pods (one primary and two replicas) use required hostname
+spreading, matching the current three-node media pool. The chart also runs
+three primary-aware HAProxy proxies so RTPEngine clients have one proxy on
+each media node. A fourth Valkey pod should not be requested until a fourth
+eligible node exists: the operator's required anti-affinity would otherwise
+leave it Pending. A chart-owned Cilium policy permits Valkey client traffic
+from the proxy and operator plus TCP/6379 and the Valkey cluster bus on
+TCP/16379 between Valkey nodes. Without the cluster-bus path, the operator can
+leave the cluster in `SlotsUnassigned` even while all pods report Ready.
 
 Test pod deletion, process kill, node drain, Valkey primary restart, HAProxy
 master selection failure, and rolling updates. Record existing-call survival,

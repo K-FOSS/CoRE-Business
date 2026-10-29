@@ -7,13 +7,17 @@ trap 'rm -rf "$temp_dir"' EXIT
 
 helm template core-home1-talos-prod "$repo_root/AVoIP" --namespace core-prod \
   -f "$repo_root/AVoIP/tests/fixtures/outbound-teardown.yaml" \
+  --set freeswitch.flowrouteOutbound.kamailioInstance=internal \
+  --set avoipAdmin.enabled=false \
   > "$temp_dir/helm-output.yaml"
 cp "$repo_root/AVoIP/kustomization.yaml" "$temp_dir/kustomization.yaml"
 cp -R "$repo_root/AVoIP/patches" "$temp_dir/patches"
 yq -y -i '.resources = ["helm-output.yaml"]' "$temp_dir/kustomization.yaml"
 kustomize build "$temp_dir" > "$temp_dir/final-render.yaml"
 
-yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.minReadySeconds == 60 and .spec.strategy.type == "RollingUpdate" and .spec.strategy.rollingUpdate.maxUnavailable == 0 and .spec.strategy.rollingUpdate.maxSurge == 1' "$temp_dir/final-render.yaml" >/dev/null
+yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.replicas == 3 and .spec.minReadySeconds == 60 and .spec.strategy.type == "RollingUpdate" and .spec.strategy.rollingUpdate.maxUnavailable == 0 and .spec.strategy.rollingUpdate.maxSurge == 1 and .spec.template.spec.affinity.podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution[0].topologyKey == "kubernetes.io/hostname"' "$temp_dir/final-render.yaml" >/dev/null
+yq -e 'select(.kind == "Service" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.trafficDistribution == "PreferSameNode"' "$temp_dir/final-render.yaml" >/dev/null
+yq -e 'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "core-home1-talos-prod-avoip-rtp-valkey-network") | .metadata.namespace == "valkey-operator-system" and .spec.endpointSelector.matchLabels["valkey.io/cluster"] == "avoip-rtpengine" and any(.spec.ingress[]; any(.toPorts[].ports[]; .port == "16379"))' "$temp_dir/final-render.yaml" >/dev/null
 rtpengine_args="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | .args[0]' "$temp_dir/final-render.yaml")"
 grep -Fq -- '--redis=' <<< "$rtpengine_args"
 ! grep -Fq -- '--no-redis-required' <<< "$rtpengine_args"
@@ -31,12 +35,12 @@ assert_rtpengine_param() {
   block="$(grep -A4 -F "\"$param\"," <<< "$kamailio_config")"
   grep -Fq "$value" <<< "$block"
 }
-assert_rtpengine_param rtpengine_disable_tout '  5'
+assert_rtpengine_param rtpengine_disable_tout '  2'
 assert_rtpengine_param aggressive_redetection '  1'
-assert_rtpengine_param rtpengine_tout_ms '  1000'
-assert_rtpengine_param rtpengine_retr '  5'
+assert_rtpengine_param rtpengine_tout_ms '  300'
+assert_rtpengine_param rtpengine_retr '  2'
 assert_rtpengine_param ping_mode '  1'
-assert_rtpengine_param ping_interval '  5'
+assert_rtpengine_param ping_interval '  2'
 grep -Fq 'RTPEngine SIP Core trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl' <<< "$kamailio_config"
 grep -Fq 'RTPEngine SIP Core Asterisk trickle ICE update failed callid=$ci method=$rm content_type=$hdr(Content-Type) body_bytes=$cl' <<< "$kamailio_config"
 restore_entrypoint="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine-redis-restore-gate") | .data["redis-restore-entrypoint.sh"]' "$temp_dir/final-render.yaml")"

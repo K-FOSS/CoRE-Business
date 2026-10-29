@@ -211,6 +211,10 @@ type: '{{ . }}'
 loadBalancerClass: '{{ . }}'
 {{- end }}
 {{- end }}
+{{- $trafficDistribution := default $serviceOptions.trafficDistribution $defaultOptions.trafficDistribution -}}
+{{- with $trafficDistribution }}
+trafficDistribution: '{{ . }}'
+{{- end }}
 {{- end -}}
 
 {{- define "avoip.homer.hostname" -}}

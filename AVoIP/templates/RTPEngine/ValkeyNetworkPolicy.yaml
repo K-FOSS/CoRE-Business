@@ -1,0 +1,40 @@
+{{- if and (include "avoip.rtpengine.enabled" . | trim) .Values.rtpengine.valkey.enabled }}
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: '{{ include "avoip.rtpengine.valkeyProxyName" . }}-network'
+  namespace: '{{ .Values.rtpengine.valkey.namespace }}'
+spec:
+  endpointSelector:
+    matchLabels:
+      valkey.io/cluster: '{{ .Values.rtpengine.valkey.clusterName }}'
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': '{{ .Values.rtpengine.valkey.namespace }}'
+            valkey.io/cluster: '{{ .Values.rtpengine.valkey.clusterName }}'
+      toPorts:
+        - ports:
+            - port: '6379'
+              protocol: 'TCP'
+            - port: '16379'
+              protocol: 'TCP'
+    - fromEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': '{{ .Values.rtpengine.valkey.namespace }}'
+            app.kubernetes.io/name: 'valkey-operator'
+            control-plane: 'controller-manager'
+      toPorts:
+        - ports:
+            - port: '6379'
+              protocol: 'TCP'
+    - fromEndpoints:
+        - matchLabels:
+            'k8s:io.kubernetes.pod.namespace': '{{ .Release.Namespace }}'
+            app.kubernetes.io/controller: 'rtpengine-valkey-proxy'
+            app.kubernetes.io/instance: '{{ .Release.Name }}'
+      toPorts:
+        - ports:
+            - port: '6379'
+              protocol: 'TCP'
+{{- end }}
