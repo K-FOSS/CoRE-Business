@@ -19,8 +19,6 @@ spec:
               protocol: 'TCP'
             - port: '16379'
               protocol: 'TCP'
-            - port: '16379'
-              protocol: 'TCP'
     - fromEndpoints:
         - matchLabels:
             'k8s:io.kubernetes.pod.namespace': '{{ .Values.rtpengine.valkey.namespace }}'
@@ -29,6 +27,8 @@ spec:
       toPorts:
         - ports:
             - port: '6379'
+              protocol: 'TCP'
+            - port: '16379'
               protocol: 'TCP'
     - fromEndpoints:
         - matchLabels:

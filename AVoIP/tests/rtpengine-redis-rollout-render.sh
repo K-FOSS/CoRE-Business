@@ -18,6 +18,9 @@ kustomize build "$temp_dir" > "$temp_dir/final-render.yaml"
 yq -e 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.replicas == 3 and .spec.minReadySeconds == 60 and .spec.strategy.type == "RollingUpdate" and .spec.strategy.rollingUpdate.maxUnavailable == 0 and .spec.strategy.rollingUpdate.maxSurge == 1 and .spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight == 100' "$temp_dir/final-render.yaml" >/dev/null
 yq -e 'select(.kind == "Service" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.trafficDistribution == "PreferSameNode"' "$temp_dir/final-render.yaml" >/dev/null
 yq -e 'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "core-home1-talos-prod-avoip-rtp-valkey-network") | .metadata.namespace == "valkey-operator-system" and .spec.endpointSelector.matchLabels["valkey.io/cluster"] == "avoip-rtpengine" and any(.spec.ingress[]; any(.toPorts[].ports[]; .port == "16379"))' "$temp_dir/final-render.yaml" >/dev/null
+operator_ports="$(yq -r 'select(.kind == "CiliumNetworkPolicy" and .metadata.name == "core-home1-talos-prod-avoip-rtp-valkey-network") | .spec.ingress[] | select(any(.fromEndpoints[]?.matchLabels; .["app.kubernetes.io/name"] == "valkey-operator")) | .toPorts[].ports[].port' "$temp_dir/final-render.yaml")"
+grep -Fxq '6379' <<< "$operator_ports"
+grep -Fxq '16379' <<< "$operator_ports"
 rtpengine_args="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "core-home1-talos-prod-avoip-rtpengine") | .spec.template.spec.containers[] | select(.name == "rtpengine") | .args[0]' "$temp_dir/final-render.yaml")"
 grep -Fq -- '--redis=' <<< "$rtpengine_args"
 ! grep -Fq -- '--no-redis-required' <<< "$rtpengine_args"
