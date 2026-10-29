@@ -67,7 +67,7 @@ mastodon:
   resources:
     web:
       requests:
-        cpu: '500m'
+        cpu: '164m'
         memory: '1Gi'
       limits:
         memory: '2Gi'
