@@ -688,7 +688,11 @@ rtpengine:
   enabled: true
   # The Valkey proxy supplies the
   # primary-only Redis endpoint required for shared call-state failover.
-  replicas: 1
+  # Keep one RTPEngine pod per eligible node so a single node loss leaves a
+  # second media owner available. Redis/Valkey recovery state does not by
+  # itself prove active-call continuity; validate the site media path before
+  # increasing this further.
+  replicas: 2
   control:
     # Keep UDP as the primary NG control socket. The WebSocket listener is
     # independently exposed as a secondary control socket for validation and
@@ -936,7 +940,7 @@ livekit-server:
     name: 'default'
   resources:
     requests:
-      cpu: '2000m'
+      cpu: '64m'
       memory: '2Gi'
     limits:
       cpu: '4000m'
