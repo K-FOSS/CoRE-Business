@@ -23,7 +23,6 @@ spec:
     name: '{{ $oidc.workspaceName }}'
   forProvider:
     source: 'Inline'
-    initArgs: ['-upgrade']
     varmap:
       application_slug: '{{ $oidcSlug }}'
       access_group: '{{ $oidc.accessGroup }}'
@@ -48,7 +47,9 @@ spec:
       }
 
       data "authentik_certificate_key_pair" "signing_key" {
-        name = "authentik Self-signed Certificate"
+        name             = "authentik Self-signed Certificate"
+        fetch_certificate = false
+        fetch_key         = false
       }
 
       data "authentik_property_mapping_provider_scope" "scopes" {
@@ -136,7 +137,6 @@ spec:
     name: '{{ $forwardAuth.providerConfigRef }}'
   forProvider:
     source: 'Inline'
-    initArgs: ['-upgrade']
     varmap:
       access_group: '{{ $forwardAuth.accessGroup }}'
       display_name: '{{ $forwardAuthDisplayName }}'

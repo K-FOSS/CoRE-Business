@@ -14,7 +14,6 @@ spec:
 
   forProvider:
     source: Inline
-    initArgs: ['-upgrade']
     module: |
       data "authentik_flow" "default-authorization-flow" {
         slug = "default-provider-authorization-explicit-consent"
@@ -34,7 +33,9 @@ spec:
       }
 
       data "authentik_certificate_key_pair" "cert" {
-        name = "tls"
+        name             = "tls"
+        fetch_certificate = false
+        fetch_key         = false
       }
 
       resource "random_password" "client-secret" {
@@ -57,7 +58,7 @@ spec:
         name          = "OpenWebUI {{ .Values.cluster.name }} {{ .Values.datacenter }} {{ .Values.region }}"
         client_id     = "{{ .Values.oauth.indexKey }}-{{ .Values.region }}-{{ .Values.datacenter }}-{{ .Values.cluster.name }}"
         client_secret = random_password.client-secret.result
-        signing_key = data.authentik_certificate_key_pair.cert.id
+        signing_key   = data.authentik_certificate_key_pair.cert.id
         allowed_redirect_uris = [
           {
             matching_mode = "strict",

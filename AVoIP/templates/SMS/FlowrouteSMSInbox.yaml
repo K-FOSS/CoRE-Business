@@ -18,7 +18,6 @@ spec:
     name: '{{ $inbox.providerConfigRef }}'
   forProvider:
     source: 'Inline'
-    initArgs: ['-upgrade']
     varmap:
       provider_name: '{{ $name }} {{ $.Values.cluster.name }}'
       access_group: '{{ $inbox.accessGroup }}'

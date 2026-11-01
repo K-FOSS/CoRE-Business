@@ -13,7 +13,6 @@ spec:
 
   forProvider:
     source: Inline
-    initArgs: ['-upgrade']
     module: |
       data "authentik_flow" "authorization" {
         slug = "default-provider-authorization-explicit-consent"
@@ -32,7 +31,9 @@ spec:
       }
 
       data "authentik_certificate_key_pair" "signing_key" {
-        name = "tls"
+        name             = "tls"
+        fetch_certificate = false
+        fetch_key         = false
       }
 
       resource "random_password" "client_secret" {
