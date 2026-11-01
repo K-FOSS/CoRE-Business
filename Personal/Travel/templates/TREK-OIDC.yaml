@@ -22,7 +22,6 @@ spec:
     name: '{{ $oidc.workspaceName }}'
   forProvider:
     source: 'Inline'
-    initArgs: ['-upgrade']
     varmap:
       cluster_name: '{{ .Values.cluster.name }}'
       datacenter: '{{ .Values.datacenter }}'
@@ -63,7 +62,9 @@ spec:
       }
 
       data "authentik_certificate_key_pair" "signing_key" {
-        name = "tls"
+        name             = "tls"
+        fetch_certificate = false
+        fetch_key         = false
       }
 
       resource "random_password" "client_secret" {
