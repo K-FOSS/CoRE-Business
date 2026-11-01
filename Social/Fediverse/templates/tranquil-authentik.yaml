@@ -11,7 +11,6 @@ spec:
     name: {{ .Values.tranquil.oidc.workspaceName | quote }}
   forProvider:
     source: 'Inline'
-    initArgs: ['-upgrade']
     varmap:
       cluster_name: {{ .Values.cluster.name | quote }}
       datacenter: {{ .Values.datacenter | quote }}
@@ -48,7 +47,9 @@ spec:
       }
 
       data "authentik_certificate_key_pair" "signing_key" {
-        name = "tls"
+        name             = "tls"
+        fetch_certificate = false
+        fetch_key         = false
       }
 
       resource "random_password" "client_secret" {

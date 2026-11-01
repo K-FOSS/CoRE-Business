@@ -11,7 +11,6 @@ spec:
     name: {{ .Values.synapse.oidc.secretName | quote }}
   forProvider:
     source: 'Inline'
-    initArgs: ['-upgrade']
     varmap:
       cluster_name: {{ .Values.cluster.name | quote }}
       datacenter: {{ .Values.datacenter | quote }}
@@ -37,7 +36,11 @@ spec:
       data "authentik_property_mapping_provider_scope" "scopes" {
         managed_list = ["goauthentik.io/providers/oauth2/scope-email", "goauthentik.io/providers/oauth2/scope-openid", "goauthentik.io/providers/oauth2/scope-profile"]
       }
-      data "authentik_certificate_key_pair" "signing_key" { name = "tls" }
+      data "authentik_certificate_key_pair" "signing_key" {
+        name = "tls"
+        fetch_certificate = false
+        fetch_key = false
+      }
       resource "random_password" "client_secret" {
         length = 128
         lower = true
