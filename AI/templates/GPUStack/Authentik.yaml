@@ -54,6 +54,7 @@ spec:
         allowed_redirect_uris = [
           {
             matching_mode = "strict"
+            redirect_uri_type = "authorization"
             url           = "{{ trimSuffix "/" .Values.gpustack.server.externalUrl }}/auth/oidc/callback"
           },
         ]

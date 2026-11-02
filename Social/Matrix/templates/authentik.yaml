@@ -55,8 +55,8 @@ spec:
         client_type = "confidential"
         signing_key = data.authentik_certificate_key_pair.signing_key.id
         allowed_redirect_uris = [
-          { matching_mode = "strict", url = "${var.external_url}/_synapse/client/oidc/callback" },
-          { matching_mode = "strict", url = "${var.mas_external_url}/upstream/callback/01JZ7K9Q3P6B4M2N8R5T1V0XCY" },
+          { matching_mode = "strict", redirect_uri_type = "authorization", url = "${var.external_url}/_synapse/client/oidc/callback" },
+          { matching_mode = "strict", redirect_uri_type = "authorization", url = "${var.mas_external_url}/upstream/callback/01JZ7K9Q3P6B4M2N8R5T1V0XCY" },
         ]
         property_mappings = data.authentik_property_mapping_provider_scope.scopes.ids
         authorization_flow = data.authentik_flow.authorization.id

@@ -72,6 +72,7 @@ spec:
         invalidation_flow  = data.authentik_flow.invalidation.id
         allowed_redirect_uris = [{
           matching_mode = "regex"
+          redirect_uri_type = "authorization"
           url           = "^${var.backend_url}/accounts/oidc/.*$"
         }]
         property_mappings = data.authentik_property_mapping_provider_scope.scopes.ids

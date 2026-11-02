@@ -75,6 +75,7 @@ spec:
         signing_key   = data.authentik_certificate_key_pair.signing_key.id
         allowed_redirect_uris = [{
           matching_mode = "strict"
+          redirect_uri_type = "authorization"
           url           = "${var.external_url}/login/oidc"
         }]
         property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
@@ -105,6 +106,7 @@ spec:
         signing_key   = data.authentik_certificate_key_pair.signing_key.id
         allowed_redirect_uris = [{
           matching_mode = "strict"
+          redirect_uri_type = "authorization"
           url           = "${var.zipline_external_url}/api/auth/oauth/oidc"
         }]
         property_mappings  = data.authentik_property_mapping_provider_scope.scopes.ids
