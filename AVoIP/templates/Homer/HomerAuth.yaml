@@ -78,7 +78,7 @@ spec:
         access_token_validity = "hours=8"
         issuer_mode          = "per_provider"
         signing_key          = data.authentik_certificate_key_pair.signing_key.id
-        allowed_redirect_uris = [{ matching_mode = "strict", url = "${var.external_url}/api/v4/auth/oauth2/authentik/callback" }]
+        allowed_redirect_uris = [{ matching_mode = "strict", redirect_uri_type = "authorization", url = "${var.external_url}/api/v4/auth/oauth2/authentik/callback" }]
         property_mappings    = data.authentik_property_mapping_provider_scope.scopes.ids
       }
 
