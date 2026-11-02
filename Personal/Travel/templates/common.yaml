@@ -6,6 +6,7 @@ controllers:
     type: 'deployment'
     replicas: 1
     strategy: 'Recreate'
+    revisionHistoryLimit: 2
     pod:
       automountServiceAccountToken: false
       securityContext:
@@ -52,6 +53,7 @@ controllers:
     type: 'deployment'
     replicas: 1
     strategy: 'Recreate'
+    revisionHistoryLimit: 2
     pod:
       automountServiceAccountToken: false
       securityContext:
@@ -95,6 +97,7 @@ controllers:
     forceRename: 'core-personal-travel-trek'
     replicas: 1
     strategy: 'Recreate'
+    revisionHistoryLimit: 2
     pod:
       automountServiceAccountToken: false
       securityContext:
