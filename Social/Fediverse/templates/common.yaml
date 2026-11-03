@@ -1035,6 +1035,8 @@ AWS_ACCESS_KEY_ID:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.s3CredentialsSecretName "key" "AccessKey") | nindent 2 }}
 AWS_SECRET_ACCESS_KEY:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.s3CredentialsSecretName "key" "SecretAccessKey") | nindent 2 }}
+MAX_IMAGE_SIZE: {{ .Values.mastodon.imageUploadLimit | quote }}
+MAX_VIDEO_SIZE: {{ .Values.mastodon.videoUploadLimit | quote }}
 OIDC_ENABLED: {{ .Values.mastodon.oidc.enabled | quote }}
 {{- if .Values.mastodon.oidc.enabled }}
 OIDC_DISPLAY_NAME: {{ .Values.mastodon.oidc.displayName | quote }}

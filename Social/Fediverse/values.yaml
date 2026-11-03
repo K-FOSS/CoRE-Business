@@ -64,6 +64,9 @@ mastodon:
   uploadTmp:
     storageClass: 'mastodon-upload-rwx'
     size: '50Gi'
+  # Mastodon expects media upload limits in bytes.
+  imageUploadLimit: '67108864'
+  videoUploadLimit: '629145600'
   resources:
     web:
       requests:

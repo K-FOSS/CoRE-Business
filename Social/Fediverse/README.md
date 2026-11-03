@@ -248,7 +248,9 @@ signature/path-style behavior and public media reads as described in the
 [Mastodon object-storage documentation](https://docs.joinmastodon.org/admin/optional/object-storage/).
 The upload PVC holds temporary upload and processing files; delete stale files
 when no uploads or jobs use them, since the shared directory survives pod
-rollouts. A media PVC would not replace S3.
+rollouts. Mastodon accepts image uploads up to 64 MiB and video/audio uploads
+up to 600 MiB through the `MAX_IMAGE_SIZE` and `MAX_VIDEO_SIZE` settings; a
+media PVC would not replace S3.
 The User claim and S3 credential Secret have Argo `Prune=false,Delete=false`
 semantics so removing the application does not implicitly delete identity or
 data. Deliberately decommission the database, bucket and credentials only after
