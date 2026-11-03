@@ -22,7 +22,7 @@ mastodon:
   domain: ''
   image:
     repository: 'ghcr.io/glitch-soc/mastodon'
-    tag: 'v4.7.3@sha256:33b2e00cf01121439bb8ed79d7064913cfa0d24d0901852a089995bd4c562431'
+    tag: 'v4.7.4@sha256:74a64fb535be4a299f9d116e4c0d13a09cb421edc7659c7cc6c61990f405e0a2'
     pullPolicy: 'IfNotPresent'
   streamingImage:
     repository: 'ghcr.io/mastodon/mastodon-streaming'
