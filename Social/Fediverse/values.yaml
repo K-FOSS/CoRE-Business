@@ -26,7 +26,7 @@ mastodon:
     pullPolicy: 'IfNotPresent'
   streamingImage:
     repository: 'ghcr.io/mastodon/mastodon-streaming'
-    tag: 'v4.7.5@sha256:f89537b2ba33c8b2034bc6e7e46298a5b0a0c24c8f719fe3479b852e27adcb81'
+    tag: 'v4.7.5@sha256:3859d071e61a0ed2610a00e8048d89310235afb86e6923c0243bb4f9f4a31093'
     pullPolicy: 'IfNotPresent'
   user:
     name: 'mastodon'
