@@ -83,7 +83,7 @@ mastodon:
     sidekiq:
       requests:
         cpu: '64m'
-        memory: '2Gi'
+        memory: '4Gi'
       limits:
         memory: '8Gi'
     migrate:
