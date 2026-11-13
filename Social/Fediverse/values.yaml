@@ -38,6 +38,18 @@ mastodon:
     database: 'mastodon_production'
     host: ''
     port: 5432
+    # Mastodon creates this many connections per web, streaming and Sidekiq
+    # process. The site-local psql endpoint provides transaction pooling.
+    poolSize: 20
+    replica:
+      # Enable only after the PostgreSQL owner publishes a hot-replica DNS
+      # endpoint for this database and confirms its replication lag budget.
+      enabled: false
+      host: ''
+      port: 5432
+      database: ''
+      tasks: false
+      preparedStatements: false
     crossplaneProvider: ''
     terraformProvider: ''
   s3:

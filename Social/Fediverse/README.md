@@ -151,6 +151,24 @@ are used by both PDS instances.
 pass through transaction pooling; Mastodon documents that prepared statements
 are incompatible with that mode.
 
+The chart sets Mastodon `DB_POOL` to `mastodon.psql.poolSize` (20 by default)
+for each web, streaming and Sidekiq process. This limits application-side
+connection fan-out while the site-local `psql-local...` endpoint supplies the
+shared transaction-pooling layer. The value must be sized with the number of
+replicas and the PostgreSQL/PGPool capacity in the owning
+[PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml).
+
+Mastodon 4.2 and newer can route eligible reads to a hot PostgreSQL replica.
+Set `mastodon.psql.replica.enabled`, `host`, and `database` in the owning
+Backplane merge values only after the storage layer publishes a replica
+endpoint. The chart reuses the generated Mastodon database credentials,
+disables replica-side database tasks, and keeps prepared statements disabled.
+The option is disabled by default because no replica endpoint is currently
+declared in this repository. Synapse/MAS have connection pools but no
+equivalent application-level read split, and Tranquil currently exposes only a
+single PostgreSQL `DATABASE_URL`, so those services remain on their primary
+pool endpoint.
+
 The PostgreSQL hostname is automatically formed as
 `psql-local.<cluster>.<datacenter>.<region>.mylogin.space`; the Dragonfly
 hostname is automatically formed as

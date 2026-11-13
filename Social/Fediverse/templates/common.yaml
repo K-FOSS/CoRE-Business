@@ -24,6 +24,10 @@
 {{- if .Values.mastodon.oidc.enabled }}
 {{- $_ := required "mastodon.oidc.providerConfigRef is required" .Values.mastodon.oidc.providerConfigRef -}}
 {{- end }}
+{{- if .Values.mastodon.psql.replica.enabled }}
+{{- $_ := required "mastodon.psql.replica.host is required when a read replica is enabled" .Values.mastodon.psql.replica.host -}}
+{{- $_ := required "mastodon.psql.replica.database is required when a read replica is enabled" .Values.mastodon.psql.replica.database -}}
+{{- end }}
 {{- if .Values.bluesky.enabled }}
 {{- $_ := required "bluesky.hostname is required when Bluesky is enabled" .Values.bluesky.hostname -}}
 {{- if not .Values.bluesky.existingSecret }}
@@ -976,11 +980,23 @@ PORT: '3000'
 PREPARED_STATEMENTS: 'false'
 DB_HOST: {{ default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.mastodon.psql.host | quote }}
 DB_PORT: {{ .Values.mastodon.psql.port | quote }}
+DB_POOL: {{ .Values.mastodon.psql.poolSize | quote }}
 DB_USER:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "username") | nindent 2 }}
 DB_PASS:
   {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "password") | nindent 2 }}
 DB_NAME: {{ .Values.mastodon.psql.database | quote }}
+{{ if .Values.mastodon.psql.replica.enabled }}
+REPLICA_DB_HOST: {{ .Values.mastodon.psql.replica.host | quote }}
+REPLICA_DB_PORT: {{ .Values.mastodon.psql.replica.port | quote }}
+REPLICA_DB_NAME: {{ .Values.mastodon.psql.replica.database | quote }}
+REPLICA_DB_USER:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "username") | nindent 2 }}
+REPLICA_DB_PASS:
+  {{- include "mastodon.secretRef" (dict "name" .Values.mastodon.user.connectionSecretName "key" "password") | nindent 2 }}
+REPLICA_DB_TASKS: {{ .Values.mastodon.psql.replica.tasks | quote }}
+REPLICA_PREPARED_STATEMENTS: {{ .Values.mastodon.psql.replica.preparedStatements | quote }}
+{{ end }}
 REDIS_HOST: {{ default (printf "dragonfly.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.redis.host | quote }}
 REDIS_PORT: {{ .Values.redis.port | quote }}
 REDIS_PASSWORD:
