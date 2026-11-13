@@ -8,7 +8,7 @@ self-hosted habit tracker, rendered through the
 
 ## Current deployment
 
-The chart uses the pinned Donetick `v0.1.79` image and exposes a private
+The chart uses the pinned Donetick `v0.1.86` image and exposes a private
 Gateway API `HTTPRoute` at `tasks.mylogin.space`. It uses the site PostgreSQL
 service through a Backplane `mylogin.space/v1alpha1 User` resource. The
 generated database name is the generated connection Secret's `username` key,
