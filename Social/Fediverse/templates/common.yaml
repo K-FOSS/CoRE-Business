@@ -645,6 +645,8 @@ controllers:
       unavailable: {{ .Values.tranquil.rollingUpdate.unavailable }}
       surge: {{ .Values.tranquil.rollingUpdate.surge | quote }}
     pod:
+      annotations:
+        kubectl.kubernetes.io/default-container: 'tranquil'
       terminationGracePeriodSeconds: {{ .Values.tranquil.terminationGracePeriodSeconds }}
       automountServiceAccountToken: false
       imagePullSecrets:

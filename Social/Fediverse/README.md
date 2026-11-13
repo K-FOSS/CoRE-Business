@@ -45,7 +45,7 @@ Valkey shares cache/rate-limit state. The experimental local `tranquil-store`
 backend remains unused.
 Each replica uses a bounded SQLx PostgreSQL pool with 20 maximum connections,
 2 minimum idle connections, and a 10-second acquisition timeout by default;
-these are configurable under `tranquil.psql`. Tranquil 0.7.1 has one pool for
+these are configurable under `tranquil.psql`. Tranquil v0.8.0 has one pool for
 reads, writes, and migrations and does not expose a separate read-only pool, so
 the chart does not configure a PostgreSQL read replica for it.
 Tranquil’s native generic OIDC SSO is enabled through Authentik, with the
@@ -60,7 +60,7 @@ The private Tranquil image is pulled from [ATCR](https://atcr.io/) with a
 namespace-local Docker registry Secret reconciled from the `AppPassword`
 property at `Social/Fediverse/Bluesky` in `mainvault-core`; the registry
 username is the non-secret `kjones.pds.mylogin.space` value.
-The image is pinned to the upstream `v0.7.1` release rather than the mutable
+The image is pinned to the live `v0.8.0` release rather than the mutable
 `latest` tag.
 Tranquil uses its native `MAIL_*` configuration with `mail.mylogin.space:465`
 and implicit TLS, authenticating with the Tranquil User connection Secret.
