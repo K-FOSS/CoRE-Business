@@ -21,7 +21,7 @@ this path with the [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-l
 It injects the cluster identity and the `main-gw` / `https-myloginspace` Gateway
 attachment. The live endpoint is `https://gym.mylogin.space`.
 
-The chart uses the upstream [openGym v1.4.2 release](https://github.com/DuarteSantos8/openGym/releases/tag/v1.4.2).
+The chart uses the upstream [openGym v1.4.4 release](https://github.com/DuarteSantos8/openGym/releases/tag/v1.4.4).
 That release includes its exercise media in the web image, so the chart no
 longer downloads or mounts a separate media dataset. User profiles, passkeys,
 workout history, session state and generated notification keys remain on the

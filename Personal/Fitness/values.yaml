@@ -17,7 +17,7 @@ gateway:
 
 opengym:
   hostname: 'gym.mylogin.space'
-  imageTag: '1.4.2'
+  imageTag: '1.4.4'
   resources:
     web:
       requests:
