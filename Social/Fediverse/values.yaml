@@ -234,8 +234,9 @@ tranquil:
     terraformProvider: ''
   image:
     repository: 'atcr.io/tranquil.farm/tranquil-pds'
-    # Upstream currently publishes the production container as `latest`.
-    tag: 'latest'
+    # Upstream release tag; keep this explicit rather than following mutable
+    # `latest` so the deployment remains reproducible.
+    tag: 'v0.7.1'
     pullPolicy: 'IfNotPresent'
   imagePullSecret:
     name: 'tranquil-pds-registry'
