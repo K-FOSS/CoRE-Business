@@ -20,7 +20,6 @@ spec:
   s3:
     enabled: true
     createBuckets: true
-    createUserBucket: true
     createCredentials: true
     createServiceAccount: true
     region: {{ .Values.mastodon.s3.region | quote }}
