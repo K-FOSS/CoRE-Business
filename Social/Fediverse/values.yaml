@@ -239,9 +239,9 @@ tranquil:
     terraformProvider: ''
   image:
     repository: 'atcr.io/tranquil.farm/tranquil-pds'
-    # Upstream release tag; keep this explicit rather than following mutable
-    # `latest` so the deployment remains reproducible.
-    tag: '0.7.1'
+    # Explicit infrastructure-approved release tag; do not follow mutable
+    # `latest`.
+    tag: 'v0.8.0'
     pullPolicy: 'IfNotPresent'
   imagePullSecret:
     name: 'tranquil-pds-registry'
