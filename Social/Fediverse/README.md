@@ -43,6 +43,11 @@ lacks Redis TLS support, it connects to a pod-local `redis://` socket and the
 Tranquil runs with two replicas because PostgreSQL stores repository state, S3 stores blobs, and
 Valkey shares cache/rate-limit state. The experimental local `tranquil-store`
 backend remains unused.
+Each replica uses a bounded SQLx PostgreSQL pool with 20 maximum connections,
+2 minimum idle connections, and a 10-second acquisition timeout by default;
+these are configurable under `tranquil.psql`. Tranquil 0.7.1 has one pool for
+reads, writes, and migrations and does not expose a separate read-only pool, so
+the chart does not configure a PostgreSQL read replica for it.
 Tranquil’s native generic OIDC SSO is enabled through Authentik, with the
 callback registered at
 `https://tranquil-pds.mylogin.space/oauth/sso/callback`; its client credentials

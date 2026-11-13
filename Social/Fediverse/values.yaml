@@ -203,6 +203,11 @@ tranquil:
   psql:
     host: ''
     port: 5432
+    # Tranquil uses one SQLx pool for reads, writes and migrations. Keep this
+    # bounded because each Tranquil replica creates its own pool.
+    maxConnections: 20
+    minConnections: 2
+    acquireTimeoutSeconds: 10
     crossplaneProvider: ''
     terraformProvider: ''
   cache:
@@ -236,7 +241,7 @@ tranquil:
     repository: 'atcr.io/tranquil.farm/tranquil-pds'
     # Upstream release tag; keep this explicit rather than following mutable
     # `latest` so the deployment remains reproducible.
-    tag: 'v0.7.1'
+    tag: '0.7.1'
     pullPolicy: 'IfNotPresent'
   imagePullSecret:
     name: 'tranquil-pds-registry'

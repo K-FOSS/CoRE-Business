@@ -670,6 +670,9 @@ controllers:
           SERVER_PORT: '3000'
           PDS_HOSTNAME: {{ .Values.tranquil.hostname | quote }}
           DATABASE_URL: {{ printf "postgres://$(A_TRANQUIL_DB_USERNAME):$(A_TRANQUIL_DB_PASSWORD)@%s:%s/$(A_TRANQUIL_DB_USERNAME)" (default (printf "psql-local.%s.%s.%s.mylogin.space" .Values.cluster.name .Values.datacenter .Values.region) .Values.tranquil.psql.host) (toString .Values.tranquil.psql.port) | quote }}
+          DATABASE_MAX_CONNECTIONS: {{ .Values.tranquil.psql.maxConnections | quote }}
+          DATABASE_MIN_CONNECTIONS: {{ .Values.tranquil.psql.minConnections | quote }}
+          DATABASE_ACQUIRE_TIMEOUT_SECS: {{ .Values.tranquil.psql.acquireTimeoutSeconds | quote }}
           CACHE_BACKEND: {{ .Values.tranquil.cache.backend | quote }}
           REPO_BACKEND: 'postgres'
           A_TRANQUIL_CACHE_PASSWORD:
