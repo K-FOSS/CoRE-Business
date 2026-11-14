@@ -44,7 +44,7 @@ ketesa:
   hostname: 'matrix-admin.mylogin.space'
   image:
     repository: 'ghcr.io/etkecc/ketesa'
-    tag: 'v1.5.0'
+    tag: 'v1.5.2@sha256:1b9c40be1dcc3c7a4913c5231fa06a08e38ac0ab547ccb3858ad004151e04b1c'
     pullPolicy: 'IfNotPresent'
   resources:
     requests:
@@ -83,7 +83,7 @@ synapse:
   replicas: 1
   image:
     repository: 'ghcr.io/element-hq/synapse'
-    tag: 'v1.161.0'
+    tag: 'v1.165.0@sha256:673b4223c81a7634fd07d832b939a58f97081cfdaae7cdd2d1664cdcf7611b62'
     pullPolicy: 'IfNotPresent'
   user:
     name: 'matrix-synapse'
