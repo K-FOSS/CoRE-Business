@@ -31,7 +31,7 @@ element:
   hostname: 'element.mylogin.space'
   image:
     repository: 'ghcr.io/element-hq/element-web'
-    tag: 'v1.12.29@sha256:da32e88c8dafe2c3d4f40ca5e90ab2f43a7c9ac35f0977ec7662dcb4fdcd56d8'
+    tag: 'v1.12.35@sha256:406b48b80153818284a235fa3600b2a5b5b6b0aa0e4ef4896b36d8d3461352f3'
     pullPolicy: 'IfNotPresent'
   resources:
     requests:
@@ -61,7 +61,7 @@ mas:
     enabled: true
   image:
     repository: 'ghcr.io/element-hq/matrix-authentication-service'
-    tag: '1.20.0@sha256:1b0cc87ca6bd6186172a123228cfc3be4c94522d5ecc71e7baeaf23e48ce883a'
+    tag: '1.29.0@sha256:9247315c9e86096aaaa393c7b4b685dc506010e09ff4b89331ef2ed4854167af'
     pullPolicy: 'IfNotPresent'
   user:
     name: 'matrix-mas'
