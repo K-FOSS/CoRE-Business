@@ -342,6 +342,13 @@ controllers:
 {{- end }}
   element:
     replicas: 2
+    strategy: 'RollingUpdate'
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    revisionHistoryLimit: 3
+    podDisruptionBudget:
+      minAvailable: 1
     serviceAccount:
       name: 'default'
     pod:
@@ -381,6 +388,13 @@ controllers:
             port: 8080
   ketesa:
     replicas: 2
+    strategy: 'RollingUpdate'
+    rollingUpdate:
+      surge: 1
+      unavailable: '0'
+    revisionHistoryLimit: 3
+    podDisruptionBudget:
+      minAvailable: 1
     serviceAccount:
       name: 'default'
     pod:
