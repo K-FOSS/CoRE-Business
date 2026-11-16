@@ -22,3 +22,6 @@
 {{- fail "snapotter.oidc.issuerBaseUrl must use HTTPS" -}}
 {{- end -}}
 {{- end -}}
+{{- if and .Values.snapotter.runtimeSecret.generate (lt (int .Values.snapotter.runtimeSecret.length) 32) -}}
+{{- fail "snapotter.runtimeSecret.length must be at least 32" -}}
+{{- end -}}

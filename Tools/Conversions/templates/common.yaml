@@ -1,6 +1,6 @@
 {{- include "bjw-s.common.loader.init" . }}
 {{- define "app-template.hardcodedValues" -}}
-{{- $secret := required "snapotter.existingSecret must name a provisioned runtime Secret" .Values.snapotter.existingSecret }}
+{{- $secret := required "snapotter.existingSecret must name the generated or externally provisioned runtime Secret" .Values.snapotter.existingSecret }}
 global:
 {{ if not .Values.global.nameOverride }}
   nameOverride: {{ .Release.Name | quote }}
@@ -20,10 +20,8 @@ defaultPodOptions:
 controllers:
   snapotter:
     nameOverride: 'snapotter'
-    {{- if .Values.snapotter.redis.enabled }}
     annotations:
-      secret.reloader.stakater.com/reload: {{ .Values.snapotter.redis.secretName | quote }}
-    {{- end }}
+      secret.reloader.stakater.com/reload: {{- if .Values.snapotter.redis.enabled }} {{ printf "%s,%s" $secret .Values.snapotter.redis.secretName | quote }}{{- else }} {{ $secret | quote }}{{- end }}
     # One writer for the RWO data volume; upgrades have a short outage.
     replicas: 1
     strategy: 'Recreate'

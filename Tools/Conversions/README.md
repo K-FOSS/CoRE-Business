@@ -34,9 +34,10 @@ behind the same hostname or split its database, queue and persistent files.
 The complete rendering unit is `Chart.yaml`, `values.yaml` and
 `templates/`; the live Backplane ApplicationSet renders it through Lovely with
 its injected identity values. There are no local Kustomize layers. Standard
-Kubernetes resources use BJW-S Common. The `User`, Terraform `Workspace` and `ExternalSecret` use direct
-templates because they are operator-specific APIs without Common resource
-classes. Kubernetes 1.31+ and Helm 3.18+ are required by the pinned common
+Kubernetes resources use BJW-S Common. The `User`, Terraform `Workspace`,
+External Secrets `Password` generator and `ExternalSecret` use direct templates
+because they are operator-specific APIs without Common resource classes.
+Kubernetes 1.31+ and Helm 3.18+ are required by the pinned common
 library. Provision:
 
 - A `core-prod` namespace and `main-gw` Gateway in `core-prod`, with the
@@ -117,27 +118,36 @@ library. Provision:
   [Dragonfly documentation](https://www.dragonflydb.io/docs).
 - Backplane's [Reloader](https://github.com/stakater/Reloader)
   ([documentation](https://docs.stakater.com/reloader/)) watches the generated
-  Secret via a workload annotation and restarts SnapOtter after credential
-  refresh. Rotation follows the Dragonfly PushSecret and this ExternalSecret's
-  refresh intervals; verify both controllers during rotation.
+  Dragonfly and runtime Secrets via a workload annotation and restarts
+  SnapOtter after either changes. Dragonfly rotation follows the site
+  PushSecret and ExternalSecret refresh intervals.
 - The namespace-local Secret named by `snapotter.existingSecret`, defaulting
-  to `snapotter-runtime`. Deliver it through platform secret automation such
-  as [External Secrets](https://external-secrets.io/) using its
-  [ExternalSecret API](https://external-secrets.io/latest/api/externalsecret/).
-  Required keys are `DEFAULT_PASSWORD` and `COOKIE_SECRET`.
+  to `snapotter-runtime`. By default, the chart creates a 64-character
+  hexadecimal [External Secrets Password generator](https://external-secrets.io/latest/api/generator/password/)
+  and an immutable `CreatedOnce` ExternalSecret containing distinct
+  `DEFAULT_PASSWORD` and `COOKIE_SECRET` values. The generated target Secret
+  is orphaned from the ExternalSecret so it survives chart removal; keep it
+  with the PostgreSQL data because deleting or rotating it can break local
+  account recovery. It contains secret values and must be handled through the
+  site's approved secret access path. Set
+  `snapotter.runtimeSecret.generate: false` only when an external process
+  already provides the named Secret with these keys. If switching away from a
+  generated immutable Secret, choose a different target name and coordinate
+  any credential change with SnapOtter's persisted local account.
   With `snapotter.redis.enabled: false`, `REDIS_URL` is also required and
   no Dragonfly ExternalSecret is rendered.
   With `snapotter.psql.enabled: false`, `DATABASE_URL` is also required and
   no User claim is rendered. URLs must include provisioned service credentials;
-  use a strong bootstrap password and stable random cookie secret. Never
-  place their values in Helm values or Git. An empty Secret name fails Helm
-  validation; absent Secrets or keys prevent container startup.
+  never place credential values in Helm values or Git. An empty Secret name
+  fails Helm validation; absent Secrets or keys prevent container startup.
 
 ## Runtime and access
 
 BJW-S generates one Deployment, ServiceAccount, ClusterIP Service, PVC and
-HTTPRoute. Separate templates generate the User claim and OIDC Workspace
-and Dragonfly ExternalSecret when enabled. The Service forwards port 80 to 1349. The route carries
+HTTPRoute. Separate templates generate the runtime Password and ExternalSecret,
+User claim, OIDC Workspace and Dragonfly ExternalSecret when enabled. The
+runtime generator and ExternalSecret are ordered before the Deployment. The
+Service forwards port 80 to 1349. The route carries
 `wan-mode: public` and `lan-mode: private` labels and a 600-second timeout;
 those labels describe gateway reachability and do not provide authentication.
 The live endpoint is private because the Authentik Workspace creates the

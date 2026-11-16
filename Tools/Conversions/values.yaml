@@ -20,8 +20,11 @@ snapotter:
     digest: 'sha256:8fa3520ac018e717e2009ee461f84835562e0f18b09c759ffd7cc4d46e792c20'
     pullPolicy: 'IfNotPresent'
 
-  # Required namespace-local Secret; see README for keys and provisioning.
+  # Local admin and cookie credentials, generated once by External Secrets.
   existingSecret: 'snapotter-runtime'
+  runtimeSecret:
+    generate: true
+    length: 64
   oidc:
     enabled: true
     providerConfigRef: 'authentik'
