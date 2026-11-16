@@ -3,16 +3,18 @@
 This Helm chart runs [SnapOtter](https://snapotter.com/) at
 `https://conotter.mylogin.space` using the same BJW-S Common 5.0.1 loader
 structure as CyberChef. It pins the application to
-[SnapOtter 2.2.0](https://github.com/snapotter-hq/SnapOtter/releases/tag/v2.2.0).
+[SnapOtter 2.3.0](https://github.com/snapotter-hq/SnapOtter/releases/tag/v2.3.0).
+This release closes six security advisories, including one high-severity issue;
+see the [2.3.0 changelog](https://docs.snapotter.com/changelog#v2-3-0).
 The image is pinned to the immutable multi-platform digest
-`sha256:2e11b4fa9138fa93e0fdfde5da3a2d042eebcfa81dd51286488872a3eb8086c8`.
-See the [release source](https://github.com/snapotter-hq/SnapOtter/tree/v2.2.0),
+`sha256:8fa3520ac018e717e2009ee461f84835562e0f18b09c759ffd7cc4d46e792c20`.
+See the [release source](https://github.com/snapotter-hq/SnapOtter/tree/v2.3.0),
 [deployment documentation](https://docs.snapotter.com/guide/deployment), and
 [BJW-S Common documentation](https://bjw-s-labs.github.io/helm-charts/docs/common-library/).
 
 ## Deployment ownership and prerequisites
 
-The live [Conversions ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Business/Tools/Conversions.yaml)
+The live [Conversions ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Business/Tools/Conversions.yaml)
 references `Tools/Conversions`, selects `core-home1-talos-prod`, deploys to
 `core-prod`, and renders through the [Argo CD Lovely plugin](https://github.com/crumbhole/argocd-lovely-plugin).
 It injects the cluster identity used by the PostgreSQL, Dragonfly and Authentik
@@ -44,14 +46,14 @@ library. Provision:
   [Gateway API](https://gateway-api.sigs.k8s.io/) and
   [Envoy Gateway documentation](https://gateway.envoyproxy.io/docs/).
 - A `longhorn` StorageClass with room for the 50 GiB data claim. The
-  [storage ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Base.yaml)
+  [storage ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Base.yaml)
   installs the site storage configuration; its default Longhorn class has
   two replicas and a `Delete` reclaim policy. See
   [Longhorn](https://longhorn.io/) and its
   [documentation](https://longhorn.io/docs/).
 - The CoRE `mylogin.space/v1alpha1` User API and site-local SQL/Terraform
   providers from the
-  [PostgreSQL ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/PSQL.yaml).
+  [PostgreSQL ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/PSQL.yaml).
   `snapotter.psql.enabled` defaults to true. A service-account User claim
   creates the role and its owned database, joins `LDAPService`, and publishes
   `username` and `password` in
@@ -62,9 +64,12 @@ library. Provision:
   `psql-local.<cluster.name>.<datacenter>.<region>.mylogin.space:5432`.
   Host, port and providers can be overridden under `snapotter.psql`.
   This follows GPUStack's design and the current
-  [User XRD](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
-  SnapOtter 2.2.0 uses this database for both migrations and runtime access;
-  the claim-created role owns it. `psql-local` is the site PostgreSQL master
+  [User XRD](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Operations/SSO/User/templates/User/UserResourceDef.yaml).
+  SnapOtter 2.3.0 uses this database for both migrations and runtime access;
+  the claim-created role owns it. Upstream now supports a separate
+  `DATABASE_MIGRATION_URL`, but the chart leaves it unset and preserves the
+  supported single-role mode; splitting roles requires a separately provisioned
+  migration identity. `psql-local` is the site PostgreSQL master
   Service hostname, not the PGPool endpoint. The target must be writable:
   current Backplane configuration selects Home1/YVR as the PostgreSQL hub
   and DC1 sites as standbys. Use the Home1 layer above for that deployment;
@@ -90,7 +95,7 @@ library. Provision:
   [OAuth2/OIDC documentation](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/),
   and [Terraform provider source](https://github.com/goauthentik/terraform-provider-authentik).
 - Site-local [Dragonfly](https://www.dragonflydb.io/), provisioned by the
-  [Dragonfly ApplicationSet](https://github.com/K-FOSS/CoRE-Backplane/blob/main/Apps/Storage/Dragonfly/CoRE.yaml).
+  [Dragonfly ApplicationSet](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/Apps/Storage/Dragonfly/CoRE.yaml).
   With `snapotter.redis.enabled: true` (default), the chart reads the
   `Password` property at
   `Storage/DragonFly/CoRE/<region>/<datacenter>/<cluster.name>/Creds` through
@@ -143,7 +148,7 @@ Helm never renders credential values. The issuer ends in the generated
 application slug, and the strict redirect is
 `https://conotter.mylogin.space/api/auth/oidc/callback`. `EXTERNAL_URL` and the
 redirect are derived from the same domain setting. See
-[SnapOtter 2.2.0 OIDC documentation](https://github.com/snapotter-hq/SnapOtter/blob/v2.2.0/apps/docs/guide/oidc.md).
+[SnapOtter 2.3.0 OIDC documentation](https://github.com/snapotter-hq/SnapOtter/blob/v2.3.0/apps/docs/guide/oidc.md).
 
 Grant SSO access by adding approved users to `SnapOtter Users` in Authentik.
 The group is not a superuser group, and both application and entitlement are
@@ -167,7 +172,7 @@ bundle downloads; CyberChef's deny-all egress policy is not suitable here.
 `BULLMQ_PREFIX={snapotter}` gives all processing pools a common hashtag,
 including cross-pool flows, for Backplane's existing `--lock_on_hashtags`.
 See [Dragonfly's BullMQ integration guidance](https://www.dragonflydb.io/blog/running-bullmq-with-dragonfly-part-3-cloud)
-and [SnapOtter's queue naming implementation](https://github.com/snapotter-hq/SnapOtter/blob/v2.2.0/apps/api/src/jobs/types.ts).
+and [SnapOtter's queue naming implementation](https://github.com/snapotter-hq/SnapOtter/blob/v2.3.0/apps/api/src/jobs/types.ts).
 No shared Dragonfly server settings are changed. Verify startup's Redis-version
 preflight and actual queue/flow processing against the installed Dragonfly;
 rendering alone does not prove queue compatibility. No GPU is requested. Resource limits allow CPU conversion and optional AI
