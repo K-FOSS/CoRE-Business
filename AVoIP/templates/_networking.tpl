@@ -1,6 +1,7 @@
 {{/* Apply optional independent workloads and network overrides before BJW-S rendering. */}}
 {{- define "avoip.networking.apply" -}}
 {{- $root := . -}}
+{{- if lt (int .Values.revisionHistoryLimit) 0 -}}{{- fail "revisionHistoryLimit must be zero or greater" -}}{{- end -}}
 {{- if not .Values.rawResources -}}{{- $_ := set .Values "rawResources" dict -}}{{- end -}}
 {{- if not .Values.configMaps -}}{{- $_ := set .Values "configMaps" dict -}}{{- end -}}
 {{- $profiles := deepCopy .Values.workloadNetworking -}}
@@ -10,7 +11,7 @@
 {{- $controller := dict
   "replicas" 1
   "strategy" "Recreate"
-  "revisionHistoryLimit" 3
+  "revisionHistoryLimit" (int $root.Values.revisionHistoryLimit)
   "pod" (dict
     "securityContext" (dict "runAsNonRoot" true "runAsUser" 1000 "runAsGroup" 1000 "fsGroup" 1000 "seccompProfile" (dict "type" "RuntimeDefault"))
     "labels" (dict "app" (printf "%s-talk-hpb" (include "avoip.fullname" $root)))
@@ -79,6 +80,11 @@
 {{- with get $profiles $name -}}{{- $_ := mergeOverwrite $profile (deepCopy .) -}}{{- end -}}
 {{- $_ := set $profiles $name $profile -}}
 {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- range $name, $controller := $root.Values.controllers -}}
+{{- if not (hasKey $controller "revisionHistoryLimit") -}}
+{{- $_ := set $controller "revisionHistoryLimit" (int $root.Values.revisionHistoryLimit) -}}
 {{- end -}}
 {{- end -}}
 {{- range $name, $profile := $profiles -}}

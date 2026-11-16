@@ -219,7 +219,7 @@
     replicas: {{ .Values.kamailio.replicas }}
     podDisruptionBudget:
       minAvailable: {{ if $websocketHA.enabled }}{{ int $websocketHA.podDisruptionBudget.minAvailable }}{{ else }}{{ .Values.kamailio.podDisruptionBudget.minAvailable }}{{ end }}
-    revisionHistoryLimit: 3
+    revisionHistoryLimit: {{ int .Values.revisionHistoryLimit }}
     serviceAccount:
       name: '{{ .Values.kamailio.serviceAccountName }}'
     pod:
@@ -927,7 +927,7 @@ controllers:
       surge: 1
       unavailable: '0'
     replicas: 1
-    revisionHistoryLimit: 3
+    revisionHistoryLimit: {{ int .Values.revisionHistoryLimit }}
     serviceAccount:
       name: default
     pod:
@@ -1541,7 +1541,7 @@ controllers:
       surge: 1
       unavailable: '0'
     replicas: {{ .Values.rtpengine.replicas }}
-    revisionHistoryLimit: 3
+    revisionHistoryLimit: {{ int .Values.revisionHistoryLimit }}
     serviceAccount:
       name: default
     pod:
@@ -1722,7 +1722,7 @@ controllers:
       surge: 1
       unavailable: '0'
     replicas: {{ .Values.rtpengine.valkey.proxy.replicas }}
-    revisionHistoryLimit: 3
+    revisionHistoryLimit: {{ int .Values.revisionHistoryLimit }}
     pod:
       securityContext:
         runAsNonRoot: true
@@ -1821,7 +1821,7 @@ controllers:
     podDisruptionBudget:
       minAvailable: {{ .Values.freeswitch.highAvailability.minAvailable }}
     {{- end }}
-    revisionHistoryLimit: 3
+    revisionHistoryLimit: {{ int .Values.revisionHistoryLimit }}
     serviceAccount:
       name: default
     pod:
@@ -2129,7 +2129,7 @@ controllers:
     # writing the same RWX volume during a rollout.
     strategy: Recreate
     replicas: 1
-    revisionHistoryLimit: 3
+    revisionHistoryLimit: {{ int .Values.revisionHistoryLimit }}
     serviceAccount:
       name: default
     pod:
@@ -2205,7 +2205,7 @@ controllers:
   audio-library:
     forceRename: '{{ include "avoip.fullname" . }}-audio-library'
     replicas: 1
-    revisionHistoryLimit: 3
+    revisionHistoryLimit: {{ int .Values.revisionHistoryLimit }}
     serviceAccount:
       name: default
     pod:
