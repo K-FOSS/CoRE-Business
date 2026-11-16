@@ -7,7 +7,7 @@ The shared workflow is adapted from [CoRE Backplane agent guidance](https://slop
 and its [Git and Argo CD operating procedure](https://slop.writemy.codes/CoRE/CoRE-Backplane/src/branch/main/docs/OPERATIONS.md#agent-git-and-argo-cd-procedure).
 The combined rules below retain CoRE Business's application-specific requirements.
 Refresh the upstream guidance before changing this policy; the source reviewed
-for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
+for this update was Backplane commit `1f6fbe47178090d7d83da59cc9c2531db35c644a`.
 
 ## Repository and deployment model
 
@@ -60,14 +60,13 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 
 ## Standing Git and reconciliation authorization
 
-- This repository adopts the Backplane workflow authorized by the repository
-  owner on 2026-09-26 after the Valkey operator deployment. For requested
-  implementation work, agents may validate,
-  create narrowly scoped commits, and push them to the repository's intended
-  branch without asking again. For deployment requests, continue through
-  scoped Argo CD reconciliation and downstream verification. Do not default
-  to handing Git operations back to the user. A request to review only, leave
-  changes uncommitted, use a PR, or defer deployment overrides this allowance.
+- For requested implementation work, agents may inspect, edit, and validate the
+  requested files, but must leave review and Git publication to the user by
+  default. Do not stage, commit, push, or create a PR unless the user explicitly
+  requests that Git operation in the current task. If the user explicitly
+  requests deployment, continue through scoped Argo CD reconciliation and
+  downstream verification; otherwise stop after validation with the changes
+  available for review.
 - Apply this authorization only to the requested task. Preserve unrelated
   staged and unstaged edits, untracked files, and unpublished commits. Inspect
   the index and outgoing commit range before publishing; use an isolated
@@ -76,13 +75,19 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 - Confirm the intended remote and branch, fetch before publishing, review the
   exact outgoing diff, and use a normal fast-forward push. Respect branch
   protections and required checks; use the required PR workflow when applicable.
-- Keep published history immutable. Before creating a commit, refresh the
-  upstream and base new commits on its current tip. Never amend or rebase a
-  commit once it may have reached the remote; make corrections as follow-up
-  commits. Before pushing, confirm the upstream is an ancestor of `HEAD` and
-  the outgoing range contains only this task's commits. If the branch is both
-  ahead and behind, reconcile the local unpublished commits with the fetched
-  upstream first; do not leave the user with a non-fast-forward push.
+- Keep published history immutable. Never amend or rebase a commit that may
+  have reached a remote; publish corrections as follow-up commits. After
+  fetching, confirm the intended upstream tip is an ancestor of `HEAD` and
+  review the complete outgoing range to ensure it contains only this task's
+  commits. If the upstream is not an ancestor of `HEAD`, follow the canonical
+  checkout procedure in Backplane's `docs/OPERATIONS.md`; do not force-push or
+  rewrite published history.
+- Use the canonical workspace's configured Git authentication and askpass
+  flow. Never print, read, copy, or replace stored credentials, disable
+  askpass, or switch credential helpers to work around a missing prompt. If
+  the configured askpass integration cannot communicate, stop retrying,
+  preserve outgoing commits, and report that the workspace authentication
+  prompt must be restored.
 - Reconcile the reviewed, published commit through the owning Argo CD layers.
   Select only the necessary parent ApplicationSet resources and affected child
   applications. Inspect sync hooks and dependency ordering before choosing
@@ -143,6 +148,13 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 - Keep `README.md`, `docs/REPOSITORY.md`, and the nearest component README in
   sync when a change alters deployment, prerequisites, access, recovery,
   storage, public endpoints, secrets, or operator workflow.
+- Stack READMEs should start with a concise purpose statement and link to their
+  owner and parent overview. Organize task-focused sections around ownership,
+  targets and rendering; architecture and data flow; operations and
+  verification; and security and recovery where relevant. Use specific
+  headings, relative links for repository files and direct upstream links for
+  dependencies. Describe observed current behavior before separate desired
+  behavior or TODOs.
 - For internal CoRE repositories, link to `slop.writemy.codes` rather than the
   GitHub mirror. Use Forgejo file links in the form
   `https://slop.writemy.codes/<owner>/<repo>/src/branch/<branch>/<path>`;
@@ -168,9 +180,12 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 
 - Never add, decode, print, log, document or commit production credentials,
   tokens, private keys, Secret values or private provider configuration.
-- Prefer External Secrets, PushSecret and Crossplane connection secrets. A
-  secret-store reference may be committed, but inspect rendered output for
-  literal or generated credential disclosure.
+- Prefer Vault/CoreVault references, External Secrets, PushSecret and
+  Crossplane connection secrets. A secret-store reference may be committed,
+  but inspect rendered output for literal or generated credential disclosure.
+- Preserve emergency access paths that do not depend on Authentik, Eclipse
+  Che, public ingress/DNS, Vault application credentials, a single cluster or
+  a single site.
 - Do not add deployable placeholder/default passwords. Required secret
   references should fail validation when absent.
 - Review Authentik applications/groups, `mylogin.space/v1alpha1` users,
@@ -221,11 +236,12 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
 
 ## Dependencies and generated files
 
-- Pin Helm dependencies, images and remote resources to immutable versions or
-  digests where supported. Avoid version ranges, moving branches and `latest`
-  tags unless their mutability is intentional and documented.
-- Verify dependency versions and values against authoritative release notes,
-  chart indexes and documentation before updating them.
+- Pin Helm dependencies, images, operators, downloaded tools and remote
+  resources to immutable versions or digests where supported. Avoid version
+  ranges, moving branches and `latest` tags unless their mutability is
+  intentional and documented.
+- Verify versions, values and migration behavior against authoritative chart
+  indexes, releases, source and documentation before updating them.
 - `Chart.lock` and `charts/` are ignored globally, although older tracked
   artifacts exist in some charts. Do not force-add newly generated dependency
   artifacts or modify existing tracked archives unless the task requires it.
@@ -244,6 +260,11 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   writing a Kubernetes resource template directly, verify whether the pinned
   BJW-S version can express it. Keep direct templates or `rawResources` for
   unsupported APIs or behavior, and document why the exception is necessary.
+- Before adding a custom Helm template or helper for behavior that BJW-S Common Chart may
+  support, check its chart values, including file-backed resources and built-in
+  rollout/checksum behavior. Keep direct manifests for unsupported APIs or
+  when BJW-S cannot preserve required identity, lifecycle, ordering or security
+  semantics, and document the reason.
 - Follow the local style in existing files. For new or touched YAML, use
   single quotes for string scalars, including flow sequences and mappings.
   Use double quotes when escape processing is required or single quotes would
@@ -253,6 +274,15 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   so they remain strings across templates and generated JSON.
 - Prefer values-driven templates for cluster, environment, hostname, gateway,
   namespace and secret-store differences.
+- Grafana dashboard ConfigMaps consumed by the dashboard syncer must include
+  the `grafana_dashboard` label. Repository-managed dashboards should use
+  `grafana_dashboard: 'true'`; the syncer currently watches `core-prod`,
+  `kube-system` and `longhorn-system` through namespace-scoped Roles and
+  RoleBindings. Use its existing folder annotation for non-root dashboards.
+  Prefer, in order, a supported upstream chart integration, an immutable
+  upstream Kustomize resource, then a repository ConfigMap from an upstream or
+  trusted community dashboard. Preserve provenance, normalize datasource IDs
+  and scope, and document local overlays.
 - For every `Landing`/Forecastle-exposed service, add a
   `forecastle.stakater.com/appName` annotation with a friendly display name;
   do not rely on the generated resource name in the dashboard.
@@ -271,6 +301,9 @@ for this update was Backplane commit `f2772dabc194b1e5b5f99355aedb60ea4e462ee5`.
   behavior, sync waves and replacement semantics before resource renames or
   lifecycle changes. Preserve recovery access and dependency ordering across
   identity, secrets, storage and site failures.
+- If an ApplicationSet supplies `LOVELY_KUSTOMIZE_MERGE`, ensure its source
+  directory contains a `kustomization.yaml` or `Kustomization` marker so Lovely
+  executes that stage; preserve the marker when adding injected patches.
 - Validate every parser boundary touched by a change: Helm, Kustomize, YAML,
   embedded Terraform, shell/config fragments and Kubernetes custom resources.
 - For CI or image-build workflows triggered by a push, locate the run for the
