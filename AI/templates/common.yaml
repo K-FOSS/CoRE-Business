@@ -219,7 +219,7 @@ controllers:
       gpustack:
         image:
           repository: {{ default "gpustack/gpustack" .Values.gpustack.server.image }}
-          tag: {{ default "v2.2.3" .Values.gpustack.server.tag }}
+          tag: {{ default "v2.3.1" .Values.gpustack.server.tag }}
           pullPolicy: IfNotPresent
 
         # args:

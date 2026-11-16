@@ -79,19 +79,23 @@ service and allocation registry remain unchanged.
   generated platform password from `Storage/DragonFly/CoRE/Creds` into
   `openwebui-dragonfly`; logical databases `150` and `151` are configured under
   `owui.redis`, along with the endpoint and secret references.
-- GPUStack v2 uses its unified, version-pinned image for the server and workers.
+- GPUStack v2.3.1 uses its unified, version-pinned image for the server and
+  token-provisioner job. This release includes authorization and
+  credential disclosure fixes; review the
+  [v2.3.1 release notes](https://github.com/gpustack/gpustack/releases/tag/v2.3.1)
+  when planning upgrades.
   Its Authentik Terraform `Workspace` creates a confidential OIDC provider,
   application, `GPUStack Users` access group and entitlement. The generated
   client credentials are written to `<release>-gpustack-oidc`; the server uses
   them with the exact `<external-url>/auth/oidc/callback` redirect URI required
-  by [GPUStack SSO](https://docs.gpustack.ai/2.0/user-guide/sso/). OIDC settings,
+  by [GPUStack SSO](https://docs.gpustack.ai/2.3/user-guide/sso/). OIDC settings,
   including the Authentik provider reference and issuer URL, are configured
   under `gpustack.oidc`; the public URL is `gpustack.server.externalUrl`. The
   inline module pins the
   [Authentik Terraform provider](https://registry.terraform.io/providers/goauthentik/authentik/2026.5.1)
   and [random provider](https://registry.terraform.io/providers/hashicorp/random/3.9.0).
   The same HTTPS `externalUrl` is passed as GPUStack's
-  [`server-external-url`](https://docs.gpustack.ai/2.0/cli-reference/start/), so
+  [`server-external-url`](https://docs.gpustack.ai/2.3/cli-reference/start/), so
   generated worker-registration and other advertised URLs do not inherit the
   chart's internal HTTP transport.
   A CoRE `User` provisions its PostgreSQL role and database on the site-local
@@ -100,7 +104,7 @@ service and allocation registry remain unchanged.
   `psql-local.<cluster>.<datacenter>.<region>.mylogin.space:5432`; both the
   providers and hostname can be overridden under `gpustack.psql`.
   Optional declarative API-key provisioning under `gpustack.tokens` uses
-  [GPUStack's API-key API](https://docs.gpustack.ai/2.0/user-guide/api-key-management/).
+  [GPUStack's API-key API](https://docs.gpustack.ai/2.3/user-guide/api-key-management/).
   External Secrets generates each custom token once and retains it in the
   configured Kubernetes Secret. A CronJob reconciles named keys and their
   `management`/`inference` scopes and model allowlists through `/v2/api-keys`.

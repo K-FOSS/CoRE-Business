@@ -231,7 +231,7 @@ gpustack:
     externalUrl: 'https://gpustack.mylogin.space'
 
     image: gpustack/gpustack
-    tag: v2.2.3
+    tag: v2.3.1'
 
     replicas: 1
     
