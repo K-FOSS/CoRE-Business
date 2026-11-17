@@ -20,6 +20,7 @@ gateway:
 
 mastodon:
   domain: ''
+  maxTootChars: 5000
   image:
     repository: 'ghcr.io/glitch-soc/mastodon'
     tag: 'v4.7.5@sha256:f89537b2ba33c8b2034bc6e7e46298a5b0a0c24c8f719fe3479b852e27adcb81'

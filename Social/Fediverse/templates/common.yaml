@@ -978,6 +978,7 @@ valueFrom:
 {{- define "mastodon.runtimeEnv" -}}
 LOCAL_DOMAIN: {{ .Values.mastodon.domain | quote }}
 WEB_DOMAIN: {{ .Values.mastodon.domain | quote }}
+MAX_TOOT_CHARS: {{ .Values.mastodon.maxTootChars | quote }}
 RAILS_ENV: 'production'
 NODE_ENV: 'production'
 RAILS_LOG_TO_STDOUT: 'true'

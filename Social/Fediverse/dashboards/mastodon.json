@@ -1,0 +1,15 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "id": 1, "targets": [{"expr": "sum(rate(http_requests_total[5m]))", "legendFormat": "requests/s", "refId": "A"}], "title": "HTTP request rate", "type": "timeseries"},
+    {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}, "id": 2, "targets": [{"expr": "sum(sidekiq_jobs_total)", "legendFormat": "jobs", "refId": "A"}], "title": "Sidekiq jobs", "type": "timeseries"},
+    {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}, "id": 3, "targets": [{"expr": "sum(mastodon_streaming_http_requests_total)", "legendFormat": "requests", "refId": "A"}], "title": "Streaming requests", "type": "timeseries"},
+    {"datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}, "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []}, "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}, "id": 4, "targets": [{"expr": "sum(process_resident_memory_bytes)", "legendFormat": "resident memory", "refId": "A"}], "title": "Exporter process memory", "type": "timeseries"}
+  ],
+  "schemaVersion": 39,
+  "tags": ["fediverse", "mastodon"],
+  "title": "Fediverse Mastodon",
+  "uid": "core-fediverse-mastodon",
+  "version": 1
+}
