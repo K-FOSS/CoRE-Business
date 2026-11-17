@@ -563,6 +563,10 @@ service:
     ports:
       http:
         port: 8008
+{{- if .Values.synapse.monitoring.enabled }}
+      metrics:
+        port: {{ .Values.synapse.monitoring.port }}
+{{- end }}
   element:
     controller: 'element'
     ports:
@@ -580,6 +584,17 @@ service:
     ports:
       http:
         port: 8080
+{{- end }}
+
+{{- if .Values.synapse.monitoring.enabled }}
+serviceMonitor:
+  synapse:
+    enabled: true
+    service:
+      identifier: 'synapse'
+    endpoints:
+      - port: 'metrics'
+        path: '/_synapse/metrics'
 {{- end }}
 
 route:
