@@ -1,3 +1,4 @@
+{{- $monitoring := mergeOverwrite (dict "enabled" true "port" 9000) (default dict .Values.synapse.monitoring) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,8 +30,8 @@ data:
         x_forwarded: true
         resources:
           - names: [client, federation]
-{{- if .Values.synapse.monitoring.enabled }}
-      - port: {{ .Values.synapse.monitoring.port }}
+{{- if $monitoring.enabled }}
+      - port: {{ $monitoring.port }}
         type: metrics
         tls: false
         bind_addresses: ['0.0.0.0']
@@ -38,7 +39,7 @@ data:
 {{- end }}
     enable_media_repo: true
     enable_local_media_storage: true
-    enable_metrics: {{ .Values.synapse.monitoring.enabled }}
+    enable_metrics: {{ $monitoring.enabled }}
     database:
       name: psycopg2
       args:

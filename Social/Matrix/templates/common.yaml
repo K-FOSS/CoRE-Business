@@ -38,6 +38,7 @@
 {{- $_ := required "turn.secret.remoteProperty is required" .Values.turn.secret.remoteProperty -}}
 {{- end }}
 {{- define "app-template.hardcodedValues" -}}
+{{- $monitoring := mergeOverwrite (dict "enabled" true "port" 9000) (default dict .Values.synapse.monitoring) -}}
 global:
   nameOverride: {{ .Release.Name | quote }}
 
@@ -563,9 +564,9 @@ service:
     ports:
       http:
         port: 8008
-{{- if .Values.synapse.monitoring.enabled }}
+{{- if $monitoring.enabled }}
       metrics:
-        port: {{ .Values.synapse.monitoring.port }}
+        port: {{ $monitoring.port }}
 {{- end }}
   element:
     controller: 'element'
@@ -586,7 +587,7 @@ service:
         port: 8080
 {{- end }}
 
-{{- if .Values.synapse.monitoring.enabled }}
+{{- if $monitoring.enabled }}
 serviceMonitor:
   synapse:
     enabled: true
