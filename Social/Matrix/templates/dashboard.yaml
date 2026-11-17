@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-synapse-dashboard" .Release.Name | quote }}
+  labels:
+    grafana_dashboard: 'true'
+data:
+  synapse.url: 'https://raw.githubusercontent.com/element-hq/synapse/0adca7d1f768f45edf9452e423d32e46d4688767/contrib/grafana/synapse.json'
