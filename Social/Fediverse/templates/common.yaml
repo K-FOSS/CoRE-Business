@@ -3,6 +3,7 @@
 {{- $_ := set .Values "secretManagement" .Values.mastodon.secretManagement -}}
 {{- $_ := set .Values "monitoring" .Values.mastodon.monitoring -}}
 {{- $_ := required "cluster.name is required" .Values.cluster.name -}}
+{{- $_ := required "cluster.domain is required for Mastodon OTLP tracing" .Values.cluster.domain -}}
 {{- $_ := required "datacenter is required" .Values.datacenter -}}
 {{- $_ := required "region is required" .Values.region -}}
 {{- $_ := required "tenant.domain is required" .Values.tenant.domain -}}
@@ -43,6 +44,7 @@
 {{- end }}
 {{- end }}
 {{- define "app-template.hardcodedValues" -}}
+{{- $exporter := mergeOverwrite (dict "bindAddress" "0.0.0.0" "resources" (dict "requests" (dict "cpu" "10m" "memory" "64Mi") "limits" (dict "memory" "256Mi"))) (default dict .Values.mastodon.monitoring.exporter) -}}
 global:
   nameOverride: {{ .Release.Name | quote }}
 
@@ -118,15 +120,21 @@ controllers:
         env:
           {{- include "mastodon.runtimeEnv" . | nindent 10 }}
           MASTODON_PROMETHEUS_EXPORTER_ENABLED: {{ .Values.mastodon.monitoring.enabled | quote }}
-          MASTODON_PROMETHEUS_EXPORTER_LOCAL: {{ .Values.mastodon.monitoring.enabled | quote }}
-          MASTODON_PROMETHEUS_EXPORTER_HOST: {{ .Values.mastodon.monitoring.host | quote }}
+          MASTODON_PROMETHEUS_EXPORTER_LOCAL: 'false'
           MASTODON_PROMETHEUS_EXPORTER_WEB_DETAILED_METRICS: {{ .Values.mastodon.monitoring.webDetailedMetrics | quote }}
-          MASTODON_PROMETHEUS_EXPORTER_PORT: {{ .Values.mastodon.monitoring.port | quote }}
+          PROMETHEUS_EXPORTER_HOST: '127.0.0.1'
+          PROMETHEUS_EXPORTER_PORT: {{ .Values.mastodon.monitoring.port | quote }}
+          OTEL_EXPORTER_OTLP_ENDPOINT: {{ printf "http://%s.%s.svc.%s:%d" .Values.mastodon.tracing.endpointService .Values.mastodon.tracing.endpointNamespace .Values.cluster.domain (int .Values.mastodon.tracing.endpointPort) | quote }}
+          OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf'
+          OTEL_TRACES_EXPORTER: 'otlp'
+          OTEL_TRACES_SAMPLER: {{ .Values.mastodon.tracing.sampler | quote }}
+          OTEL_TRACES_SAMPLER_ARG: {{ .Values.mastodon.tracing.samplerArgument | quote }}
+          OTEL_PROPAGATORS: 'tracecontext,baggage'
+          OTEL_SERVICE_NAME_PREFIX: {{ .Values.mastodon.tracing.serviceNamePrefix | quote }}
+          OTEL_SERVICE_NAME_SEPARATOR: {{ .Values.mastodon.tracing.serviceNameSeparator | quote }}
         ports:
           - name: http
             containerPort: 3000
-          - name: metrics
-            containerPort: {{ .Values.mastodon.monitoring.port }}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: false
@@ -158,6 +166,32 @@ controllers:
               periodSeconds: 30
               timeoutSeconds: 5
               failureThreshold: 5
+      {{ if .Values.mastodon.monitoring.enabled }}
+      prometheus-exporter:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        args: ['./bin/prometheus_exporter', '-b', {{ $exporter.bindAddress | quote }}, '-p', {{ .Values.mastodon.monitoring.port | quote }}]
+        ports:
+          - name: metrics
+            containerPort: {{ .Values.mastodon.monitoring.port }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/ping'
+            port: metrics
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/ping'
+            port: metrics
+        resources:
+          {{- toYaml $exporter.resources | nindent 10 }}
+      {{ end }}
   streaming:
     annotations:
       argocd.argoproj.io/sync-wave: '20'
@@ -287,13 +321,18 @@ controllers:
         env:
           {{- include "mastodon.runtimeEnv" . | nindent 10 }}
           MASTODON_PROMETHEUS_EXPORTER_ENABLED: {{ .Values.mastodon.monitoring.enabled | quote }}
-          MASTODON_PROMETHEUS_EXPORTER_LOCAL: {{ .Values.mastodon.monitoring.enabled | quote }}
-          MASTODON_PROMETHEUS_EXPORTER_HOST: {{ .Values.mastodon.monitoring.host | quote }}
+          MASTODON_PROMETHEUS_EXPORTER_LOCAL: 'false'
           MASTODON_PROMETHEUS_EXPORTER_SIDEKIQ_DETAILED_METRICS: {{ .Values.mastodon.monitoring.sidekiqDetailedMetrics | quote }}
-          MASTODON_PROMETHEUS_EXPORTER_PORT: {{ .Values.mastodon.monitoring.port | quote }}
-        ports:
-          - name: metrics
-            containerPort: {{ .Values.mastodon.monitoring.port }}
+          PROMETHEUS_EXPORTER_HOST: '127.0.0.1'
+          PROMETHEUS_EXPORTER_PORT: {{ .Values.mastodon.monitoring.port | quote }}
+          OTEL_EXPORTER_OTLP_ENDPOINT: {{ printf "http://%s.%s.svc.%s:%d" .Values.mastodon.tracing.endpointService .Values.mastodon.tracing.endpointNamespace .Values.cluster.domain (int .Values.mastodon.tracing.endpointPort) | quote }}
+          OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf'
+          OTEL_TRACES_EXPORTER: 'otlp'
+          OTEL_TRACES_SAMPLER: {{ .Values.mastodon.tracing.sampler | quote }}
+          OTEL_TRACES_SAMPLER_ARG: {{ .Values.mastodon.tracing.samplerArgument | quote }}
+          OTEL_PROPAGATORS: 'tracecontext,baggage'
+          OTEL_SERVICE_NAME_PREFIX: {{ .Values.mastodon.tracing.serviceNamePrefix | quote }}
+          OTEL_SERVICE_NAME_SEPARATOR: {{ .Values.mastodon.tracing.serviceNameSeparator | quote }}
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: false
@@ -329,6 +368,32 @@ controllers:
               failureThreshold: 5
         resources:
           {{- toYaml .Values.mastodon.resources.sidekiq | nindent 10 }}
+      {{ if .Values.mastodon.monitoring.enabled }}
+      prometheus-exporter:
+        image:
+          {{- toYaml .Values.mastodon.image | nindent 10 }}
+        args: ['./bin/prometheus_exporter', '-b', {{ $exporter.bindAddress | quote }}, '-p', {{ .Values.mastodon.monitoring.port | quote }}]
+        ports:
+          - name: metrics
+            containerPort: {{ .Values.mastodon.monitoring.port }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ['ALL']
+        probes:
+          readiness:
+            enabled: true
+            type: 'HTTP'
+            path: '/ping'
+            port: metrics
+          liveness:
+            enabled: true
+            type: 'HTTP'
+            path: '/ping'
+            port: metrics
+        resources:
+          {{- toYaml $exporter.resources | nindent 10 }}
+      {{ end }}
   migrate:
     enabled: true
     type: 'job'

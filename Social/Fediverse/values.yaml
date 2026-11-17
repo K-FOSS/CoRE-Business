@@ -1,6 +1,7 @@
 # Site inputs are injected by the owning Backplane ApplicationSet.
 cluster:
   name: ''
+  domain: ''
 datacenter: ''
 region: ''
 
@@ -133,10 +134,25 @@ mastodon:
       secretName: 'mastodon-encryption'
   monitoring:
     enabled: true
-    host: '0.0.0.0'
     port: 9394
+    exporter:
+      bindAddress: '0.0.0.0'
+      resources:
+        requests:
+          cpu: '10m'
+          memory: '64Mi'
+        limits:
+          memory: '256Mi'
     webDetailedMetrics: false
     sidekiqDetailedMetrics: false
+  tracing:
+    endpointService: 'core-collectors-alloy-otlp'
+    endpointNamespace: 'core-prod'
+    endpointPort: 4318
+    serviceNamePrefix: 'mastodon'
+    serviceNameSeparator: '/'
+    sampler: 'parentbased_traceidratio'
+    samplerArgument: '0.1'
 
 bluesky:
   enabled: true
