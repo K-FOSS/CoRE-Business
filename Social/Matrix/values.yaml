@@ -10,6 +10,7 @@ gateway:
   namespace: 'core-prod'
   sectionName: 'https-myloginspace'
   requestTimeout: '1m'
+  mediaRequestTimeout: '2m'
 
 support:
   matrixId: '@kjones:matrix.mylogin.space'

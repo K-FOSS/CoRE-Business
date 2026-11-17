@@ -659,7 +659,7 @@ route:
           - identifier: 'synapse'
             port: 8008
         timeouts:
-          request: {{ .Values.gateway.requestTimeout | quote }}
+          request: {{ .Values.gateway.mediaRequestTimeout | quote }}
   element:
     kind: 'HTTPRoute'
     annotations:

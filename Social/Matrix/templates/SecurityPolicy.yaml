@@ -1,0 +1,17 @@
+{{- $synapseRoute := include "bjw-s.common.lib.route.getByIdentifier" (dict "rootContext" . "id" "synapse") | fromYaml -}}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: {{ .Release.Name }}-synapse-cors
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ $synapseRoute.name }}
+  cors:
+    allowOrigins: ['*']
+    allowMethods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    allowHeaders: ['*']
+    exposeHeaders: ['Accept-Ranges', 'Content-Length', 'Content-Range', 'ETag']
+    allowCredentials: false
+    maxAge: '86400s'

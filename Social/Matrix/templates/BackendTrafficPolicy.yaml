@@ -1,0 +1,14 @@
+{{- $synapseRoute := include "bjw-s.common.lib.route.getByIdentifier" (dict "rootContext" . "id" "synapse") | fromYaml -}}
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ .Release.Name }}-synapse-media
+spec:
+  mergeType: 'StrategicMerge'
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: {{ $synapseRoute.name }}
+  timeout:
+    http:
+      requestTimeout: {{ .Values.gateway.mediaRequestTimeout }}
