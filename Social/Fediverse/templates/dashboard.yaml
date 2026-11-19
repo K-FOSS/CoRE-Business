@@ -5,5 +5,5 @@ metadata:
   labels:
     grafana_dashboard: 'true'
 data:
-  mastodon.json: |
-    {{- .Files.Get "dashboards/mastodon.json" | nindent 4 }}
+  mastodon-puma.url: 'https://grafana.com/api/dashboards/23723/revisions/1/download'
+  mastodon-sidekiq.url: 'https://grafana.com/api/dashboards/23724/revisions/1/download'
