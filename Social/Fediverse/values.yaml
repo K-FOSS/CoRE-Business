@@ -24,11 +24,11 @@ mastodon:
   maxTootChars: 5000
   image:
     repository: 'ghcr.io/glitch-soc/mastodon'
-    tag: 'v4.7.5@sha256:f89537b2ba33c8b2034bc6e7e46298a5b0a0c24c8f719fe3479b852e27adcb81'
+    tag: 'v4.7.6@sha256:b25e1b8ac3b43c0552fa1b44666c16f2c81576cc6e80170d692148a9c7687d4b'
     pullPolicy: 'IfNotPresent'
   streamingImage:
     repository: 'ghcr.io/mastodon/mastodon-streaming'
-    tag: 'v4.7.5@sha256:3859d071e61a0ed2610a00e8048d89310235afb86e6923c0243bb4f9f4a31093'
+    tag: 'v4.7.6@sha256:5b95d22c22f1d101fd2eb5dac62ad0ca2a93a5b60e410dc071ae645e98cc73e6'
     pullPolicy: 'IfNotPresent'
   user:
     name: 'mastodon'
